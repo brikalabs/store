@@ -1,7 +1,8 @@
 import { defineCommand } from "@brika/cli-kit";
 import * as p from "@brika/cli-kit/prompts";
 import { packDirectory } from "../lib/tarball";
-import { assertPublishable, printSummary } from "./shared";
+import { printSummary } from "./summary";
+import { assertPublishable } from "./validate";
 
 export const pack = defineCommand({
   name: "pack",

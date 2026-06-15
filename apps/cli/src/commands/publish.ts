@@ -3,7 +3,8 @@ import * as p from "@brika/cli-kit/prompts";
 import { authToken, loadConfig, registryUrl } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
 import { packDirectory } from "../lib/tarball";
-import { assertPublishable, printSummary } from "./shared";
+import { printSummary } from "./summary";
+import { assertPublishable } from "./validate";
 
 export const publish = defineCommand({
   name: "publish",
