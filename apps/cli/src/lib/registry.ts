@@ -6,13 +6,15 @@ import { z } from "zod";
  * protocol and needs no client; this only covers `/-/device/*` (RFC 8628 device
  * flow), `/-/publish`, and `/-/token/revoke`.
  *
- * Every request is time-boxed (and accepts an external `AbortSignal` for caller
- * cancellation), wraps transport failures in a `CliError`, and validates the
- * response body with zod. `fetch` is injectable so the client is unit-testable
- * without a live registry.
+ * Failures are thrown as `CliError` and successes are returned directly, so
+ * callers never branch on a result union. Every request is time-boxed (and
+ * accepts an external `AbortSignal` for cancellation), wraps transport failures
+ * in a `CliError`, and validates the response body with zod. `fetch` is
+ * injectable so the client is unit-testable without a live registry.
  */
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const SLOW_DOWN_BACKOFF_S = 5;
 const JSON_HEADERS = { "content-type": "application/json" } as const;
 
 const DeviceCodeSchema = z.object({
@@ -37,11 +39,10 @@ const PublishResponseSchema = z.object({
 
 export type DeviceCode = z.infer<typeof DeviceCodeSchema>;
 
-export type TokenPoll =
-  | { readonly status: "pending" }
-  | { readonly status: "slow_down" }
-  | { readonly status: "ok"; readonly token: string; readonly githubLogin: string }
-  | { readonly status: "error"; readonly error: string };
+export interface DeviceLogin {
+  readonly token: string;
+  readonly githubLogin: string;
+}
 
 export interface PublishRequest {
   readonly name: string;
@@ -50,9 +51,9 @@ export interface PublishRequest {
   readonly tarballBase64: string;
 }
 
-export type PublishResult =
-  | { readonly ok: true; readonly integrity: string }
-  | { readonly ok: false; readonly status: number; readonly error: string; readonly code?: string };
+export interface Published {
+  readonly integrity: string;
+}
 
 /** The subset of `fetch` the client uses, so a stub can be injected in tests. */
 export type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
@@ -77,37 +78,51 @@ export class RegistryClient {
     this.#signal = options.signal;
   }
 
+  /** Start the device flow, returning the code + URL to show the user. */
   async requestDeviceCode(): Promise<DeviceCode> {
     const res = await this.#send("/-/device/code", { method: "POST" });
     if (!res.ok) throw new CliError(`could not start device login (${res.status})`);
     return this.#parse(res, DeviceCodeSchema);
   }
 
-  async pollDeviceToken(deviceCode: string): Promise<TokenPoll> {
-    const res = await this.#postJson("/-/device/token", { device_code: deviceCode });
-    const body = await this.#parse(res, DeviceTokenSchema);
-    if (res.ok && body.access_token !== undefined) {
-      return { status: "ok", token: body.access_token, githubLogin: body.github_login ?? "unknown" };
+  /**
+   * Poll until the user approves the device code, returning the issued token.
+   * Waits the server-provided interval between polls (backing off on
+   * `slow_down`), and throws a `CliError` if the flow is denied or its deadline
+   * passes.
+   */
+  async waitForToken(device: DeviceCode): Promise<DeviceLogin> {
+    const deadline = Date.now() + device.expires_in * 1000;
+    let interval = device.interval;
+    while (Date.now() < deadline) {
+      await Bun.sleep(interval * 1000);
+      const res = await this.#postJson("/-/device/token", { device_code: device.device_code });
+      const body = await this.#parse(res, DeviceTokenSchema);
+      if (res.ok && body.access_token !== undefined) {
+        return { token: body.access_token, githubLogin: body.github_login ?? "unknown" };
+      }
+      if (body.error === "slow_down") {
+        interval += SLOW_DOWN_BACKOFF_S;
+        continue;
+      }
+      if (body.error === "authorization_pending") continue;
+      const reason = body.error ?? `device token failed (${res.status})`;
+      throw new CliError(`login failed: ${reason}`);
     }
-    if (body.error === "authorization_pending") return { status: "pending" };
-    if (body.error === "slow_down") return { status: "slow_down" };
-    return { status: "error", error: body.error ?? `device token failed (${res.status})` };
+    throw new CliError("login timed out - run `brika login` again");
   }
 
-  async publish(token: string, req: PublishRequest): Promise<PublishResult> {
+  /** Publish a version, returning its integrity. Throws a `CliError` on rejection. */
+  async publish(token: string, req: PublishRequest): Promise<Published> {
     const res = await this.#postJson(
       "/-/publish",
       { name: req.name, version: req.version, manifest: req.manifest, tarball: req.tarballBase64 },
       token,
     );
     const body = await this.#parse(res, PublishResponseSchema);
-    if (res.ok && body.integrity !== undefined) return { ok: true, integrity: body.integrity };
-    return {
-      ok: false,
-      status: res.status,
-      error: body.error ?? `publish failed (${res.status})`,
-      code: body.code,
-    };
+    if (res.ok && body.integrity !== undefined) return { integrity: body.integrity };
+    const code = body.code === undefined ? "" : ` ${body.code}`;
+    throw new CliError(`publish rejected (${res.status}${code}): ${body.error ?? "unknown error"}`);
   }
 
   /** Best-effort revoke; never throws (logout must clear locally regardless). */

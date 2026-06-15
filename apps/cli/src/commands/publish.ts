@@ -34,26 +34,27 @@ export const publish = defineCommand({
     const registry = registryUrl(config);
     const spin = p.spinner();
     spin.start(`Publishing to ${registry}`);
-    const result = await new RegistryClient(registry).publish(token, {
-      name: packed.name,
-      version: packed.version,
-      manifest: packed.manifest,
-      tarballBase64: Buffer.from(packed.tarball).toString("base64"),
-    });
-    if (!result.ok) {
-      spin.stop("Publish rejected");
-      const code = result.code === undefined ? "" : ` ${result.code}`;
-      throw new CliError(`publish rejected (${result.status}${code}): ${result.error}`);
-    }
+    const { integrity } = await new RegistryClient(registry)
+      .publish(token, {
+        name: packed.name,
+        version: packed.version,
+        manifest: packed.manifest,
+        tarballBase64: Buffer.from(packed.tarball).toString("base64"),
+      })
+      .catch((error: unknown) => {
+        spin.stop("Publish rejected");
+        throw error;
+      });
+
     // The registry recomputes integrity from the bytes it received; confirm it
     // matches what we packed so a corrupted upload is never accepted silently.
-    if (result.integrity !== packed.integrity) {
+    if (integrity !== packed.integrity) {
       spin.stop("Integrity mismatch");
       throw new CliError(
-        `integrity mismatch: packed ${packed.integrity}, registry stored ${result.integrity}`,
+        `integrity mismatch: packed ${packed.integrity}, registry stored ${integrity}`,
       );
     }
     spin.stop(`Published ${packed.name}@${packed.version}`);
-    p.log.success(`integrity verified: ${result.integrity}`);
+    p.log.success(`integrity verified: ${integrity}`);
   },
 });
