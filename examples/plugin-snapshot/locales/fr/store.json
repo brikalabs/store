@@ -1,0 +1,4 @@
+{
+  "title": "Snapshot et compression",
+  "description": "Capturez des instantanes de l'etat de votre hub et stockez-les compresses avec gzip ou brotli. Conservez une fenetre glissante d'instantanes recents et restaurez-les en un clic."
+}

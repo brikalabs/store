@@ -6,6 +6,7 @@ import { D1MetadataReader } from "./adapters/d1-metadata";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { revokeToken } from "./adapters/token";
 import { handleDeviceCode, handleDeviceToken } from "./device";
+import { vars } from "./env";
 import { decodeSegment, parseTarballVersion } from "./npm-url";
 import { handlePublish } from "./publish";
 
@@ -15,6 +16,15 @@ import { handlePublish } from "./publish";
  * Routing with Hono; all domain logic lives in `@brika/registry-core` and this
  * worker is the thin HTTP + Cloudflare adapter layer.
  */
+
+/**
+ * The public origin tarball URLs are built from: the pinned `REGISTRY_URL` when
+ * configured, otherwise the request origin (correct once a single custom domain
+ * is attached). Pinning avoids trusting a client-supplied `Host` header.
+ */
+function baseUrlFor(requestUrl: string): string {
+  return vars().REGISTRY_URL || new URL(requestUrl).origin;
+}
 
 function resolver(baseUrl: string): ResolveService {
   return new ResolveService(
@@ -32,7 +42,7 @@ async function packument(c: Context, name: string): Promise<Response> {
   // bun/npm request the abbreviated install metadata via Accept; it is much
   // smaller (no readme/scripts) for packages with many versions.
   const abbreviated = (c.req.header("accept") ?? "").includes(ABBREVIATED_ACCEPT);
-  const doc = await resolver(new URL(c.req.url).origin).packument(name, { abbreviated });
+  const doc = await resolver(baseUrlFor(c.req.url)).packument(name, { abbreviated });
   if (doc === null) return c.json({ error: "Not found" }, 404);
   return c.body(JSON.stringify(doc), 200, {
     "content-type": abbreviated ? ABBREVIATED_ACCEPT : "application/json",
@@ -45,7 +55,7 @@ async function packument(c: Context, name: string): Promise<Response> {
 async function tarball(c: Context, name: string, file: string): Promise<Response> {
   const version = parseTarballVersion(name, file);
   if (version === null) return c.json({ error: "Not found" }, 404);
-  const stream = await resolver(new URL(c.req.url).origin).tarball(name, version);
+  const stream = await resolver(baseUrlFor(c.req.url)).tarball(name, version);
   if (stream === null) return c.json({ error: "Not found" }, 404);
   return c.body(stream, 200, {
     "content-type": "application/octet-stream",

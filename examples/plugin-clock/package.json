@@ -1,0 +1,47 @@
+{
+  "$schema": "https://store.brika.dev/schema/plugin.json",
+  "name": "@brika/plugin-clock",
+  "version": "1.0.0",
+  "displayName": "World Clock",
+  "description": "Timezone-aware clocks, timers, and scheduled sparks for your Brika hub.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "icon": "./assets/icon.svg",
+  "keywords": ["brika-plugin", "clock", "timer", "timezone", "schedule"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brikalabs/store.git",
+    "directory": "examples/plugin-clock"
+  },
+  "engines": {
+    "brika": "^0.1.0"
+  },
+  "files": ["src", "assets", "locales", "README.md"],
+  "tools": [
+    { "id": "now", "description": "Get the current time in any timezone", "icon": "clock" }
+  ],
+  "blocks": [
+    {
+      "id": "every",
+      "name": "Every interval",
+      "description": "Emit a tick on a fixed interval",
+      "category": "trigger",
+      "icon": "timer"
+    }
+  ],
+  "sparks": [
+    { "id": "tick", "name": "Tick", "description": "Fired every configured interval" },
+    { "id": "alarm", "name": "Alarm", "description": "Fired when a scheduled alarm is due" }
+  ],
+  "pages": [{ "id": "clocks", "icon": "clock" }],
+  "preferences": [
+    {
+      "name": "timezone",
+      "type": "text",
+      "label": "Home timezone",
+      "description": "IANA timezone, e.g. Europe/Zurich",
+      "default": "UTC"
+    }
+  ]
+}
