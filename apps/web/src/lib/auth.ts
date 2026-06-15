@@ -6,6 +6,7 @@ import { signSession, verifySession } from "./session";
 
 const SESSION_COOKIE = "brika_session";
 const STATE_COOKIE = "brika_oauth_state";
+const RETURN_COOKIE = "brika_oauth_return";
 
 export interface SessionUser {
   id: string;
@@ -61,4 +62,28 @@ export function stateCookie(state: string, secure: boolean): string {
 
 export function readOauthState(request: Request): string | undefined {
   return parseCookies(request.headers.get("cookie"))[STATE_COOKIE];
+}
+
+/**
+ * A safe post-login redirect target: a same-site path beginning with a single
+ * `/`. Absolute URLs and protocol-relative `//host` paths fall back to `/`, so
+ * a crafted `?return=` can never turn sign-in into an open redirect.
+ */
+export function safeReturnPath(raw: string | null | undefined): string {
+  if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//")) return "/";
+  return raw;
+}
+
+/** Remember where to send the user after OAuth (e.g. back to `/device?code=…`). */
+export function returnCookie(path: string, secure: boolean): string {
+  return `${RETURN_COOKIE}=${encodeURIComponent(path)}; ${attrs(secure)}; Max-Age=600`;
+}
+
+/** The validated path saved by {@link returnCookie}, defaulting to `/`. */
+export function readReturnPath(request: Request): string {
+  return safeReturnPath(parseCookies(request.headers.get("cookie"))[RETURN_COOKIE]);
+}
+
+export function clearReturnCookie(secure: boolean): string {
+  return `${RETURN_COOKIE}=; ${attrs(secure)}; Max-Age=0`;
 }

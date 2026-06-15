@@ -1,19 +1,60 @@
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@brika/clay";
 import { createFileRoute } from "@tanstack/react-router";
+import { Check, KeyRound, ShieldCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { z } from "zod";
+import { GithubIcon } from "../components/clay/icons";
 import { useCurrentUser } from "../lib/use-current-user";
 
 const deviceSearch = z.object({ code: z.string().optional() });
+
+// Device codes are two groups of 4 from an ambiguity-free alphabet (see the
+// registry). The OTP holds the 8 characters without the separating hyphen,
+// which we strip on the way in and re-add when approving.
+const CODE_LENGTH = 8;
+const NON_CODE_CHARS = /[^BCDFGHJKLMNPQRSTVWXZ23456789]/g;
 
 export const Route = createFileRoute("/device")({
   validateSearch: (input) => deviceSearch.parse(input),
   component: DevicePage,
 });
 
+/** Drop the separator and anything outside the code alphabet. */
+function normalizeCode(raw: string): string {
+  return raw.toUpperCase().replace(NON_CODE_CHARS, "").slice(0, CODE_LENGTH);
+}
+
+/** Re-insert the hyphen the registry stores: `BR7KMNPQ` -> `BR7K-MNPQ`. */
+function withSeparator(value: string): string {
+  return `${value.slice(0, 4)}-${value.slice(4)}`;
+}
+
+// Each slot sits in its own single-slot group so it renders as a fully rounded,
+// fully bordered box (the design's segmented look) instead of Clay's connected
+// default, with the active box picking up the brand ring.
+const SLOT_CLASS =
+  "h-14 w-[42px] rounded-xl font-medium font-mono text-2xl text-foreground data-[active=true]:border-brand data-[active=true]:ring-brand/25";
+
+function CodeSlot({ index }: { index: number }) {
+  return (
+    <InputOTPGroup>
+      <InputOTPSlot index={index} className={SLOT_CLASS} />
+    </InputOTPGroup>
+  );
+}
+
 function DevicePage() {
   const { code } = Route.useSearch();
   const { user, loading } = useCurrentUser();
-  const [value, setValue] = useState(code ?? "");
+  const [value, setValue] = useState(() => normalizeCode(code ?? ""));
   const [state, setState] = useState<"idle" | "ok" | "error">("idle");
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,58 +65,113 @@ function DevicePage() {
     const res = await fetch("/api/device/approve", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ user_code: value.trim() }),
+      body: JSON.stringify({ user_code: withSeparator(value) }),
     });
     setSubmitting(false);
     setState(res.ok ? "ok" : "error");
   }
 
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-6 px-6 text-center">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-bold font-heading text-2xl tracking-tight">Authorize the Brika CLI</h1>
-        <p className="text-muted-foreground text-sm">
-          Confirm the code shown in your terminal to let the CLI publish on your behalf.
-        </p>
-      </div>
+  const returnTo = code === undefined ? "/device" : `/device?code=${code}`;
 
-      {loading ? (
-        <div className="h-12 w-full animate-pulse rounded-xl bg-muted" />
-      ) : user === null ? (
-        <a
-          href="/auth/github"
-          className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 font-semibold text-brand-foreground"
-        >
-          Sign in with GitHub to continue
-        </a>
-      ) : state === "ok" ? (
-        <p className="rounded-xl border border-border bg-card px-5 py-4 font-medium">
-          Device authorized. You can return to your terminal.
-        </p>
-      ) : (
-        <form onSubmit={approve} className="flex w-full flex-col gap-3">
-          <input
-            value={value}
-            onChange={(event) => setValue(event.target.value.toUpperCase())}
-            placeholder="XXXX-XXXX"
-            autoComplete="off"
-            className="w-full rounded-xl border border-border bg-card px-4 py-3 text-center font-mono text-lg tracking-[0.3em] uppercase outline-none focus:border-brand"
-          />
-          {state === "error" ? (
-            <p className="text-destructive text-sm">
-              That code is invalid, expired, or already used.
-            </p>
-          ) : null}
-          <button
-            type="submit"
-            disabled={submitting || value.trim().length === 0}
-            className="rounded-xl bg-brand px-5 py-2.5 font-semibold text-brand-foreground disabled:opacity-50"
+  return (
+    <main className="hero-surface flex min-h-[calc(100dvh-4rem)] items-center justify-center px-6 py-16">
+      <div className="flex w-full max-w-[430px] flex-col items-center gap-[22px] text-center">
+        <span className="flex size-[54px] items-center justify-center rounded-2xl bg-gradient-to-br from-brand-muted to-brand text-white shadow-[0_10px_22px_-8px_rgba(242,84,45,0.55)]">
+          <KeyRound className="size-6" />
+        </span>
+
+        <div className="flex flex-col gap-2.5">
+          <h1 className="font-bold font-heading text-[27px] tracking-tight">
+            Authorize the Brika CLI
+          </h1>
+          <p className="mx-auto max-w-[360px] text-[15px] text-muted-foreground leading-relaxed">
+            Confirm the code shown in your terminal to let the CLI publish on your behalf.
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="h-[50px] w-full animate-pulse rounded-xl bg-muted" />
+        ) : user === null ? (
+          <a
+            href={`/auth/github?return=${encodeURIComponent(returnTo)}`}
+            className="flex h-[50px] w-full items-center justify-center gap-2.5 rounded-xl bg-foreground font-semibold text-background transition-opacity hover:opacity-90"
           >
-            {submitting ? "Authorizing…" : "Authorize device"}
-          </button>
-          <p className="text-muted-foreground text-xs">Signed in as {user.login}</p>
-        </form>
-      )}
+            <GithubIcon className="size-5" />
+            Sign in with GitHub to continue
+          </a>
+        ) : state === "ok" ? (
+          <div className="flex w-full flex-col items-center gap-2 rounded-2xl border border-border bg-card px-5 py-7">
+            <span className="flex size-10 items-center justify-center rounded-full bg-brand/10 text-brand-ink">
+              <Check className="size-5" />
+            </span>
+            <p className="font-medium font-heading">Device authorized</p>
+            <p className="text-muted-foreground text-sm">You can return to your terminal.</p>
+          </div>
+        ) : (
+          <form onSubmit={approve} className="flex w-full flex-col items-center gap-[22px]">
+            <InputOTP
+              maxLength={CODE_LENGTH}
+              value={value}
+              onChange={(next) => setValue(normalizeCode(next))}
+              pasteTransformer={normalizeCode}
+              containerClassName="justify-center gap-[7px]"
+            >
+              <CodeSlot index={0} />
+              <CodeSlot index={1} />
+              <CodeSlot index={2} />
+              <CodeSlot index={3} />
+              <InputOTPSeparator className="text-muted-foreground/40" />
+              <CodeSlot index={4} />
+              <CodeSlot index={5} />
+              <CodeSlot index={6} />
+              <CodeSlot index={7} />
+            </InputOTP>
+
+            {state === "error" ? (
+              <p className="-mt-3 text-destructive text-sm">
+                That code is invalid, expired, or already used.
+              </p>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={submitting || value.length < CODE_LENGTH}
+              className="flex h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-brand font-semibold text-[15px] text-brand-foreground shadow-[0_8px_20px_-8px_rgba(242,84,45,0.5)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Check className="size-4" />
+              {submitting ? "Authorizing…" : "Authorize device"}
+            </button>
+
+            <div className="flex w-full items-start gap-2.5 rounded-xl border border-border bg-muted/50 px-3.5 py-3 text-left text-[12.5px] text-foreground leading-relaxed">
+              <ShieldCheck className="mt-px size-[18px] shrink-0 text-brand-ink" />
+              <p>
+                Only approve if you just ran{" "}
+                <code className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[11.5px]">
+                  brika login
+                </code>{" "}
+                on this device.
+                <br />
+                <span className="text-muted-foreground">
+                  This code expires in 10 minutes. Never share it with anyone.
+                </span>
+              </p>
+            </div>
+
+            <p className="flex items-center gap-2 text-muted-foreground text-[13px]">
+              Signed in as
+              <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+                <Avatar className="size-[18px]">
+                  <AvatarImage src={user.avatarUrl ?? undefined} alt={user.login} />
+                  <AvatarFallback className="text-[8px]">
+                    {user.login.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                {user.login}
+              </span>
+            </p>
+          </form>
+        )}
+      </div>
     </main>
   );
 }

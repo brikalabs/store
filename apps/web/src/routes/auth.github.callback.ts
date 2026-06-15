@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { createFileRoute } from "@tanstack/react-router";
 import { getDb } from "../db/client";
-import { readOauthState, sessionCookie } from "../lib/auth";
+import { clearReturnCookie, readOauthState, readReturnPath, sessionCookie } from "../lib/auth";
 import { exchangeCode, fetchUser } from "../lib/github";
 import { markDeveloperVerified, upsertUser } from "../lib/social";
 
@@ -34,10 +34,10 @@ export const Route = createFileRoute("/auth/github/callback")({
         await markDeveloperVerified(database, ghUser.login);
 
         const secure = url.protocol === "https:";
-        return new Response(null, {
-          status: 302,
-          headers: { location: "/", "set-cookie": await sessionCookie(userId, secure) },
-        });
+        const headers = new Headers({ location: readReturnPath(request) });
+        headers.append("set-cookie", await sessionCookie(userId, secure));
+        headers.append("set-cookie", clearReturnCookie(secure));
+        return new Response(null, { status: 302, headers });
       },
     },
   },
