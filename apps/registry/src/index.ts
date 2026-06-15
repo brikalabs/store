@@ -2,9 +2,11 @@ import { env } from "cloudflare:workers";
 import { ResolveService } from "@brika/registry-core";
 import { getDb } from "@brika/store-db";
 import { type Context, Hono } from "hono";
+import { cors } from "hono/cors";
 import { D1MetadataReader } from "./adapters/d1-metadata";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { revokeToken } from "./adapters/token";
+import { handleCatalog } from "./catalog";
 import { handleDeviceCode, handleDeviceToken } from "./device";
 import { vars } from "./env";
 import { decodeSegment, parseTarballVersion } from "./npm-url";
@@ -66,7 +68,15 @@ async function tarball(c: Context, name: string, file: string): Promise<Response
 
 const app = new Hono();
 
+// Public, read-only npm protocol: open CORS so the storefront (and any browser
+// client) can read packuments, tarballs, and the catalog cross-origin, exactly
+// as the public npm registry does.
+app.use("/*", cors({ origin: "*", allowMethods: ["GET", "HEAD", "OPTIONS"] }));
+
 app.get("/", (c) => c.json({ name: "Brika registry", protocol: "npm" }));
+
+// Catalog of published packages so the store can enumerate `@brika/*` plugins.
+app.get("/-/v1/packages", (c) => handleCatalog(c.req.raw));
 
 // Authenticated publish + device authorization (RFC 8628).
 app.post("/-/publish", (c) => handlePublish(c.req.raw));

@@ -1,5 +1,5 @@
 /**
- * @brika/plugin-i18n — a small localization toolkit for Brika hubs.
+ * @brika/plugin-i18n - a small localization toolkit for Brika hubs.
  *
  * Provides two tools (`translate`, `detect-language`) and a `localize-message`
  * transform block. The translation backend is intentionally pluggable: with no

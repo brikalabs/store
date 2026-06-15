@@ -1,0 +1,156 @@
+import { describe, expect, test } from "bun:test";
+import {
+  assetUrl,
+  contentTypeFor,
+  docLocales,
+  isRegistryName,
+  isSafeAssetPath,
+  type Manifest,
+  manifestToDetail,
+  manifestToSummary,
+  pickDocPath,
+  versionsFromPackument,
+} from "./registry-source";
+
+const i18nManifest: Manifest = {
+  name: "@brika/plugin-i18n",
+  version: "0.1.0",
+  displayName: "i18n Toolkit",
+  description: "Translate and localize content",
+  license: "MIT",
+  engines: { brika: "^0.1.0" },
+  icon: "./assets/icon.svg",
+  keywords: ["i18n", "localization"],
+  repository: { url: "git+https://github.com/brikalabs/store.git" },
+  author: "Brika Labs <hi@brika.dev>",
+  readme: { en: "./README.md", fr: "./README.fr.md" },
+  screenshots: [{ src: "./assets/a.svg", caption: "One", alt: "first" }, "./assets/b.svg"],
+  tools: [{ id: "translate" }, { id: "detect" }],
+  blocks: [{ id: "localize" }],
+};
+
+describe("isRegistryName", () => {
+  test("matches the @brika scope only", () => {
+    expect(isRegistryName("@brika/plugin-i18n")).toBe(true);
+    expect(isRegistryName("@other/plugin")).toBe(false);
+    expect(isRegistryName("plugin-i18n")).toBe(false);
+  });
+});
+
+describe("assetUrl", () => {
+  test("builds a root-relative, version-pinned, encoded URL", () => {
+    const url = assetUrl("@brika/plugin-i18n", "0.1.0", "./assets/icon.svg");
+    expect(url).toBe("/v1/plugins/%40brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");
+  });
+
+  test("strips a leading ./ or / from the path", () => {
+    expect(assetUrl("@brika/x", "1.0.0", "/a/b.png")).toContain("path=a%2Fb.png");
+    expect(assetUrl("@brika/x", "1.0.0", "./a/b.png")).toContain("path=a%2Fb.png");
+  });
+});
+
+describe("manifestToDetail", () => {
+  test("maps a valid manifest with relative asset URLs and capability counts", () => {
+    const detail = manifestToDetail(i18nManifest, {
+      publishedAt: "2026-06-16T00:00:00.000Z",
+      updatedAt: "2026-06-16T01:00:00.000Z",
+    });
+    expect(detail).not.toBeNull();
+    expect(detail?.name).toBe("@brika/plugin-i18n");
+    expect(detail?.displayName).toBe("i18n Toolkit");
+    expect(detail?.brikaEngine).toBe("^0.1.0");
+    expect(detail?.iconUrl).toContain("/v1/plugins/");
+    expect(detail?.capabilities).toEqual({ tools: 2, blocks: 1, bricks: 0, sparks: 0, pages: 0 });
+    expect(detail?.screenshots).toHaveLength(2);
+    expect(detail?.screenshots[0]?.caption).toBe("One");
+    expect(detail?.repository).toBe("https://github.com/brikalabs/store");
+    expect(detail?.author?.name).toBe("Brika Labs");
+  });
+
+  test("returns null when engines.brika is absent (not a Brika plugin)", () => {
+    const { engines: _engines, ...notAPlugin } = i18nManifest;
+    expect(manifestToDetail(notAPlugin as Manifest)).toBeNull();
+  });
+
+  test("omits the icon URL when no icon is declared", () => {
+    const { icon: _icon, ...noIcon } = i18nManifest;
+    expect(manifestToDetail(noIcon as Manifest)?.iconUrl).toBeUndefined();
+  });
+});
+
+describe("manifestToSummary", () => {
+  test("projects to a summary and drops detail-only fields", () => {
+    const summary = manifestToSummary(i18nManifest);
+    expect(summary?.name).toBe("@brika/plugin-i18n");
+    expect(summary).not.toHaveProperty("screenshots");
+    expect(summary).not.toHaveProperty("grants");
+  });
+
+  test("returns null for a non-plugin manifest", () => {
+    const { engines: _e, ...notAPlugin } = i18nManifest;
+    expect(manifestToSummary(notAPlugin as Manifest)).toBeNull();
+  });
+});
+
+describe("pickDocPath / docLocales", () => {
+  test("resolves requested -> en -> first declared", () => {
+    const doc = { en: "./README.md", fr: "./README.fr.md" };
+    expect(pickDocPath(doc, "fr")).toBe("./README.fr.md");
+    expect(pickDocPath(doc, "de")).toBe("./README.md");
+    expect(pickDocPath("./README.md", "fr")).toBe("./README.md");
+    expect(pickDocPath(undefined)).toBeUndefined();
+  });
+
+  test("docLocales lists declared locales, empty for a single path", () => {
+    expect(docLocales({ en: "a", fr: "b" })).toEqual(["en", "fr"]);
+    expect(docLocales("./README.md")).toEqual([]);
+    expect(docLocales(undefined)).toEqual([]);
+  });
+});
+
+describe("isSafeAssetPath", () => {
+  test("accepts relative paths inside the package", () => {
+    expect(isSafeAssetPath("assets/icon.svg")).toBe(true);
+    expect(isSafeAssetPath("locales/fr/store.json")).toBe(true);
+  });
+
+  test("rejects empty, absolute, and traversal paths", () => {
+    expect(isSafeAssetPath("")).toBe(false);
+    expect(isSafeAssetPath("/etc/passwd")).toBe(false);
+    expect(isSafeAssetPath("../../etc/passwd")).toBe(false);
+    expect(isSafeAssetPath("assets/../../secret")).toBe(false);
+    expect(isSafeAssetPath("a\\..\\b")).toBe(false);
+  });
+});
+
+describe("contentTypeFor", () => {
+  test("maps known extensions and defaults to octet-stream", () => {
+    expect(contentTypeFor("icon.svg")).toBe("image/svg+xml");
+    expect(contentTypeFor("a.PNG")).toBe("image/png");
+    expect(contentTypeFor("store.json")).toContain("application/json");
+    expect(contentTypeFor("README.md")).toContain("text/markdown");
+    expect(contentTypeFor("blob.bin")).toBe("application/octet-stream");
+    expect(contentTypeFor("noext")).toBe("application/octet-stream");
+  });
+});
+
+describe("versionsFromPackument", () => {
+  test("returns releases newest-first with engine + deprecation", () => {
+    const versions = versionsFromPackument({
+      name: "@brika/plugin-i18n",
+      "dist-tags": { latest: "0.2.0" },
+      versions: {
+        "0.1.0": { name: "@brika/plugin-i18n", version: "0.1.0", engines: { brika: "^0.1.0" } },
+        "0.2.0": {
+          name: "@brika/plugin-i18n",
+          version: "0.2.0",
+          engines: { brika: "^0.1.0" },
+          deprecated: "use 0.3",
+        },
+      },
+      time: { "0.1.0": "2026-01-01T00:00:00.000Z", "0.2.0": "2026-02-01T00:00:00.000Z" },
+    });
+    expect(versions.map((v) => v.version)).toEqual(["0.2.0", "0.1.0"]);
+    expect(versions[0]?.deprecated).toBe("use 0.3");
+  });
+});

@@ -37,6 +37,7 @@ import { Route as V1PluginsNameVersionsRouteImport } from './routes/v1.plugins.$
 import { Route as V1PluginsNameReviewsRouteImport } from './routes/v1.plugins.$name.reviews'
 import { Route as V1PluginsNameReadmeRouteImport } from './routes/v1.plugins.$name.readme'
 import { Route as V1PluginsNameCommentsRouteImport } from './routes/v1.plugins.$name.comments'
+import { Route as V1PluginsNameAssetRouteImport } from './routes/v1.plugins.$name.asset'
 
 const DeviceRoute = DeviceRouteImport.update({
   id: '/device',
@@ -178,6 +179,11 @@ const V1PluginsNameCommentsRoute = V1PluginsNameCommentsRouteImport.update({
   path: '/comments',
   getParentRoute: () => V1PluginsNameRoute,
 } as any)
+const V1PluginsNameAssetRoute = V1PluginsNameAssetRouteImport.update({
+  id: '/asset',
+  path: '/asset',
+  getParentRoute: () => V1PluginsNameRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
+  '/v1/plugins/$name/asset': typeof V1PluginsNameAssetRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRoute
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRoute
@@ -234,6 +241,7 @@ export interface FileRoutesByTo {
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
+  '/v1/plugins/$name/asset': typeof V1PluginsNameAssetRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRoute
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRoute
@@ -265,6 +273,7 @@ export interface FileRoutesById {
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
+  '/v1/plugins/$name/asset': typeof V1PluginsNameAssetRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRoute
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRoute
@@ -297,6 +306,7 @@ export interface FileRouteTypes {
     | '/dashboard/plugins/$'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
+    | '/v1/plugins/$name/asset'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/dashboard/plugins/$'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
+    | '/v1/plugins/$name/asset'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
@@ -357,6 +368,7 @@ export interface FileRouteTypes {
     | '/dashboard/plugins/$'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
+    | '/v1/plugins/$name/asset'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
@@ -586,6 +598,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1PluginsNameCommentsRouteImport
       parentRoute: typeof V1PluginsNameRoute
     }
+    '/v1/plugins/$name/asset': {
+      id: '/v1/plugins/$name/asset'
+      path: '/asset'
+      fullPath: '/v1/plugins/$name/asset'
+      preLoaderRoute: typeof V1PluginsNameAssetRouteImport
+      parentRoute: typeof V1PluginsNameRoute
+    }
   }
 }
 
@@ -614,6 +633,7 @@ const AuthGithubRouteWithChildren = AuthGithubRoute._addFileChildren(
 )
 
 interface V1PluginsNameRouteChildren {
+  V1PluginsNameAssetRoute: typeof V1PluginsNameAssetRoute
   V1PluginsNameCommentsRoute: typeof V1PluginsNameCommentsRoute
   V1PluginsNameReadmeRoute: typeof V1PluginsNameReadmeRoute
   V1PluginsNameReviewsRoute: typeof V1PluginsNameReviewsRoute
@@ -621,6 +641,7 @@ interface V1PluginsNameRouteChildren {
 }
 
 const V1PluginsNameRouteChildren: V1PluginsNameRouteChildren = {
+  V1PluginsNameAssetRoute: V1PluginsNameAssetRoute,
   V1PluginsNameCommentsRoute: V1PluginsNameCommentsRoute,
   V1PluginsNameReadmeRoute: V1PluginsNameReadmeRoute,
   V1PluginsNameReviewsRoute: V1PluginsNameReviewsRoute,

@@ -1,5 +1,5 @@
 /**
- * @brika/plugin-snapshot — point-in-time snapshots with pluggable compression.
+ * @brika/plugin-snapshot - point-in-time snapshots with pluggable compression.
  *
  * A snapshot is the serialized hub state plus a small header describing how the
  * body was compressed. The header is always stored uncompressed so a reader can

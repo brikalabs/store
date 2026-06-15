@@ -15,6 +15,13 @@ import {
   toPluginDetail,
   toPluginSummary,
 } from "./npm";
+import {
+  getRegistryPackument,
+  getRegistryPluginPage,
+  isRegistryName,
+  listRegistryPlugins,
+  versionsFromPackument as registryVersionsFromPackument,
+} from "./registry-source";
 
 /**
  * The store's read model. For now it is backed directly by npm so the pages
@@ -29,6 +36,14 @@ export async function searchPlugins(
   limit = BROWSE_LIMIT,
   offset = 0,
 ): Promise<{ plugins: PluginSummary[]; total: number }> {
+  // `@brika/*` plugins live on our registry, not npm. Merge them to the front of
+  // the first page (deduped), skipping `field:value` qualifier searches like
+  // `maintainer:foo`, which the catalog's free-text filter does not understand.
+  const wantsRegistry = offset === 0 && !(query?.includes(":") ?? false);
+  const registry = wantsRegistry
+    ? await listRegistryPlugins(query, limit, 0)
+    : { plugins: [], total: 0 };
+
   const { hits, total } = await searchNpm(query, limit, offset);
   // npm search omits engines/capabilities, so fetch each packument. Downloads
   // are skipped here (resolved on the detail page) to halve the request count.
@@ -38,10 +53,16 @@ export async function searchPlugins(
       return pkg === null ? null : toPluginDetail(pkg, 0);
     }),
   );
-  const plugins = details.flatMap((detail) =>
+  const npmPlugins = details.flatMap((detail) =>
     detail === null ? [] : [demoSummary(toPluginSummary(detail))],
   );
-  return { plugins, total };
+
+  const seen = new Set(registry.plugins.map((plugin) => plugin.name));
+  const plugins = [
+    ...registry.plugins.map((plugin) => demoSummary(plugin)),
+    ...npmPlugins.filter((plugin) => !seen.has(plugin.name)),
+  ].slice(0, limit);
+  return { plugins, total: total + registry.total };
 }
 
 export async function getPluginPage(
@@ -54,6 +75,13 @@ export async function getPluginPage(
   readmeLocales: string[];
   versions: PluginVersion[];
 } | null> {
+  // `@brika/*` resolves from our registry (with localized title/description and
+  // tarball-served assets); fall through to npm only if it is not hosted there.
+  if (isRegistryName(name)) {
+    const page = await getRegistryPluginPage(name, locale);
+    if (page !== null) return { ...page, detail: demoDetail(page.detail) };
+  }
+
   const pkg = await getPackument(name);
   if (pkg === null) return null;
   const latest = pkg["dist-tags"]?.latest;
@@ -118,6 +146,10 @@ export async function getDeveloperPage(
 }
 
 export async function getPluginVersions(name: string): Promise<PluginVersion[] | null> {
+  if (isRegistryName(name)) {
+    const pkg = await getRegistryPackument(name);
+    if (pkg !== null) return registryVersionsFromPackument(pkg);
+  }
   const pkg = await getPackument(name);
   if (pkg === null) return null;
   return versionsFromPackument(pkg);

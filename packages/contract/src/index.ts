@@ -13,6 +13,16 @@ import { z } from "zod";
  */
 export const CONTRACT_VERSION = "1.0";
 
+/**
+ * A resolved asset URL: either an absolute `http(s)` URL (e.g. a jsDelivr CDN
+ * link for an npm-hosted plugin) or a root-relative path served by the same
+ * origin (e.g. `/v1/plugins/:name/asset?...` for a registry-hosted plugin whose
+ * assets are extracted from the tarball). Both resolve correctly in an
+ * `<img src>` or a `fetch`, so the contract accepts either form.
+ */
+export const ResolvedUrl = z.union([z.url(), z.string().regex(/^\/[^/]/, "root-relative path")]);
+export type ResolvedUrl = z.infer<typeof ResolvedUrl>;
+
 /** Capability flags a registry advertises through `GET /v1/registry`. */
 export const RegistryFeature = z.enum([
   // discovery core (mandatory)
@@ -82,7 +92,7 @@ export const PluginSummary = z.object({
   version: z.string(),
   author: PluginAuthor.optional(),
   keywords: z.array(z.string()).default([]),
-  iconUrl: z.url().optional(),
+  iconUrl: ResolvedUrl.optional(),
   downloadsWeekly: z.number().int().nonnegative().default(0),
   rating: RatingSummary.optional(),
   capabilities: PluginCapabilityCounts.optional(),
@@ -103,7 +113,7 @@ export type PluginSummary = z.infer<typeof PluginSummary>;
  * the manifest screenshot's default `caption`); `alt` is the a11y description.
  */
 export const Screenshot = z.object({
-  url: z.url(),
+  url: ResolvedUrl,
   caption: z.string().optional(),
   alt: z.string().optional(),
 });
@@ -116,7 +126,7 @@ export const PluginDetail = PluginSummary.extend({
   license: z.string().optional(),
   /** reverse-DNS permission requests, e.g. `"dev.brika.net.fetch"` */
   grants: z.record(z.string(), z.unknown()).default({}),
-  readmeUrl: z.url().optional(),
+  readmeUrl: ResolvedUrl.optional(),
   /** Ordered screenshots shown on the listing (URLs resolved; captions localized). */
   screenshots: z.array(Screenshot).default([]),
 });

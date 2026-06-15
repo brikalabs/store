@@ -1,5 +1,5 @@
 /**
- * @brika/plugin-clock — timezone clocks, interval triggers, and scheduled sparks.
+ * @brika/plugin-clock - timezone clocks, interval triggers, and scheduled sparks.
  */
 
 export interface NowResult {
