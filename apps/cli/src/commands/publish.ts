@@ -39,7 +39,7 @@ export const publish = defineCommand({
         name: packed.name,
         version: packed.version,
         manifest: packed.manifest,
-        tarballBase64: Buffer.from(packed.tarball).toString("base64"),
+        tarball: Buffer.from(packed.tarball).toString("base64"),
       })
       .catch((error: unknown) => {
         spin.stop("Publish rejected");

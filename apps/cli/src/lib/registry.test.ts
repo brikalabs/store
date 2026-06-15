@@ -18,7 +18,7 @@ const PUBLISH: Parameters<RegistryClient["publish"]>[1] = {
   name: "@s/p",
   version: "1.0.0",
   manifest: {},
-  tarballBase64: "",
+  tarball: "",
 };
 
 describe("RegistryClient", () => {

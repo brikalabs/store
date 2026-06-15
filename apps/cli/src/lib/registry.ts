@@ -48,7 +48,8 @@ export interface PublishRequest {
   readonly name: string;
   readonly version: string;
   readonly manifest: Record<string, unknown>;
-  readonly tarballBase64: string;
+  /** The gzipped tarball, base64-encoded. */
+  readonly tarball: string;
 }
 
 export interface Published {
@@ -61,21 +62,17 @@ export type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Res
 export interface RegistryClientOptions {
   readonly fetch?: FetchLike;
   readonly timeoutMs?: number;
-  /** External cancellation, composed with the per-request timeout. */
-  readonly signal?: AbortSignal;
 }
 
 export class RegistryClient {
   readonly #baseUrl: string;
   readonly #fetch: FetchLike;
   readonly #timeoutMs: number;
-  readonly #signal?: AbortSignal;
 
   constructor(baseUrl: string, options: RegistryClientOptions = {}) {
     this.#baseUrl = baseUrl.replace(/\/+$/, "");
     this.#fetch = options.fetch ?? fetch;
     this.#timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.#signal = options.signal;
   }
 
   /** Start the device flow, returning the code + URL to show the user. */
@@ -114,11 +111,7 @@ export class RegistryClient {
 
   /** Publish a version, returning its integrity. Throws a `CliError` on rejection. */
   async publish(token: string, req: PublishRequest): Promise<Published> {
-    const res = await this.#postJson(
-      "/-/publish",
-      { name: req.name, version: req.version, manifest: req.manifest, tarball: req.tarballBase64 },
-      token,
-    );
+    const res = await this.#postJson("/-/publish", req, token);
     const body = await this.#parse(res, PublishResponseSchema);
     if (res.ok && body.integrity !== undefined) return { integrity: body.integrity };
     const code = body.code === undefined ? "" : ` ${body.code}`;
@@ -139,18 +132,15 @@ export class RegistryClient {
     });
   }
 
-  /** Fetch with a timeout (+ optional external signal), mapping failures to CliError. */
+  /** Fetch with a timeout, mapping transport failures to CliError. */
   async #send(path: string, init: RequestInit): Promise<Response> {
     const url = `${this.#baseUrl}${path}`;
-    const timeout = AbortSignal.timeout(this.#timeoutMs);
-    const signal = this.#signal ? AbortSignal.any([this.#signal, timeout]) : timeout;
     try {
-      return await this.#fetch(url, { ...init, signal });
+      return await this.#fetch(url, { ...init, signal: AbortSignal.timeout(this.#timeoutMs) });
     } catch (cause) {
-      if (timeout.aborted) {
+      if (cause instanceof DOMException && cause.name === "TimeoutError") {
         throw new CliError(`request to ${url} timed out after ${this.#timeoutMs}ms`);
       }
-      if (this.#signal?.aborted) throw new CliError(`request to ${url} was cancelled`);
       const reason = cause instanceof Error ? cause.message : String(cause);
       throw new CliError(`could not reach ${url}: ${reason}`);
     }
