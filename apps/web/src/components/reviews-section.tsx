@@ -41,6 +41,16 @@ export function ReviewsSection({ pluginName, fallback = [] }: Props) {
     return acc;
   }, {});
 
+  async function handleVote(reviewId: string) {
+    const res = await fetch(`${endpoint}/${reviewId}/vote`, { method: "POST" });
+    if (res.status === 401) {
+      setError("Please sign in to vote on reviews.");
+      return;
+    }
+    const parsed = z.array(Review).safeParse(await res.json());
+    if (parsed.success) setReviews(parsed.data);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (body.trim().length === 0) return;
@@ -153,12 +163,26 @@ export function ReviewsSection({ pluginName, fallback = [] }: Props) {
               ) : (
                 <p className="text-muted-foreground text-sm leading-relaxed">{review.body}</p>
               )}
-              {review.helpfulCount > 0 ? (
-                <div className="mt-1 inline-flex items-center gap-1.5 text-muted-foreground text-xs">
-                  <Heart className="size-3.5" />
-                  {review.helpfulCount} found this helpful
-                </div>
-              ) : null}
+              <div className="mt-1">
+                <button
+                  type="button"
+                  onClick={() => handleVote(review.id)}
+                  disabled={review.author.id === user?.id}
+                  aria-pressed={review.viewerVotedHelpful}
+                  className={
+                    review.viewerVotedHelpful
+                      ? "inline-flex items-center gap-1.5 text-rose-500 text-xs"
+                      : "inline-flex items-center gap-1.5 text-muted-foreground text-xs hover:text-foreground disabled:hover:text-muted-foreground"
+                  }
+                >
+                  <Heart
+                    className={review.viewerVotedHelpful ? "size-3.5 fill-rose-500" : "size-3.5"}
+                  />
+                  {review.helpfulCount > 0
+                    ? `${review.helpfulCount} found this helpful`
+                    : "Helpful"}
+                </button>
+              </div>
             </div>
           </article>
         ))}

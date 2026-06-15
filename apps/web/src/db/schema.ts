@@ -151,6 +151,21 @@ export const reviewVotes = sqliteTable(
   (t) => [primaryKey({ columns: [t.userId, t.reviewId] })],
 );
 
+/** One upvote per user per comment (the comment "grade"). */
+export const commentVotes = sqliteTable(
+  "comment_votes",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    commentId: text("comment_id")
+      .notNull()
+      .references(() => comments.id, { onDelete: "cascade" }),
+    value: integer("value").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.commentId] })],
+);
+
 export const reports = sqliteTable("reports", {
   id: text("id").primaryKey(),
   targetType: text("target_type").notNull(),

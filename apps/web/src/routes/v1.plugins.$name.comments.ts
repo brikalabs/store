@@ -15,7 +15,10 @@ const CommentInput = z.object({
 export const Route = createFileRoute("/v1/plugins/$name/comments")({
   server: {
     handlers: {
-      GET: async ({ params }) => jsonOk(await listComments(getDb(env.DB), params.name)),
+      GET: async ({ request, params }) => {
+        const viewerId = await getSessionUserId(request);
+        return jsonOk(await listComments(getDb(env.DB), params.name, viewerId));
+      },
       POST: async ({ request, params }) => {
         const userId = await getSessionUserId(request);
         if (userId === null) return jsonUnauthorized();
@@ -31,7 +34,7 @@ export const Route = createFileRoute("/v1/plugins/$name/comments")({
           parsed.data.body,
           parsed.data.parentId ?? null,
         );
-        return jsonOk(await listComments(database, params.name));
+        return jsonOk(await listComments(database, params.name, userId));
       },
     },
   },

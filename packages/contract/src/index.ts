@@ -209,7 +209,10 @@ export const Review = z.object({
   title: z.string().optional(),
   body: z.string(),
   versionReviewed: z.string().optional(),
+  /** How many community members marked this review helpful. */
   helpfulCount: z.number().int().nonnegative().default(0),
+  /** Whether the requesting user has marked it helpful (false when anonymous). */
+  viewerVotedHelpful: z.boolean().default(false),
   createdAt: z.iso.datetime(),
   edited: z.boolean().default(false),
 });
@@ -221,6 +224,10 @@ export const Comment = z.object({
   parentId: z.string().nullable().default(null),
   author: Reviewer,
   body: z.string(),
+  /** Net upvotes (the comment "grade"). */
+  upvotes: z.number().int().nonnegative().default(0),
+  /** Whether the requesting user has upvoted (false when anonymous). */
+  viewerUpvoted: z.boolean().default(false),
   createdAt: z.iso.datetime(),
   edited: z.boolean().default(false),
   deleted: z.boolean().default(false),
@@ -253,7 +260,9 @@ export const V1_ROUTES = {
   icon: "/v1/plugins/:name/icon",
   verified: "/v1/verified",
   reviews: "/v1/plugins/:name/reviews",
+  reviewVote: "/v1/plugins/:name/reviews/:reviewId/vote",
   comments: "/v1/plugins/:name/comments",
+  commentVote: "/v1/plugins/:name/comments/:commentId/vote",
   developer: "/v1/developers/:id",
   developerPlugins: "/v1/developers/:id/plugins",
 } as const;

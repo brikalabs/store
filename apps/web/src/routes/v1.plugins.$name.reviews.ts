@@ -17,7 +17,10 @@ const ReviewInput = z.object({
 export const Route = createFileRoute("/v1/plugins/$name/reviews")({
   server: {
     handlers: {
-      GET: async ({ params }) => jsonOk(await listReviews(getDb(env.DB), params.name)),
+      GET: async ({ request, params }) => {
+        const viewerId = await getSessionUserId(request);
+        return jsonOk(await listReviews(getDb(env.DB), params.name, viewerId));
+      },
       POST: async ({ request, params }) => {
         const userId = await getSessionUserId(request);
         if (userId === null) return jsonUnauthorized();
@@ -27,7 +30,7 @@ export const Route = createFileRoute("/v1/plugins/$name/reviews")({
         const database = getDb(env.DB);
         if (!(await ensurePluginCached(database, params.name))) return jsonNotFound();
         await upsertReview(database, params.name, userId, parsed.data);
-        return jsonOk(await listReviews(database, params.name));
+        return jsonOk(await listReviews(database, params.name, userId));
       },
     },
   },

@@ -1,10 +1,36 @@
 import { Button, Textarea } from "@brika/clay";
 import { Comment } from "@brika/registry-contract";
+import { ChevronUp } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { z } from "zod";
 import { formatDate } from "../lib/format";
 import { useCurrentUser } from "../lib/use-current-user";
 import { GradientAvatar } from "./clay/plugin-icon";
+
+/** The comment "grade": an upvote toggle showing the running tally. */
+function UpvoteButton({
+  comment,
+  disabled,
+  onVote,
+}: Readonly<{ comment: Comment; disabled: boolean; onVote: (id: string) => void }>) {
+  return (
+    <button
+      type="button"
+      onClick={() => onVote(comment.id)}
+      disabled={disabled}
+      aria-pressed={comment.viewerUpvoted}
+      aria-label="Upvote comment"
+      className={
+        comment.viewerUpvoted
+          ? "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-ember-600 text-xs"
+          : "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground text-xs hover:text-foreground disabled:hover:text-muted-foreground"
+      }
+    >
+      <ChevronUp className={comment.viewerUpvoted ? "size-3.5 text-ember-600" : "size-3.5"} />
+      {comment.upvotes}
+    </button>
+  );
+}
 
 type Props = Readonly<{ pluginName: string; fallback?: Comment[] }>;
 
@@ -28,6 +54,16 @@ export function CommentsSection({ pluginName, fallback = [] }: Props) {
       active = false;
     };
   }, [endpoint]);
+
+  async function handleVote(commentId: string) {
+    const res = await fetch(`${endpoint}/${commentId}/vote`, { method: "POST" });
+    if (res.status === 401) {
+      setError("Please sign in to upvote comments.");
+      return;
+    }
+    const parsed = z.array(Comment).safeParse(await res.json());
+    if (parsed.success) setComments(parsed.data);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -97,6 +133,8 @@ export function CommentsSection({ pluginName, fallback = [] }: Props) {
                 key={comment.id}
                 comment={comment}
                 replies={comments.filter((reply) => reply.parentId === comment.id)}
+                viewerId={user?.id ?? null}
+                onVote={handleVote}
               />
             ))
         )}
@@ -116,7 +154,17 @@ function CommentMeta({ comment }: Readonly<{ comment: Comment }>) {
   );
 }
 
-function CommentThread({ comment, replies }: Readonly<{ comment: Comment; replies: Comment[] }>) {
+function CommentThread({
+  comment,
+  replies,
+  viewerId,
+  onVote,
+}: Readonly<{
+  comment: Comment;
+  replies: Comment[];
+  viewerId: string | null;
+  onVote: (id: string) => void;
+}>) {
   return (
     <article className="flex gap-3">
       <GradientAvatar
@@ -128,6 +176,15 @@ function CommentThread({ comment, replies }: Readonly<{ comment: Comment; replie
       <div className="flex flex-1 flex-col gap-1">
         <CommentMeta comment={comment} />
         <p className="text-muted-foreground text-sm leading-relaxed">{comment.body}</p>
+        {comment.deleted ? null : (
+          <div className="mt-1">
+            <UpvoteButton
+              comment={comment}
+              disabled={viewerId === null || comment.author.id === viewerId}
+              onVote={onVote}
+            />
+          </div>
+        )}
         {replies.length > 0 ? (
           <div className="mt-3 flex flex-col gap-3 border-border border-l-2 pl-3">
             {replies.map((reply) => (
@@ -141,6 +198,15 @@ function CommentThread({ comment, replies }: Readonly<{ comment: Comment; replie
                 <div className="flex flex-1 flex-col gap-1">
                   <CommentMeta comment={reply} />
                   <p className="text-muted-foreground text-sm leading-relaxed">{reply.body}</p>
+                  {reply.deleted ? null : (
+                    <div className="mt-1">
+                      <UpvoteButton
+                        comment={reply}
+                        disabled={viewerId === null || reply.author.id === viewerId}
+                        onVote={onVote}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
