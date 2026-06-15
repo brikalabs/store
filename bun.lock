@@ -17,6 +17,7 @@
         "brika": "./src/index.ts",
       },
       "dependencies": {
+        "@brika/registry-core": "workspace:*",
         "@brika/schema": "workspace:*",
         "zod": "^4.4.3",
       },

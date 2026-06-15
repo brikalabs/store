@@ -24,8 +24,9 @@ there (signed in with GitHub) and the CLI stores a 90-day publish token in
 `~/.config/brika/config.json` (owner-only, honoring `XDG_CONFIG_HOME`).
 `brika logout` revokes that token on the registry and removes it locally.
 
-`brika publish` packs the directory with `npm pack`, validates the `package.json`
-against the published-plugin contract (`@brika/schema`: a valid plugin manifest
+`brika publish` packs the directory with `bun` (no `npm` binary required) and
+computes the `sha512` integrity with the same code the registry uses, validates
+the `package.json` against the published-plugin contract (`@brika/schema`: a valid plugin manifest
 plus `icon`, `displayName`, and `description`), prints the tarball contents and
 digests, then `POST`s it to `/-/publish` and checks that the integrity the
 registry stored matches what was packed. Use `brika pack` or
@@ -41,3 +42,21 @@ GitHub identity, and versions are immutable.
 | `BRIKA_TOKEN`     | Use this publish token instead of the saved login (for CI).   |
 
 In CI, GitHub Actions OIDC is used instead of a token (audience `brika-registry`).
+
+## Embedding in another CLI
+
+The commands are exported as a portable group, so the same code runs standalone
+(`brika …`) and can be merged into the hub's `brika` CLI:
+
+```ts
+import { registryCommands, runCli } from "@brika/cli";
+
+// Run the group directly...
+await runCli(registryCommands, process.argv.slice(2));
+// ...or adapt each CommandSpec into the hub's own framework (e.g. under a
+// `registry` namespace, so `brika registry publish` works).
+```
+
+Each command parses its own argv and throws `CliError` instead of calling
+`process.exit`, so the host CLI owns the process lifecycle and output.
+

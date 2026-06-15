@@ -15,7 +15,7 @@
     "dev": "bun run --filter @brika/store-web dev",
     "build": "bun run --filter @brika/store-web build",
     "deploy": "bun run --filter @brika/store-web deploy",
-    "test": "bun test packages apps/registry",
+    "test": "bun test packages apps/registry apps/cli",
     "typecheck": "bun run --filter '*' typecheck",
     "check:no-em-dash": "bun run scripts/check-no-em-dash.ts",
     "lint": "bunx --bun biome check . && bun run check:no-em-dash"

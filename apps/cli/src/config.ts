@@ -1,21 +1,25 @@
-import { chmod, mkdir } from "node:fs/promises";
+import { chmod, mkdir, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { z } from "zod";
+import { CliError } from "./errors";
 
 /**
- * CLI state lives in `~/.brika/config.json` (like `~/.npmrc`). It holds the
- * publish token issued by `brika login`, so the file is kept owner-only.
+ * CLI state lives in `~/.config/brika/config.json` (honoring `XDG_CONFIG_HOME`),
+ * like a `~/.npmrc`. It holds the publish token issued by `brika login`, so the
+ * file is written atomically and kept owner-only.
  */
 
 export const DEFAULT_REGISTRY = "https://registry.brika.dev";
 
-export interface CliConfig {
-  readonly registry: string;
-  readonly token?: string;
-  readonly githubLogin?: string;
-}
+const ConfigSchema = z.object({
+  registry: z.string().min(1).default(DEFAULT_REGISTRY),
+  token: z.string().optional(),
+  githubLogin: z.string().optional(),
+});
 
-// Respect XDG on Linux (~/.config/brika), falling back to ~/.config elsewhere.
+export type CliConfig = z.infer<typeof ConfigSchema>;
+
 const configDir = (): string =>
   join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "brika");
 const configFile = (): string => join(configDir(), "config.json");
@@ -32,23 +36,35 @@ export function authToken(config: CliConfig): string | undefined {
 
 export async function loadConfig(): Promise<CliConfig> {
   const handle = Bun.file(configFile());
-  if (!(await handle.exists())) return { registry: DEFAULT_REGISTRY };
-  const raw = (await handle.json()) as Partial<CliConfig>;
-  return {
-    registry: raw.registry ?? DEFAULT_REGISTRY,
-    token: raw.token,
-    githubLogin: raw.githubLogin,
-  };
+  if (!(await handle.exists())) return ConfigSchema.parse({});
+
+  let raw: unknown;
+  try {
+    raw = await handle.json();
+  } catch {
+    throw new CliError(`config at ${configFile()} is not valid JSON; fix or delete it`);
+  }
+  const parsed = ConfigSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    throw new CliError(`config at ${configFile()} is invalid: ${issue?.message ?? "bad shape"}`);
+  }
+  return parsed.data;
 }
 
 export async function saveConfig(config: CliConfig): Promise<void> {
   await mkdir(configDir(), { recursive: true });
-  await Bun.write(configFile(), `${JSON.stringify(config, null, 2)}\n`);
-  await chmod(configFile(), 0o600);
+  // Write to a temp file then rename, so a crash never leaves a half-written
+  // credential file. Create it owner-only from the start, and re-assert 0600.
+  const target = configFile();
+  const tmp = `${target}.${process.pid}.tmp`;
+  await writeFile(tmp, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  await rename(tmp, target);
+  await chmod(target, 0o600);
 }
 
 /** Drop the token but keep the chosen registry. */
-export async function logout(): Promise<void> {
+export async function clearToken(): Promise<void> {
   const current = await loadConfig();
   await saveConfig({ registry: current.registry });
 }
