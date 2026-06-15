@@ -1,0 +1,21 @@
+{
+  "name": "@brika/registry-core",
+  "version": "0.1.0",
+  "description": "Framework-agnostic domain core for the Brika registry: integrity, packuments, resolution, and storage ports",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}

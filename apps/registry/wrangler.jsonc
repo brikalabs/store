@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "brika-registry",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "routes": [{ "pattern": "registry.brika.dev", "custom_domain": true }],
+  // Shares the store's D1 (store + reg_* tables live together).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "brika-store",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ],
+  // Immutable tarball bytes. Create with `wrangler r2 bucket create brika-registry-tarballs`.
+  "r2_buckets": [{ "binding": "TARBALLS", "bucket_name": "brika-registry-tarballs" }]
+}

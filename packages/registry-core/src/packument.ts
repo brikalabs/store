@@ -1,0 +1,145 @@
+import type { PackageRecord } from "./types";
+
+/** The unscoped part of a package name: `@brika/plugin-x` -> `plugin-x`. */
+export function unscopedName(name: string): string {
+  const slash = name.lastIndexOf("/");
+  return slash === -1 ? name : name.slice(slash + 1);
+}
+
+/**
+ * Tarball path relative to the registry root, following npm's convention:
+ * `@brika/plugin-x/-/plugin-x-1.2.3.tgz`. Also used as the R2 object key so the
+ * resolve and publish paths agree without a separate lookup.
+ */
+export function tarballPath(name: string, version: string): string {
+  return `${name}/-/${unscopedName(name)}-${version}.tgz`;
+}
+
+/** Absolute tarball URL placed in the packument's `dist.tarball`. */
+export function tarballUrl(baseUrl: string, name: string, version: string): string {
+  return `${baseUrl.replace(/\/+$/, "")}/${tarballPath(name, version)}`;
+}
+
+export interface PackumentDist {
+  readonly tarball: string;
+  readonly integrity: string;
+  readonly shasum: string;
+}
+
+/** An npm-compatible packument (the document `bun add` resolves against). */
+export interface Packument {
+  readonly name: string;
+  readonly "dist-tags": Record<string, string>;
+  readonly versions: Record<string, Record<string, unknown>>;
+  readonly time: Record<string, string>;
+}
+
+/**
+ * Build an npm-compatible packument from stored versions. Yanked versions are
+ * omitted (hidden from new installs); deprecated versions are included with a
+ * `deprecated` field so bun surfaces the warning but still installs them.
+ */
+export function buildPackument(record: PackageRecord, baseUrl: string): Packument {
+  const versions: Record<string, Record<string, unknown>> = {};
+  const time: Record<string, string> = { created: record.createdAt };
+  let modified = record.createdAt;
+
+  for (const version of record.versions) {
+    if (version.yanked) continue;
+
+    const dist: PackumentDist = {
+      tarball: tarballUrl(baseUrl, record.name, version.version),
+      integrity: version.integrity,
+      shasum: version.shasum,
+    };
+    const entry: Record<string, unknown> = {
+      ...version.manifest,
+      name: record.name,
+      version: version.version,
+      dist,
+    };
+    if (version.deprecated !== null) entry.deprecated = version.deprecated;
+
+    versions[version.version] = entry;
+    time[version.version] = version.publishedAt;
+    if (version.publishedAt > modified) modified = version.publishedAt;
+  }
+
+  return {
+    name: record.name,
+    "dist-tags": { ...record.distTags },
+    versions,
+    time: { ...time, modified },
+  };
+}
+
+/** Abbreviated install metadata (`application/vnd.npm.install-v1+json`). */
+export interface AbbreviatedPackument {
+  readonly name: string;
+  readonly "dist-tags": Record<string, string>;
+  readonly versions: Record<string, Record<string, unknown>>;
+  readonly modified: string;
+}
+
+// Only the manifest fields bun needs to resolve and install a dependency.
+const ABBREVIATED_KEYS = [
+  "dependencies",
+  "optionalDependencies",
+  "peerDependencies",
+  "peerDependenciesMeta",
+  "bundleDependencies",
+  "bundledDependencies",
+  "acceptDependencies",
+  "bin",
+  "directories",
+  "engines",
+  "os",
+  "cpu",
+  "libc",
+  "funding",
+  "_hasShrinkwrap",
+];
+
+function hasInstallScript(manifest: Record<string, unknown>): boolean {
+  const scripts = manifest.scripts;
+  if (scripts === null || typeof scripts !== "object") return false;
+  return ["install", "preinstall", "postinstall"].some((name) => name in scripts);
+}
+
+/**
+ * Build the abbreviated install packument: only the fields bun needs to resolve
+ * and install, dropping readme, scripts, and other manifest bulk. Much smaller
+ * for packages with many versions.
+ */
+export function buildAbbreviatedPackument(
+  record: PackageRecord,
+  baseUrl: string,
+): AbbreviatedPackument {
+  const versions: Record<string, Record<string, unknown>> = {};
+  let modified = record.createdAt;
+
+  for (const version of record.versions) {
+    if (version.yanked) continue;
+
+    const entry: Record<string, unknown> = {
+      name: record.name,
+      version: version.version,
+      dist: {
+        tarball: tarballUrl(baseUrl, record.name, version.version),
+        integrity: version.integrity,
+        shasum: version.shasum,
+      },
+    };
+    for (const key of ABBREVIATED_KEYS) {
+      const value = version.manifest[key];
+      if (value !== undefined) entry[key] = value;
+    }
+    if (hasInstallScript(version.manifest)) entry.hasInstallScript = true;
+    if (version.deprecated !== null) entry.deprecated = version.deprecated;
+
+    versions[version.version] = entry;
+    if (version.publishedAt > modified) modified = version.publishedAt;
+  }
+
+  return { name: record.name, "dist-tags": { ...record.distTags }, versions, modified };
+}

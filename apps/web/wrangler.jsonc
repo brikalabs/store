@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "brika-store",
+  "compatibility_date": "2026-06-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "observability": { "enabled": true },
+  // store.brika.dev serves the site + /v1 contract.
+  // registry.brika.dev is kept for backwards compatibility: it serves the
+  // legacy /verified-plugins.json that already-installed hubs fetch.
+  "routes": [
+    { "pattern": "store.brika.dev", "custom_domain": true },
+    { "pattern": "registry.brika.dev", "custom_domain": true }
+  ],
+  // Relational plugin index + social data. Create with `wrangler d1 create brika-store`.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "brika-store",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  // Hot cache of npm metadata. Create with `wrangler kv namespace create CACHE`.
+  "kv_namespaces": [{ "binding": "CACHE", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }],
+  // Mirrored icons + readmes. Create with `wrangler r2 bucket create brika-store-assets`.
+  "r2_buckets": [{ "binding": "ASSETS", "bucket_name": "brika-store-assets" }],
+  // Periodic npm sync (every 30 min) on top of cache-aside refresh on read.
+  "triggers": { "crons": ["*/30 * * * *"] }
+}

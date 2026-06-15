@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@import "@brika/clay/styles";
+@plugin "@tailwindcss/typography";
+
+/* Brika Store identity. We pin Clay's semantic tokens to the design's warm
+   "clay" palette (light + dark) and add the bright ember accent and the
+   editorial type pairing. Everything else is expressed with Tailwind/Clay
+   utilities in the components.
+
+   - Bricolage Grotesque  → display / headings  (utility: `font-heading`)
+   - Hanken Grotesk       → body / UI           (utility: `font-sans`, default)
+   - JetBrains Mono       → code / versions     (utility: `font-mono`) */
+@theme {
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Bricolage Grotesque", "Hanken Grotesk", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-brand: #f2542d;
+  --color-brand-foreground: #ffffff;
+  --color-brand-muted: #ff8a5b;
+  /* Darker ember for brand-colored *text* on light surfaces (the bright fill
+     fails contrast as text). Flips bright in dark mode below. */
+  --color-brand-ink: #d33f18;
+}
+
+/* Light: white page (per the Claude design), with subtle grey fills and
+   clearly-defined borders so white cards still read against the white page. */
+:root,
+[data-theme="clay"] {
+  --background: #ffffff;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: #f2542d;
+  --primary-foreground: #ffffff;
+  --secondary: #f6f4f1;
+  --secondary-foreground: #18181b;
+  --muted: #f2f0ec;
+  --muted-foreground: #646057;
+  --accent: #f0eee9;
+  --accent-foreground: #18181b;
+  --border: #e7e3dd;
+  --input: #ded9d2;
+  --ring: #f2542d;
+}
+
+/* Dark: the design's warm-neutral elevated dark palette + brighter ember. */
+.dark,
+[data-theme="dark"],
+[data-mode="dark"] {
+  --background: #0e0f12;
+  --foreground: #f4f2ef;
+  --card: #181a1f;
+  --card-foreground: #f4f2ef;
+  --popover: #1e2128;
+  --popover-foreground: #f4f2ef;
+  --primary: #ff6a42;
+  --primary-foreground: #181a1f;
+  --secondary: #1e2128;
+  --secondary-foreground: #f4f2ef;
+  --muted: #1e2128;
+  --muted-foreground: #968f85;
+  --accent: #262a31;
+  --accent-foreground: #f4f2ef;
+  --border: #2b2f37;
+  --input: #363b45;
+  --ring: #ff6a42;
+  --color-brand: #ff6a42;
+  --color-brand-foreground: #181a1f;
+  --color-brand-muted: #ff8a66;
+  --color-brand-ink: #ff8a5e;
+}
+
+/* Warm ember wash for the storefront hero (a single reusable surface). */
+.hero-surface {
+  background: radial-gradient(
+    120% 130% at 0% 0%,
+    color-mix(in oklch, var(--color-brand) 24%, var(--card)),
+    color-mix(in oklch, var(--color-brand) 8%, var(--card)) 40%,
+    var(--card) 74%
+  );
+}

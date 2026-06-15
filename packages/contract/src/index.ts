@@ -1,0 +1,236 @@
+import { z } from "zod";
+
+/**
+ * The Brika `/v1` registry contract.
+ *
+ * Any HTTP service that implements the mandatory discovery core below can act
+ * as a plugin registry for a Brika hub. Optional social capabilities (profiles,
+ * reviews, comments) are advertised through `GET /v1/registry` so a consumer
+ * knows what a given registry supports.
+ *
+ * npm remains the source of truth for code. A registry never serves plugin
+ * code, only metadata, so this contract is metadata-only by design.
+ */
+export const CONTRACT_VERSION = "1.0";
+
+/** Capability flags a registry advertises through `GET /v1/registry`. */
+export const RegistryFeature = z.enum([
+  // discovery core (mandatory)
+  "search",
+  "plugins",
+  "versions",
+  "readme",
+  "icon",
+  "verified",
+  // social (optional)
+  "profiles",
+  "reviews",
+  "comments",
+]);
+export type RegistryFeature = z.infer<typeof RegistryFeature>;
+
+/** Ed25519 public key a consumer can pin to trust the signed verified list. */
+export const SigningInfo = z.object({
+  algorithm: z.literal("ed25519"),
+  /** base64-encoded public key */
+  publicKey: z.string().min(1),
+});
+export type SigningInfo = z.infer<typeof SigningInfo>;
+
+/** `GET /v1/registry` */
+export const RegistryCapabilities = z.object({
+  name: z.string(),
+  contractVersion: z.string(),
+  features: z.array(RegistryFeature),
+  signing: SigningInfo.optional(),
+});
+export type RegistryCapabilities = z.infer<typeof RegistryCapabilities>;
+
+/** A plugin author, derived from npm metadata and enriched on login. */
+export const PluginAuthor = z.object({
+  /** stable id, the npm username */
+  id: z.string(),
+  name: z.string().optional(),
+  avatarUrl: z.url().optional(),
+  /** true when a logged-in GitHub identity matched the package repo owner */
+  verified: z.boolean().default(false),
+});
+export type PluginAuthor = z.infer<typeof PluginAuthor>;
+
+/** Counts of each Brika capability the plugin declares in its manifest. */
+export const PluginCapabilityCounts = z.object({
+  tools: z.number().int().nonnegative().default(0),
+  blocks: z.number().int().nonnegative().default(0),
+  bricks: z.number().int().nonnegative().default(0),
+  sparks: z.number().int().nonnegative().default(0),
+  pages: z.number().int().nonnegative().default(0),
+});
+export type PluginCapabilityCounts = z.infer<typeof PluginCapabilityCounts>;
+
+export const RatingSummary = z.object({
+  average: z.number().min(0).max(5),
+  count: z.number().int().nonnegative(),
+});
+export type RatingSummary = z.infer<typeof RatingSummary>;
+
+/** A plugin as it appears in search results and cards. */
+export const PluginSummary = z.object({
+  name: z.string(),
+  displayName: z.string().optional(),
+  description: z.string().optional(),
+  /** the latest published version */
+  version: z.string(),
+  author: PluginAuthor.optional(),
+  keywords: z.array(z.string()).default([]),
+  iconUrl: z.url().optional(),
+  downloadsWeekly: z.number().int().nonnegative().default(0),
+  rating: RatingSummary.optional(),
+  capabilities: PluginCapabilityCounts.optional(),
+  /** the `engines.brika` semver range of the latest version */
+  brikaEngine: z.string(),
+  verified: z.boolean().default(false),
+  featured: z.boolean().default(false),
+  /** ISO-8601 timestamps */
+  publishedAt: z.iso.datetime().optional(),
+  updatedAt: z.iso.datetime().optional(),
+});
+export type PluginSummary = z.infer<typeof PluginSummary>;
+
+/** Full plugin detail, returned by `GET /v1/plugins/:name`. */
+export const PluginDetail = PluginSummary.extend({
+  repository: z.url().optional(),
+  homepage: z.url().optional(),
+  license: z.string().optional(),
+  /** reverse-DNS permission requests, e.g. `"dev.brika.net.fetch"` */
+  grants: z.record(z.string(), z.unknown()).default({}),
+  readmeUrl: z.url().optional(),
+  /** screenshot/preview image URLs (declared in the manifest or discovered) */
+  screenshots: z.array(z.url()).default([]),
+});
+export type PluginDetail = z.infer<typeof PluginDetail>;
+
+/** One row of `GET /v1/plugins/:name/versions`. */
+export const PluginVersion = z.object({
+  version: z.string(),
+  publishedAt: z.iso.datetime().optional(),
+  brikaEngine: z.string().optional(),
+  changelog: z.string().optional(),
+  deprecated: z.string().optional(),
+});
+export type PluginVersion = z.infer<typeof PluginVersion>;
+
+export const SearchSort = z.enum(["downloads", "rating", "recent", "name"]);
+export type SearchSort = z.infer<typeof SearchSort>;
+
+/** `GET /v1/search?q=&limit=&offset=&sort=` */
+export const SearchQuery = z.object({
+  q: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+  sort: SearchSort.default("downloads"),
+});
+export type SearchQuery = z.infer<typeof SearchQuery>;
+
+export const SearchResponse = z.object({
+  plugins: z.array(PluginSummary),
+  total: z.number().int().nonnegative(),
+});
+export type SearchResponse = z.infer<typeof SearchResponse>;
+
+/** `GET /v1/plugins/:name/readme` */
+export const ReadmeResponse = z.object({
+  readme: z.string().nullable(),
+  filename: z.string(),
+});
+export type ReadmeResponse = z.infer<typeof ReadmeResponse>;
+
+/**
+ * `GET /v1/verified`: the signed curation list.
+ *
+ * Back-compatible with the legacy `registry.brika.dev/verified-plugins.json`.
+ * `signature` is an Ed25519 signature over the canonical JSON of `plugins`,
+ * verifiable with the `signing.publicKey` from `GET /v1/registry`.
+ */
+export const VerifiedEntry = z.object({
+  name: z.string(),
+  verified: z.boolean().default(true),
+  featured: z.boolean().default(false),
+});
+export type VerifiedEntry = z.infer<typeof VerifiedEntry>;
+
+export const VerifiedList = z.object({
+  plugins: z.array(VerifiedEntry),
+  signature: z.string().optional(),
+  signedAt: z.iso.datetime().optional(),
+});
+export type VerifiedList = z.infer<typeof VerifiedList>;
+
+/* ------------------------------------------------------------------ *
+ * Optional social capabilities (advertised, not required of a registry)
+ * ------------------------------------------------------------------ */
+
+/** A community member, created only when someone signs in to write. */
+export const Reviewer = z.object({
+  id: z.string(),
+  login: z.string(),
+  name: z.string().optional(),
+  avatarUrl: z.url().optional(),
+});
+export type Reviewer = z.infer<typeof Reviewer>;
+
+export const Review = z.object({
+  id: z.string(),
+  pluginName: z.string(),
+  author: Reviewer,
+  rating: z.number().int().min(1).max(5),
+  title: z.string().optional(),
+  body: z.string(),
+  versionReviewed: z.string().optional(),
+  helpfulCount: z.number().int().nonnegative().default(0),
+  createdAt: z.iso.datetime(),
+  edited: z.boolean().default(false),
+});
+export type Review = z.infer<typeof Review>;
+
+export const Comment = z.object({
+  id: z.string(),
+  pluginName: z.string(),
+  parentId: z.string().nullable().default(null),
+  author: Reviewer,
+  body: z.string(),
+  createdAt: z.iso.datetime(),
+  edited: z.boolean().default(false),
+  deleted: z.boolean().default(false),
+});
+export type Comment = z.infer<typeof Comment>;
+
+/** `GET /v1/developers/:id` */
+export const DeveloperProfile = z.object({
+  id: z.string(),
+  displayName: z.string().optional(),
+  avatarUrl: z.url().optional(),
+  bio: z.string().optional(),
+  website: z.url().optional(),
+  githubLogin: z.string().optional(),
+  verified: z.boolean().default(false),
+  pluginCount: z.number().int().nonnegative().default(0),
+});
+export type DeveloperProfile = z.infer<typeof DeveloperProfile>;
+
+/**
+ * Canonical route templates for the contract. `:name` is a plugin name
+ * (URL-encoded, scoped names allowed); `:id` is a developer id.
+ */
+export const V1_ROUTES = {
+  registry: "/v1/registry",
+  search: "/v1/search",
+  plugin: "/v1/plugins/:name",
+  versions: "/v1/plugins/:name/versions",
+  readme: "/v1/plugins/:name/readme",
+  icon: "/v1/plugins/:name/icon",
+  verified: "/v1/verified",
+  reviews: "/v1/plugins/:name/reviews",
+  comments: "/v1/plugins/:name/comments",
+  developer: "/v1/developers/:id",
+  developerPlugins: "/v1/developers/:id/plugins",
+} as const;

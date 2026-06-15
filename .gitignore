@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
+.dev.vars
+.wrangler/
+.tanstack/
+.seed/
+worker-configuration.d.ts
+.npmrc

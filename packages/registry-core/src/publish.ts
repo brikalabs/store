@@ -1,0 +1,150 @@
+import { sha1Hex, sha512Integrity } from "./integrity";
+import { REGISTRY_LIMITS } from "./limits";
+import { tarballPath } from "./packument";
+import type { PackageVersion } from "./types";
+
+/** Who is publishing, derived from a verified OIDC token or a session token. */
+export interface PublishIdentity {
+  /** GitHub owner (org/user) that is publishing. */
+  readonly owner: string;
+  /** `owner/repo` the publish ran from (OIDC), or null for a local token publish. */
+  readonly repository: string | null;
+}
+
+export interface PublishInput {
+  readonly name: string;
+  readonly version: string;
+  readonly tarball: Uint8Array;
+  /** The published package.json manifest. */
+  readonly manifest: Record<string, unknown>;
+  readonly identity: PublishIdentity;
+}
+
+export type PublishResult =
+  | {
+      readonly ok: true;
+      readonly integrity: string;
+      readonly shasum: string;
+      readonly size: number;
+    }
+  | { readonly ok: false; readonly code: PublishErrorCode; readonly message: string };
+
+export type PublishErrorCode = "forbidden" | "invalid" | "exists" | "too_large";
+
+/** Manifest/data gate. Injected so `@brika/schema` remains the single source. */
+export interface ManifestValidator {
+  validate(manifest: Record<string, unknown>): { ok: true } | { ok: false; message: string };
+}
+
+/** Ownership gate: may this identity publish this package? */
+export interface OwnershipPolicy {
+  canPublish(
+    identity: PublishIdentity,
+    name: string,
+  ): Promise<{ ok: true } | { ok: false; message: string }>;
+}
+
+/** Write side of the metadata store (publish only). */
+export interface MetadataWriter {
+  versionExists(name: string, version: string): Promise<boolean>;
+  ensurePackage(name: string, scope: string | null): Promise<void>;
+  insertVersion(version: PackageVersion): Promise<void>;
+  setDistTag(name: string, tag: string, version: string): Promise<void>;
+}
+
+/** Write side of tarball storage. */
+export interface TarballWriter {
+  put(key: string, data: Uint8Array): Promise<void>;
+}
+
+export interface PublishOptions {
+  /** Returns the publish timestamp; injected for deterministic tests. */
+  readonly clock?: () => string;
+  /** Max accepted tarball size in bytes (defaults to `REGISTRY_LIMITS.maxTarballBytes`). */
+  readonly maxTarballBytes?: number;
+}
+
+function scopeOf(name: string): string | null {
+  return name.startsWith("@") ? (name.split("/")[0] ?? null) : null;
+}
+
+/**
+ * Orchestrates a publish through the two gates and the immutability + integrity
+ * invariants. Ownership is verified BEFORE validation, and immutability BEFORE
+ * any write, so a rejected publish never touches storage.
+ */
+export class PublishService {
+  readonly #meta: MetadataWriter;
+  readonly #tarballs: TarballWriter;
+  readonly #validator: ManifestValidator;
+  readonly #ownership: OwnershipPolicy;
+  readonly #clock: () => string;
+  readonly #maxTarballBytes: number;
+
+  constructor(
+    meta: MetadataWriter,
+    tarballs: TarballWriter,
+    validator: ManifestValidator,
+    ownership: OwnershipPolicy,
+    options: PublishOptions = {},
+  ) {
+    this.#meta = meta;
+    this.#tarballs = tarballs;
+    this.#validator = validator;
+    this.#ownership = ownership;
+    this.#clock = options.clock ?? (() => new Date().toISOString());
+    this.#maxTarballBytes = options.maxTarballBytes ?? REGISTRY_LIMITS.maxTarballBytes;
+  }
+
+  async publish(input: PublishInput): Promise<PublishResult> {
+    // 1. Ownership (identity gate) before anything else.
+    const owns = await this.#ownership.canPublish(input.identity, input.name);
+    if (!owns.ok) return { ok: false, code: "forbidden", message: owns.message };
+
+    // 2. Size limit: reject an oversized payload before inspecting or storing it.
+    if (input.tarball.byteLength > this.#maxTarballBytes) {
+      return {
+        ok: false,
+        code: "too_large",
+        message: `Tarball is ${input.tarball.byteLength} bytes, over the ${this.#maxTarballBytes}-byte limit`,
+      };
+    }
+
+    // 3. Manifest/data gate (required metadata etc.).
+    const valid = this.#validator.validate(input.manifest);
+    if (!valid.ok) return { ok: false, code: "invalid", message: valid.message };
+
+    // 4. Immutability: never overwrite an existing version.
+    if (await this.#meta.versionExists(input.name, input.version)) {
+      return {
+        ok: false,
+        code: "exists",
+        message: `${input.name}@${input.version} already exists`,
+      };
+    }
+
+    // 5. Integrity computed from the actual bytes we are about to store.
+    const integrity = await sha512Integrity(input.tarball);
+    const shasum = await sha1Hex(input.tarball);
+    const size = input.tarball.byteLength;
+
+    // 6. Write tarball first, then metadata (a dangling tarball is harmless;
+    //    a version row without bytes would not be).
+    await this.#tarballs.put(tarballPath(input.name, input.version), input.tarball);
+    await this.#meta.ensurePackage(input.name, scopeOf(input.name));
+    await this.#meta.insertVersion({
+      name: input.name,
+      version: input.version,
+      manifest: input.manifest,
+      integrity,
+      shasum,
+      size,
+      publishedAt: this.#clock(),
+      deprecated: null,
+      yanked: false,
+    });
+    await this.#meta.setDistTag(input.name, "latest", input.version);
+
+    return { ok: true, integrity, shasum, size };
+  }
+}

@@ -1,0 +1,14 @@
+language js
+
+// Ban the em dash (U+2014) in string literals. Biome's plugin engine can only
+// see string nodes, so comments and template literals are covered by the
+// repo-wide `check:no-em-dash` guard instead. Use commas, colons, or
+// parentheses in prose; this keeps copy consistent across the storefront.
+`$str` where {
+  $str <: string(),
+  $str <: r".*—.*",
+  register_diagnostic(
+    span = $str,
+    message = "Em dash (U+2014) is banned. Use a comma, colon, or parentheses instead."
+  )
+}
