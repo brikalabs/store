@@ -42,6 +42,8 @@ export async function handleDeviceCode(): Promise<Response> {
       device_code: deviceCode,
       user_code: userCode,
       verification_uri: VERIFICATION_URI,
+      // Code pre-filled so the CLI can open the page ready to authorize (RFC 8628).
+      verification_uri_complete: `${VERIFICATION_URI}?code=${userCode}`,
       interval: POLL_INTERVAL_SECONDS,
       expires_in: DEVICE_TTL_SECONDS,
     },

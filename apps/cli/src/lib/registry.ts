@@ -20,6 +20,8 @@ const DeviceCodeSchema = z.object({
   device_code: z.string(),
   user_code: z.string(),
   verification_uri: z.string(),
+  /** Verification URL with the code pre-filled (RFC 8628), when the server provides one. */
+  verification_uri_complete: z.string().optional(),
   interval: z.number(),
   expires_in: z.number(),
 });
