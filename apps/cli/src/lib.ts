@@ -10,7 +10,5 @@ import { registryCommands } from "./commands";
 export { registryCommands } from "./commands";
 
 export function createRegistryCli(): Cli {
-  const cli = createCli({ name: "brika", defaultCommand: "help" });
-  for (const command of registryCommands) cli.addCommand(command);
-  return cli.addHelp();
+  return createCli({ name: "brika", defaultCommand: "help", commands: registryCommands }).addHelp();
 }

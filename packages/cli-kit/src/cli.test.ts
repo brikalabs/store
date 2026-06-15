@@ -60,3 +60,24 @@ describe("createCli option values", () => {
     expect(values.configPath).toBe("/tmp/x.yml");
   });
 });
+
+describe("merging command groups", () => {
+  const cmd = (name: string) => defineCommand({ name, description: name, handler() {} });
+
+  test("addCommands flat-merges a group", () => {
+    const cli = createCli({ name: "t" }).addCommands([cmd("a"), cmd("b")]);
+    expect(cli.get("a")).toBeDefined();
+    expect(cli.get("b")).toBeDefined();
+  });
+
+  test("config.commands registers a group up front", () => {
+    const cli = createCli({ name: "t", commands: [cmd("a"), cmd("b")] });
+    expect(cli.commands.map((c) => c.name)).toEqual(["a", "b"]);
+  });
+
+  test("a duplicate command name is a build error", () => {
+    expect(() => createCli({ name: "t", commands: [cmd("publish"), cmd("publish")] })).toThrow(
+      /build error/i,
+    );
+  });
+});

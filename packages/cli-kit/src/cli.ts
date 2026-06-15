@@ -15,11 +15,15 @@ export interface CliConfig {
   before?: () => Promise<void> | void;
   /** Override help text generation */
   helpFormatter?: HelpFormatter;
+  /** Command groups registered up front (e.g. flat-merged from several packages). */
+  commands?: readonly Command[];
 }
 
 export interface Cli {
   readonly commands: Command[];
   addCommand(command: Command): Cli;
+  /** Flat-merge a command group (e.g. from another package). Throws on a duplicate. */
+  addCommands(commands: readonly Command[]): Cli;
   addHelp(): Cli;
   get(name: string): Command | undefined;
   run(argv?: string[]): Promise<void>;
@@ -153,8 +157,13 @@ export function createCli(config?: CliConfig): Cli {
   function register(key: string, cmd: Command): void {
     const existing = map.get(key);
     if (existing) {
+      const detail =
+        existing.name === cmd.name
+          ? `command "${cmd.name}" is registered twice`
+          : `"${key}" is claimed by both "${existing.name}" and "${cmd.name}"`;
       throw new Error(
-        `CLI command collision: "${key}" is claimed by both "${existing.name}" and "${cmd.name}"`,
+        `CLI build error: ${detail}. Names must be unique across merged command groups; ` +
+          "rename one or namespace it with toCommand().",
       );
     }
     map.set(key, cmd);
@@ -169,6 +178,11 @@ export function createCli(config?: CliConfig): Cli {
       for (const alias of command.aliases ?? []) {
         register(alias, command);
       }
+      return cli;
+    },
+
+    addCommands(toAdd: readonly Command[]): Cli {
+      for (const command of toAdd) cli.addCommand(command);
       return cli;
     },
 
@@ -245,6 +259,10 @@ export function createCli(config?: CliConfig): Cli {
       };
     },
   };
+
+  if (config?.commands) {
+    cli.addCommands(config.commands);
+  }
 
   return cli;
 }

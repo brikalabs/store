@@ -56,14 +56,16 @@ import { createRegistryCli, registryCommands } from "@brika/registry-cli";
 await createRegistryCli().run();
 
 // Merge flat, so `brika publish` / `brika login` are top-level hub commands:
-for (const command of registryCommands) hub.addCommand(command);
+hub.addCommands(registryCommands);
 
 // ...or namespace them as `brika registry publish`:
 hub.addCommand(createRegistryCli().toCommand("registry", "Brika plugin registry"));
 ```
 
-Flat merge needs the command names (`publish`, `login`, ...) not to clash with the
-hub's; the namespace keeps them isolated. `addCommand` throws on a collision.
+`addCommands` flat-merges a group from any package. A name that clashes with the
+hub's (or another merged package's) fails fast with a **CLI build error** at
+startup rather than silently overriding. Use the namespace form to keep names
+isolated instead.
 
 > `@brika/cli-kit` is currently vendored under `packages/cli-kit`; swap it for the
 > published package once it ships.
