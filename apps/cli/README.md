@@ -1,4 +1,4 @@
-# @brika/cli
+# @brika/registry-cli
 
 The `brika` command-line tool for **publishing** Brika plugins to the registry
 (`registry.brika.dev`).
@@ -49,7 +49,7 @@ The commands are exported as a portable group, so the same code runs standalone
 (`brika …`) and can be merged into the hub's `brika` CLI:
 
 ```ts
-import { registryCommands, runCli } from "@brika/cli";
+import { registryCommands, runCli } from "@brika/registry-cli";
 
 // Run the group directly...
 await runCli(registryCommands, process.argv.slice(2));
