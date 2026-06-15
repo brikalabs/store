@@ -8,6 +8,9 @@ import { assertPublishable, printSummary } from "./shared";
 export const publish = defineCommand({
   name: "publish",
   description: "Pack, validate, and publish a plugin",
+  args: {
+    dir: { description: "Plugin directory (defaults to the current directory)", default: "." },
+  },
   options: {
     "dry-run": {
       type: "boolean",
@@ -17,9 +20,9 @@ export const publish = defineCommand({
     },
   },
   examples: ["brika publish ./my-plugin", "brika publish --dry-run"],
-  async handler({ values, positionals }) {
+  async handler({ values, args }) {
     const config = await loadConfig();
-    const packed = await packDirectory(positionals[0] ?? process.cwd());
+    const packed = await packDirectory(args.dir);
     assertPublishable(packed);
     printSummary(packed);
 

@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import pc from "picocolors";
-import type { Command, CommandOption } from "./command";
+import type { Command, CommandArg, CommandOption } from "./command";
 import { CliError } from "./errors";
 import { generateHelp as defaultGenerateHelp } from "./help";
 
@@ -164,6 +164,21 @@ function isNamespaceSpec(group: readonly Command[] | NamespaceSpec): group is Na
   return !Array.isArray(group);
 }
 
+/** Map ordered positionals onto named args, applying each arg's default. */
+function buildArgs(
+  positionals: string[],
+  spec: Record<string, CommandArg> | undefined,
+): Record<string, string | undefined> {
+  const result: Record<string, string | undefined> = {};
+  if (spec === undefined) return result;
+  const keys = Object.keys(spec);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    if (key !== undefined) result[key] = positionals[i] ?? spec[key]?.default;
+  }
+  return result;
+}
+
 export function createCli<const Names extends string = string>(config?: CliConfig<Names>): Cli {
   let prefix = config?.name ?? "brika";
   const defaultCommand = config?.defaultCommand ?? "help";
@@ -268,6 +283,7 @@ export function createCli<const Names extends string = string>(config?: CliConfi
         }
         await command.handler({
           values,
+          args: buildArgs(parsed.positionals, command.args),
           positionals: parsed.positionals,
           commands,
         });

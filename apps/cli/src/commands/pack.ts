@@ -6,9 +6,12 @@ import { assertPublishable, printSummary } from "./shared";
 export const pack = defineCommand({
   name: "pack",
   description: "Pack the plugin and write/inspect the tarball",
+  args: {
+    dir: { description: "Plugin directory (defaults to the current directory)", default: "." },
+  },
   examples: ["brika pack ./my-plugin"],
-  async handler({ positionals }) {
-    const packed = await packDirectory(positionals[0] ?? process.cwd());
+  async handler({ args }) {
+    const packed = await packDirectory(args.dir);
     assertPublishable(packed);
     printSummary(packed);
     await Bun.write(packed.filename, packed.tarball);

@@ -14,6 +14,15 @@ export interface CommandOption {
 }
 
 /**
+ * Positional argument descriptor. Positionals are matched to declared args by
+ * order; a `default` makes the value non-optional in the handler.
+ */
+export interface CommandArg {
+  description?: string;
+  default?: string;
+}
+
+/**
  * Command context - passed to handlers
  */
 export interface CommandContext<O extends Record<string, CommandOption> | undefined = undefined>
@@ -57,8 +66,24 @@ type InferValues<O extends Record<string, CommandOption> | undefined> =
     ? { [K in keyof O as CamelCase<K & string>]: InferValue<O[K]> }
     : Record<string, string | boolean | number | undefined>;
 
-export interface HandlerArgs<O extends Record<string, CommandOption> | undefined = undefined> {
+/** If a default is declared, the positional is guaranteed (non-optional). */
+type InferArg<T extends CommandArg> = T extends { default: string } ? string : string | undefined;
+
+/** Map a positional-args record to its parsed values type, keyed by name. */
+type InferArgs<A extends Record<string, CommandArg> | undefined> =
+  A extends Record<string, CommandArg>
+    ? { [K in keyof A]: InferArg<A[K]> }
+    : Record<string, string | undefined>;
+
+export interface HandlerArgs<
+  O extends Record<string, CommandOption> | undefined = undefined,
+  A extends Record<string, CommandArg> | undefined = undefined,
+> {
+  /** Parsed flag values, keyed by the camelCased option name. */
   values: InferValues<O>;
+  /** Parsed positional arguments, keyed by their declared name. */
+  args: InferArgs<A>;
+  /** Raw positional arguments, in order. */
   positionals: string[];
   commands: Command[];
 }
@@ -72,6 +97,7 @@ export interface Command<Name extends string = string> {
   description: string;
   details?: string;
   options?: Record<string, CommandOption>;
+  args?: Record<string, CommandArg>;
   aliases?: string[];
   examples?: string[];
   subcommands?: Command[];
@@ -84,23 +110,27 @@ export interface Command<Name extends string = string> {
 }
 
 /**
- * Define a command with fully typed option values in the handler.
+ * Define a command with fully typed option *and* positional-argument values in
+ * the handler.
  *
- * Uses `const` type parameter to preserve literal types from option descriptors,
- * giving the handler properly narrowed values based on `type` and `default`.
+ * Uses `const` type parameters to preserve literal types from the descriptors,
+ * giving the handler properly narrowed `values` (from `options`) and `args`
+ * (from `args`) based on each descriptor's `type` and `default`.
  */
 export function defineCommand<
   const Name extends string,
   const O extends Record<string, CommandOption>,
+  const A extends Record<string, CommandArg>,
 >(def: {
   name: Name;
   description: string;
   details?: string;
   options?: O;
+  args?: A;
   aliases?: string[];
   examples?: string[];
   hidden?: boolean;
-  handler: (args: HandlerArgs<O>) => Promise<void> | void;
+  handler: (args: HandlerArgs<O, A>) => Promise<void> | void;
 }): Command<Name> {
   return def as unknown as Command<Name>;
 }

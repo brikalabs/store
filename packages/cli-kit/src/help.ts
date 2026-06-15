@@ -38,6 +38,18 @@ export function generateCommandHelp(cmd: Command, prefix: string): string {
     flagsSection = `\n${pc.bold("Flags:")}\n${flags}`;
   }
 
+  let argsSection = "";
+  if (cmd.args) {
+    const args = Object.entries(cmd.args)
+      .map(([key, arg]) => {
+        const desc = arg.description ?? "";
+        const def = arg.default === undefined ? "" : pc.dim(` (default: ${arg.default})`);
+        return `  ${pc.green(key.padEnd(20))} ${desc}${def}`;
+      })
+      .join("\n");
+    argsSection = `\n${pc.bold("Arguments:")}\n${args}`;
+  }
+
   let examplesSection = "";
   if (cmd.examples) {
     const examples = cmd.examples.map((ex) => `  ${pc.dim("$")} ${ex}`).join("\n");
@@ -50,6 +62,6 @@ export function generateCommandHelp(cmd: Command, prefix: string): string {
 ${pc.bold(pc.cyan(`${prefix} ${cmd.name}`))}
 
 ${cmd.description}${details}
-${flagsSection}${examplesSection}
+${argsSection}${flagsSection}${examplesSection}
 `.trim();
 }

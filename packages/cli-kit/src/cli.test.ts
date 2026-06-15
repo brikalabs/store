@@ -61,6 +61,29 @@ describe("createCli option values", () => {
   });
 });
 
+describe("positional args", () => {
+  test("are parsed by declared name, with defaults", async () => {
+    // The `seen` annotation also asserts the static types: `args.dir` is a
+    // non-optional string (it has a default) and `args.name` is optional.
+    let seen: { dir: string; name: string | undefined } | undefined;
+    const build = defineCommand({
+      name: "build",
+      description: "build",
+      args: { dir: { default: "." }, name: {} },
+      handler({ args }) {
+        seen = { dir: args.dir, name: args.name };
+      },
+    });
+    const cli = createCli({ name: "t", commands: [build] });
+
+    await cli.run(["build", "src"]);
+    expect(seen).toEqual({ dir: "src", name: undefined });
+
+    await cli.run(["build"]);
+    expect(seen).toEqual({ dir: ".", name: undefined });
+  });
+});
+
 describe("merging command groups", () => {
   const cmd = (name: string) => defineCommand({ name, description: name, handler() {} });
 
