@@ -67,8 +67,8 @@ export interface HandlerArgs<O extends Record<string, CommandOption> | undefined
  * Declarative command definition.
  * All metadata is inferred from this single object.
  */
-export interface Command {
-  name: string;
+export interface Command<Name extends string = string> {
+  name: Name;
   description: string;
   details?: string;
   options?: Record<string, CommandOption>;
@@ -89,8 +89,11 @@ export interface Command {
  * Uses `const` type parameter to preserve literal types from option descriptors,
  * giving the handler properly narrowed values based on `type` and `default`.
  */
-export function defineCommand<const O extends Record<string, CommandOption>>(def: {
-  name: string;
+export function defineCommand<
+  const Name extends string,
+  const O extends Record<string, CommandOption>,
+>(def: {
+  name: Name;
   description: string;
   details?: string;
   options?: O;
@@ -98,6 +101,6 @@ export function defineCommand<const O extends Record<string, CommandOption>>(def
   examples?: string[];
   hidden?: boolean;
   handler: (args: HandlerArgs<O>) => Promise<void> | void;
-}): Command {
-  return def as unknown as Command;
+}): Command<Name> {
+  return def as unknown as Command<Name>;
 }

@@ -6,17 +6,19 @@ import { generateHelp as defaultGenerateHelp } from "./help";
 
 export type HelpFormatter = (commands: Command[], specific?: Command, prefix?: string) => string;
 
-export interface CliConfig {
+export interface CliConfig<Names extends string = string> {
   /** Binary / program name used in help text (default: 'brika') */
   name?: string;
-  /** Default command when no args given (default: 'start') */
-  defaultCommand?: string;
+  // `NoInfer` so the union comes only from `commands`; otherwise a typo here
+  // would widen `Names` to include itself and defeat the check.
+  /** Default command when no args are given. Typed to the registered command names. */
+  defaultCommand?: NoInfer<Names> | "help";
   /** Hook to run before any command handler (skipped for help) */
   before?: () => Promise<void> | void;
   /** Override help text generation */
   helpFormatter?: HelpFormatter;
   /** Command groups registered up front (e.g. flat-merged from several packages). */
-  commands?: readonly Command[];
+  commands?: readonly Command<Names>[];
 }
 
 /** A subcommand namespace mounted with {@link Cli.addNamespace}. */
@@ -161,7 +163,7 @@ function isNamespaceSpec(group: readonly Command[] | NamespaceSpec): group is Na
   return !Array.isArray(group);
 }
 
-export function createCli(config?: CliConfig): Cli {
+export function createCli<const Names extends string = string>(config?: CliConfig<Names>): Cli {
   let prefix = config?.name ?? "brika";
   const defaultCommand = config?.defaultCommand ?? "start";
   const beforeFn = config?.before;
