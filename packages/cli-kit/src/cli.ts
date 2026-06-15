@@ -24,6 +24,8 @@ export interface Cli {
   addCommand(command: Command): Cli;
   /** Flat-merge a command group (e.g. from another package). Throws on a duplicate. */
   addCommands(commands: readonly Command[]): Cli;
+  /** Mount a command group under a subcommand namespace (e.g. `brika registry publish`). */
+  addNamespace(name: string, description: string, commands: readonly Command[]): Cli;
   addHelp(): Cli;
   get(name: string): Command | undefined;
   run(argv?: string[]): Promise<void>;
@@ -183,6 +185,15 @@ export function createCli(config?: CliConfig): Cli {
 
     addCommands(toAdd: readonly Command[]): Cli {
       for (const command of toAdd) cli.addCommand(command);
+      return cli;
+    },
+
+    addNamespace(name: string, description: string, subCommands: readonly Command[]): Cli {
+      // Build a self-contained sub-CLI (its own help + parsing) that inherits
+      // this CLI's prefix, so `brika registry --help` reads correctly. Mounting
+      // it as a single command means only `name` can collide, not its children.
+      const sub = createCli({ name: prefix, defaultCommand: "help", commands: subCommands }).addHelp();
+      cli.addCommand(sub.toCommand(name, description));
       return cli;
     },
 

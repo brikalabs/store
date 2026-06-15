@@ -80,4 +80,25 @@ describe("merging command groups", () => {
       /build error/i,
     );
   });
+
+  test("addNamespace mounts a group as a subcommand", async () => {
+    let ran = "";
+    const group = [
+      defineCommand({
+        name: "publish",
+        description: "publish",
+        handler() {
+          ran = "publish";
+        },
+      }),
+    ];
+    const hub = createCli({ name: "brika", defaultCommand: "help" }).addNamespace(
+      "registry",
+      "registry",
+      group,
+    );
+    expect(hub.get("registry")).toBeDefined();
+    await hub.run(["registry", "publish"]);
+    expect(ran).toBe("publish");
+  });
 });

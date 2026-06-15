@@ -59,7 +59,7 @@ await createRegistryCli().run();
 hub.addCommands(registryCommands);
 
 // ...or namespace them as `brika registry publish`:
-hub.addCommand(createRegistryCli().toCommand("registry", "Brika plugin registry"));
+hub.addNamespace("registry", "Brika plugin registry", registryCommands);
 ```
 
 `addCommands` flat-merges a group from any package. A name that clashes with the
