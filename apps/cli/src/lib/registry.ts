@@ -7,10 +7,9 @@ import { z } from "zod";
  * flow), `/-/publish`, and `/-/token/revoke`.
  *
  * Failures are thrown as `CliError` and successes are returned directly, so
- * callers never branch on a result union. Every request is time-boxed (and
- * accepts an external `AbortSignal` for cancellation), wraps transport failures
- * in a `CliError`, and validates the response body with zod. `fetch` is
- * injectable so the client is unit-testable without a live registry.
+ * callers never branch on a result union. Every request is time-boxed, wraps
+ * transport failures in a `CliError`, and validates the response body with zod.
+ * `fetch` is injectable so the client is unit-testable without a live registry.
  */
 
 const DEFAULT_TIMEOUT_MS = 30_000;
