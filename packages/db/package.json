@@ -12,7 +12,7 @@
     "!src/**/*.test.ts"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
