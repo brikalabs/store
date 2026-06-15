@@ -81,7 +81,7 @@ describe("merging command groups", () => {
     );
   });
 
-  test("addNamespace mounts a group as a subcommand", async () => {
+  test("addCommands with a spec mounts a namespace", async () => {
     let ran = "";
     const group = [
       defineCommand({
@@ -92,7 +92,7 @@ describe("merging command groups", () => {
         },
       }),
     ];
-    const hub = createCli({ name: "brika", defaultCommand: "help" }).addNamespace({
+    const hub = createCli({ name: "brika", defaultCommand: "help" }).addCommands({
       name: "registry",
       description: "registry",
       commands: group,

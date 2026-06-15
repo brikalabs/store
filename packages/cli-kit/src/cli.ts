@@ -30,10 +30,12 @@ export interface NamespaceSpec {
 export interface Cli {
   readonly commands: Command[];
   addCommand(command: Command): Cli;
-  /** Flat-merge a command group (e.g. from another package). Throws on a duplicate. */
-  addCommands(commands: readonly Command[]): Cli;
-  /** Mount a command group under a subcommand namespace (e.g. `brika registry publish`). */
-  addNamespace(spec: NamespaceSpec): Cli;
+  /**
+   * Merge a command group from any package: pass a flat `Command[]` to add them
+   * at the top level, or a {@link NamespaceSpec} to mount them under a subcommand
+   * (e.g. `brika registry publish`). Throws a build error on a duplicate name.
+   */
+  addCommands(group: readonly Command[] | NamespaceSpec): Cli;
   addHelp(): Cli;
   get(name: string): Command | undefined;
   run(argv?: string[]): Promise<void>;
@@ -155,6 +157,10 @@ function stripFlag(argv: string[], ...names: string[]): string[] {
   return out;
 }
 
+function isNamespaceSpec(group: readonly Command[] | NamespaceSpec): group is NamespaceSpec {
+  return !Array.isArray(group);
+}
+
 export function createCli(config?: CliConfig): Cli {
   let prefix = config?.name ?? "brika";
   const defaultCommand = config?.defaultCommand ?? "start";
@@ -191,23 +197,22 @@ export function createCli(config?: CliConfig): Cli {
       return cli;
     },
 
-    addCommands(toAdd: readonly Command[]): Cli {
-      for (const command of toAdd) cli.addCommand(command);
-      return cli;
-    },
-
-    addNamespace(spec: NamespaceSpec): Cli {
-      // Build a self-contained sub-CLI (its own help + parsing) that inherits
-      // this CLI's prefix, so `brika registry --help` reads correctly. Mounting
-      // it as a single command means only the namespace name can collide, not
-      // its children.
+    addCommands(group: readonly Command[] | NamespaceSpec): Cli {
+      if (!isNamespaceSpec(group)) {
+        for (const command of group) cli.addCommand(command);
+        return cli;
+      }
+      // A NamespaceSpec: build a self-contained sub-CLI (its own help + parsing)
+      // that inherits this CLI's prefix, so `brika registry --help` reads
+      // correctly. Mounting it as one command means only the namespace name can
+      // collide, not its children.
       const sub = createCli({
         name: prefix,
         defaultCommand: "help",
-        commands: spec.commands,
+        commands: group.commands,
       }).addHelp();
-      const command = sub.toCommand(spec.name, spec.description);
-      command.aliases = spec.aliases;
+      const command = sub.toCommand(group.name, group.description);
+      command.aliases = group.aliases;
       cli.addCommand(command);
       return cli;
     },
