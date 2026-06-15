@@ -10,6 +10,9 @@ TanStack Start SSR + the `/v1` API, one Worker.
 
 ## 1. Provision Cloudflare resources
 
+Enable R2 once per account first (Dashboard -> R2 -> Enable), otherwise
+`r2 bucket create` fails with `Please enable R2 [code: 10042]`.
+
 ```sh
 wrangler login
 wrangler d1 create brika-store          # -> copy database_id into wrangler.jsonc
@@ -18,7 +21,9 @@ wrangler r2 bucket create brika-store-assets
 ```
 
 Replace the `REPLACE_WITH_*` placeholders in `apps/web/wrangler.jsonc` with the
-returned `database_id` and KV `id`.
+returned `database_id` and KV `id`. The `wrangler d1 create` / `kv namespace
+create` prompts can also append the binding for you; if you accept, remove the
+duplicate so each binding name (`DB`, `CACHE`) appears once.
 
 ## 2. Apply the database schema
 

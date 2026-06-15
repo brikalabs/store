@@ -46,9 +46,8 @@
       "binding": "ASSETS",
       "bucket_name": "brika-store-assets"
     }
-  ],
-  // Periodic npm sync (every 30 min) on top of cache-aside refresh on read.
-  "triggers": {
-    "crons": ["*/30 * * * *"]
-  }
+  ]
+  // No cron yet: the npm cache fills lazily (cache-aside) on read. Add a
+  // "triggers".crons schedule here once a scheduled() prewarm handler exists
+  // (see DEPLOYMENT.md follow-ups) so we don't fire an unhandled cron event.
 }
