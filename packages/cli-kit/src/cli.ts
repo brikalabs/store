@@ -11,7 +11,7 @@ export interface CliConfig<Names extends string = string> {
   name?: string;
   // `NoInfer` so the union comes only from `commands`; otherwise a typo here
   // would widen `Names` to include itself and defeat the check.
-  /** Default command when no args are given. Typed to the registered command names. */
+  /** Command run when no args are given. Defaults to `help` (always built-in). */
   defaultCommand?: NoInfer<Names> | "help";
   /** Hook to run before any command handler (skipped for help) */
   before?: () => Promise<void> | void;
@@ -38,6 +38,7 @@ export interface Cli {
    * (e.g. `brika registry publish`). Throws a build error on a duplicate name.
    */
   addCommands(group: readonly Command[] | NamespaceSpec): Cli;
+  /** Register the built-in `help` command. Idempotent; createCli calls it for you. */
   addHelp(): Cli;
   get(name: string): Command | undefined;
   run(argv?: string[]): Promise<void>;
@@ -165,7 +166,7 @@ function isNamespaceSpec(group: readonly Command[] | NamespaceSpec): group is Na
 
 export function createCli<const Names extends string = string>(config?: CliConfig<Names>): Cli {
   let prefix = config?.name ?? "brika";
-  const defaultCommand = config?.defaultCommand ?? "start";
+  const defaultCommand = config?.defaultCommand ?? "help";
   const beforeFn = config?.before;
   const generateHelp = config?.helpFormatter ?? defaultGenerateHelp;
 
@@ -208,11 +209,7 @@ export function createCli<const Names extends string = string>(config?: CliConfi
       // that inherits this CLI's prefix, so `brika registry --help` reads
       // correctly. Mounting it as one command means only the namespace name can
       // collide, not its children.
-      const sub = createCli({
-        name: prefix,
-        defaultCommand: "help",
-        commands: group.commands,
-      }).addHelp();
+      const sub = createCli({ name: prefix, commands: group.commands });
       const command = sub.toCommand(group.name, group.description);
       command.aliases = group.aliases;
       cli.addCommand(command);
@@ -296,6 +293,10 @@ export function createCli<const Names extends string = string>(config?: CliConfi
   if (config?.commands) {
     cli.addCommands(config.commands);
   }
+  // Help is built-in: every CLI gets a `help` command (and `-h`/`--help`), so
+  // `defaultCommand: "help"` always resolves and callers never need a separate
+  // registration step. A user-defined `help` command takes priority.
+  cli.addHelp();
 
   return cli;
 }

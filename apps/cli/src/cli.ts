@@ -11,9 +11,7 @@ import { registryCommands } from "./commands";
 export { registryCommands } from "./commands";
 
 export function createRegistryCli(): Cli {
-  return createCli({
-    name: "brika",
-    defaultCommand: "help",
-    commands: registryCommands,
-  }).addHelp();
+  // Help is built-in and the default command, so `brika` shows help and
+  // `brika <command>` runs it. No `defaultCommand` or `addHelp()` needed.
+  return createCli({ name: "brika", commands: registryCommands });
 }

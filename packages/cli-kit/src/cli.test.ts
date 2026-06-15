@@ -70,9 +70,11 @@ describe("merging command groups", () => {
     expect(cli.get("b")).toBeDefined();
   });
 
-  test("config.commands registers a group up front", () => {
+  test("config.commands registers a group up front, with built-in help", () => {
     const cli = createCli({ name: "t", commands: [cmd("a"), cmd("b")] });
-    expect(cli.commands.map((c) => c.name)).toEqual(["a", "b"]);
+    expect(cli.get("a")).toBeDefined();
+    expect(cli.get("b")).toBeDefined();
+    expect(cli.get("help")).toBeDefined();
   });
 
   test("a duplicate command name is a build error", () => {
