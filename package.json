@@ -12,13 +12,18 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "bun run --filter @brika/store-web dev",
+    "dev": "bun run --filter '*' dev",
+    "dev:web": "bun run --filter @brika/store-web dev",
+    "dev:registry": "bun run --filter @brika/registry dev",
+    "cli": "BRIKA_REGISTRY=http://localhost:8787 bun apps/cli/src/index.ts",
     "build": "bun run --filter @brika/store-web build",
     "deploy": "bun run --filter @brika/store-web deploy",
     "test": "bun test packages apps/registry apps/cli",
     "typecheck": "bun run --filter '*' typecheck",
     "check:no-em-dash": "bun run scripts/check-no-em-dash.ts",
-    "lint": "bunx --bun biome check . && bun run check:no-em-dash"
+    "lint": "bunx --bun biome check . && bun run check:no-em-dash",
+    "sonar": "bunx --bun biome lint --config-path biome.sonar.jsonc --max-diagnostics=none .",
+    "sonar:fix": "bunx --bun biome lint --write --config-path biome.sonar.jsonc --max-diagnostics=none ."
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",

@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { users } from "../db/schema";
+import { vars } from "./env";
 import { signSession, verifySession } from "./session";
 
 const SESSION_COOKIE = "brika_session";
@@ -31,7 +32,7 @@ export function parseCookies(header: string | null): Record<string, string> {
 export async function getSessionUserId(request: Request): Promise<string | null> {
   const token = parseCookies(request.headers.get("cookie"))[SESSION_COOKIE];
   if (token === undefined) return null;
-  return verifySession(token, env.SESSION_SECRET);
+  return verifySession(token, vars().SESSION_SECRET);
 }
 
 export async function getCurrentUser(request: Request): Promise<SessionUser | null> {
@@ -48,7 +49,7 @@ function attrs(secure: boolean): string {
 }
 
 export async function sessionCookie(userId: string, secure: boolean): Promise<string> {
-  const token = await signSession(userId, env.SESSION_SECRET);
+  const token = await signSession(userId, vars().SESSION_SECRET);
   return `${SESSION_COOKIE}=${encodeURIComponent(token)}; ${attrs(secure)}; Max-Age=2592000`;
 }
 

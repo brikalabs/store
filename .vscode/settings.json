@@ -1,0 +1,29 @@
+{
+  // SonarLint (SonarQube for IDE) is the real SonarSource analyzer running
+  // locally in the editor: offline, no cloud upload. Findings appear in the
+  // Problems panel (Cmd+Shift+M) and as squiggles, tagged source "sonarqube",
+  // as you open or edit files. This is NOT the Biome `bun run sonar` approximation.
+
+  // Focus on issues in new/changed code, mirroring SonarCloud's PR quality gate.
+  // Toggle anytime via the "SonarLint: focus" item in the status bar.
+  "sonarlint.focusOnNewCode": true,
+
+  // Skip generated files and build output so analysis stays on real source.
+  "sonarlint.analysisExcludesStandalone": "**/*.gen.ts,**/routeTree.gen.ts,**/worker-configuration.d.ts,**/dist/**,**/coverage/**,**/node_modules/**",
+  "sonarlint.connectedMode.project": {
+    "connectionId": "brikalabs",
+    "projectKey": "brikalabs_store"
+  },
+
+  // OPTIONAL — Connected Mode: pulls the EXACT quality profile from SonarCloud
+  // and respects issues marked false-positive there. Analysis still runs locally
+  // (nothing is sent to the cloud to analyze). Fill in org + project key, then
+  // uncomment. Without this, SonarLint uses the built-in "Sonar way" rules.
+  // "sonarlint.connectedMode.connections.sonarcloud": [
+  //   { "connectionId": "brika", "organizationKey": "<your-sonarcloud-org>" }
+  // ],
+  // "sonarlint.connectedMode.project": {
+  //   "connectionId": "brika",
+  //   "projectKey": "<your-sonarcloud-project-key>"
+  // }
+}

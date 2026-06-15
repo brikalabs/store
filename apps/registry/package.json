@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --persist-to ../web/.wrangler/state",
     "deploy": "wrangler deploy",
     "typecheck": "tsgo --noEmit",
     "test": "bun test",
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@brika/env": "workspace:*",
     "@brika/registry-core": "workspace:*",
     "@brika/schema": "workspace:*",
     "@brika/store-db": "workspace:*",

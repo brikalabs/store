@@ -1,6 +1,6 @@
 import { CliError, defineCommand } from "@brika/cli-kit";
 import * as p from "@brika/cli-kit/prompts";
-import { authToken, loadConfig, registryUrl } from "../lib/config";
+import { loadConfig } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
 import { prepare } from "./prepare";
 
@@ -26,12 +26,10 @@ export const publish = defineCommand({
       return;
     }
 
-    const config = await loadConfig();
-    const token = authToken(config);
+    const { token, registry } = await loadConfig();
     if (token === undefined) {
       throw new CliError("not logged in - run `brika login` (or set BRIKA_TOKEN)");
     }
-    const registry = registryUrl(config);
     const spin = p.spinner();
     spin.start(`Publishing to ${registry}`);
     const { integrity } = await new RegistryClient(registry)

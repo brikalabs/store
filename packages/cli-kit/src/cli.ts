@@ -3,6 +3,7 @@ import pc from "picocolors";
 import type { Command, CommandArg, CommandOption } from "./command";
 import { CliError } from "./errors";
 import { generateHelp as defaultGenerateHelp } from "./help";
+import { suggestCommand } from "./suggest";
 
 export type HelpFormatter = (commands: Command[], specific?: Command, prefix?: string) => string;
 
@@ -72,8 +73,12 @@ function resolveCommand(
   const command = commandMap.get(first || defaultCommand);
   if (!command) {
     const helpCmd = `${prefix} help`;
+    // Suggest the nearest real command name (skip flag-style aliases like `-h`).
+    const names = [...commandMap.keys()].filter((name) => !name.startsWith("-"));
+    const suggestion = suggestCommand(first, names);
+    const didYouMean = suggestion ? `\nDid you mean ${pc.cyan(suggestion)}?` : "";
     throw new CliError(
-      `${pc.red("Unknown command:")} ${first}\nRun ${pc.cyan(helpCmd)} for usage.`,
+      `${pc.red("Unknown command:")} ${first}${didYouMean}\nRun ${pc.cyan(helpCmd)} for usage.`,
     );
   }
   return {

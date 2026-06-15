@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { createFileRoute } from "@tanstack/react-router";
 import { getDb } from "../db/client";
 import { clearReturnCookie, readOauthState, readReturnPath, sessionCookie } from "../lib/auth";
+import { vars } from "../lib/env";
 import { exchangeCode, fetchUser } from "../lib/github";
 import { markDeveloperVerified, upsertUser } from "../lib/social";
 
@@ -17,7 +18,8 @@ export const Route = createFileRoute("/auth/github/callback")({
           return new Response("Invalid OAuth state", { status: 400 });
         }
 
-        const token = await exchangeCode(code, env.GITHUB_CLIENT_ID, env.GITHUB_CLIENT_SECRET);
+        const { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET } = vars();
+        const token = await exchangeCode(code, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET);
         if (token === null) return new Response("OAuth exchange failed", { status: 502 });
         const ghUser = await fetchUser(token);
         if (ghUser === null) return new Response("Could not load GitHub user", { status: 502 });

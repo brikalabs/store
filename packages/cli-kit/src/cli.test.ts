@@ -7,6 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import { createCli } from "./cli";
 import { defineCommand } from "./command";
+import { editDistance, suggestCommand } from "./suggest";
 
 /** Run `probe` with the given argv and return the values its handler saw. */
 async function captureValues(
@@ -81,6 +82,28 @@ describe("positional args", () => {
 
     await cli.run(["build"]);
     expect(seen).toEqual({ dir: ".", name: undefined });
+  });
+});
+
+describe("command suggestions", () => {
+  test("editDistance counts single-character edits", () => {
+    expect(editDistance("whoami", "whoami")).toBe(0);
+    expect(editDistance("whomai", "whoami")).toBe(2); // transposed m/a
+    expect(editDistance("logout", "login")).toBe(3);
+    expect(editDistance("", "publish")).toBe(7);
+  });
+
+  test("suggestCommand returns the nearest command for a typo", () => {
+    const commands = ["login", "logout", "publish", "whoami", "pack"];
+    expect(suggestCommand("whomai", commands)).toBe("whoami");
+    expect(suggestCommand("logn", commands)).toBe("login");
+    expect(suggestCommand("publsh", commands)).toBe("publish");
+  });
+
+  test("suggestCommand returns undefined when nothing is close enough", () => {
+    const commands = ["login", "publish", "whoami"];
+    expect(suggestCommand("xyz", commands)).toBeUndefined();
+    expect(suggestCommand("", commands)).toBeUndefined();
   });
 });
 

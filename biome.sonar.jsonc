@@ -1,0 +1,39 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+  // Local "Sonar" quality profile.
+  //
+  // Biome ships its own implementation of a large subset of the SonarJS ruleset,
+  // including Cognitive Complexity (the same algorithm SonarQube/SonarCloud use:
+  // https://www.sonarsource.com/docs/CognitiveComplexity.pdf). This profile turns
+  // those Sonar-style maintainability/bug rules on as errors so they can be checked
+  // and auto-fixed locally, without a SonarCloud token, server, or CI round-trip.
+  //
+  //   bun run sonar       -> report Sonar-style issues (non-zero exit on findings)
+  //   bun run sonar:fix   -> apply the auto-fixable ones (Cognitive Complexity is
+  //                          manual — Sonar can't auto-fix it either)
+  //
+  // It is NOT a full SonarCloud replacement: coverage %, duplication density, and
+  // server-side security hotspots still come from the real Sonar analysis.
+  "extends": ["./biome.json"],
+  "linter": {
+    "rules": {
+      "complexity": {
+        // Cognitive Complexity — Sonar's flagship maintainability metric.
+        // Threshold 15 matches Sonar's default. Not auto-fixable (needs refactor).
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": { "maxAllowedComplexity": 15 }
+        },
+        "noForEach": "error",
+        "noUselessLoneBlockStatements": "error",
+        "noUselessTernary": "error",
+        "noUselessUndefinedInitialization": "error",
+        "useOptionalChain": "error"
+      },
+      "suspicious": {
+        // Switch fall-through — common Sonar-flagged bug source.
+        "noFallthroughSwitchClause": "error"
+      }
+    }
+  }
+}

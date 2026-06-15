@@ -3,6 +3,7 @@ import { getDb, regDeviceAuth } from "@brika/store-db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { issueToken } from "./adapters/token";
+import { vars } from "./env";
 
 /**
  * OAuth device authorization flow (RFC 8628) for `brika auth login`. The CLI
@@ -10,7 +11,6 @@ import { issueToken } from "./adapters/token";
  * and the CLI polls until a publish token is issued.
  */
 
-const VERIFICATION_URI = "https://store.brika.dev/device";
 const DEVICE_TTL_SECONDS = 15 * 60;
 const POLL_INTERVAL_SECONDS = 5;
 // No vowels / ambiguous chars, so user codes are easy to read aloud and type.
@@ -37,13 +37,14 @@ export async function handleDeviceCode(): Promise<Response> {
       userCode,
       expiresAt: Math.floor(Date.now() / 1000) + DEVICE_TTL_SECONDS,
     });
+  const verificationUri = `${vars().STORE_URL.replace(/\/+$/, "")}/device`;
   return reply(
     {
       device_code: deviceCode,
       user_code: userCode,
-      verification_uri: VERIFICATION_URI,
+      verification_uri: verificationUri,
       // Code pre-filled so the CLI can open the page ready to authorize (RFC 8628).
-      verification_uri_complete: `${VERIFICATION_URI}?code=${userCode}`,
+      verification_uri_complete: `${verificationUri}?code=${userCode}`,
       interval: POLL_INTERVAL_SECONDS,
       expires_in: DEVICE_TTL_SECONDS,
     },

@@ -1,7 +1,8 @@
 import { defineCommand } from "@brika/cli-kit";
 import * as p from "@brika/cli-kit/prompts";
 import { openBrowser } from "../lib/browser";
-import { loadConfig, registryUrl, saveConfig } from "../lib/config";
+import { copyToClipboard } from "../lib/clipboard";
+import { loadConfig, saveConfig } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
 
 export const login = defineCommand({
@@ -16,8 +17,7 @@ export const login = defineCommand({
   },
   examples: ["brika login", "brika login --no-browser"],
   async handler({ values }) {
-    const config = await loadConfig();
-    const registry = registryUrl(config);
+    const { registry } = await loadConfig();
     const client = new RegistryClient(registry);
 
     p.intro("brika login");
@@ -28,12 +28,18 @@ export const login = defineCommand({
     // code in the URL so the page can pre-fill it; the note above is the manual
     // fallback when the browser cannot be opened (CI, SSH, `--no-browser`).
     const approvalUrl = device.verification_uri_complete ?? device.verification_uri;
-    if (values.noBrowser) {
-      p.log.info("Open the URL above and enter the code to continue.");
-    } else if (await openBrowser(approvalUrl)) {
+    const opened = values.noBrowser ? false : await openBrowser(approvalUrl);
+    if (opened) {
       p.log.info("Opened your browser to finish login.");
     } else {
-      p.log.warn("Could not open a browser - open the URL above and enter the code.");
+      // No browser (CI, SSH, --no-browser, or no opener): copy the code so the
+      // user only has to open the URL above and paste it.
+      const copied = await copyToClipboard(device.user_code);
+      p.log.info(
+        copied
+          ? "Code copied to your clipboard - open the URL above and paste it."
+          : "Open the URL above and enter the code to continue.",
+      );
     }
 
     const spin = p.spinner();

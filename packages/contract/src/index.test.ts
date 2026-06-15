@@ -28,6 +28,28 @@ test("PluginDetail defaults grants and screenshots", () => {
   expect(detail.screenshots).toEqual([]);
 });
 
+test("PluginDetail accepts screenshots with resolved caption and alt", () => {
+  const detail = PluginDetail.parse({
+    name: "@brika/x",
+    version: "1.0.0",
+    brikaEngine: "^0.3.0",
+    screenshots: [
+      { url: "https://cdn.example/1.png" },
+      { url: "https://cdn.example/2.png", caption: "The board", alt: "A board of bricks" },
+    ],
+  });
+  expect(detail.screenshots).toHaveLength(2);
+  expect(detail.screenshots[1]?.caption).toBe("The board");
+  expect(
+    PluginDetail.safeParse({
+      name: "@brika/x",
+      version: "1.0.0",
+      brikaEngine: "^0.3.0",
+      screenshots: ["https://cdn.example/1.png"],
+    }).success,
+  ).toBe(false);
+});
+
 test("RegistryCapabilities validates the feature set", () => {
   const caps = RegistryCapabilities.parse({
     name: "Store",

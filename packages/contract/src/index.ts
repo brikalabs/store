@@ -96,6 +96,19 @@ export const PluginSummary = z.object({
 });
 export type PluginSummary = z.infer<typeof PluginSummary>;
 
+/**
+ * A screenshot on the plugin listing: a resolved image URL plus optional caption
+ * and accessibility text. `caption` is resolved for the requested locale (from
+ * the plugin's `locales/<lang>/store.json` `screenshotCaptions`, falling back to
+ * the manifest screenshot's default `caption`); `alt` is the a11y description.
+ */
+export const Screenshot = z.object({
+  url: z.url(),
+  caption: z.string().optional(),
+  alt: z.string().optional(),
+});
+export type Screenshot = z.infer<typeof Screenshot>;
+
 /** Full plugin detail, returned by `GET /v1/plugins/:name`. */
 export const PluginDetail = PluginSummary.extend({
   repository: z.url().optional(),
@@ -104,8 +117,8 @@ export const PluginDetail = PluginSummary.extend({
   /** reverse-DNS permission requests, e.g. `"dev.brika.net.fetch"` */
   grants: z.record(z.string(), z.unknown()).default({}),
   readmeUrl: z.url().optional(),
-  /** screenshot/preview image URLs (declared in the manifest or discovered) */
-  screenshots: z.array(z.url()).default([]),
+  /** Ordered screenshots shown on the listing (URLs resolved; captions localized). */
+  screenshots: z.array(Screenshot).default([]),
 });
 export type PluginDetail = z.infer<typeof PluginDetail>;
 

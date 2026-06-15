@@ -11,8 +11,12 @@ export {
   type PreferenceSchema as PreferenceSchemaType,
 } from "./plugin";
 export {
+  type LocaleIssue,
   type RegistryPublishManifest,
   RegistryPublishSchema,
   type StoreLocale,
   StoreLocaleSchema,
+  type StoreScreenshot,
+  storeLocaleOf,
+  validateStoreLocales,
 } from "./store";

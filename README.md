@@ -49,6 +49,8 @@ CLI are next. Full status and the remaining work: [`docs/ROADMAP.md`](./docs/ROA
 bun install
 bun run typecheck            # all workspaces
 bun run lint                 # biome
+bun run sonar                # Sonar-style rules locally (Cognitive Complexity, ...)
+bun run sonar:fix            # auto-fix the fixable Sonar issues
 bun test packages            # unit tests (registry-core, ...)
 
 bun run --filter @brika/store-web dev     # the marketplace (vite dev)

@@ -31,9 +31,17 @@ export type PublishResult =
 
 export type PublishErrorCode = "forbidden" | "invalid" | "exists" | "too_large";
 
-/** Manifest/data gate. Injected so `@brika/schema` remains the single source. */
+/**
+ * Manifest/data gate. Validates the published manifest AND any localized store
+ * files bundled in the tarball (`locales/<lang>/store.json`). Injected so
+ * `@brika/schema` remains the single source of truth and the domain core stays
+ * free of schema imports.
+ */
 export interface ManifestValidator {
-  validate(manifest: Record<string, unknown>): { ok: true } | { ok: false; message: string };
+  validate(
+    manifest: Record<string, unknown>,
+    tarball: Uint8Array,
+  ): Promise<{ ok: true } | { ok: false; message: string }>;
 }
 
 /** Ownership gate: may this identity publish this package? */
@@ -110,8 +118,8 @@ export class PublishService {
       };
     }
 
-    // 3. Manifest/data gate (required metadata etc.).
-    const valid = this.#validator.validate(input.manifest);
+    // 3. Manifest/data gate (required metadata, bundled locale files, etc.).
+    const valid = await this.#validator.validate(input.manifest, input.tarball);
     if (!valid.ok) return { ok: false, code: "invalid", message: valid.message };
 
     // 4. Immutability: never overwrite an existing version.

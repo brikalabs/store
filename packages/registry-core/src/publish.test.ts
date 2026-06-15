@@ -39,9 +39,9 @@ const allow: OwnershipPolicy = { canPublish: () => Promise.resolve({ ok: true })
 const deny: OwnershipPolicy = {
   canPublish: () => Promise.resolve({ ok: false, message: "not your scope" }),
 };
-const validManifest: ManifestValidator = { validate: () => ({ ok: true }) };
+const validManifest: ManifestValidator = { validate: () => Promise.resolve({ ok: true }) };
 const invalidManifest: ManifestValidator = {
-  validate: () => ({ ok: false, message: "icon required" }),
+  validate: () => Promise.resolve({ ok: false, message: "icon required" }),
 };
 
 const input: PublishInput = {

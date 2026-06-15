@@ -48,7 +48,20 @@ const NpmVersionManifest = z.object({
   repository: NpmRepository.optional(),
   author: NpmPerson.optional(),
   icon: z.string().optional(),
-  screenshots: z.array(z.string()).optional(),
+  // Screenshots are objects `{ src, caption?, alt? }` (current schema); plain
+  // string paths are still accepted for manifests published before that change.
+  screenshots: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          src: z.string(),
+          caption: z.string().optional(),
+          alt: z.string().optional(),
+        }),
+      ]),
+    )
+    .optional(),
   readme: LocalizedDoc.optional(),
   changelog: LocalizedDoc.optional(),
   grants: z.record(z.string(), z.unknown()).optional(),
@@ -59,6 +72,7 @@ const NpmVersionManifest = z.object({
   pages: z.array(z.unknown()).optional(),
   deprecated: z.string().optional(),
 });
+type VersionManifest = z.infer<typeof NpmVersionManifest>;
 
 const Packument = z.object({
   name: z.string(),
@@ -174,6 +188,41 @@ export async function getWeeklyDownloads(name: string): Promise<number> {
 }
 
 /**
+ * Resolve the author shown on a plugin. The stable id is the npm maintainer
+ * username (used for profiles + maintainer search); the display name falls back
+ * to the manifest/packument author field.
+ */
+function resolveAuthor(manifest: VersionManifest, pkg: Packument) {
+  const authorName = personName(manifest.author ?? pkg.author);
+  const authorId = personName(pkg.maintainers?.[0]) ?? authorName;
+  return authorId === undefined ? undefined : { id: authorId, name: authorName, verified: false };
+}
+
+/** Count each capability kind a manifest declares (absent arrays count as 0). */
+function capabilityCounts(manifest: VersionManifest) {
+  return {
+    tools: manifest.tools?.length ?? 0,
+    blocks: manifest.blocks?.length ?? 0,
+    bricks: manifest.bricks?.length ?? 0,
+    sparks: manifest.sparks?.length ?? 0,
+    pages: manifest.pages?.length ?? 0,
+  };
+}
+
+/** Map declared screenshots to CDN-backed `{ url, caption?, alt? }` entries. */
+function mapScreenshots(
+  name: string,
+  version: string,
+  screenshots: VersionManifest["screenshots"],
+) {
+  return (screenshots ?? []).map((shot) =>
+    typeof shot === "string"
+      ? { url: cdnFileUrl(name, version, shot) }
+      : { url: cdnFileUrl(name, version, shot.src), caption: shot.caption, alt: shot.alt },
+  );
+}
+
+/**
  * Map a packument to a `PluginDetail`. Returns null when the latest version is
  * not a Brika plugin (no `engines.brika`), so callers can skip non-plugins.
  */
@@ -185,33 +234,21 @@ export function toPluginDetail(pkg: Packument, downloadsWeekly: number): PluginD
   const brikaEngine = manifest.engines?.brika;
   if (brikaEngine === undefined) return null;
 
-  // The stable id is the npm maintainer username (used for profiles + maintainer
-  // search); the display name falls back to the author field.
-  const authorName = personName(manifest.author ?? pkg.author);
-  const maintainerId = personName(pkg.maintainers?.[0]);
-  const authorId = maintainerId ?? authorName;
   const candidate = {
     name: pkg.name,
     displayName: manifest.displayName,
     description: manifest.description ?? pkg.description,
     version: latest,
-    author:
-      authorId === undefined ? undefined : { id: authorId, name: authorName, verified: false },
+    author: resolveAuthor(manifest, pkg),
     keywords: manifest.keywords ?? [],
     iconUrl: manifest.icon ? cdnFileUrl(pkg.name, latest, manifest.icon) : undefined,
-    screenshots: (manifest.screenshots ?? []).map((path) => cdnFileUrl(pkg.name, latest, path)),
+    screenshots: mapScreenshots(pkg.name, latest, manifest.screenshots),
     downloadsWeekly,
     brikaEngine,
     repository: repoUrl(manifest.repository ?? pkg.repository),
     homepage: manifest.homepage ?? pkg.homepage,
     license: manifest.license ?? pkg.license,
-    capabilities: {
-      tools: manifest.tools?.length ?? 0,
-      blocks: manifest.blocks?.length ?? 0,
-      bricks: manifest.bricks?.length ?? 0,
-      sparks: manifest.sparks?.length ?? 0,
-      pages: manifest.pages?.length ?? 0,
-    },
+    capabilities: capabilityCounts(manifest),
     grants: manifest.grants ?? {},
     publishedAt: pkg.time?.created,
     updatedAt: pkg.time?.[latest],

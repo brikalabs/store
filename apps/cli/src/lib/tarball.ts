@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import { CliError } from "@brika/cli-kit";
 import { sha1Hex, sha512Integrity } from "@brika/registry-core";
+import { storeLocaleOf } from "@brika/schema/store";
 
 /**
  * Pack a package directory into an npm-compatible tarball entirely in-process:
@@ -18,6 +19,12 @@ export interface PackedFile {
   readonly size: number;
 }
 
+/** A bundled `locales/<lang>/store.json` file, decoded for schema validation. */
+export interface LocaleFile {
+  readonly path: string;
+  readonly text: string;
+}
+
 export interface Packed {
   readonly name: string;
   readonly version: string;
@@ -31,6 +38,8 @@ export interface Packed {
   readonly size: number;
   readonly unpackedSize: number;
   readonly files: readonly PackedFile[];
+  /** The localized store-metadata files included in the tarball, for validation. */
+  readonly localeFiles: readonly LocaleFile[];
 }
 
 const BLOCK = 512;
@@ -176,6 +185,11 @@ export async function packDirectory(dir: string): Promise<Packed> {
   const tarball = new Uint8Array(gzipSync(buildTar(entries), { level: 9 }));
   const [integrity, shasum] = await Promise.all([sha512Integrity(tarball), sha1Hex(tarball)]);
 
+  const decoder = new TextDecoder();
+  const localeFiles = entries
+    .filter((entry) => storeLocaleOf(entry.path) !== null)
+    .map((entry) => ({ path: entry.path, text: decoder.decode(entry.data) }));
+
   return {
     name,
     version,
@@ -187,5 +201,6 @@ export async function packDirectory(dir: string): Promise<Packed> {
     size: tarball.byteLength,
     unpackedSize: entries.reduce((sum, entry) => sum + entry.data.byteLength, 0),
     files: entries.map((entry) => ({ path: entry.path, size: entry.data.byteLength })),
+    localeFiles,
   };
 }

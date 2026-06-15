@@ -1,6 +1,6 @@
-import { env } from "cloudflare:workers";
 import { createFileRoute } from "@tanstack/react-router";
 import { returnCookie, safeReturnPath, stateCookie } from "../lib/auth";
+import { vars } from "../lib/env";
 import { authorizeUrl } from "../lib/github";
 
 /** `GET /auth/github`: start the GitHub OAuth flow. A `?return=<path>` is
@@ -13,7 +13,8 @@ export const Route = createFileRoute("/auth/github")({
         const url = new URL(request.url);
         const state = crypto.randomUUID();
         const secure = url.protocol === "https:";
-        const location = authorizeUrl(env.GITHUB_CLIENT_ID, env.GITHUB_REDIRECT_URI, state);
+        const { GITHUB_CLIENT_ID, GITHUB_REDIRECT_URI } = vars();
+        const location = authorizeUrl(GITHUB_CLIENT_ID, GITHUB_REDIRECT_URI, state);
         const headers = new Headers({ location });
         headers.append("set-cookie", stateCookie(state, secure));
         headers.append(

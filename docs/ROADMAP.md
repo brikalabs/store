@@ -20,7 +20,7 @@ Status of the platform and the precise next steps. Legend: ✅ done and verified
 | Registry M3: hub scoped-registry install | ⬜ |
 | Registry M4: store reads registry data for `@brika` | ⬜ |
 | brika CLI: `auth login` / `publish` / `install` (brika repo) | ⬜ |
-| `@brika/schema`: per-locale metadata format (brika repo) | ⬜ |
+| `@brika/schema`: per-locale metadata format + publish-gate validation | ✅ |
 | Deploy + GitHub OAuth app + OIDC trusted publishing | 🔑 |
 
 ## Store (store.brika.dev)
@@ -67,10 +67,13 @@ Largely built. Remaining:
   SecretStore keychain), `brika auth logout`, `brika publish` (build the tarball,
   auto-detect CI/OIDC vs keychain token, upload), `brika install` (write the
   scoped-registry config).
-- ⬜ **`@brika/schema`**: add the per-locale store metadata (assets in
-  `package.json`: `icon` required, `screenshots` optional; localized text in
-  `locales/<lang>/store.json`: `title`, `description`). Required at publish: icon
-  + title + description. The registry's `ManifestValidator` wraps these checks.
+- ✅ **`@brika/schema`**: per-locale store metadata (assets in `package.json`:
+  `icon` required, `screenshots` optional as `{ src, caption?, alt? }[]`;
+  localized text in `locales/<lang>/store.json`: `title`, `description`,
+  `screenshotCaptions?`). Required at publish: icon + title + description. Both
+  `brika publish`/`pack` and the registry's `/-/publish` gate validate every
+  bundled locale file against `StoreLocaleSchema` (the gate untars via
+  `readTarGzEntries`). Serving localized copy to the storefront is M4.
 - ⬜ **Hub** (`apps/hub`): `RemoteRegistrySource` is already added (federation);
   add the `@brika:registry` install config.
 

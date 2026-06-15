@@ -31,54 +31,69 @@ export function useIconPalette(iconUrl: string | undefined, seed: string): Gradi
   return gradient;
 }
 
+/** Draw the icon to a tiny canvas and read back its RGBA pixels (null if 2D unsupported). */
+function readIconPixels(img: HTMLImageElement): Uint8ClampedArray | null {
+  const size = 24;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, size, size);
+  return ctx.getImageData(0, 0, size, size).data;
+}
+
+/**
+ * Pick a representative color from RGBA pixels: the most saturated meaningful
+ * pixel when the icon has color, otherwise the average. Transparent, near-white,
+ * and near-black pixels are ignored. Null when nothing meaningful remains.
+ */
+function dominantColor(data: Uint8ClampedArray): { r: number; g: number; b: number } | null {
+  let sumR = 0;
+  let sumG = 0;
+  let sumB = 0;
+  let count = 0;
+  let bestSat = 0;
+  let satR = 0;
+  let satG = 0;
+  let satB = 0;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i] as number;
+    const g = data[i + 1] as number;
+    const b = data[i + 2] as number;
+    const a = data[i + 3] as number;
+    if (a < 128) continue;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    if (max > 240 && min > 240) continue; // near-white
+    if (max < 24) continue; // near-black
+    sumR += r;
+    sumG += g;
+    sumB += b;
+    count += 1;
+    const sat = max - min;
+    if (sat > bestSat) {
+      bestSat = sat;
+      satR = r;
+      satG = g;
+      satB = b;
+    }
+  }
+
+  if (count === 0) return null;
+  return bestSat > 40
+    ? { r: satR, g: satG, b: satB }
+    : { r: sumR / count, g: sumG / count, b: sumB / count };
+}
+
 function extractGradient(img: HTMLImageElement): Gradient | null {
   try {
-    const size = 24;
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, size, size);
-    const { data } = ctx.getImageData(0, 0, size, size);
-
-    let sumR = 0;
-    let sumG = 0;
-    let sumB = 0;
-    let count = 0;
-    let bestSat = 0;
-    let satR = 0;
-    let satG = 0;
-    let satB = 0;
-
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i] as number;
-      const g = data[i + 1] as number;
-      const b = data[i + 2] as number;
-      const a = data[i + 3] as number;
-      if (a < 128) continue;
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-      if (max > 240 && min > 240) continue; // near-white
-      if (max < 24) continue; // near-black
-      sumR += r;
-      sumG += g;
-      sumB += b;
-      count += 1;
-      const sat = max - min;
-      if (sat > bestSat) {
-        bestSat = sat;
-        satR = r;
-        satG = g;
-        satB = b;
-      }
-    }
-
-    if (count === 0) return null;
-    const useSaturated = bestSat > 40;
-    const r = useSaturated ? satR : sumR / count;
-    const g = useSaturated ? satG : sumG / count;
-    const b = useSaturated ? satB : sumB / count;
+    const data = readIconPixels(img);
+    if (!data) return null;
+    const color = dominantColor(data);
+    if (!color) return null;
+    const { r, g, b } = color;
     return [shift(r, g, b, 1.15, 22), shift(r, g, b, 0.72, 0)];
   } catch {
     // canvas tainted by a non-CORS image; keep the hash fallback.
