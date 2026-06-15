@@ -250,5 +250,5 @@ export function docLocales(doc: LocalizedDoc | undefined): string[] {
 /** Pick the path for a locale: requested -> `en` -> the first declared. */
 export function pickDocPath(doc: LocalizedDoc | undefined, locale?: string): string | undefined {
   if (doc === undefined || typeof doc === "string") return doc;
-  return (locale !== undefined ? doc[locale] : undefined) ?? doc.en ?? Object.values(doc)[0];
+  return (locale === undefined ? undefined : doc[locale]) ?? doc.en ?? Object.values(doc)[0];
 }

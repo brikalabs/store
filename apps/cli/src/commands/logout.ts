@@ -13,6 +13,6 @@ export const logout = defineCommand({
       await new RegistryClient(registryUrl(config)).revokeToken(token);
     }
     await clearToken();
-    p.log.success(token !== undefined ? "Logged out (token revoked)." : "Logged out.");
+    p.log.success(token === undefined ? "Logged out." : "Logged out (token revoked).");
   },
 });

@@ -138,27 +138,13 @@ function tarHeader(path: string, size: number): Uint8Array {
 
 function buildTar(entries: readonly { path: string; data: Uint8Array }[]): Uint8Array {
   const blocks: Uint8Array[] = [];
-  let total = 0;
   for (const entry of entries) {
-    const header = tarHeader(`package/${entry.path}`, entry.data.byteLength);
-    blocks.push(header, entry.data);
-    total += header.byteLength + entry.data.byteLength;
+    blocks.push(tarHeader(`package/${entry.path}`, entry.data.byteLength), entry.data);
     const padding = (BLOCK - (entry.data.byteLength % BLOCK)) % BLOCK;
-    if (padding > 0) {
-      blocks.push(new Uint8Array(padding));
-      total += padding;
-    }
+    if (padding > 0) blocks.push(new Uint8Array(padding));
   }
   blocks.push(new Uint8Array(BLOCK * 2)); // two zero blocks terminate the archive
-  total += BLOCK * 2;
-
-  const tar = new Uint8Array(total);
-  let offset = 0;
-  for (const block of blocks) {
-    tar.set(block, offset);
-    offset += block.byteLength;
-  }
-  return tar;
+  return new Uint8Array(Bun.concatArrayBuffers(blocks));
 }
 
 function tarballName(name: string, version: string): string {

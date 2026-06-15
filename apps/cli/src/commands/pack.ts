@@ -1,8 +1,6 @@
 import { defineCommand } from "@brika/cli-kit";
 import * as p from "@brika/cli-kit/prompts";
-import { packDirectory } from "../lib/tarball";
-import { printSummary } from "./summary";
-import { assertPublishable } from "./validate";
+import { prepare } from "./prepare";
 
 export const pack = defineCommand({
   name: "pack",
@@ -12,9 +10,7 @@ export const pack = defineCommand({
   },
   examples: ["brika pack ./my-plugin"],
   async handler({ args }) {
-    const packed = await packDirectory(args.dir);
-    assertPublishable(packed);
-    printSummary(packed);
+    const packed = await prepare(args.dir);
     await Bun.write(packed.filename, packed.tarball);
     p.log.success(`Wrote ${packed.filename}`);
   },

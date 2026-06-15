@@ -87,7 +87,7 @@ function handleCliError(error: unknown): never {
   if (error instanceof CliError) {
     console.error(error.message);
   } else {
-    console.error(`${pc.red("Error:")} ${error instanceof Error ? error.message : error}`);
+    console.error(`${pc.red("Error:")} ${error instanceof Error ? error.message : String(error)}`);
   }
   process.exit(1);
 }

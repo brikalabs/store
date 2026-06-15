@@ -2,9 +2,7 @@ import { CliError, defineCommand } from "@brika/cli-kit";
 import * as p from "@brika/cli-kit/prompts";
 import { authToken, loadConfig, registryUrl } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
-import { packDirectory } from "../lib/tarball";
-import { printSummary } from "./summary";
-import { assertPublishable } from "./validate";
+import { prepare } from "./prepare";
 
 export const publish = defineCommand({
   name: "publish",
@@ -22,16 +20,13 @@ export const publish = defineCommand({
   },
   examples: ["brika publish ./my-plugin", "brika publish --dry-run"],
   async handler({ values, args }) {
-    const config = await loadConfig();
-    const packed = await packDirectory(args.dir);
-    assertPublishable(packed);
-    printSummary(packed);
-
+    const packed = await prepare(args.dir);
     if (values.dryRun) {
       p.log.info("Dry run: validated and packed, not published.");
       return;
     }
 
+    const config = await loadConfig();
     const token = authToken(config);
     if (token === undefined) {
       throw new CliError("not logged in - run `brika login` (or set BRIKA_TOKEN)");
@@ -47,7 +42,7 @@ export const publish = defineCommand({
     });
     if (!result.ok) {
       spin.stop("Publish rejected");
-      const code = result.code !== undefined ? ` ${result.code}` : "";
+      const code = result.code === undefined ? "" : ` ${result.code}`;
       throw new CliError(`publish rejected (${result.status}${code}): ${result.error}`);
     }
     // The registry recomputes integrity from the bytes it received; confirm it

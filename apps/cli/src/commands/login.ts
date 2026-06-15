@@ -3,8 +3,6 @@ import * as p from "@brika/cli-kit/prompts";
 import { loadConfig, registryUrl, saveConfig } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
 
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
 export const login = defineCommand({
   name: "login",
   description: "Authorize this machine (GitHub device flow)",
@@ -23,7 +21,7 @@ export const login = defineCommand({
     const deadline = Date.now() + device.expires_in * 1000;
     let interval = device.interval;
     while (Date.now() < deadline) {
-      await sleep(interval * 1000);
+      await Bun.sleep(interval * 1000);
       const poll = await client.pollDeviceToken(device.device_code);
       if (poll.status === "ok") {
         await saveConfig({ registry, token: poll.token, githubLogin: poll.githubLogin });
