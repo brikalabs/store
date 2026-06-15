@@ -94,6 +94,9 @@ export class RegistryClient {
       await Bun.sleep(interval * 1000);
       const res = await this.#postJson("/-/device/token", { device_code: device.device_code });
       const body = await this.#parse(res, DeviceTokenSchema);
+
+      // RFC 8628 outcomes: a token (approved), `authorization_pending` (keep
+      // waiting), `slow_down` (poll less often), or any other error (give up).
       if (res.ok && body.access_token !== undefined) {
         return { token: body.access_token, githubLogin: body.github_login ?? "unknown" };
       }
@@ -124,11 +127,8 @@ export class RegistryClient {
 
   /** POST a JSON body, optionally bearer-authed. */
   #postJson(path: string, body: unknown, token?: string): Promise<Response> {
-    return this.#send(path, {
-      method: "POST",
-      headers: token === undefined ? JSON_HEADERS : { ...JSON_HEADERS, ...bearer(token) },
-      body: JSON.stringify(body),
-    });
+    const headers = token === undefined ? JSON_HEADERS : { ...JSON_HEADERS, ...bearer(token) };
+    return this.#send(path, { method: "POST", headers, body: JSON.stringify(body) });
   }
 
   /** Fetch with a timeout, mapping transport failures to CliError. */
