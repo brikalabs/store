@@ -1,10 +1,43 @@
 #!/usr/bin/env bun
 import { RegistryPublishSchema } from "@brika/schema/store";
 import { authToken, loadConfig, logout, registryUrl, saveConfig } from "./config";
-import { packDirectory } from "./pack";
+import { type Packed, packDirectory } from "./pack";
 import { pollDeviceToken, publishVersion, requestDeviceCode, revokeToken } from "./registry";
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+}
+
+/** Show exactly what a publish would upload: digests, sizes, and the file list. */
+function printSummary(packed: Packed): void {
+  console.log(`\n${packed.name}@${packed.version}`);
+  console.log(`  tarball    ${packed.filename}`);
+  console.log(
+    `  size       ${formatBytes(packed.size)} packed / ${formatBytes(packed.unpackedSize)} unpacked`,
+  );
+  console.log(`  integrity  ${packed.integrity}`);
+  console.log(`  shasum     ${packed.shasum}`);
+  console.log(`  files (${packed.files.length})`);
+  for (const file of packed.files) {
+    console.log(`    ${file.path}  (${formatBytes(file.size)})`);
+  }
+}
+
+/** Validate a packed manifest against the published-plugin contract. */
+function validate(packed: Packed): boolean {
+  const check = RegistryPublishSchema.safeParse(packed.manifest);
+  if (check.success) return true;
+  console.error(`\n${packed.name} is not a publishable Brika plugin:`);
+  for (const issue of check.error.issues) {
+    const where = issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
+    console.error(`  - ${where}${issue.message}`);
+  }
+  return false;
+}
 
 async function cmdLogin(): Promise<number> {
   const config = await loadConfig();
@@ -35,43 +68,55 @@ async function cmdLogin(): Promise<number> {
   return 1;
 }
 
-async function cmdPublish(dir: string): Promise<number> {
+async function cmdPack(dir: string): Promise<number> {
+  const packed = await packDirectory(dir);
+  if (!validate(packed)) return 1;
+  printSummary(packed);
+  await Bun.write(packed.filename, packed.tarball);
+  console.log(`\nWrote ${packed.filename}`);
+  return 0;
+}
+
+async function cmdPublish(dir: string, dryRun: boolean): Promise<number> {
   const config = await loadConfig();
   const registry = registryUrl(config);
+  const packed = await packDirectory(dir);
+  if (!validate(packed)) return 1;
+  printSummary(packed);
+
+  if (dryRun) {
+    console.log("\nDry run: validated and packed, not published.");
+    return 0;
+  }
+
   const token = authToken(config);
   if (token === undefined) {
-    console.error("Not logged in. Run `brika login` (or set BRIKA_TOKEN).");
+    console.error("\nNot logged in. Run `brika login` (or set BRIKA_TOKEN).");
     return 1;
   }
 
-  const packed = await packDirectory(dir);
-  // Validate against the published-plugin contract before uploading, so manifest
-  // problems are reported locally instead of as a 400 from the registry.
-  const check = RegistryPublishSchema.safeParse(packed.manifest);
-  if (!check.success) {
-    console.error(`\n${packed.name} is not a publishable Brika plugin:`);
-    for (const issue of check.error.issues) {
-      const where = issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
-      console.error(`  - ${where}${issue.message}`);
-    }
-    return 1;
-  }
-
-  const sizeKb = (packed.tarball.byteLength / 1024).toFixed(1);
-  console.log(`Publishing ${packed.name}@${packed.version} (${sizeKb} KiB) to ${registry} ...`);
+  console.log(`\nPublishing to ${registry} ...`);
   const outcome = await publishVersion(registry, token, {
     name: packed.name,
     version: packed.version,
     manifest: packed.manifest,
     tarballBase64: Buffer.from(packed.tarball).toString("base64"),
   });
-  if (outcome.ok) {
-    console.log(`\n+ ${packed.name}@${packed.version}\n  ${outcome.integrity}`);
-    return 0;
+  if (!outcome.ok) {
+    const code = outcome.code !== undefined ? ` ${outcome.code}` : "";
+    console.error(`\nPublish rejected (${outcome.status}${code}): ${outcome.error}`);
+    return 1;
   }
-  const code = outcome.code !== undefined ? ` ${outcome.code}` : "";
-  console.error(`\nPublish rejected (${outcome.status}${code}): ${outcome.error}`);
-  return 1;
+  // The registry recomputes integrity from the bytes it received; confirm it
+  // matches what we packed, so a corrupted upload is never accepted silently.
+  if (outcome.integrity !== packed.integrity) {
+    console.error(
+      `\nIntegrity mismatch: packed ${packed.integrity}, registry stored ${outcome.integrity}.`,
+    );
+    return 1;
+  }
+  console.log(`\n+ ${packed.name}@${packed.version}\n  integrity verified: ${outcome.integrity}`);
+  return 0;
 }
 
 async function cmdWhoami(): Promise<number> {
@@ -100,10 +145,12 @@ function usage(): void {
   console.log(`brika - publish Brika plugins to the registry
 
 Usage:
-  brika login            Authorize this machine (GitHub device flow)
-  brika publish [dir]    Pack and publish the plugin in [dir] (default: .)
-  brika whoami           Show the current login
-  brika logout           Remove the saved token
+  brika login                Authorize this machine (GitHub device flow)
+  brika pack [dir]           Pack the plugin and write/inspect the tarball
+  brika publish [dir]        Pack, validate, and publish (default dir: .)
+  brika publish --dry-run    Pack and validate without publishing
+  brika whoami               Show the current login
+  brika logout               Revoke the token and remove it locally
 
 Env:
   BRIKA_REGISTRY   Registry URL (default https://registry.brika.dev)
@@ -112,11 +159,15 @@ Env:
 
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
+  const positional = rest.filter((arg) => !arg.startsWith("-"));
+  const dryRun = rest.includes("--dry-run") || rest.includes("-n");
   switch (command) {
     case "login":
       return cmdLogin();
+    case "pack":
+      return cmdPack(positional[0] ?? process.cwd());
     case "publish":
-      return cmdPublish(rest[0] ?? process.cwd());
+      return cmdPublish(positional[0] ?? process.cwd(), dryRun);
     case "whoami":
       return cmdWhoami();
     case "logout":

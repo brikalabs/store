@@ -11,10 +11,12 @@ GitHub identity instead of npm accounts.
 ## Usage
 
 ```sh
-brika login            # authorize this machine via the GitHub device flow
-brika publish [dir]    # pack + publish the plugin in [dir] (default: .)
-brika whoami           # show the current login
-brika logout           # revoke the token on the registry and remove it locally
+brika login                # authorize this machine via the GitHub device flow
+brika pack [dir]           # pack + write the tarball and print its contents
+brika publish [dir]        # pack, validate, and publish (default: .)
+brika publish --dry-run    # pack + validate without publishing
+brika whoami               # show the current login
+brika logout               # revoke the token on the registry and remove it locally
 ```
 
 `brika login` prints a short code and a URL on `store.brika.dev`; approve it
@@ -24,9 +26,12 @@ there (signed in with GitHub) and the CLI stores a 90-day publish token in
 
 `brika publish` packs the directory with `npm pack`, validates the `package.json`
 against the published-plugin contract (`@brika/schema`: a valid plugin manifest
-plus `icon`, `displayName`, and `description`), then `POST`s it to `/-/publish`.
-A scope is claimed by its first publisher; later versions must come from the same
-GitHub identity. Versions are immutable.
+plus `icon`, `displayName`, and `description`), prints the tarball contents and
+digests, then `POST`s it to `/-/publish` and checks that the integrity the
+registry stored matches what was packed. Use `brika pack` or
+`brika publish --dry-run` to inspect exactly what would be uploaded first. A
+scope is claimed by its first publisher; later versions must come from the same
+GitHub identity, and versions are immutable.
 
 ## Environment
 

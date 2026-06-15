@@ -3,20 +3,40 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
 /**
- * Pack a package directory into an npm-compatible tarball using `npm pack`,
- * so the bytes we publish are byte-identical to what npm/bun would produce
- * (respecting `files` / `.npmignore`).
+ * Pack a package directory into an npm-compatible tarball using `npm pack`, so
+ * the published bytes are byte-identical to what npm/bun would produce
+ * (respecting `files` / `.npmignore`). The digests and file list come straight
+ * from npm's `--json` report, so `brika pack` and `brika publish --dry-run` can
+ * show exactly what a publish will upload before it happens.
  */
+
+export interface PackedFile {
+  readonly path: string;
+  readonly size: number;
+}
 
 export interface Packed {
   readonly name: string;
   readonly version: string;
   readonly manifest: Record<string, unknown>;
   readonly tarball: Uint8Array;
+  readonly filename: string;
+  /** Subresource Integrity (`sha512-<base64>`); compared against the registry's. */
+  readonly integrity: string;
+  readonly shasum: string;
+  /** Packed (gzipped) size in bytes. */
+  readonly size: number;
+  readonly unpackedSize: number;
+  readonly files: readonly PackedFile[];
 }
 
 interface NpmPackEntry {
   readonly filename: string;
+  readonly integrity: string;
+  readonly shasum: string;
+  readonly size: number;
+  readonly unpackedSize: number;
+  readonly files: readonly { readonly path: string; readonly size: number }[];
 }
 
 export async function packDirectory(dir: string): Promise<Packed> {
@@ -41,11 +61,22 @@ export async function packDirectory(dir: string): Promise<Packed> {
       const stderr = await new Response(proc.stderr).text();
       throw new Error(`npm pack failed: ${stderr.trim() || "non-zero exit"}`);
     }
-    const entries = JSON.parse(stdout) as NpmPackEntry[];
-    const filename = entries[0]?.filename;
-    if (filename === undefined) throw new Error("npm pack produced no tarball");
-    const tarball = new Uint8Array(await readFile(join(dest, basename(filename))));
-    return { name, version, manifest, tarball };
+    const entry = (JSON.parse(stdout) as NpmPackEntry[])[0];
+    if (entry === undefined) throw new Error("npm pack produced no tarball");
+    const filename = basename(entry.filename);
+    const tarball = new Uint8Array(await readFile(join(dest, filename)));
+    return {
+      name,
+      version,
+      manifest,
+      tarball,
+      filename,
+      integrity: entry.integrity,
+      shasum: entry.shasum,
+      size: entry.size,
+      unpackedSize: entry.unpackedSize,
+      files: entry.files.map((file) => ({ path: file.path, size: file.size })),
+    };
   } finally {
     await rm(dest, { recursive: true, force: true });
   }
