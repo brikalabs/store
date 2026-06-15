@@ -2,7 +2,7 @@
 import { RegistryPublishSchema } from "@brika/schema/store";
 import { authToken, loadConfig, logout, registryUrl, saveConfig } from "./config";
 import { packDirectory } from "./pack";
-import { pollDeviceToken, publishVersion, requestDeviceCode } from "./registry";
+import { pollDeviceToken, publishVersion, requestDeviceCode, revokeToken } from "./registry";
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -84,6 +84,18 @@ async function cmdWhoami(): Promise<number> {
   return 0;
 }
 
+async function cmdLogout(): Promise<number> {
+  const config = await loadConfig();
+  const token = authToken(config);
+  if (token !== undefined) {
+    // Best-effort server-side revoke; clear the local token regardless of the result.
+    await revokeToken(registryUrl(config), token).catch(() => {});
+  }
+  await logout();
+  console.log(token !== undefined ? "Logged out (token revoked)." : "Logged out.");
+  return 0;
+}
+
 function usage(): void {
   console.log(`brika - publish Brika plugins to the registry
 
@@ -108,9 +120,7 @@ async function main(): Promise<number> {
     case "whoami":
       return cmdWhoami();
     case "logout":
-      await logout();
-      console.log("Logged out.");
-      return 0;
+      return cmdLogout();
     case undefined:
     case "help":
     case "-h":

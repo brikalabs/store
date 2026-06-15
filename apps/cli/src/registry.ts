@@ -43,6 +43,14 @@ export async function pollDeviceToken(registry: string, deviceCode: string): Pro
   return { status: "error", error: body.error ?? `device token failed (${res.status})` };
 }
 
+/** Revoke a publish token server-side. Best-effort; the CLI clears locally regardless. */
+export async function revokeToken(registry: string, token: string): Promise<void> {
+  await fetch(`${registry}/-/token/revoke`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}` },
+  });
+}
+
 export interface PublishRequest {
   readonly name: string;
   readonly version: string;

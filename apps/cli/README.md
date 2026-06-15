@@ -14,12 +14,13 @@ GitHub identity instead of npm accounts.
 brika login            # authorize this machine via the GitHub device flow
 brika publish [dir]    # pack + publish the plugin in [dir] (default: .)
 brika whoami           # show the current login
-brika logout           # remove the saved token
+brika logout           # revoke the token on the registry and remove it locally
 ```
 
 `brika login` prints a short code and a URL on `store.brika.dev`; approve it
 there (signed in with GitHub) and the CLI stores a 90-day publish token in
-`~/.brika/config.json` (owner-only).
+`~/.config/brika/config.json` (owner-only, honoring `XDG_CONFIG_HOME`).
+`brika logout` revokes that token on the registry and removes it locally.
 
 `brika publish` packs the directory with `npm pack`, validates the `package.json`
 against the published-plugin contract (`@brika/schema`: a valid plugin manifest

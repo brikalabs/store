@@ -38,6 +38,12 @@ export async function issueToken(db: Db, githubLogin: string): Promise<string> {
   return token;
 }
 
+/** Revoke a token by deleting its row. A no-op (still resolves) for unknown tokens. */
+export async function revokeToken(db: Db, token: string): Promise<void> {
+  if (!token.startsWith(TOKEN_PREFIX)) return;
+  await db.delete(regTokens).where(eq(regTokens.tokenHash, await hashToken(token)));
+}
+
 export async function verifyToken(db: Db, token: string): Promise<{ githubLogin: string } | null> {
   if (!token.startsWith(TOKEN_PREFIX)) return null;
   const rows = await db

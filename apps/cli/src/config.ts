@@ -15,7 +15,9 @@ export interface CliConfig {
   readonly githubLogin?: string;
 }
 
-const configDir = (): string => join(homedir(), ".brika");
+// Respect XDG on Linux (~/.config/brika), falling back to ~/.config elsewhere.
+const configDir = (): string =>
+  join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "brika");
 const configFile = (): string => join(configDir(), "config.json");
 
 /** Effective registry URL: `BRIKA_REGISTRY` wins, then saved config. */

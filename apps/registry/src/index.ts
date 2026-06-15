@@ -4,6 +4,7 @@ import { getDb } from "@brika/store-db";
 import { type Context, Hono } from "hono";
 import { D1MetadataReader } from "./adapters/d1-metadata";
 import { R2TarballReader } from "./adapters/r2-tarball";
+import { revokeToken } from "./adapters/token";
 import { handleDeviceCode, handleDeviceToken } from "./device";
 import { decodeSegment, parseTarballVersion } from "./npm-url";
 import { handlePublish } from "./publish";
@@ -61,6 +62,14 @@ app.get("/", (c) => c.json({ name: "Brika registry", protocol: "npm" }));
 app.post("/-/publish", (c) => handlePublish(c.req.raw));
 app.post("/-/device/code", () => handleDeviceCode());
 app.post("/-/device/token", (c) => handleDeviceToken(c.req.raw));
+
+// Revoke the presented publish token (used by `brika logout`). Idempotent.
+app.post("/-/token/revoke", async (c) => {
+  const authorization = c.req.header("authorization") ?? "";
+  if (!authorization.startsWith("Bearer ")) return c.json({ error: "Unauthorized" }, 401);
+  await revokeToken(getDb(env.DB), authorization.slice("Bearer ".length));
+  return c.json({ ok: true });
+});
 
 // Tarballs: `/-/` separates the package name from the filename.
 app.get("/:scope/:pkg/-/:file", (c) =>
