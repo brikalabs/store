@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { formatBytes } from "./output";
+import { formatBytes } from "./shared";
 
 test("formatBytes scales units", () => {
   expect(formatBytes(0)).toBe("0 B");

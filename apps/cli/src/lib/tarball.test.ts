@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
-import { packDirectory } from "./pack";
+import { packDirectory } from "./tarball";
 
 let dir: string;
 
