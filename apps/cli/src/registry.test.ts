@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CliError } from "./errors";
+import { CliError } from "@brika/cli-kit";
 import { type FetchLike, RegistryClient } from "./registry";
 
 const json = (body: unknown, status = 200): Response =>

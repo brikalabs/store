@@ -1,5 +1,5 @@
+import { CliError } from "@brika/cli-kit";
 import { z } from "zod";
-import { CliError } from "./errors";
 
 /**
  * Client for the registry's auth + publish endpoints. Installing is plain npm

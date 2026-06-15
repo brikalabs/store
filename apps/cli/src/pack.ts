@@ -1,8 +1,8 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
+import { CliError } from "@brika/cli-kit";
 import { sha1Hex, sha512Integrity } from "@brika/registry-core";
-import { CliError } from "./errors";
 
 /**
  * Pack a package directory into an npm-compatible tarball entirely in-process:

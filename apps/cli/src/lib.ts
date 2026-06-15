@@ -1,9 +1,16 @@
+import { type Cli, createCli } from "@brika/cli-kit";
+import { registryCommands } from "./commands";
+
 /**
- * Library entry for embedding. The standalone `brika` binary lives in
- * `src/index.ts`; the hub CLI imports `registryCommands` (and `runCli` /
- * `CommandSpec` / `CliError`) to merge these commands into its own CLI, either
- * flattened or mounted under a namespace such as `brika registry ...`.
+ * Library entry for embedding. The standalone `brika` binary (src/index.ts)
+ * calls `createRegistryCli().run()`; the hub CLI mounts the same commands with
+ * `createRegistryCli().toCommand("registry", "...")` so they run as
+ * `brika registry publish`, or imports `registryCommands` to add them directly.
  */
-export { type CommandSpec, runCli } from "./command";
 export { registryCommands } from "./commands";
-export { CliError } from "./errors";
+
+export function createRegistryCli(): Cli {
+  const cli = createCli({ name: "brika", defaultCommand: "help" });
+  for (const command of registryCommands) cli.addCommand(command);
+  return cli.addHelp();
+}

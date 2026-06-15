@@ -1,8 +1,7 @@
+import { CliError, type Command, defineCommand } from "@brika/cli-kit";
+import * as p from "@brika/cli-kit/prompts";
 import { RegistryPublishSchema } from "@brika/schema/store";
-import { parseCommandArgs } from "./args";
-import type { CommandSpec } from "./command";
 import { authToken, clearToken, loadConfig, registryUrl, saveConfig } from "./config";
-import { CliError } from "./errors";
 import { printSummary } from "./output";
 import { type Packed, packDirectory } from "./pack";
 import { RegistryClient } from "./registry";
@@ -22,20 +21,21 @@ function assertPublishable(packed: Packed): void {
   throw new CliError(`${packed.name} is not a publishable Brika plugin:\n${detail}`);
 }
 
-const login: CommandSpec = {
+const login = defineCommand({
   name: "login",
-  summary: "Authorize this machine (GitHub device flow)",
-  async run(argv) {
-    parseCommandArgs(argv, []);
+  description: "Authorize this machine (GitHub device flow)",
+  examples: ["brika login"],
+  async handler() {
     const config = await loadConfig();
     const registry = registryUrl(config);
     const client = new RegistryClient(registry);
-    const device = await client.requestDeviceCode();
-    console.log(
-      `\nTo authorize this machine, open:\n\n  ${device.verification_uri}\n\n` +
-        `and enter the code:\n\n  ${device.user_code}\n\nWaiting for approval...`,
-    );
 
+    p.intro("brika login");
+    const device = await client.requestDeviceCode();
+    p.note(`${device.verification_uri}\n\nCode:  ${device.user_code}`, "Authorize this device");
+
+    const spin = p.spinner();
+    spin.start("Waiting for approval");
     const deadline = Date.now() + device.expires_in * 1000;
     let interval = device.interval;
     while (Date.now() < deadline) {
@@ -43,44 +43,54 @@ const login: CommandSpec = {
       const poll = await client.pollDeviceToken(device.device_code);
       if (poll.status === "ok") {
         await saveConfig({ registry, token: poll.token, githubLogin: poll.githubLogin });
-        console.log(`\nLogged in as ${poll.githubLogin}.`);
+        spin.stop(`Logged in as ${poll.githubLogin}`);
+        p.outro("Done.");
         return;
       }
       if (poll.status === "slow_down") interval += 5;
-      if (poll.status === "error") throw new CliError(`login failed: ${poll.error}`);
+      if (poll.status === "error") {
+        spin.stop("Login failed");
+        throw new CliError(poll.error);
+      }
     }
+    spin.stop("Login timed out");
     throw new CliError("login timed out - run `brika login` again");
   },
-};
+});
 
-const pack: CommandSpec = {
+const pack = defineCommand({
   name: "pack",
-  summary: "Pack the plugin and write/inspect the tarball",
-  args: "[dir]",
-  async run(argv) {
-    const args = parseCommandArgs(argv, []);
-    const packed = await packDirectory(args.positional ?? process.cwd());
+  description: "Pack the plugin and write/inspect the tarball",
+  examples: ["brika pack ./my-plugin"],
+  async handler({ positionals }) {
+    const packed = await packDirectory(positionals[0] ?? process.cwd());
     assertPublishable(packed);
     printSummary(packed);
     await Bun.write(packed.filename, packed.tarball);
-    console.log(`\nWrote ${packed.filename}`);
+    p.log.success(`Wrote ${packed.filename}`);
   },
-};
+});
 
-const publish: CommandSpec = {
+const publish = defineCommand({
   name: "publish",
-  summary: "Pack, validate, and publish (--dry-run to verify only)",
-  args: "[dir]",
-  async run(argv) {
-    const args = parseCommandArgs(argv, ["--dry-run", "-n"]);
-    const dryRun = args.has("--dry-run") || args.has("-n");
+  description: "Pack, validate, and publish a plugin",
+  options: {
+    "dry-run": {
+      type: "boolean",
+      short: "n",
+      default: false,
+      description: "Validate and pack without publishing",
+    },
+  },
+  examples: ["brika publish ./my-plugin", "brika publish --dry-run"],
+  async handler({ values, positionals }) {
     const config = await loadConfig();
-    const packed = await packDirectory(args.positional ?? process.cwd());
+    const packed = await packDirectory(positionals[0] ?? process.cwd());
     assertPublishable(packed);
     printSummary(packed);
 
-    if (dryRun) {
-      console.log("\nDry run: validated and packed, not published.");
+    if (values.dryRun) {
+      p.log.info("Dry run: validated and packed, not published.");
       return;
     }
 
@@ -89,7 +99,8 @@ const publish: CommandSpec = {
       throw new CliError("not logged in - run `brika login` (or set BRIKA_TOKEN)");
     }
     const registry = registryUrl(config);
-    console.log(`\nPublishing to ${registry} ...`);
+    const spin = p.spinner();
+    spin.start(`Publishing to ${registry}`);
     const result = await new RegistryClient(registry).publish(token, {
       name: packed.name,
       version: packed.version,
@@ -97,48 +108,49 @@ const publish: CommandSpec = {
       tarballBase64: Buffer.from(packed.tarball).toString("base64"),
     });
     if (!result.ok) {
+      spin.stop("Publish rejected");
       const code = result.code !== undefined ? ` ${result.code}` : "";
       throw new CliError(`publish rejected (${result.status}${code}): ${result.error}`);
     }
     // The registry recomputes integrity from the bytes it received; confirm it
     // matches what we packed so a corrupted upload is never accepted silently.
     if (result.integrity !== packed.integrity) {
+      spin.stop("Integrity mismatch");
       throw new CliError(
         `integrity mismatch: packed ${packed.integrity}, registry stored ${result.integrity}`,
       );
     }
-    console.log(`\n+ ${packed.name}@${packed.version}\n  integrity verified: ${result.integrity}`);
+    spin.stop(`Published ${packed.name}@${packed.version}`);
+    p.log.success(`integrity verified: ${result.integrity}`);
   },
-};
+});
 
-const whoami: CommandSpec = {
+const whoami = defineCommand({
   name: "whoami",
-  summary: "Show the current login",
-  async run(argv) {
-    parseCommandArgs(argv, []);
+  description: "Show the current login",
+  async handler() {
     const config = await loadConfig();
     if (authToken(config) === undefined) {
-      console.log("Not logged in.");
+      p.log.info("Not logged in.");
       return;
     }
-    console.log(`${config.githubLogin ?? "logged in"} (${registryUrl(config)})`);
+    p.log.info(`${config.githubLogin ?? "logged in"} (${registryUrl(config)})`);
   },
-};
+});
 
-const logout: CommandSpec = {
+const logout = defineCommand({
   name: "logout",
-  summary: "Revoke the token and remove it locally",
-  async run(argv) {
-    parseCommandArgs(argv, []);
+  description: "Revoke the token and remove it locally",
+  async handler() {
     const config = await loadConfig();
     const token = authToken(config);
     if (token !== undefined) {
       await new RegistryClient(registryUrl(config)).revokeToken(token);
     }
     await clearToken();
-    console.log(token !== undefined ? "Logged out (token revoked)." : "Logged out.");
+    p.log.success(token !== undefined ? "Logged out (token revoked)." : "Logged out.");
   },
-};
+});
 
 /** The registry/publish command group. Exported so the hub CLI can mount it. */
-export const registryCommands: readonly CommandSpec[] = [login, pack, publish, whoami, logout];
+export const registryCommands: readonly Command[] = [login, pack, publish, whoami, logout];

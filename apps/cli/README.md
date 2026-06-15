@@ -24,7 +24,7 @@ there (signed in with GitHub) and the CLI stores a 90-day publish token in
 `~/.config/brika/config.json` (owner-only, honoring `XDG_CONFIG_HOME`).
 `brika logout` revokes that token on the registry and removes it locally.
 
-`brika publish` packs the directory with `bun` (no `npm` binary required) and
+`brika publish` builds the tarball in-process (no `npm`, no subprocess) and
 computes the `sha512` integrity with the same code the registry uses, validates
 the `package.json` against the published-plugin contract (`@brika/schema`: a valid plugin manifest
 plus `icon`, `displayName`, and `description`), prints the tarball contents and
@@ -43,20 +43,28 @@ GitHub identity, and versions are immutable.
 
 In CI, GitHub Actions OIDC is used instead of a token (audience `brika-registry`).
 
-## Embedding in another CLI
+## Built on @brika/cli-kit
 
-The commands are exported as a portable group, so the same code runs standalone
-(`brika …`) and can be merged into the hub's `brika` CLI:
+Commands are defined with `@brika/cli-kit` (`defineCommand` / `createCli`), the
+same framework the hub CLI uses, so the command syntax and `@clack/prompts` UX
+match. The standalone `brika` bin and the hub share one command group:
 
 ```ts
-import { registryCommands, runCli } from "@brika/registry-cli";
+import { createRegistryCli, registryCommands } from "@brika/registry-cli";
 
-// Run the group directly...
-await runCli(registryCommands, process.argv.slice(2));
-// ...or adapt each CommandSpec into the hub's own framework (e.g. under a
-// `registry` namespace, so `brika registry publish` works).
+// Standalone (what the `brika` bin runs):
+await createRegistryCli().run();
+
+// Merge flat, so `brika publish` / `brika login` are top-level hub commands:
+for (const command of registryCommands) hub.addCommand(command);
+
+// ...or namespace them as `brika registry publish`:
+hub.addCommand(createRegistryCli().toCommand("registry", "Brika plugin registry"));
 ```
 
-Each command parses its own argv and throws `CliError` instead of calling
-`process.exit`, so the host CLI owns the process lifecycle and output.
+Flat merge needs the command names (`publish`, `login`, ...) not to clash with the
+hub's; the namespace keeps them isolated. `addCommand` throws on a collision.
+
+> `@brika/cli-kit` is currently vendored under `packages/cli-kit`; swap it for the
+> published package once it ships.
 
