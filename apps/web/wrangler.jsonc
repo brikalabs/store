@@ -11,16 +11,11 @@
   // (and preview URLs) off so the store has a single public URL.
   "workers_dev": false,
   "preview_urls": false,
-  // store.brika.dev serves the site + /v1 contract.
-  // registry.brika.dev is kept for backwards compatibility: it serves the
-  // legacy /verified-plugins.json that already-installed hubs fetch.
+  // store.brika.dev serves the site + the /v1 contract. registry.brika.dev is
+  // owned by the separate brika-registry Worker (apps/registry, npm protocol).
   "routes": [
     {
       "pattern": "store.brika.dev",
-      "custom_domain": true
-    },
-    {
-      "pattern": "registry.brika.dev",
       "custom_domain": true
     }
   ],
