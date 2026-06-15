@@ -1,4 +1,10 @@
-export { type Cli, type CliConfig, createCli, type HelpFormatter } from "./cli";
+export {
+  type Cli,
+  type CliConfig,
+  createCli,
+  type HelpFormatter,
+  type NamespaceSpec,
+} from "./cli";
 export {
   type Command,
   type CommandContext,

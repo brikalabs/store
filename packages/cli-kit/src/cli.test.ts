@@ -92,11 +92,11 @@ describe("merging command groups", () => {
         },
       }),
     ];
-    const hub = createCli({ name: "brika", defaultCommand: "help" }).addNamespace(
-      "registry",
-      "registry",
-      group,
-    );
+    const hub = createCli({ name: "brika", defaultCommand: "help" }).addNamespace({
+      name: "registry",
+      description: "registry",
+      commands: group,
+    });
     expect(hub.get("registry")).toBeDefined();
     await hub.run(["registry", "publish"]);
     expect(ran).toBe("publish");
