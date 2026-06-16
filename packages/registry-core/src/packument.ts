@@ -24,6 +24,8 @@ export interface PackumentDist {
   readonly tarball: string;
   readonly integrity: string;
   readonly shasum: string;
+  /** Packed (gzipped) tarball size in bytes. */
+  readonly size?: number;
 }
 
 /** An npm-compatible packument (the document `bun add` resolves against). */
@@ -51,6 +53,7 @@ export function buildPackument(record: PackageRecord, baseUrl: string): Packumen
       tarball: tarballUrl(baseUrl, record.name, version.version),
       integrity: version.integrity,
       shasum: version.shasum,
+      size: version.size,
     };
     const entry: Record<string, unknown> = {
       ...version.manifest,

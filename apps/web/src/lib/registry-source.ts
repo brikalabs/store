@@ -111,9 +111,19 @@ const Manifest = z
     dependencies: z.record(z.string(), z.string()).optional(),
     peerDependencies: z.record(z.string(), z.string()).optional(),
     devDependencies: z.record(z.string(), z.string()).optional(),
+    // Resolved dependency versions (from the lockfile), keyed by name.
+    resolvedDependencies: z.record(z.string(), z.string()).optional(),
+    unpackedSize: z.number().optional(),
+    fileCount: z.number().optional(),
     // Present on packument version entries (the registry computes it), absent on
     // the raw package.json the catalog stores.
-    dist: z.object({ integrity: z.string().optional(), shasum: z.string().optional() }).optional(),
+    dist: z
+      .object({
+        integrity: z.string().optional(),
+        shasum: z.string().optional(),
+        size: z.number().optional(),
+      })
+      .optional(),
     provenance: z
       .object({
         repository: z.string(),
@@ -261,10 +271,14 @@ export function manifestToDetail(
     shasum: options.shasum ?? manifest.dist?.shasum,
     provenance: manifest.provenance,
     dependencies: manifest.dependencies,
+    resolvedDependencies: manifest.resolvedDependencies,
     peerDependencies: manifest.peerDependencies,
     devDependencyCount: manifest.devDependencies
       ? Object.keys(manifest.devDependencies).length
       : undefined,
+    size: manifest.dist?.size,
+    unpackedSize: manifest.unpackedSize,
+    fileCount: manifest.fileCount,
     publishedAt: options.publishedAt,
     updatedAt: options.updatedAt,
   };

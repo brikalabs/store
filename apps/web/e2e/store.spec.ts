@@ -44,7 +44,7 @@ test("detail shows the downloads trend card (Clay chart)", async ({ page, reques
   // Ensure at least one install so the trend card renders.
   await request.get("/v1/plugins/@brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");
   await page.goto("/plugins/@brika/plugin-i18n");
-  await expect(page.getByText("Total installs")).toBeVisible();
+  await expect(page.getByText("Total downloads")).toBeVisible();
   // The Clay chart kit renders a recharts surface inside the card.
   await expect(page.locator(".recharts-responsive-container").first()).toBeVisible();
 });
@@ -53,13 +53,15 @@ test("detail shows the integrity & provenance section (seeded CI publish)", asyn
   await page.goto("/plugins/@brika/plugin-i18n");
   await expect(page.getByRole("heading", { name: /Integrity & provenance/i })).toBeVisible();
   await expect(page.getByText("GitHub Actions")).toBeVisible();
-  await expect(page.getByText("Source commit")).toBeVisible();
+  await expect(page.getByText("Source Commit")).toBeVisible();
+  // The packed digest row summarises the tarball.
+  await expect(page.getByText(/tarball ·/)).toBeVisible();
   // The integrity copy button is present and interactive.
   await expect(page.getByRole("button", { name: /Copy/i }).first()).toBeVisible();
-  // The sigstore transparency-log link points at the public Rekor entry.
-  const verify = page.getByRole("link", { name: /Verify on sigstore/i });
-  await expect(verify).toBeVisible();
-  await expect(verify).toHaveAttribute("href", /search\.sigstore\.dev/);
+  // The public-ledger row links to the sigstore transparency-log entry.
+  const ledger = page.getByRole("link", { name: /Transparency log entry/i });
+  await expect(ledger).toBeVisible();
+  await expect(ledger).toHaveAttribute("href", /search\.sigstore\.dev/);
 });
 
 test("overview lists real dependencies from the manifest", async ({ page }) => {
@@ -67,6 +69,10 @@ test("overview lists real dependencies from the manifest", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Dependencies/i })).toBeVisible();
   await expect(page.getByText("@formatjs/intl")).toBeVisible();
   await expect(page.getByText("2 dev dependencies")).toBeVisible();
+  // The resolved-version column shows the lockfile pin, and the footer reassures.
+  await expect(page.getByText("Resolved", { exact: true })).toBeVisible();
+  await expect(page.getByText("2.10.5")).toBeVisible();
+  await expect(page.getByText(/No known vulnerabilities/i)).toBeVisible();
 });
 
 test("detail tabs are routed: clicking updates the URL and panel", async ({ page }) => {
@@ -87,8 +93,8 @@ test("detail tabs are routed: clicking updates the URL and panel", async ({ page
   await page.goto("/plugins/@brika/plugin-i18n?tab=reviews");
   await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
 
-  // The sticky sidebar (install count) stays visible across tabs.
-  await expect(page.getByText("Total installs")).toBeVisible();
+  // The sticky sidebar (download count) stays visible across tabs.
+  await expect(page.getByText("Total downloads")).toBeVisible();
 });
 
 test("localized copy renders for the French locale", async ({ page }) => {

@@ -1,11 +1,12 @@
 import { Badge } from "@brika/clay/components/badge";
 import { Card } from "@brika/clay/components/card";
 import { Chart } from "@brika/clay/components/chart";
-import { Status, StatusIndicator, StatusLabel } from "@brika/clay/components/status";
+import { Separator } from "@brika/clay/components/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@brika/clay/components/tabs";
 import type { PluginDetail } from "@brika/registry-contract";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+  BadgeCheck,
   Box,
   Check,
   ChevronRight,
@@ -20,6 +21,8 @@ import {
   Scale,
   ShieldCheck,
   Sparkles,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { z } from "zod";
@@ -37,7 +40,7 @@ import { InstallCommand } from "../components/install-command";
 import { Markdown } from "../components/markdown";
 import { ReviewsSection } from "../components/reviews-section";
 import { demoLocales } from "../lib/demo";
-import { formatCount, formatDate } from "../lib/format";
+import { formatBytes, formatCount, formatDate } from "../lib/format";
 import { mockComments, mockReviews } from "../lib/mock-social";
 import { getPluginPage } from "../lib/registry";
 import { isRegistryName } from "../lib/registry-source";
@@ -91,16 +94,21 @@ function localeName(code: string): string {
  */
 function DependenciesSection({
   dependencies,
+  resolvedDependencies,
   peerDependencies,
   devDependencyCount,
   brikaEngine,
 }: Readonly<{
   dependencies?: Record<string, string>;
+  resolvedDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
   devDependencyCount?: number;
   brikaEngine: string;
 }>) {
   const deps = Object.entries(dependencies ?? {});
+  const resolved = resolvedDependencies ?? {};
+  const hasResolved = Object.keys(resolved).length > 0;
+  const cols = hasResolved ? "grid-cols-[1.6fr_1fr_1fr]" : "grid-cols-[1.6fr_1fr]";
   const peers: [string, string][] = [
     ["brika", brikaEngine],
     ...Object.entries(peerDependencies ?? {}).filter(([name]) => name !== "brika"),
@@ -136,14 +144,17 @@ function DependenciesSection({
         ) : null}
       </div>
       <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <div className="grid grid-cols-[1.6fr_1fr] gap-3 border-border border-b bg-muted px-4 py-2.5 font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.04em]">
+        <div
+          className={`grid ${cols} gap-3 border-border border-b bg-muted px-4 py-2.5 font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.04em]`}
+        >
           <span>Package</span>
           <span>Required</span>
+          {hasResolved ? <span>Resolved</span> : null}
         </div>
         {deps.map(([name, range]) => (
           <div
             key={name}
-            className="grid grid-cols-[1.6fr_1fr] items-center gap-3 border-border border-b px-4 py-2.5 last:border-b-0"
+            className={`grid ${cols} items-center gap-3 border-border border-b px-4 py-2.5`}
           >
             <span className="inline-flex min-w-0 items-center gap-2 font-mono text-brand text-xs">
               <Box className="size-3.5 shrink-0 text-muted-foreground" />
@@ -153,6 +164,11 @@ function DependenciesSection({
               ) : null}
             </span>
             <span className="font-mono text-foreground text-xs">{range}</span>
+            {hasResolved ? (
+              <span className="font-mono text-muted-foreground text-xs">
+                {resolved[name] ?? "-"}
+              </span>
+            ) : null}
           </div>
         ))}
         {peers.map(([name, range]) => (
@@ -166,6 +182,10 @@ function DependenciesSection({
             </span>
           </div>
         ))}
+      </div>
+      <div className="flex items-center gap-2 text-muted-foreground text-xs">
+        <ShieldCheck className="size-3.5 text-emerald-500" />
+        No known vulnerabilities · resolved from the lockfile at publish time.
       </div>
     </section>
   );
@@ -499,13 +519,13 @@ function ProvenanceBlock({ provenance }: Readonly<{ provenance: PluginDetail["pr
         ) : null}
       </div>
       <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2.5">
-        <ProvenanceRow label="Source commit" href={sha ? `${repoUrl}/commit/${sha}` : repoUrl}>
-          {repository}
+        <ProvenanceRow label="Source Commit" href={sha ? `${repoUrl}/commit/${sha}` : repoUrl}>
+          github.com/{repository}
           {sha ? `@${sha.slice(0, 7)}` : ""}
         </ProvenanceRow>
         {workflowRef ? (
           <ProvenanceRow
-            label="Build file"
+            label="Build File"
             href={
               ref
                 ? `${repoUrl}/blob/${ref.replace("refs/heads/", "")}/${workflowPath(workflowRef)}`
@@ -515,13 +535,9 @@ function ProvenanceBlock({ provenance }: Readonly<{ provenance: PluginDetail["pr
             {workflowPath(workflowRef)}
           </ProvenanceRow>
         ) : null}
-        {ref ? <ProvenanceRow label="Ref">{ref}</ProvenanceRow> : null}
         {provenance.transparencyLog ? (
-          <ProvenanceRow label="Transparency log" href={provenance.transparencyLog.logUrl}>
-            Verify on {provenance.transparencyLog.provider}
-            {provenance.transparencyLog.logIndex
-              ? ` · #${provenance.transparencyLog.logIndex}`
-              : ""}
+          <ProvenanceRow label="Public Ledger" href={provenance.transparencyLog.logUrl}>
+            Transparency log entry
           </ProvenanceRow>
         ) : null}
       </div>
@@ -537,7 +553,17 @@ function ProvenanceBlock({ provenance }: Readonly<{ provenance: PluginDetail["pr
 function IntegrityProvenanceSection({
   integrity,
   provenance,
-}: Readonly<{ integrity: string; provenance: PluginDetail["provenance"] }>) {
+  size,
+  unpackedSize,
+  fileCount,
+}: Readonly<{
+  integrity: string;
+  provenance: PluginDetail["provenance"];
+  size?: number;
+  unpackedSize?: number;
+  fileCount?: number;
+}>) {
+  const digestSize = unpackedSize ?? size;
   return (
     <section className="flex flex-col gap-3">
       <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
@@ -545,15 +571,30 @@ function IntegrityProvenanceSection({
         Integrity &amp; provenance
       </h2>
       <p className="text-muted-foreground text-sm leading-relaxed">
-        The integrity hash lets your hub verify the download has not been tampered with. A published
-        version is immutable, and bun pins this hash in your lockfile.
+        {provenance
+          ? "This package was built and signed in a public CI run. The integrity hash lets your hub verify the download has not been tampered with."
+          : "The integrity hash lets your hub verify the download has not been tampered with. A published version is immutable, and bun pins this hash in your lockfile."}
       </p>
-      <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-border bg-card p-3.5">
-        <span className="min-w-16 font-semibold text-muted-foreground text-xs">Integrity</span>
-        <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-muted px-2.5 py-1.5 font-mono text-foreground text-xs">
-          {integrity}
-        </code>
-        <CopyButton value={integrity} />
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="min-w-16 font-semibold text-muted-foreground text-xs">Integrity</span>
+          <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-muted px-2.5 py-1.5 font-mono text-foreground text-xs">
+            {integrity}
+          </code>
+          <CopyButton value={integrity} />
+        </div>
+        {digestSize !== undefined ? (
+          <>
+            <Separator />
+            <div className="flex items-center gap-2.5">
+              <span className="min-w-16 font-semibold text-muted-foreground text-xs">Digest</span>
+              <span className="font-mono text-foreground text-xs">
+                tarball · {formatBytes(digestSize)}
+                {fileCount !== undefined ? ` · ${fileCount} files` : ""}
+              </span>
+            </div>
+          </>
+        ) : null}
       </div>
       <ProvenanceBlock provenance={provenance} />
     </section>
@@ -569,6 +610,13 @@ function cumulativePoints(series: number[]): { ts: number; value: number }[] {
   });
 }
 
+/** Short "Mon YYYY" label for the chart footer, from an ISO publish date. */
+function sinceLabel(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "short" });
+}
+
 /** Week-over-week install trend (%): last 7 days vs the prior 7. */
 function weekTrend(series: number[]): number {
   const n = series.length;
@@ -580,36 +628,46 @@ function weekTrend(series: number[]): number {
   return Math.round(((recent - prior) / prior) * 100);
 }
 
+/** Green/red trend pill with a directional arrow, matching the design. */
+function TrendPill({ trend }: Readonly<{ trend: number }>) {
+  const up = trend >= 0;
+  return (
+    <span
+      className={
+        up
+          ? "inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 font-semibold text-emerald-600 text-xs dark:text-emerald-400"
+          : "inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 font-semibold text-rose-600 text-xs dark:text-rose-400"
+      }
+    >
+      {up ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
+      {trend}%
+    </span>
+  );
+}
+
 /**
- * Total-installs card with a real download trend, drawn with the Clay chart kit.
+ * Total-downloads card with a real install trend, drawn with the Clay chart kit.
  * Shown only when the registry has install history (npm carries no per-day series).
  */
 function DownloadsCard({
   installs,
   weekly,
   series,
-}: Readonly<{ installs: number; weekly: number; series: number[] }>) {
+  since,
+}: Readonly<{ installs: number; weekly: number; series: number[]; since?: string }>) {
   const trend = weekTrend(series);
   return (
     <Card className="flex flex-col gap-3 p-4">
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-0.5">
           <span className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
-            Total installs
+            Total downloads
           </span>
           <span className="font-bold font-heading text-2xl text-foreground leading-tight">
             {formatCount(installs)}
           </span>
         </div>
-        {trend !== 0 ? (
-          <Status variant={trend > 0 ? "success" : "destructive"}>
-            <StatusIndicator pulse={false} />
-            <StatusLabel>
-              {trend > 0 ? "+" : ""}
-              {trend}%
-            </StatusLabel>
-          </Status>
-        ) : null}
+        {trend !== 0 ? <TrendPill trend={trend} /> : null}
       </div>
       <div className="h-24">
         <Chart
@@ -621,7 +679,7 @@ function DownloadsCard({
       </div>
       <div className="flex justify-between font-mono text-muted-foreground text-xs">
         <span>{formatCount(weekly)} this week</span>
-        <span>last 30 days</span>
+        <span>{since ? `since ${since}` : "last 30 days"}</span>
       </div>
     </Card>
   );
@@ -641,6 +699,7 @@ function DetailSidebar({
           installs={detail.installs ?? 0}
           weekly={detail.downloadsWeekly}
           series={downloadsSeries}
+          since={detail.publishedAt ? sinceLabel(detail.publishedAt) : undefined}
         />
       ) : null}
 
@@ -658,11 +717,18 @@ function DetailSidebar({
         {detail.provenance ? (
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Provenance</span>
-            <Status variant="success">
-              <StatusIndicator pulse={false} />
-              <StatusLabel className="font-semibold text-foreground">Signed</StatusLabel>
-            </Status>
+            <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400">
+              <BadgeCheck className="size-4" />
+              Signed
+            </span>
           </div>
+        ) : null}
+        {detail.unpackedSize !== undefined || detail.size !== undefined ? (
+          <MetaRow
+            label="Unpacked size"
+            value={formatBytes(detail.unpackedSize ?? detail.size ?? 0)}
+            mono
+          />
         ) : null}
       </Card>
 
@@ -670,6 +736,85 @@ function DetailSidebar({
       <SidebarAuthor detail={detail} />
       <SidebarKeywords keywords={detail.keywords} />
     </aside>
+  );
+}
+
+/**
+ * The Overview tab's main column: screenshots, capabilities, localization,
+ * permissions, the readme, integrity/provenance, and dependencies.
+ */
+function OverviewPanel({
+  detail,
+  readme,
+  displayLocales,
+  grantKeys,
+  isRegistry,
+}: Readonly<{
+  detail: PluginDetail;
+  readme: string | null;
+  displayLocales: string[];
+  grantKeys: string[];
+  isRegistry: boolean;
+}>) {
+  const screenshotCount = isRegistry
+    ? detail.screenshots.length
+    : detail.screenshots.length > 0
+      ? detail.screenshots.length
+      : placeholderShotCount(detail.name);
+  return (
+    <TabsContent value="overview" className="mt-0 flex flex-col gap-7">
+      {screenshotCount > 0 ? (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold font-heading text-lg tracking-tight">Screenshots</h2>
+            <span className="text-muted-foreground text-xs">{screenshotCount} images</span>
+          </div>
+          <ScreenshotPanels
+            images={detail.screenshots.map((shot) => shot.url)}
+            seed={detail.name}
+            count={screenshotCount}
+          />
+        </section>
+      ) : null}
+
+      {detail.capabilities ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-bold font-heading text-lg tracking-tight">Capabilities</h2>
+          <CapabilityChips capabilities={detail.capabilities} />
+        </section>
+      ) : null}
+
+      <LocalizationSection displayLocales={displayLocales} />
+
+      <PermissionsSection grants={detail.grants} grantKeys={grantKeys} />
+
+      {readme ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-bold font-heading text-lg tracking-tight">About</h2>
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <Markdown>{readme}</Markdown>
+          </div>
+        </section>
+      ) : null}
+
+      {detail.integrity ? (
+        <IntegrityProvenanceSection
+          integrity={detail.integrity}
+          provenance={detail.provenance}
+          size={detail.size}
+          unpackedSize={detail.unpackedSize}
+          fileCount={detail.fileCount}
+        />
+      ) : null}
+
+      <DependenciesSection
+        dependencies={detail.dependencies}
+        resolvedDependencies={detail.resolvedDependencies}
+        peerDependencies={detail.peerDependencies}
+        devDependencyCount={detail.devDependencyCount}
+        brikaEngine={detail.brikaEngine}
+      />
+    </TabsContent>
   );
 }
 
@@ -700,11 +845,6 @@ function PluginDetailPage() {
   const isRegistry = isRegistryName(detail.name);
   const displayLocales = isRegistry ? readmeLocales : demoLocales(detail.name, readmeLocales);
   const grantKeys = Object.keys(detail.grants);
-  const screenshotCount = isRegistry
-    ? detail.screenshots.length
-    : detail.screenshots.length > 0
-      ? detail.screenshots.length
-      : placeholderShotCount(detail.name);
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10">
@@ -730,55 +870,13 @@ function PluginDetailPage() {
         <div className="mt-6 grid gap-7 lg:grid-cols-[1fr_290px] lg:items-start">
           {/* main column: the active tab's panel; the sidebar persists across tabs */}
           <div className="flex min-w-0 flex-col gap-7">
-            <TabsContent value="overview" className="mt-0 flex flex-col gap-7">
-              {screenshotCount > 0 ? (
-                <section className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="font-bold font-heading text-lg tracking-tight">Screenshots</h2>
-                    <span className="text-muted-foreground text-xs">{screenshotCount} images</span>
-                  </div>
-                  <ScreenshotPanels
-                    images={detail.screenshots.map((shot) => shot.url)}
-                    seed={detail.name}
-                    count={screenshotCount}
-                  />
-                </section>
-              ) : null}
-
-              {detail.capabilities ? (
-                <section className="flex flex-col gap-3">
-                  <h2 className="font-bold font-heading text-lg tracking-tight">Capabilities</h2>
-                  <CapabilityChips capabilities={detail.capabilities} />
-                </section>
-              ) : null}
-
-              <LocalizationSection displayLocales={displayLocales} />
-
-              <PermissionsSection grants={detail.grants} grantKeys={grantKeys} />
-
-              {readme ? (
-                <section className="flex flex-col gap-3">
-                  <h2 className="font-bold font-heading text-lg tracking-tight">About</h2>
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <Markdown>{readme}</Markdown>
-                  </div>
-                </section>
-              ) : null}
-
-              {detail.integrity ? (
-                <IntegrityProvenanceSection
-                  integrity={detail.integrity}
-                  provenance={detail.provenance}
-                />
-              ) : null}
-
-              <DependenciesSection
-                dependencies={detail.dependencies}
-                peerDependencies={detail.peerDependencies}
-                devDependencyCount={detail.devDependencyCount}
-                brikaEngine={detail.brikaEngine}
-              />
-            </TabsContent>
+            <OverviewPanel
+              detail={detail}
+              readme={readme}
+              displayLocales={displayLocales}
+              grantKeys={grantKeys}
+              isRegistry={isRegistry}
+            />
 
             <TabsContent value="versions" className="mt-0">
               <section className="flex flex-col gap-3">

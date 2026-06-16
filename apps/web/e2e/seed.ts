@@ -152,15 +152,45 @@ function seedDependencies(): void {
       "@formatjs/intl": "^2.10.0",
       "bcp-47": "^2.1.0",
     };
+    // Resolved versions (from the lockfile at publish time) and the digest, so
+    // the Dependencies table + integrity Digest match the design.
+    manifest.resolvedDependencies = {
+      "@brika/sdk": "0.1.4",
+      "@formatjs/intl": "2.10.5",
+      "bcp-47": "2.1.0",
+    };
     manifest.devDependencies = { typescript: "^6.0.3", "@types/bun": "^1.3.5" };
+    manifest.unpackedSize = 10752;
+    manifest.fileCount = 11;
     db.run("UPDATE reg_versions SET manifest = ? WHERE name = ? AND version = ?", [
       JSON.stringify(manifest),
       "@brika/plugin-i18n",
       "0.1.0",
     ]);
-    log("seeded dependencies on @brika/plugin-i18n@0.1.0");
+    log("seeded dependencies + digest on @brika/plugin-i18n@0.1.0");
   }
   db.close();
+}
+
+/**
+ * Seed a smooth ~30-day install history so the sidebar download chart shows a
+ * rising trend like the design, instead of the spike a same-day-only count makes.
+ */
+function seedDownloadHistory(): void {
+  const db = new Database(findLocalD1());
+  const today = Math.floor(Date.now() / 86_400_000);
+  for (let i = 29; i >= 0; i--) {
+    const day = today - i;
+    // Gentle S-curve growth, 4 -> ~30/day.
+    const count = Math.max(1, Math.round(4 + (26 * (29 - i)) / 29));
+    db.run("INSERT OR REPLACE INTO reg_downloads (name, day, count) VALUES (?, ?, ?)", [
+      "@brika/plugin-i18n",
+      day,
+      count,
+    ]);
+  }
+  db.close();
+  log("seeded 30-day download history on @brika/plugin-i18n");
 }
 
 await waitForRegistry();
@@ -168,4 +198,5 @@ const token = await mintToken();
 for (const plugin of EXAMPLES) await publish(plugin, token);
 seedProvenance();
 seedDependencies();
+seedDownloadHistory();
 log(`done (dir: ${dirname(findLocalD1())})`);

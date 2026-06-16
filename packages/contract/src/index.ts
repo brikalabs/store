@@ -166,10 +166,18 @@ export const PluginDetail = PluginSummary.extend({
   provenance: Provenance.optional(),
   /** Runtime dependencies from the manifest: package name -> semver range. */
   dependencies: z.record(z.string(), z.string()).optional(),
+  /** Resolved versions for the dependencies (from the lockfile), keyed by name. */
+  resolvedDependencies: z.record(z.string(), z.string()).optional(),
   /** Peer dependencies from the manifest: package name -> semver range. */
   peerDependencies: z.record(z.string(), z.string()).optional(),
   /** Count of devDependencies declared in the manifest. */
   devDependencyCount: z.number().int().nonnegative().optional(),
+  /** Packed (gzipped) tarball size in bytes. */
+  size: z.number().int().nonnegative().optional(),
+  /** Unpacked size of the tarball contents in bytes. */
+  unpackedSize: z.number().int().nonnegative().optional(),
+  /** Number of files in the tarball. */
+  fileCount: z.number().int().nonnegative().optional(),
 });
 export type PluginDetail = z.infer<typeof PluginDetail>;
 
