@@ -127,8 +127,38 @@ function seedProvenance(): void {
   log("seeded CI provenance on @brika/plugin-i18n@0.1.0");
 }
 
+/**
+ * Ensure @brika/plugin-i18n@0.1.0's stored manifest carries the dependencies
+ * declared in its fixture, so the Dependencies table is populated. A fresh
+ * publish already includes them; this covers the already-published case (publish
+ * is a 409 no-op) by merging them into the stored manifest JSON.
+ */
+function seedDependencies(): void {
+  const db = new Database(findLocalD1());
+  const row = db
+    .query("SELECT manifest FROM reg_versions WHERE name = ? AND version = ?")
+    .get("@brika/plugin-i18n", "0.1.0") as { manifest: string } | null;
+  if (row !== null) {
+    const manifest = JSON.parse(row.manifest);
+    manifest.dependencies = {
+      "@brika/sdk": "^0.1.0",
+      "@formatjs/intl": "^2.10.0",
+      "bcp-47": "^2.1.0",
+    };
+    manifest.devDependencies = { typescript: "^6.0.3", "@types/bun": "^1.3.5" };
+    db.run("UPDATE reg_versions SET manifest = ? WHERE name = ? AND version = ?", [
+      JSON.stringify(manifest),
+      "@brika/plugin-i18n",
+      "0.1.0",
+    ]);
+    log("seeded dependencies on @brika/plugin-i18n@0.1.0");
+  }
+  db.close();
+}
+
 await waitForRegistry();
 const token = await mintToken();
 for (const plugin of EXAMPLES) await publish(plugin, token);
 seedProvenance();
+seedDependencies();
 log(`done (dir: ${dirname(findLocalD1())})`);

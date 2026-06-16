@@ -53,6 +53,8 @@ const registryManifest = {
   // The registry packument carries the computed integrity on the version's dist.
   dist: { integrity: "sha512-TESTINTEGRITY==", shasum: "deadbeef" },
   provenance: { repository: "brikalabs/store", sha: "abc1234", runId: "99" },
+  dependencies: { "@brika/sdk": "^0.1.0", zod: "^3.23.0" },
+  devDependencies: { typescript: "^6.0.3", "@types/bun": "^1.3.5" },
 };
 
 const registryPackument = {
@@ -153,6 +155,9 @@ describe("getPluginPage", () => {
       sha: "abc1234",
       runId: "99",
     });
+    // Dependencies + dev-dependency count come from the manifest.
+    expect(page?.detail.dependencies).toEqual({ "@brika/sdk": "^0.1.0", zod: "^3.23.0" });
+    expect(page?.detail.devDependencyCount).toBe(2);
   });
 
   test("falls through to a 404 for an unknown registry plugin", async () => {

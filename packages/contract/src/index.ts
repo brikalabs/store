@@ -153,6 +153,12 @@ export const PluginDetail = PluginSummary.extend({
   shasum: z.string().optional(),
   /** CI build provenance (GitHub OIDC) for the latest version, when published from CI. */
   provenance: Provenance.optional(),
+  /** Runtime dependencies from the manifest: package name -> semver range. */
+  dependencies: z.record(z.string(), z.string()).optional(),
+  /** Peer dependencies from the manifest: package name -> semver range. */
+  peerDependencies: z.record(z.string(), z.string()).optional(),
+  /** Count of devDependencies declared in the manifest. */
+  devDependencyCount: z.number().int().nonnegative().optional(),
 });
 export type PluginDetail = z.infer<typeof PluginDetail>;
 

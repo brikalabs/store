@@ -108,6 +108,9 @@ const Manifest = z
     sparks: z.array(z.unknown()).optional(),
     pages: z.array(z.unknown()).optional(),
     deprecated: z.string().optional(),
+    dependencies: z.record(z.string(), z.string()).optional(),
+    peerDependencies: z.record(z.string(), z.string()).optional(),
+    devDependencies: z.record(z.string(), z.string()).optional(),
     // Present on packument version entries (the registry computes it), absent on
     // the raw package.json the catalog stores.
     dist: z.object({ integrity: z.string().optional(), shasum: z.string().optional() }).optional(),
@@ -249,6 +252,11 @@ export function manifestToDetail(
     integrity: options.integrity ?? manifest.dist?.integrity,
     shasum: options.shasum ?? manifest.dist?.shasum,
     provenance: manifest.provenance,
+    dependencies: manifest.dependencies,
+    peerDependencies: manifest.peerDependencies,
+    devDependencyCount: manifest.devDependencies
+      ? Object.keys(manifest.devDependencies).length
+      : undefined,
     publishedAt: options.publishedAt,
     updatedAt: options.updatedAt,
   };

@@ -57,6 +57,34 @@ test("detail shows the integrity & provenance section (seeded CI publish)", asyn
   await expect(page.getByRole("button", { name: /Copy/i }).first()).toBeVisible();
 });
 
+test("overview lists real dependencies from the manifest", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-i18n");
+  await expect(page.getByRole("heading", { name: /Dependencies/i })).toBeVisible();
+  await expect(page.getByText("@formatjs/intl")).toBeVisible();
+  await expect(page.getByText("2 dev dependencies")).toBeVisible();
+});
+
+test("detail tabs switch the panel; sidebar persists", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-i18n");
+  // Overview is the default: dependencies visible.
+  await expect(page.getByRole("heading", { name: /Dependencies/i })).toBeVisible();
+
+  // Versions tab -> changelog panel; dependencies gone. Retry the click until the
+  // SPA has hydrated (the SSR button has no handler until then).
+  await expect(async () => {
+    await page.getByRole("button", { name: "Versions" }).click();
+    await expect(page.getByRole("heading", { name: "Changelog" })).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await expect(page.getByRole("heading", { name: /Dependencies/i })).toHaveCount(0);
+
+  // Reviews tab -> reviews panel.
+  await page.getByRole("button", { name: "Reviews" }).click();
+  await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
+
+  // The sticky sidebar (install count) stays visible across tabs.
+  await expect(page.getByText("Total installs")).toBeVisible();
+});
+
 test("localized copy renders for the French locale", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n?lang=fr");
   // The fr store.json title + readme replace the default English copy.

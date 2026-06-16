@@ -8,6 +8,7 @@ import {
   Download,
   ExternalLink,
   Globe,
+  Layers,
   Link2,
   type LucideIcon,
   Plus,
@@ -63,6 +64,128 @@ const PERMISSION_ICONS: LucideIcon[] = [Link2, ShieldCheck, Box];
 
 function localeName(code: string): string {
   return LOCALE_NAMES[code] ?? code.toUpperCase();
+}
+
+type DetailTab = "overview" | "versions" | "reviews" | "discussion";
+
+const DETAIL_TABS: ReadonlyArray<{ id: DetailTab; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "versions", label: "Versions" },
+  { id: "reviews", label: "Reviews" },
+  { id: "discussion", label: "Discussion" },
+];
+
+/** Real, switchable detail tabs: the active one underlined, its panel rendered. */
+function DetailTabs({
+  tab,
+  onPick,
+}: Readonly<{ tab: DetailTab; onPick: (next: DetailTab) => void }>) {
+  return (
+    <div className="flex items-center gap-6 border-border border-b text-sm">
+      {DETAIL_TABS.map(({ id, label }) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onPick(id)}
+          aria-current={id === tab ? "page" : undefined}
+          className={
+            id === tab
+              ? "-mb-px border-brand border-b-2 py-2.5 font-semibold text-foreground"
+              : "-mb-px border-transparent border-b-2 py-2.5 font-medium text-muted-foreground hover:text-foreground"
+          }
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Dependencies table from the real manifest (package -> required range), with a
+ * brand marker on `@brika/*` deps, the peer engine, and a dev-dependency count.
+ * Hidden when the plugin declares no dependencies and no peers.
+ */
+function DependenciesSection({
+  dependencies,
+  peerDependencies,
+  devDependencyCount,
+  brikaEngine,
+}: Readonly<{
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  devDependencyCount?: number;
+  brikaEngine: string;
+}>) {
+  const deps = Object.entries(dependencies ?? {});
+  const peers: [string, string][] = [
+    ["brika", brikaEngine],
+    ...Object.entries(peerDependencies ?? {}).filter(([name]) => name !== "brika"),
+  ];
+  if (deps.length === 0 && Object.keys(peerDependencies ?? {}).length === 0) {
+    // Still show the brika peer for context, but no table.
+    return (
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
+          <Layers className="size-4 text-muted-foreground" />
+          Dependencies
+          <span className="font-medium text-muted-foreground text-sm">0</span>
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          No runtime dependencies. Peers{" "}
+          <span className="font-mono text-foreground">brika@{brikaEngine}</span>.
+        </p>
+      </section>
+    );
+  }
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
+          <Layers className="size-4 text-muted-foreground" />
+          Dependencies
+          <span className="font-medium text-muted-foreground text-sm">{deps.length}</span>
+        </h2>
+        {devDependencyCount ? (
+          <span className="text-muted-foreground text-xs">
+            {devDependencyCount} dev dependencies
+          </span>
+        ) : null}
+      </div>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="grid grid-cols-[1.6fr_1fr] gap-3 border-border border-b bg-muted px-4 py-2.5 font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.04em]">
+          <span>Package</span>
+          <span>Required</span>
+        </div>
+        {deps.map(([name, range]) => (
+          <div
+            key={name}
+            className="grid grid-cols-[1.6fr_1fr] items-center gap-3 border-border border-b px-4 py-2.5 last:border-b-0"
+          >
+            <span className="inline-flex min-w-0 items-center gap-2 font-mono text-brand text-xs">
+              <Box className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">{name}</span>
+              {name.startsWith("@brika/") ? (
+                <ShieldCheck className="size-3 shrink-0 text-brand" />
+              ) : null}
+            </span>
+            <span className="font-mono text-foreground text-xs">{range}</span>
+          </div>
+        ))}
+        {peers.map(([name, range]) => (
+          <div
+            key={name}
+            className="flex items-center gap-2 px-4 py-2.5 text-muted-foreground text-xs"
+          >
+            <Link2 className="size-3.5" /> Peer:{" "}
+            <span className="font-mono text-foreground">
+              {name}@{range}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 /** Breadcrumb plus the locale switcher (only shown when there's more than one locale). */
@@ -271,12 +394,15 @@ function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
           Homepage
         </MetaLink>
       ) : null}
-      <MetaLink
-        href={`https://www.npmjs.com/package/${detail.name}`}
-        icon={<Box className="size-4" />}
-      >
-        npm package
-      </MetaLink>
+      {/* `@brika/*` are hosted on our registry, not npm, so no npm link for them. */}
+      {isRegistryName(detail.name) ? null : (
+        <MetaLink
+          href={`https://www.npmjs.com/package/${detail.name}`}
+          icon={<Box className="size-4" />}
+        >
+          npm package
+        </MetaLink>
+      )}
     </div>
   );
 }
@@ -522,6 +648,7 @@ function DetailSidebar({
 function PluginDetailPage() {
   const data = Route.useLoaderData();
   const { lang } = Route.useSearch();
+  const [tab, setTab] = useState<DetailTab>("overview");
 
   if (data === null) {
     return <NotFoundPage />;
@@ -553,81 +680,90 @@ function PluginDetailPage() {
 
       <InstallCommand id="install" command={`brika install ${detail.name}`} />
 
-      {/* tabs */}
-      <div className="flex items-center gap-6 border-border border-b text-sm">
-        <span className="border-brand border-b-2 py-2.5 font-semibold text-foreground">
-          Overview
-        </span>
-        <a href="#reviews" className="py-2.5 text-muted-foreground hover:text-foreground">
-          Reviews
-        </a>
-        <a href="#discussion" className="py-2.5 text-muted-foreground hover:text-foreground">
-          Discussion
-        </a>
-      </div>
+      <DetailTabs tab={tab} onPick={setTab} />
 
       <div className="grid gap-7 lg:grid-cols-[1fr_290px] lg:items-start">
-        {/* main column */}
+        {/* main column: the active tab's panel; the sidebar persists across tabs */}
         <div className="flex min-w-0 flex-col gap-7">
-          {screenshotCount > 0 ? (
-            <section className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-bold font-heading text-lg tracking-tight">Screenshots</h2>
-                <span className="text-muted-foreground text-xs">{screenshotCount} images</span>
-              </div>
-              <ScreenshotPanels
-                images={detail.screenshots.map((shot) => shot.url)}
-                seed={detail.name}
-                count={screenshotCount}
+          {tab === "overview" ? (
+            <div className="flex flex-col gap-7">
+              {screenshotCount > 0 ? (
+                <section className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-bold font-heading text-lg tracking-tight">Screenshots</h2>
+                    <span className="text-muted-foreground text-xs">{screenshotCount} images</span>
+                  </div>
+                  <ScreenshotPanels
+                    images={detail.screenshots.map((shot) => shot.url)}
+                    seed={detail.name}
+                    count={screenshotCount}
+                  />
+                </section>
+              ) : null}
+
+              {detail.capabilities ? (
+                <section className="flex flex-col gap-3">
+                  <h2 className="font-bold font-heading text-lg tracking-tight">Capabilities</h2>
+                  <CapabilityChips capabilities={detail.capabilities} />
+                </section>
+              ) : null}
+
+              <LocalizationSection displayLocales={displayLocales} />
+
+              <PermissionsSection grants={detail.grants} grantKeys={grantKeys} />
+
+              {readme ? (
+                <section className="flex flex-col gap-3">
+                  <h2 className="font-bold font-heading text-lg tracking-tight">About</h2>
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <Markdown>{readme}</Markdown>
+                  </div>
+                </section>
+              ) : null}
+
+              {detail.integrity ? (
+                <IntegrityProvenanceSection
+                  integrity={detail.integrity}
+                  provenance={detail.provenance}
+                />
+              ) : null}
+
+              <DependenciesSection
+                dependencies={detail.dependencies}
+                peerDependencies={detail.peerDependencies}
+                devDependencyCount={detail.devDependencyCount}
+                brikaEngine={detail.brikaEngine}
               />
-            </section>
+            </div>
           ) : null}
 
-          {detail.capabilities ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="font-bold font-heading text-lg tracking-tight">Capabilities</h2>
-              <CapabilityChips capabilities={detail.capabilities} />
-            </section>
-          ) : null}
-
-          <LocalizationSection displayLocales={displayLocales} />
-
-          <PermissionsSection grants={detail.grants} grantKeys={grantKeys} />
-
-          {readme ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="font-bold font-heading text-lg tracking-tight">About</h2>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <Markdown>{readme}</Markdown>
-              </div>
-            </section>
-          ) : null}
-
-          {detail.integrity ? (
-            <IntegrityProvenanceSection
-              integrity={detail.integrity}
-              provenance={detail.provenance}
-            />
-          ) : null}
-
-          {versions.length > 0 ? (
+          {tab === "versions" ? (
             <section className="flex flex-col gap-3">
               <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
                 <Clock className="size-4 text-muted-foreground" />
                 Changelog
               </h2>
-              <Changelog versions={versions} />
+              {versions.length > 0 ? (
+                <Changelog versions={versions} />
+              ) : (
+                <p className="text-muted-foreground text-sm">No release history yet.</p>
+              )}
             </section>
           ) : null}
 
-          <ReviewsSection
-            pluginName={detail.name}
-            fallback={isRegistry ? [] : mockReviews(detail.name)}
-          />
-          <CommentsSection
-            pluginName={detail.name}
-            fallback={isRegistry ? [] : mockComments(detail.name)}
-          />
+          {tab === "reviews" ? (
+            <ReviewsSection
+              pluginName={detail.name}
+              fallback={isRegistry ? [] : mockReviews(detail.name)}
+            />
+          ) : null}
+
+          {tab === "discussion" ? (
+            <CommentsSection
+              pluginName={detail.name}
+              fallback={isRegistry ? [] : mockComments(detail.name)}
+            />
+          ) : null}
         </div>
 
         <DetailSidebar
