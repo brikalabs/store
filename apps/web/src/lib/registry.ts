@@ -57,9 +57,12 @@ export async function searchPlugins(
     detail === null ? [] : [demoSummary(toPluginSummary(detail))],
   );
 
+  // Registry plugins carry real data (install counts, integrity), so they skip
+  // the demo enrichment; npm plugins keep it as a placeholder until an npm sync +
+  // D1 social tables land (see docs/store-data-sources.md).
   const seen = new Set(registry.plugins.map((plugin) => plugin.name));
   const plugins = [
-    ...registry.plugins.map((plugin) => demoSummary(plugin)),
+    ...registry.plugins,
     ...npmPlugins.filter((plugin) => !seen.has(plugin.name)),
   ].slice(0, limit);
   return { plugins, total: total + registry.total };
@@ -75,11 +78,12 @@ export async function getPluginPage(
   readmeLocales: string[];
   versions: PluginVersion[];
 } | null> {
-  // `@brika/*` resolves from our registry (with localized title/description and
-  // tarball-served assets); fall through to npm only if it is not hosted there.
+  // `@brika/*` resolves from our registry (real data: install counts, integrity,
+  // localized copy, no demo enrichment); fall through to npm only if it is not
+  // hosted there.
   if (isRegistryName(name)) {
     const page = await getRegistryPluginPage(name, locale);
-    if (page !== null) return { ...page, detail: demoDetail(page.detail) };
+    if (page !== null) return page;
   }
 
   const pkg = await getPackument(name);

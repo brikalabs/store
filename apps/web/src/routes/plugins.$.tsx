@@ -33,6 +33,7 @@ import { demoLocales } from "../lib/demo";
 import { formatCount, formatDate } from "../lib/format";
 import { mockComments, mockReviews } from "../lib/mock-social";
 import { getPluginPage } from "../lib/registry";
+import { isRegistryName } from "../lib/registry-source";
 
 const detailSearch = z.object({ lang: z.string().optional() });
 
@@ -396,12 +397,17 @@ function PluginDetailPage() {
 
   const { detail, readme, versions, readmeLocales } = data;
   const activeLocale = lang ?? (readmeLocales.includes("en") ? "en" : (readmeLocales[0] ?? "en"));
-  // Real localized docs drive the (functional) switcher; demo locales give the
-  // Localization section + counts something to show against live npm data.
-  const displayLocales = demoLocales(detail.name, readmeLocales);
+  // Registry plugins show real data: their actual locales, screenshots, and live
+  // reviews/comments (empty until written). npm plugins keep the demo placeholders
+  // until an npm sync + the D1 social tables land (see docs/store-data-sources.md).
+  const isRegistry = isRegistryName(detail.name);
+  const displayLocales = isRegistry ? readmeLocales : demoLocales(detail.name, readmeLocales);
   const grantKeys = Object.keys(detail.grants);
-  const screenshotCount =
-    detail.screenshots.length > 0 ? detail.screenshots.length : placeholderShotCount(detail.name);
+  const screenshotCount = isRegistry
+    ? detail.screenshots.length
+    : detail.screenshots.length > 0
+      ? detail.screenshots.length
+      : placeholderShotCount(detail.name);
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10">
@@ -431,17 +437,19 @@ function PluginDetailPage() {
       <div className="grid gap-7 lg:grid-cols-[1fr_290px] lg:items-start">
         {/* main column */}
         <div className="flex min-w-0 flex-col gap-7">
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold font-heading text-lg tracking-tight">Screenshots</h2>
-              <span className="text-muted-foreground text-xs">{screenshotCount} images</span>
-            </div>
-            <ScreenshotPanels
-              images={detail.screenshots.map((shot) => shot.url)}
-              seed={detail.name}
-              count={screenshotCount}
-            />
-          </section>
+          {screenshotCount > 0 ? (
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-bold font-heading text-lg tracking-tight">Screenshots</h2>
+                <span className="text-muted-foreground text-xs">{screenshotCount} images</span>
+              </div>
+              <ScreenshotPanels
+                images={detail.screenshots.map((shot) => shot.url)}
+                seed={detail.name}
+                count={screenshotCount}
+              />
+            </section>
+          ) : null}
 
           {detail.capabilities ? (
             <section className="flex flex-col gap-3">
@@ -473,8 +481,14 @@ function PluginDetailPage() {
             </section>
           ) : null}
 
-          <ReviewsSection pluginName={detail.name} fallback={mockReviews(detail.name)} />
-          <CommentsSection pluginName={detail.name} fallback={mockComments(detail.name)} />
+          <ReviewsSection
+            pluginName={detail.name}
+            fallback={isRegistry ? [] : mockReviews(detail.name)}
+          />
+          <CommentsSection
+            pluginName={detail.name}
+            fallback={isRegistry ? [] : mockComments(detail.name)}
+          />
         </div>
 
         <DetailSidebar detail={detail} displayLocales={displayLocales} />

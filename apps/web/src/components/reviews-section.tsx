@@ -132,6 +132,9 @@ export function ReviewsSection({ pluginName, fallback = [] }: Props) {
       )}
 
       <div className="flex flex-col gap-5">
+        {reviews.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No reviews yet. Be the first to review.</p>
+        ) : null}
         {reviews.map((review) => (
           <article key={review.id} className="flex gap-3">
             <GradientAvatar
