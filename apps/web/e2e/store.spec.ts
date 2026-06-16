@@ -64,6 +64,30 @@ test("detail shows the integrity & provenance section (seeded CI publish)", asyn
   await expect(ledger).toHaveAttribute("href", /search\.sigstore\.dev/);
 });
 
+test("overview groups permissions by family with visible scope", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-i18n");
+  await expect(page.getByRole("heading", { name: "Permissions requested" })).toBeVisible();
+  // Net family: host allow-list, including the wildcard host.
+  await expect(page.getByText("Network", { exact: true })).toBeVisible();
+  await expect(page.getByText("translation.googleapis.com")).toBeVisible();
+  await expect(page.getByText("*.deepl.com")).toBeVisible();
+  // netLocal family surfaces the loopback port (the Ollama case).
+  await expect(page.getByText("localhost:11434")).toBeVisible();
+  // Secrets is the sensitive family; the reverse-DNS grant id is shown.
+  await expect(page.getByText("Secrets", { exact: true })).toBeVisible();
+  await expect(page.getByText("Sensitive")).toBeVisible();
+  await expect(page.getByText("dev.brika.secrets.get")).toBeVisible();
+  // The trust note explains per-family consent + audit-log redaction.
+  await expect(page.getByText(/recorded in the audit log/i)).toBeVisible();
+});
+
+test("snapshot permissions show filesystem read/write path patterns", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-snapshot");
+  await expect(page.getByText("Filesystem", { exact: true })).toBeVisible();
+  await expect(page.getByText("/data/cache/**")).toBeVisible();
+  await expect(page.getByText("dev.brika.fs.write")).toBeVisible();
+});
+
 test("overview lists real dependencies from the manifest", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n");
   await expect(page.getByRole("heading", { name: /Dependencies/i })).toBeVisible();

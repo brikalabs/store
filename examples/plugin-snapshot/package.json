@@ -87,6 +87,13 @@
       "max": 100
     }
   ],
+  "grants": {
+    "dev.brika.fs.read": { "paths": ["/bundle", "/data/**"] },
+    "dev.brika.fs.write": { "paths": ["/data/**", "/data/cache/**"] },
+    "dev.brika.secrets.get": { "keys": ["backupEncryptionKey"] },
+    "dev.brika.secrets.set": { "keys": ["backupEncryptionKey"] },
+    "dev.brika.secrets.delete": { "keys": ["backupEncryptionKey"] }
+  },
   "resources": {
     "fs": {
       "maxFileBytes": "50mb",

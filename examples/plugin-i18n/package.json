@@ -78,5 +78,11 @@
       "label": "Translation API key",
       "description": "Optional key for the machine-translation backend"
     }
-  ]
+  ],
+  "grants": {
+    "dev.brika.net.fetch": { "allow": ["translation.googleapis.com", "*.deepl.com"] },
+    "dev.brika.netLocal.fetch": { "ports": [11434] },
+    "dev.brika.secrets.get": { "keys": ["apiKey"] },
+    "dev.brika.secrets.set": { "keys": ["apiKey"] }
+  }
 }

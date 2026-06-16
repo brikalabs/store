@@ -8,7 +8,7 @@
  * idempotent and safe to run before every Playwright run.
  */
 import { Database } from "bun:sqlite";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 const REGISTRY_URL = process.env.BRIKA_REGISTRY ?? "http://localhost:8787";
@@ -193,10 +193,42 @@ function seedDownloadHistory(): void {
   log("seeded 30-day download history on @brika/plugin-i18n");
 }
 
+/**
+ * Ensure each example's stored manifest carries the permission grants declared
+ * in its fixture, so the family-grouped Permissions section is populated. A
+ * fresh publish already includes them; this covers the already-published case
+ * (publish is a 409 no-op) by merging the fixture grants into the stored JSON.
+ */
+function seedGrants(): void {
+  const db = new Database(findLocalD1());
+  const targets = [
+    { dir: "plugin-i18n", name: "@brika/plugin-i18n", version: "0.1.0" },
+    { dir: "plugin-snapshot", name: "@brika/plugin-snapshot", version: "0.2.0" },
+  ];
+  for (const { dir, name, version } of targets) {
+    const pkg = JSON.parse(readFileSync(join(REPO_ROOT, "examples", dir, "package.json"), "utf8"));
+    if (pkg.grants === undefined) continue;
+    const row = db
+      .query("SELECT manifest FROM reg_versions WHERE name = ? AND version = ?")
+      .get(name, version) as { manifest: string } | null;
+    if (row === null) continue;
+    const manifest = JSON.parse(row.manifest);
+    manifest.grants = pkg.grants;
+    db.run("UPDATE reg_versions SET manifest = ? WHERE name = ? AND version = ?", [
+      JSON.stringify(manifest),
+      name,
+      version,
+    ]);
+    log(`seeded grants on ${name}@${version}`);
+  }
+  db.close();
+}
+
 await waitForRegistry();
 const token = await mintToken();
 for (const plugin of EXAMPLES) await publish(plugin, token);
 seedProvenance();
 seedDependencies();
+seedGrants();
 seedDownloadHistory();
 log(`done (dir: ${dirname(findLocalD1())})`);

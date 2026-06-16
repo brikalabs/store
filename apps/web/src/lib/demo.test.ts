@@ -30,22 +30,25 @@ describe("demoSummary", () => {
 });
 
 describe("demoGrants", () => {
-  test("synthesizes 2-4 described grants when none are declared", () => {
+  test("synthesizes 2-4 scoped grants when none are declared", () => {
     const grants = demoGrants("@brika/plugin-x", {});
     const count = Object.keys(grants).length;
     expect(count).toBeGreaterThanOrEqual(2);
     expect(count).toBeLessThanOrEqual(4);
-    for (const grant of Object.values(grants)) expect(grant.description.length).toBeGreaterThan(0);
+    // Every synthesized grant is keyed by a reverse-DNS id with a scope object.
+    for (const [key, scope] of Object.entries(grants)) {
+      expect(key.startsWith("dev.brika.")).toBe(true);
+      expect(typeof scope).toBe("object");
+    }
   });
 
-  test("backfills descriptions for real grants", () => {
-    const grants = demoGrants("@brika/plugin-x", { "dev.brika.net.fetch": {} });
-    expect(grants["dev.brika.net.fetch"]?.description).toContain("HTTPS");
+  test("is deterministic for a given plugin name", () => {
+    expect(demoGrants("@brika/plugin-x", {})).toEqual(demoGrants("@brika/plugin-x", {}));
   });
 
-  test("uses an explicit description on the grant value when present", () => {
-    const grants = demoGrants("@brika/plugin-x", { "x.custom": { description: "Custom reason" } });
-    expect(grants["x.custom"]?.description).toBe("Custom reason");
+  test("preserves real grants and their declared scope untouched", () => {
+    const real = { "dev.brika.net.fetch": { allow: ["*.stripe.com"] } };
+    expect(demoGrants("@brika/plugin-x", real)).toEqual(real);
   });
 });
 
