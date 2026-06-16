@@ -1,0 +1,110 @@
+/**
+ * E2E seed (run with bun). Ensures the example `@brika/*` plugins are published
+ * to the local registry so the storefront has registry-backed listings to show.
+ *
+ * Mints a publish token straight into the shared local D1 (the same row shape
+ * `issueToken` writes), then runs `brika publish` for each example. Already-
+ * published versions return 409 and are treated as success, so the seed is
+ * idempotent and safe to run before every Playwright run.
+ */
+import { Database } from "bun:sqlite";
+import { readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+
+const REGISTRY_URL = process.env.BRIKA_REGISTRY ?? "http://localhost:8787";
+const REPO_ROOT = join(import.meta.dir, "../../..");
+const EXAMPLES = ["plugin-i18n", "plugin-snapshot", "plugin-clock"];
+const TOKEN_TTL_SECONDS = 60 * 60;
+
+function log(message: string): void {
+  process.stderr.write(`[e2e seed] ${message}\n`);
+}
+
+async function waitForRegistry(timeoutMs = 60_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${REGISTRY_URL}/`);
+      if (res.ok) return;
+    } catch {
+      // not up yet
+    }
+    await Bun.sleep(1000);
+  }
+  throw new Error(`registry at ${REGISTRY_URL} did not become ready`);
+}
+
+/** The shared local D1 sqlite holding the registry tables (`reg_tokens` exists). */
+function findLocalD1(): string {
+  const dir = join(REPO_ROOT, "apps/web/.wrangler/state/v3/d1/miniflare-D1DatabaseObject");
+  const candidates = readdirSync(dir)
+    .filter((name) => name.endsWith(".sqlite") && name !== "metadata.sqlite")
+    .map((name) => join(dir, name));
+  for (const file of candidates) {
+    try {
+      const db = new Database(file);
+      const found = db
+        .query("SELECT name FROM sqlite_master WHERE type='table' AND name='reg_tokens'")
+        .get();
+      db.close();
+      if (found != null) return file;
+    } catch {
+      // Not a readable sqlite (or a stale db); try the next candidate.
+    }
+  }
+  throw new Error(`no local D1 with the registry schema found under ${dir}`);
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function base64Url(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString("base64url");
+}
+
+/**
+ * Insert a fresh publish token into reg_tokens and return the raw token. The
+ * token's login must own the `@brika` scope to publish, so reuse whoever already
+ * claimed it; on a pristine registry no one has, and the first publish claims it.
+ */
+async function mintToken(): Promise<string> {
+  const token = `brika_${base64Url(crypto.getRandomValues(new Uint8Array(32)))}`;
+  const db = new Database(findLocalD1());
+  const owner = db
+    .query("SELECT github_owner AS owner FROM reg_scopes WHERE scope = '@brika'")
+    .get() as { owner: string } | null;
+  const login = owner?.owner ?? "e2e-bot";
+  const now = Math.floor(Date.now() / 1000);
+  db.run(
+    "INSERT OR REPLACE INTO reg_tokens (token_hash, github_login, created_at, expires_at) VALUES (?, ?, ?, ?)",
+    [await sha256Hex(token), login, now, now + TOKEN_TTL_SECONDS],
+  );
+  db.close();
+  log(`minted token for ${login}`);
+  return token;
+}
+
+async function publish(plugin: string, token: string): Promise<void> {
+  const dir = join(REPO_ROOT, "examples", plugin);
+  const proc = Bun.spawn(["bun", join(REPO_ROOT, "apps/cli/src/index.ts"), "publish", dir], {
+    env: { ...process.env, BRIKA_REGISTRY: REGISTRY_URL, BRIKA_TOKEN: token },
+    stderr: "pipe",
+    stdout: "pipe",
+  });
+  const code = await proc.exited;
+  const output = `${await new Response(proc.stdout).text()}${await new Response(proc.stderr).text()}`;
+  if (code === 0) {
+    log(`published ${plugin}`);
+  } else if (output.includes("already exists") || output.includes("exists")) {
+    log(`${plugin} already published`);
+  } else {
+    throw new Error(`failed to publish ${plugin}:\n${output}`);
+  }
+}
+
+await waitForRegistry();
+const token = await mintToken();
+for (const plugin of EXAMPLES) await publish(plugin, token);
+log(`done (dir: ${dirname(findLocalD1())})`);

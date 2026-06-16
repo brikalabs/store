@@ -11,3 +11,8 @@ coverage/
 .seed/
 worker-configuration.d.ts
 .npmrc
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+.last-run.json
