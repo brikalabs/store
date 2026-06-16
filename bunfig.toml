@@ -1,0 +1,7 @@
+# Root Bun configuration. https://bun.sh/docs/runtime/bunfig
+
+[test]
+# Emit lcov for SonarCloud (coverage/lcov.info) alongside the human-readable
+# terminal summary. sonar-project.properties points the scanner at this path.
+coverageReporter = ["text", "lcov"]
+coverageDir = "coverage"
