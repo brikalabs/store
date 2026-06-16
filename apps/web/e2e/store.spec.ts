@@ -198,8 +198,8 @@ test("files explorer: folders collapse/expand and files preview their content", 
     await expect(previewHeader).toBeVisible({ timeout: 500 });
   }).toPass();
   await expect(panel.getByText("TS", { exact: true })).toBeVisible();
-  await expect(panel.getByRole("button", { name: /Copy/ })).toBeVisible();
-  // The fetched source renders (with a line-number gutter).
+  await expect(panel.getByRole("button", { name: "Copy code" })).toBeVisible();
+  // The fetched source renders (Clay CodeBlock with a line-number gutter).
   await expect(panel.getByText(/TranslateInput/).first()).toBeVisible();
 });
 

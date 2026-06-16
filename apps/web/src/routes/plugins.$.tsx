@@ -1,8 +1,23 @@
 import { Badge } from "@brika/clay/components/badge";
 import { Card } from "@brika/clay/components/card";
 import { Chart } from "@brika/clay/components/chart";
+import {
+  CodeBlock,
+  CodeBlockActions,
+  CodeBlockContent,
+  CodeBlockCopyButton,
+  CodeBlockHeader,
+  CodeBlockInfo,
+} from "@brika/clay/components/code-block";
+import {
+  EmptyState,
+  EmptyStateDescription,
+  EmptyStateIcon,
+  EmptyStateTitle,
+} from "@brika/clay/components/empty-state";
 import { Separator } from "@brika/clay/components/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@brika/clay/components/tabs";
+import { Tree, TreeItem } from "@brika/clay/components/tree";
 import type { PluginDetail, PluginFile } from "@brika/registry-contract";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -10,7 +25,6 @@ import {
   Box,
   Cable,
   Check,
-  ChevronDown,
   ChevronRight,
   Clock,
   Database,
@@ -18,7 +32,6 @@ import {
   ExternalLink,
   File as FileIcon,
   Folder,
-  FolderOpen,
   Globe,
   KeyRound,
   Layers,
@@ -801,16 +814,6 @@ interface FileTreeNode {
   children: Map<string, FileTreeNode>;
 }
 
-interface FileRow {
-  path: string;
-  depth: number;
-  isDir: boolean;
-  name: string;
-  size: number;
-  lines: number;
-  fileCount: number;
-}
-
 /** Insert one tarball path into the nested directory tree. */
 function insertPath(root: Map<string, FileTreeNode>, file: PluginFile): void {
   const parts = file.path.split("/").filter(Boolean);
@@ -853,47 +856,10 @@ function buildTree(files: readonly PluginFile[]): Map<string, FileTreeNode> {
 }
 
 /** The depth-0 directory paths, opened by default so the structure is visible. */
-function topLevelDirs(tree: Map<string, FileTreeNode>): Set<string> {
-  const open = new Set<string>();
-  for (const node of tree.values()) if (node.isDir) open.add(node.path);
-  return open;
-}
-
-/**
- * Flatten only the *visible* rows: a collapsed directory contributes its own row
- * but none of its descendants, so the rendered DOM stays small for big trees.
- */
-function flattenVisible(
-  level: Map<string, FileTreeNode>,
-  depth: number,
-  open: Set<string>,
-  rows: FileRow[],
-): void {
-  const nodes = [...level.values()];
-  const byName = (a: FileTreeNode, b: FileTreeNode) => a.name.localeCompare(b.name);
-  for (const dir of nodes.filter((n) => n.isDir).sort(byName)) {
-    rows.push({
-      path: dir.path,
-      depth,
-      isDir: true,
-      name: dir.name,
-      size: 0,
-      lines: 0,
-      fileCount: dir.fileCount,
-    });
-    if (open.has(dir.path)) flattenVisible(dir.children, depth + 1, open, rows);
-  }
-  for (const file of nodes.filter((n) => !n.isDir).sort(byName)) {
-    rows.push({
-      path: file.path,
-      depth,
-      isDir: false,
-      name: file.name,
-      size: file.size,
-      lines: file.lines,
-      fileCount: 0,
-    });
-  }
+function topLevelDirIds(tree: Map<string, FileTreeNode>): string[] {
+  const ids: string[] = [];
+  for (const node of tree.values()) if (node.isDir) ids.push(node.path);
+  return ids;
 }
 
 const IMAGE_EXTS = new Set(["svg", "png", "jpg", "jpeg", "gif", "webp", "avif", "ico"]);
@@ -944,6 +910,37 @@ function langLabel(path: string): string {
   return ext || "FILE";
 }
 
+/** Map a file extension to a Shiki language identifier. */
+function shikiLang(path: string): string {
+  const dot = path.lastIndexOf(".");
+  const ext = dot === -1 ? "" : path.slice(dot + 1).toLowerCase();
+  const MAP: Record<string, string> = {
+    ts: "typescript",
+    tsx: "tsx",
+    js: "javascript",
+    jsx: "jsx",
+    mjs: "javascript",
+    cjs: "javascript",
+    json: "json",
+    jsonc: "json",
+    md: "markdown",
+    markdown: "markdown",
+    css: "css",
+    scss: "scss",
+    less: "less",
+    html: "html",
+    htm: "html",
+    yml: "yaml",
+    yaml: "yaml",
+    toml: "toml",
+    xml: "xml",
+    svg: "xml",
+    sh: "bash",
+    bash: "bash",
+  };
+  return MAP[ext] ?? "plaintext";
+}
+
 /** The "N LOC" / "N lines · size" labels the tree and viewer show for a file. */
 function fileMeta(file: PluginFile, kind: ReturnType<typeof fileKind>): string {
   return kind === "text"
@@ -951,67 +948,144 @@ function fileMeta(file: PluginFile, kind: ReturnType<typeof fileKind>): string {
     : formatBytes(file.size);
 }
 
-/** Source with a sticky line-number gutter; the content scrolls under it. */
-function CodeView({ text }: Readonly<{ text: string }>) {
-  const raw = text.split("\n");
-  const count = raw.length > 1 && raw[raw.length - 1] === "" ? raw.length - 1 : raw.length;
-  const body = count < raw.length ? raw.slice(0, count).join("\n") : text;
-  const numbers = Array.from({ length: Math.max(count, 1) }, (_, i) => i + 1).join("\n");
+/** The right-aligned metric label shown in each tree row. */
+function treeRowMeta(node: FileTreeNode): string {
+  if (node.isDir) return String(node.fileCount);
+  const kind = fileKind(node.path);
+  if (kind === "text") return `${node.lines} LOC`;
+  return formatBytes(node.size);
+}
+
+/** Sorted children: dirs first, then files, each group alphabetical. */
+function sortedChildren(level: Map<string, FileTreeNode>): FileTreeNode[] {
+  const nodes = [...level.values()];
+  const dirs = nodes.filter((n) => n.isDir).sort((a, b) => a.name.localeCompare(b.name));
+  const files = nodes.filter((n) => !n.isDir).sort((a, b) => a.name.localeCompare(b.name));
+  return [...dirs, ...files];
+}
+
+/** The label JSX for a single Tree row: name + right-aligned metric. */
+function TreeRowLabel({ node }: Readonly<{ node: FileTreeNode }>) {
   return (
-    <div className="flex min-w-max font-mono text-[11.5px] leading-[1.65]">
-      <pre className="sticky left-0 shrink-0 select-none border-border border-r bg-card px-3 py-2 text-right text-muted-foreground/50">
-        {numbers}
-      </pre>
-      <pre className="px-3 py-2 text-foreground">{body}</pre>
-    </div>
+    <span className="flex w-full min-w-0 items-center gap-1">
+      <span className="truncate font-mono text-[11.5px]">{node.name}</span>
+      <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground/60">
+        {treeRowMeta(node)}
+      </span>
+    </span>
   );
 }
 
-/** A centred "not previewable" panel (binary, oversized, or load error). */
-function NotViewable({ src, reason }: Readonly<{ src: string; reason: string }>) {
+/** Recursively render a level of the file tree as Clay TreeItems. */
+function FileTreeItems({ level }: Readonly<{ level: Map<string, FileTreeNode> }>) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-      <FileIcon className="size-6 text-muted-foreground/40" />
-      <span className="text-foreground text-sm">{reason}</span>
-      <a href={src} target="_blank" rel="noreferrer" className="font-semibold text-brand text-xs">
-        Open raw
-      </a>
-    </div>
+    <>
+      {sortedChildren(level).map((node) =>
+        node.isDir ? (
+          <TreeItem key={node.path} nodeId={node.path} label={<TreeRowLabel node={node} />}>
+            <FileTreeItems level={node.children} />
+          </TreeItem>
+        ) : (
+          <TreeItem key={node.path} nodeId={node.path} label={<TreeRowLabel node={node} />} />
+        ),
+      )}
+    </>
   );
 }
 
-/** The viewer body for the selected file: image, source, or a fallback panel. */
-function FileViewerContent({
+/** Empty-state shown in the viewer pane when no file is selected. */
+function ViewerEmptyState() {
+  return (
+    <EmptyState className="min-h-[260px] justify-center">
+      <EmptyStateIcon>
+        <FileIcon />
+      </EmptyStateIcon>
+      <EmptyStateTitle>Select a file to view its contents</EmptyStateTitle>
+      <EmptyStateDescription>
+        Source is read straight from the published tarball.
+      </EmptyStateDescription>
+    </EmptyState>
+  );
+}
+
+/** Not-previewable fallback (binary, oversized, or load error) with an "Open raw" link. */
+function ViewerNotPreviewable({ src, reason }: Readonly<{ src: string; reason: string }>) {
+  return (
+    <EmptyState className="min-h-[260px] justify-center">
+      <EmptyStateIcon>
+        <FileIcon />
+      </EmptyStateIcon>
+      <EmptyStateTitle>{reason}</EmptyStateTitle>
+      <EmptyStateDescription>
+        <a href={src} target="_blank" rel="noreferrer" className="font-semibold text-brand">
+          Open raw
+        </a>
+      </EmptyStateDescription>
+    </EmptyState>
+  );
+}
+
+/** Viewer header: path, lang badge, meta, and copy/raw action. */
+function ViewerHeader({
+  file,
   kind,
-  previewable,
-  src,
   text,
-  status,
+  src,
 }: Readonly<{
+  file: PluginFile;
   kind: ReturnType<typeof fileKind>;
-  previewable: boolean;
-  src: string;
   text: string | null;
-  status: "idle" | "loading" | "error";
+  src: string;
 }>) {
-  if (kind === "image") {
-    return (
-      <div className="flex h-full items-center justify-center p-6">
-        <img src={src} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
-      </div>
-    );
-  }
-  if (kind === "binary") return <NotViewable src={src} reason="This is a built or binary file." />;
-  if (!previewable) return <NotViewable src={src} reason="This file is large." />;
-  if (status === "error") return <NotViewable src={src} reason="Could not load this file." />;
-  if (text === null) {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-muted-foreground text-sm">
-        Loading...
-      </div>
-    );
-  }
-  return <CodeView text={text} />;
+  return (
+    <CodeBlockHeader>
+      <CodeBlockInfo>
+        {() => (
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-mono text-foreground text-xs">{file.path}</span>
+            <Badge variant="outline" className="shrink-0 font-semibold text-[10px]">
+              {langLabel(file.path)}
+            </Badge>
+            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+              {fileMeta(file, kind)}
+            </span>
+          </span>
+        )}
+      </CodeBlockInfo>
+      <CodeBlockActions>
+        {kind === "text" && text !== null ? (
+          <CodeBlockCopyButton />
+        ) : (
+          <a
+            href={src}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-[11.5px] text-brand"
+          >
+            Raw
+          </a>
+        )}
+      </CodeBlockActions>
+    </CodeBlockHeader>
+  );
+}
+
+/** Image viewer: centered inline preview. */
+function ViewerImage({ src }: Readonly<{ src: string }>) {
+  return (
+    <div className="flex min-h-[260px] items-center justify-center p-6">
+      <img src={src} alt="" loading="lazy" className="max-h-[60vh] max-w-full object-contain" />
+    </div>
+  );
+}
+
+/** Loading placeholder shown while the file fetch is in flight. */
+function ViewerLoading() {
+  return (
+    <div className="flex min-h-[260px] items-center justify-center p-6 text-muted-foreground text-sm">
+      Loading...
+    </div>
+  );
 }
 
 /**
@@ -1029,6 +1103,7 @@ function FileViewer({
   const previewable = file !== undefined && file.size <= MAX_PREVIEW_BYTES;
   const [text, setText] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+
   useEffect(() => {
     if (file === undefined || kind !== "text" || !previewable) {
       setText(null);
@@ -1053,119 +1128,38 @@ function FileViewer({
     };
   }, [src, kind, previewable, file]);
 
-  if (file === undefined) {
-    return (
-      <div className="flex h-full min-w-0 flex-col items-center justify-center gap-2 p-6 text-center">
-        <FileIcon className="size-7 text-muted-foreground/40" />
-        <span className="font-medium text-foreground text-sm">
-          Select a file to view its contents
-        </span>
-        <span className="text-muted-foreground text-xs">
-          Source is read straight from the published tarball.
-        </span>
-      </div>
-    );
-  }
-  return (
-    <div className="flex h-full min-w-0 flex-col">
-      <div className="flex items-center justify-between gap-3 border-border border-b bg-muted px-3.5 py-2">
-        <span className="inline-flex min-w-0 items-center gap-2">
-          <span className="truncate font-mono text-foreground text-xs">{file.path}</span>
-          <span className="shrink-0 rounded-md border border-border bg-card px-1.5 py-0.5 font-semibold text-[10px] text-muted-foreground">
-            {langLabel(file.path)}
-          </span>
-        </span>
-        <span className="flex shrink-0 items-center gap-3">
-          <span className="font-mono text-[11px] text-muted-foreground">
-            {fileMeta(file, kind)}
-          </span>
-          {kind === "text" && text !== null ? (
-            <CopyButton
-              value={text}
-              className="inline-flex items-center gap-1 font-semibold text-[11.5px] text-brand"
-            />
-          ) : (
-            <a
-              href={src}
-              target="_blank"
-              rel="noreferrer"
-              className="font-semibold text-[11.5px] text-brand"
-            >
-              Raw
-            </a>
-          )}
-        </span>
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto bg-card">
-        <FileViewerContent
-          kind={kind}
-          previewable={previewable}
-          src={src}
-          text={text}
-          status={status}
-        />
-      </div>
-    </div>
-  );
-}
+  if (file === undefined) return <ViewerEmptyState />;
 
-/** One compact row in the file tree: a collapsible directory or selectable file. */
-function FileTreeRow({
-  row,
-  isOpen,
-  isSelected,
-  onToggle,
-  onSelect,
-}: Readonly<{
-  row: FileRow;
-  isOpen: boolean;
-  isSelected: boolean;
-  onToggle: (path: string) => void;
-  onSelect: (path: string) => void;
-}>) {
-  const pad = { paddingLeft: `${10 + row.depth * 14}px` };
-  if (row.isDir) {
-    return (
-      <button
-        type="button"
-        onClick={() => onToggle(row.path)}
-        aria-expanded={isOpen}
-        style={pad}
-        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left transition-colors hover:bg-muted/60"
-      >
-        {isOpen ? (
-          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground/70" />
-        ) : (
-          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/70" />
-        )}
-        {isOpen ? (
-          <FolderOpen className="size-3.5 shrink-0 text-brand" />
-        ) : (
-          <Folder className="size-3.5 shrink-0 text-brand" />
-        )}
-        <span className="truncate font-mono text-[11.5px] text-foreground">{row.name}</span>
-        <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground/60">
-          {row.fileCount}
-        </span>
-      </button>
-    );
+  if (kind === "binary") {
+    return <ViewerNotPreviewable src={src} reason="This is a built or binary file." />;
   }
-  const right = fileKind(row.path) === "text" ? `${row.lines} LOC` : formatBytes(row.size);
+  if (!previewable) {
+    return <ViewerNotPreviewable src={src} reason="This file is large." />;
+  }
+  if (status === "error") {
+    return <ViewerNotPreviewable src={src} reason="Could not load this file." />;
+  }
+
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(row.path)}
-      aria-pressed={isSelected}
-      style={pad}
-      className={`flex w-full items-center gap-1.5 px-2 py-1.5 text-left transition-colors ${isSelected ? "bg-brand/10 text-brand-ink" : "hover:bg-muted/60"}`}
-    >
-      <span className="size-3.5 shrink-0" />
-      <FileIcon className="size-3.5 shrink-0 text-muted-foreground/50" />
-      <span className="truncate font-mono text-[11.5px]">{row.name}</span>
-      <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground/60">
-        {right}
-      </span>
-    </button>
+    <CodeBlock variant="subtle" className="flex flex-col rounded-none border-0">
+      <ViewerHeader file={file} kind={kind} text={text} src={src} />
+      {kind === "image" ? (
+        <ViewerImage src={src} />
+      ) : text === null ? (
+        <ViewerLoading />
+      ) : (
+        // No vertical scroll here: the source grows with the page; only long
+        // lines scroll horizontally, contained to this column by the grid.
+        <CodeBlockContent
+          language={shikiLang(file.path)}
+          filename={file.path}
+          showLineNumbers
+          className="overflow-x-auto"
+        >
+          {text}
+        </CodeBlockContent>
+      )}
+    </CodeBlock>
   );
 }
 
@@ -1189,25 +1183,26 @@ function FilesSection({
   tarballUrl?: string;
 }>) {
   const tree = useMemo(() => buildTree(files), [files]);
-  const [open, setOpen] = useState<Set<string>>(() => topLevelDirs(tree));
-  const [selected, setSelected] = useState<string | null>(null);
-  const toggle = useCallback((path: string) => {
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-  }, []);
-  const rows = useMemo(() => {
-    const out: FileRow[] = [];
-    flattenVisible(tree, 0, open, out);
-    return out;
-  }, [tree, open]);
+  const defaultExpanded = useMemo(() => topLevelDirIds(tree), [tree]);
+  // A set of all file paths (non-directory) for O(1) membership checks.
+  const filePaths = useMemo(() => new Set(files.map((f) => f.path)), [files]);
+  const [expanded, setExpanded] = useState<string[]>(defaultExpanded);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  // Folders must not enter the selected state - filter them out on every change.
+  const handleSelect = useCallback(
+    (ids: string[]) => {
+      setSelected(ids.filter((id) => filePaths.has(id)));
+    },
+    [filePaths],
+  );
+
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+  const selectedPath = selected[0] ?? null;
+  const selectedFile =
+    selectedPath === null ? undefined : files.find((f) => f.path === selectedPath);
 
   if (files.length === 0) return null;
-  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-  const selectedFile = selected === null ? undefined : files.find((file) => file.path === selected);
 
   return (
     <section className="flex flex-col gap-3">
@@ -1225,20 +1220,23 @@ function FilesSection({
           <Box className="size-3.5" />
           {tarballName}
         </div>
-        <div className="grid h-[400px] grid-cols-[160px_1fr] sm:grid-cols-[190px_1fr]">
-          <div className="overflow-auto border-border border-r py-1">
-            {rows.map((row) => (
-              <FileTreeRow
-                key={row.path}
-                row={row}
-                isOpen={open.has(row.path)}
-                isSelected={selected === row.path}
-                onToggle={toggle}
-                onSelect={setSelected}
-              />
-            ))}
+        {/* Natural height: the page is the only vertical scroll. The tree and the
+            source flow with the content (no nested vertical scroll); only long
+            code lines scroll horizontally, contained within the viewer column. */}
+        <div className="grid grid-cols-[160px_1fr] sm:grid-cols-[190px_1fr]">
+          <div className="border-border border-r py-1">
+            <Tree
+              expandedIds={expanded}
+              onExpandedChange={setExpanded}
+              selectedIds={selected}
+              onSelectedChange={handleSelect}
+            >
+              <FileTreeItems level={tree} />
+            </Tree>
           </div>
-          <FileViewer name={name} version={version} file={selectedFile} />
+          <div className="flex min-w-0 flex-col">
+            <FileViewer name={name} version={version} file={selectedFile} />
+          </div>
         </div>
         <div className="flex items-center justify-between gap-2 border-border border-t bg-muted px-4 py-2.5 text-muted-foreground text-xs">
           <span className="inline-flex items-center gap-1.5">
