@@ -278,6 +278,96 @@ async function seedManagement(token: string): Promise<void> {
   log(`managed ${name}: published 3 versions, deprecated 1.1.0, yanked 1.0.0`);
 }
 
+/**
+ * Seed the social tables (users, reviews, comments) for @brika/plugin-i18n so
+ * the Reviews and Discussion tabs render a real grade + threads. These live in
+ * the same local D1 as the registry tables. A cache row in `plugins` is written
+ * first so reviews/comments satisfy their foreign key, then the rating is
+ * aggregated the way recomputeRating would. Idempotent via INSERT OR REPLACE.
+ */
+function seedSocial(): void {
+  const db = new Database(findLocalD1());
+  const name = "@brika/plugin-i18n";
+  const now = Math.floor(Date.now() / 1000);
+  db.run(
+    "INSERT OR IGNORE INTO plugins (name, latest_version, brika_engine, display_name, description) VALUES (?, ?, ?, ?, ?)",
+    [name, "0.1.0", "^0.1.0", "i18n Toolkit", "Translate, format, and localize content."],
+  );
+  const users = [
+    { id: "u-mara", gh: 900_001, login: "mara-dev", nm: "Mara Lopez" },
+    { id: "u-kenji", gh: 900_002, login: "kenji-ito", nm: "Kenji Ito" },
+    { id: "u-aria", gh: 900_003, login: "aria-n", nm: "Aria Novak" },
+  ];
+  for (const u of users) {
+    db.run(
+      "INSERT OR REPLACE INTO users (id, github_id, login, name, created_at) VALUES (?, ?, ?, ?, ?)",
+      [u.id, u.gh, u.login, u.nm, now],
+    );
+  }
+  const reviews = [
+    {
+      id: "rv-1",
+      user: "u-mara",
+      rating: 5,
+      title: "Saved us weeks",
+      body: "Dropped it into our hub and shipped French and German the same day. The offline catalog is a lifesaver.",
+      helpful: 7,
+    },
+    {
+      id: "rv-2",
+      user: "u-kenji",
+      rating: 5,
+      title: "Accurate detection",
+      body: "Language detection is spot on and the fallback to English is seamless.",
+      helpful: 3,
+    },
+    {
+      id: "rv-3",
+      user: "u-aria",
+      rating: 4,
+      title: "Solid, minor nits",
+      body: "Works well; would love a bit more control over pluralization rules.",
+      helpful: 1,
+    },
+  ];
+  for (const r of reviews) {
+    db.run(
+      "INSERT OR REPLACE INTO reviews (id, plugin_name, user_id, rating, title, body, version_reviewed, helpful_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [r.id, name, r.user, r.rating, r.title, r.body, "0.1.0", r.helpful, now, now],
+    );
+  }
+  const comments = [
+    {
+      id: "cm-1",
+      parent: null,
+      user: "u-kenji",
+      body: "Does this handle right-to-left locales like Arabic?",
+    },
+    {
+      id: "cm-2",
+      parent: "cm-1",
+      user: "u-mara",
+      body: "Yes. RTL is detected from the BCP-47 tag and the hub mirrors the layout automatically.",
+    },
+  ];
+  for (const c of comments) {
+    db.run(
+      "INSERT OR REPLACE INTO comments (id, plugin_name, parent_id, user_id, body, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+      [c.id, name, c.parent, c.user, c.body, now],
+    );
+  }
+  const agg = db
+    .query("SELECT avg(rating) AS average, count(*) AS count FROM reviews WHERE plugin_name = ?")
+    .get(name) as { average: number; count: number };
+  db.run("UPDATE plugins SET rating_average = ?, rating_count = ? WHERE name = ?", [
+    agg.average,
+    agg.count,
+    name,
+  ]);
+  db.close();
+  log(`seeded ${reviews.length} reviews + ${comments.length} comments on ${name}`);
+}
+
 await waitForRegistry();
 const token = await mintToken();
 for (const plugin of EXAMPLES) await publish(plugin, token);
@@ -286,4 +376,5 @@ seedDependencies();
 seedGrants();
 seedDownloadHistory();
 await seedManagement(token);
+seedSocial();
 log(`done (dir: ${dirname(findLocalD1())})`);

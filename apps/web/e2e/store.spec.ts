@@ -65,6 +65,26 @@ test("plugin management: deprecated version is badged, yanked version is hidden"
   await expect(panel.getByText("v1.0.0")).toHaveCount(0);
 });
 
+test("the reviews tab shows the seeded grade and reviews", async ({ page }) => {
+  // The seed wrote three D1-backed reviews for plugin-i18n; the tab aggregates a
+  // grade and lists them. (Sign-in is required to write one.)
+  await page.goto("/plugins/@brika/plugin-i18n?tab=reviews");
+  const panel = page.getByRole("tabpanel");
+  await expect(panel.getByText(/reviews/i).first()).toBeVisible();
+  await expect(panel.getByText("Saved us weeks")).toBeVisible();
+  await expect(panel.getByText("Mara Lopez").first()).toBeVisible();
+  await expect(panel.getByText(/Sign in with GitHub to write a review/i)).toBeVisible();
+});
+
+test("the discussion tab shows the seeded threaded comments", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-i18n?tab=discussion");
+  const panel = page.getByRole("tabpanel");
+  // The root question and its threaded reply both render.
+  await expect(panel.getByText(/right-to-left locales like Arabic/i)).toBeVisible();
+  await expect(panel.getByText(/RTL is detected from the BCP-47 tag/i)).toBeVisible();
+  await expect(panel.getByText(/Sign in with GitHub to join the discussion/i)).toBeVisible();
+});
+
 test("detail shows a real install count", async ({ page, request }) => {
   // Generate at least one install (tarball download) so the count is non-zero.
   await request.get("/v1/plugins/@brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");
