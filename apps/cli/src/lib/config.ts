@@ -11,7 +11,7 @@ import { z } from "zod";
  *
  * `BRIKA_REGISTRY` / `BRIKA_TOKEN` override the stored values when set (handy in
  * CI). `loadConfig()` folds them in, so commands just read `.registry` / `.token`
- * — the overrides are read-only and never written back to the file.
+ * (the overrides are read-only and never written back to the file).
  */
 
 export const DEFAULT_REGISTRY = "https://registry.brika.dev";
