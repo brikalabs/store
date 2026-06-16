@@ -1,4 +1,5 @@
 import { type OidcClaims, type PublishIdentity, verifyGithubOidc } from "@brika/registry-core";
+import { unauthorized } from "@brika/router";
 import type { Db } from "@brika/store-db";
 import { GithubJwksProvider } from "./adapters/github-jwks";
 import { verifyToken } from "./adapters/token";
@@ -27,7 +28,7 @@ function provenanceFrom(claims: OidcClaims) {
 
 export async function authenticateWrite(request: Request, db: Db): Promise<PublishIdentity | null> {
   const authorization = request.headers.get("authorization");
-  if (authorization === null || !authorization.startsWith("Bearer ")) return null;
+  if (!authorization?.startsWith("Bearer ")) return null;
   const token = authorization.slice("Bearer ".length);
 
   const claims = await verifyGithubOidc(token, jwks, { audience: AUDIENCE });
@@ -43,4 +44,15 @@ export async function authenticateWrite(request: Request, db: Db): Promise<Publi
   if (tokenUser !== null) return { owner: tokenUser.githubLogin, repository: null };
 
   return null;
+}
+
+/**
+ * Like {@link authenticateWrite}, but throws `401 Unauthorized` instead of
+ * returning `null`, so a handler reads the identity in one line:
+ * `const identity = await requireWrite(req, db)`.
+ */
+export async function requireWrite(request: Request, db: Db): Promise<PublishIdentity> {
+  const identity = await authenticateWrite(request, db);
+  if (identity === null) throw unauthorized();
+  return identity;
 }

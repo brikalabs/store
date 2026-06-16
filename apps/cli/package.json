@@ -16,6 +16,7 @@
   "dependencies": {
     "@brika/cli-kit": "workspace:*",
     "@brika/registry-core": "workspace:*",
+    "@brika/router": "workspace:*",
     "@brika/schema": "workspace:*",
     "zod": "^4.4.3"
   },

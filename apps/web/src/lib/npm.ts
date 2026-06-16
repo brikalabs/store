@@ -4,38 +4,34 @@ import {
   PluginSummary,
 } from "@brika/registry-contract";
 import { z } from "zod";
+import {
+  capabilityCounts,
+  LocalizedDoc,
+  mapScreenshots,
+  Person,
+  personName,
+  Repository,
+  repoUrl,
+  Screenshot,
+} from "./manifest-mapping";
 
 /**
  * The npm side of the cached mirror. These helpers query the public npm
  * registry and map a packument into the `/v1` contract shapes. The sync job and
  * the cache-aside read path both build on them. npm stays authoritative for
- * what exists; the store only caches it.
+ * what exists; the store only caches it. Field-level mapping shared with the
+ * registry path lives in `./manifest-mapping`.
  */
+
+// Localized-doc helpers are shared mapping; re-exported so consumers keep using
+// the npm facade (`registry.ts`, the tests) without a second import path.
+export { docLocales, type LocalizedDoc, pickDocPath } from "./manifest-mapping";
 
 const NPM_REGISTRY = "https://registry.npmjs.org";
 const NPM_SEARCH = `${NPM_REGISTRY}/-/v1/search`;
 const NPM_DOWNLOADS = "https://api.npmjs.org/downloads/point/last-week";
 const BRIKA_KEYWORD = "keywords:brika";
 const JSDELIVR_CDN = "https://cdn.jsdelivr.net/npm";
-
-/**
- * A document declared in the manifest: a single path, or a map of locale code
- * to path for localized documents, e.g.
- * `"readme": { "en": "./README.md", "fr": "./README.fr.md" }`.
- */
-const LocalizedDoc = z.union([z.string(), z.record(z.string(), z.string())]);
-export type LocalizedDoc = z.infer<typeof LocalizedDoc>;
-
-const NpmPerson = z.union([
-  z.string(),
-  z.object({
-    name: z.string().optional(),
-    email: z.string().optional(),
-    url: z.string().optional(),
-  }),
-]);
-
-const NpmRepository = z.union([z.string(), z.object({ url: z.string().optional() })]);
 
 const NpmVersionManifest = z.object({
   version: z.string(),
@@ -45,23 +41,10 @@ const NpmVersionManifest = z.object({
   homepage: z.string().optional(),
   keywords: z.array(z.string()).optional(),
   engines: z.object({ brika: z.string().optional() }).optional(),
-  repository: NpmRepository.optional(),
-  author: NpmPerson.optional(),
+  repository: Repository.optional(),
+  author: Person.optional(),
   icon: z.string().optional(),
-  // Screenshots are objects `{ src, caption?, alt? }` (current schema); plain
-  // string paths are still accepted for manifests published before that change.
-  screenshots: z
-    .array(
-      z.union([
-        z.string(),
-        z.object({
-          src: z.string(),
-          caption: z.string().optional(),
-          alt: z.string().optional(),
-        }),
-      ]),
-    )
-    .optional(),
+  screenshots: z.array(Screenshot).optional(),
   readme: LocalizedDoc.optional(),
   changelog: LocalizedDoc.optional(),
   grants: z.record(z.string(), z.unknown()).optional(),
@@ -87,9 +70,9 @@ const Packument = z.object({
   homepage: z.string().optional(),
   license: z.string().optional(),
   readme: z.string().optional(),
-  author: NpmPerson.optional(),
-  maintainers: z.array(NpmPerson).optional(),
-  repository: NpmRepository.optional(),
+  author: Person.optional(),
+  maintainers: z.array(Person).optional(),
+  repository: Repository.optional(),
 });
 export type Packument = z.infer<typeof Packument>;
 
@@ -113,28 +96,6 @@ const DownloadsPoint = z.object({ downloads: z.number() });
 /** npm scoped names need the slash encoded in registry paths. */
 function encodeName(name: string): string {
   return name.replace("/", "%2F");
-}
-
-function personName(person: z.infer<typeof NpmPerson> | undefined): string | undefined {
-  if (person === undefined) return undefined;
-  if (typeof person === "string") {
-    const stripped = person
-      .replace(/\s*<[^>]*>/, "")
-      .replace(/\s*\([^)]*\)/, "")
-      .trim();
-    return stripped.length > 0 ? stripped : undefined;
-  }
-  return person.name;
-}
-
-function repoUrl(repo: z.infer<typeof NpmRepository> | undefined): string | undefined {
-  const raw = typeof repo === "string" ? repo : repo?.url;
-  if (raw === undefined || raw.length === 0) return undefined;
-  if (raw.startsWith("github:")) return `https://github.com/${raw.slice("github:".length)}`;
-  const cleaned = raw.replace(/^git\+/, "").replace(/\.git$/, "");
-  if (cleaned.startsWith("git://")) return `https://${cleaned.slice("git://".length)}`;
-  if (cleaned.startsWith("https://") || cleaned.startsWith("http://")) return cleaned;
-  return undefined;
 }
 
 export interface NpmSearchHit {
@@ -202,30 +163,6 @@ function resolveAuthor(manifest: VersionManifest, pkg: Packument) {
   return authorId === undefined ? undefined : { id: authorId, name: authorName, verified: false };
 }
 
-/** Count each capability kind a manifest declares (absent arrays count as 0). */
-function capabilityCounts(manifest: VersionManifest) {
-  return {
-    tools: manifest.tools?.length ?? 0,
-    blocks: manifest.blocks?.length ?? 0,
-    bricks: manifest.bricks?.length ?? 0,
-    sparks: manifest.sparks?.length ?? 0,
-    pages: manifest.pages?.length ?? 0,
-  };
-}
-
-/** Map declared screenshots to CDN-backed `{ url, caption?, alt? }` entries. */
-function mapScreenshots(
-  name: string,
-  version: string,
-  screenshots: VersionManifest["screenshots"],
-) {
-  return (screenshots ?? []).map((shot) =>
-    typeof shot === "string"
-      ? { url: cdnFileUrl(name, version, shot) }
-      : { url: cdnFileUrl(name, version, shot.src), caption: shot.caption, alt: shot.alt },
-  );
-}
-
 /**
  * Map a packument to a `PluginDetail`. Returns null when the latest version is
  * not a Brika plugin (no `engines.brika`), so callers can skip non-plugins.
@@ -246,7 +183,7 @@ export function toPluginDetail(pkg: Packument, downloadsWeekly: number): PluginD
     author: resolveAuthor(manifest, pkg),
     keywords: manifest.keywords ?? [],
     iconUrl: manifest.icon ? cdnFileUrl(pkg.name, latest, manifest.icon) : undefined,
-    screenshots: mapScreenshots(pkg.name, latest, manifest.screenshots),
+    screenshots: mapScreenshots(manifest.screenshots, (path) => cdnFileUrl(pkg.name, latest, path)),
     downloadsWeekly,
     brikaEngine,
     repository: repoUrl(manifest.repository ?? pkg.repository),
@@ -288,16 +225,4 @@ export async function fetchCdnText(
 ): Promise<string | null> {
   const res = await fetch(cdnFileUrl(name, version, path));
   return res.ok ? res.text() : null;
-}
-
-/** The locale codes a localized document declares (empty for a single path). */
-export function docLocales(doc: LocalizedDoc | undefined): string[] {
-  if (doc === undefined || typeof doc === "string") return [];
-  return Object.keys(doc);
-}
-
-/** Pick the path for a locale: requested -> `en` -> the first declared. */
-export function pickDocPath(doc: LocalizedDoc | undefined, locale?: string): string | undefined {
-  if (doc === undefined || typeof doc === "string") return doc;
-  return (locale === undefined ? undefined : doc[locale]) ?? doc.en ?? Object.values(doc)[0];
 }

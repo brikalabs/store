@@ -1,5 +1,6 @@
 import { CliError } from "@brika/cli-kit";
 import type { TransparencyEntry } from "@brika/registry-core";
+import { npmLink } from "@brika/router/npm";
 import { z } from "zod";
 
 /**
@@ -44,14 +45,6 @@ const ManageResponseSchema = z.object({
   error: z.string().optional(),
   code: z.string().optional(),
 });
-
-/** A scoped or unscoped package name, with the scope slash percent-encoded for the path. */
-function encodePackagePath(name: string): string {
-  return name
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-}
 
 export type DeviceCode = z.infer<typeof DeviceCodeSchema>;
 
@@ -162,7 +155,10 @@ export class RegistryClient {
     action: "deprecate" | "yank",
     body: unknown,
   ): Promise<void> {
-    const path = `/-/package/${encodePackagePath(name)}/${version}/${action}`;
+    const path =
+      action === "deprecate"
+        ? npmLink("/-/package/:name/:version/deprecate", { name, version })
+        : npmLink("/-/package/:name/:version/yank", { name, version });
     const res = await this.#postJson(path, body, token);
     const parsed = await this.#parse(res, ManageResponseSchema);
     if (res.ok && parsed.ok === true) return;

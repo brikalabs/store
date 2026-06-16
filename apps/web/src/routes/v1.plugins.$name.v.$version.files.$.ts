@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { jsonBadRequest, jsonNotFound } from "../lib/http";
 import { getRegistryAsset } from "../lib/registry-assets";
 import { isRegistryName, isSafeAssetPath } from "../lib/registry-source";
+import { serverContext } from "../lib/server-context";
 
 /**
  * `GET /v1/plugins/:name/v/:version/files/<path>` - serve a single file bundled
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/v1/plugins/$name/v/$version/files/$")({
         const path = params._splat ?? "";
         if (!isSafeAssetPath(path)) return jsonBadRequest("invalid asset path");
 
-        const asset = await getRegistryAsset(name, params.version, path);
+        const asset = await getRegistryAsset(serverContext().assets, name, params.version, path);
         if (asset === null) return jsonNotFound();
 
         // Copy into a fresh ArrayBuffer-backed view so the body type is concrete

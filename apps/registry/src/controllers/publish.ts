@@ -1,24 +1,21 @@
-import { env } from "cloudflare:workers";
 import {
   type PublishErrorCode,
   type PublishIdentity,
-  PublishService,
   sha512Integrity,
   TransparencyEntry,
 } from "@brika/registry-core";
-import { getDb, regAudit } from "@brika/store-db";
+import { badRequest, httpError, reply } from "@brika/router";
 import { z } from "zod";
-import { D1MetadataWriter } from "./adapters/d1-metadata-writer";
-import { D1OwnershipPolicy } from "./adapters/d1-ownership";
-import { SchemaManifestValidator } from "./adapters/manifest-validator";
-import { R2TarballWriter } from "./adapters/r2-tarball-writer";
-import { authenticateWrite } from "./auth";
+import { requireWrite } from "../auth";
+import { controller, route } from "../http/router";
+import type { Services } from "../services";
 
 /**
  * `POST /-/publish`. Authenticated by EITHER a GitHub Actions OIDC token (CI,
  * audience `brika-registry`) OR a registry publish token (local `brika publish`).
- * Body: `{ name, version, manifest, tarball }` (tarball base64). All publish
- * logic + invariants live in `PublishService`; this is the wiring.
+ * Body: `{ name, version, manifest, tarball }` (tarball base64), validated by the
+ * route's `body` schema before the handler runs. All publish logic + invariants
+ * live in `PublishService`; this is the wiring.
  */
 
 const PublishBody = z.object({
@@ -54,10 +51,6 @@ function base64ToBytes(value: string): Uint8Array {
   return bytes;
 }
 
-function reply(body: unknown, status: number): Response {
-  return Response.json(body, { status, headers: { "cache-control": "no-store" } });
-}
-
 /** Map a publish rejection code to its HTTP status. */
 function statusForPublishError(code: PublishErrorCode): number {
   switch (code) {
@@ -72,30 +65,27 @@ function statusForPublishError(code: PublishErrorCode): number {
   }
 }
 
-export async function handlePublish(request: Request): Promise<Response> {
-  const db = getDb(env.DB);
-  const identity = await authenticateWrite(request, db);
-  if (identity === null) return reply({ error: "Unauthorized" }, 401);
+export async function publish({
+  body,
+  req,
+  ctx,
+}: {
+  readonly body: z.infer<typeof PublishBody>;
+  readonly req: Request;
+  readonly ctx: Services;
+}): Promise<Response> {
+  const { db, publish: publishService, audit } = ctx;
+  const identity = await requireWrite(req, db);
 
-  const raw: unknown = await request.json().catch(() => null);
-  const parsed = PublishBody.safeParse(raw);
-  if (!parsed.success) return reply({ error: "Invalid publish body" }, 400);
-  const { name, version, manifest, tarball, transparencyLog } = parsed.data;
-
+  const { name, version, manifest, tarball, transparencyLog } = body;
   if (manifest.name !== name || manifest.version !== version) {
-    return reply({ error: "Manifest name/version must match the published name/version" }, 400);
+    throw badRequest("Manifest name/version must match the published name/version");
   }
 
   const tarballBytes = base64ToBytes(tarball);
   const publisher = await withAttestation(identity, tarballBytes, transparencyLog);
 
-  const service = new PublishService(
-    new D1MetadataWriter(db),
-    new R2TarballWriter(env.TARBALLS),
-    new SchemaManifestValidator(),
-    new D1OwnershipPolicy(db),
-  );
-  const result = await service.publish({
+  const result = await publishService.publish({
     name,
     version,
     tarball: tarballBytes,
@@ -103,18 +93,19 @@ export async function handlePublish(request: Request): Promise<Response> {
     identity: publisher,
   });
 
-  await db.insert(regAudit).values({
-    id: crypto.randomUUID(),
+  await audit.record({
     action: result.ok ? "publish" : "publish_rejected",
     packageName: name,
     version,
-    actor: identity.repository ?? identity.owner,
+    actor: identity,
     detail: result.ok ? null : { code: result.code, message: result.message },
   });
 
-  if (!result.ok) {
-    const status = statusForPublishError(result.code);
-    return reply({ error: result.message, code: result.code }, status);
-  }
+  if (!result.ok) throw httpError(statusForPublishError(result.code), result.message, result.code);
   return reply({ ok: true, name, version, integrity: result.integrity }, 201);
 }
+
+export const publishController = controller({
+  name: "publish",
+  routes: [route.post({ path: "/-/publish", body: PublishBody, handler: publish })],
+});

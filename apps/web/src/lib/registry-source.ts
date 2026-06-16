@@ -7,8 +7,25 @@ import {
   PluginVersion as PluginVersionSchema,
 } from "@brika/registry-contract";
 import { readTarGzEntries, tarballPath } from "@brika/registry-core";
+import { npmLink } from "@brika/router/npm";
 import { StoreLocaleSchema } from "@brika/schema/store";
 import { z } from "zod";
+import {
+  capabilityCounts,
+  docLocales,
+  LocalizedDoc,
+  mapScreenshots,
+  Person,
+  personName,
+  pickDocPath,
+  Repository,
+  repoUrl,
+  Screenshot,
+} from "./manifest-mapping";
+
+// Localized-doc helpers are shared mapping; re-exported so the registry facade
+// (and its tests) keep a single import path.
+export { docLocales, pickDocPath } from "./manifest-mapping";
 
 /**
  * The `@brika/*` plugins are hosted on our own registry (registry.brika.dev),
@@ -69,25 +86,6 @@ export function isSafeAssetPath(path: string): boolean {
 // ---------------------------------------------------------------------------
 // Wire formats (npm-compatible packument subset + the catalog endpoint).
 // ---------------------------------------------------------------------------
-
-const LocalizedDoc = z.union([z.string(), z.record(z.string(), z.string())]);
-export type LocalizedDoc = z.infer<typeof LocalizedDoc>;
-
-const Person = z.union([
-  z.string(),
-  z.object({
-    name: z.string().optional(),
-    email: z.string().optional(),
-    url: z.string().optional(),
-  }),
-]);
-
-const Repository = z.union([z.string(), z.object({ url: z.string().optional() })]);
-
-const Screenshot = z.union([
-  z.string(),
-  z.object({ src: z.string(), caption: z.string().optional(), alt: z.string().optional() }),
-]);
 
 const Manifest = z
   .object({
@@ -180,38 +178,6 @@ export type Packument = z.infer<typeof Packument>;
 // Pure mapping (manifest -> contract). Unit-tested without any network.
 // ---------------------------------------------------------------------------
 
-function personName(person: z.infer<typeof Person> | undefined): string | undefined {
-  if (person === undefined) return undefined;
-  if (typeof person === "string") {
-    const stripped = person
-      .replace(/\s*<[^>]*>/, "")
-      .replace(/\s*\([^)]*\)/, "")
-      .trim();
-    return stripped.length > 0 ? stripped : undefined;
-  }
-  return person.name;
-}
-
-function repoUrl(repo: z.infer<typeof Repository> | undefined): string | undefined {
-  const raw = typeof repo === "string" ? repo : repo?.url;
-  if (raw === undefined || raw.length === 0) return undefined;
-  if (raw.startsWith("github:")) return `https://github.com/${raw.slice("github:".length)}`;
-  const cleaned = raw.replace(/^git\+/, "").replace(/\.git$/, "");
-  if (cleaned.startsWith("git://")) return `https://${cleaned.slice("git://".length)}`;
-  if (cleaned.startsWith("https://") || cleaned.startsWith("http://")) return cleaned;
-  return undefined;
-}
-
-function capabilityCounts(manifest: Manifest) {
-  return {
-    tools: manifest.tools?.length ?? 0,
-    blocks: manifest.blocks?.length ?? 0,
-    bricks: manifest.bricks?.length ?? 0,
-    sparks: manifest.sparks?.length ?? 0,
-    pages: manifest.pages?.length ?? 0,
-  };
-}
-
 /**
  * URL the store serves a tarball-bundled file from (extracted on demand). Path-
  * based and version-pinned, npm style: `/v1/plugins/<name>/v/<version>/files/<path>`.
@@ -226,14 +192,6 @@ export function assetUrl(name: string, version: string, path: string): string {
 /** The npm-style `/v1/plugins/<name>/v/<version>` base for a published version. */
 export function pluginVersionUrl(name: string, version: string): string {
   return `/v1/plugins/${encodeURIComponent(name)}/v/${encodeURIComponent(version)}`;
-}
-
-function mapScreenshots(name: string, version: string, screenshots: Manifest["screenshots"]) {
-  return (screenshots ?? []).map((shot) =>
-    typeof shot === "string"
-      ? { url: assetUrl(name, version, shot) }
-      : { url: assetUrl(name, version, shot.src), caption: shot.caption, alt: shot.alt },
-  );
 }
 
 export interface MapOptions {
@@ -270,7 +228,7 @@ export function manifestToDetail(
       authorName === undefined ? undefined : { id: authorName, name: authorName, verified: false },
     keywords: manifest.keywords ?? [],
     iconUrl: manifest.icon ? assetUrl(name, version, manifest.icon) : undefined,
-    screenshots: mapScreenshots(name, version, manifest.screenshots),
+    screenshots: mapScreenshots(manifest.screenshots, (path) => assetUrl(name, version, path)),
     downloadsWeekly: options.downloadsWeekly ?? 0,
     installs: options.installs,
     brikaEngine,
@@ -305,18 +263,6 @@ export function manifestToSummary(
 ): PluginSummary | null {
   const detail = manifestToDetail(manifest, options);
   return detail === null ? null : PluginSummarySchema.parse(detail);
-}
-
-/** Pick the path for a localized document: requested -> `en` -> first declared. */
-export function pickDocPath(doc: LocalizedDoc | undefined, locale?: string): string | undefined {
-  if (doc === undefined || typeof doc === "string") return doc;
-  return (locale === undefined ? undefined : doc[locale]) ?? doc.en ?? Object.values(doc)[0];
-}
-
-/** The locale codes a localized document declares (empty for a single path). */
-export function docLocales(doc: LocalizedDoc | undefined): string[] {
-  if (doc === undefined || typeof doc === "string") return [];
-  return Object.keys(doc);
 }
 
 function parseSemver(version: string): { nums: number[]; pre: string } {
@@ -368,12 +314,8 @@ export function versionsFromPackument(pkg: Packument): PluginVersion[] {
 // Network (registry HTTP surface).
 // ---------------------------------------------------------------------------
 
-function encodeName(name: string): string {
-  return name.replace("/", "%2F");
-}
-
 export async function getRegistryPackument(name: string): Promise<Packument | null> {
-  const res = await fetch(`${REGISTRY_ORIGIN}/${encodeName(name)}`, {
+  const res = await fetch(`${REGISTRY_ORIGIN}${npmLink("/:name", { name })}`, {
     headers: { accept: "application/json" },
   });
   if (!res.ok) return null;
@@ -393,7 +335,7 @@ const NO_DOWNLOADS: RegistryDownloads = { total: 0, weekly: 0, series: [] };
 /** Install stats for a package (all-time + trailing week + series); zero on failure. */
 export async function getRegistryDownloads(name: string): Promise<RegistryDownloads> {
   try {
-    const res = await fetch(`${REGISTRY_ORIGIN}/-/v1/downloads/${encodeName(name)}`, {
+    const res = await fetch(`${REGISTRY_ORIGIN}${npmLink("/-/v1/downloads/:name", { name })}`, {
       headers: { accept: "application/json" },
     });
     if (!res.ok) return NO_DOWNLOADS;

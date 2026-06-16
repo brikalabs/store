@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { jsonNotFound, jsonOk } from "../lib/http";
 import { getRegistryFileList } from "../lib/registry-assets";
 import { isRegistryName } from "../lib/registry-source";
+import { serverContext } from "../lib/server-context";
 
 /**
  * `GET /v1/plugins/:name/v/:version/index` - the published file index (JSON),
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/v1/plugins/$name/v/$version/index")({
       GET: async ({ params }) => {
         const name = decodeURIComponent(params.name);
         if (!isRegistryName(name)) return jsonNotFound();
-        const index = await getRegistryFileList(name, params.version);
+        const index = await getRegistryFileList(serverContext().assets, name, params.version);
         if (index === null) return jsonNotFound();
         return jsonOk(index);
       },

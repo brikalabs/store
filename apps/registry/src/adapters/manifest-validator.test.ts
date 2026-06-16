@@ -128,3 +128,22 @@ test("rejects a tarball that is not a readable gzip archive", async () => {
   expect(result.ok).toBe(false);
   if (!result.ok) expect(result.message).toContain("readable gzip archive");
 });
+
+test("rejects a bundled file over the per-file size limit", async () => {
+  const small = new SchemaManifestValidator({ maxFileBytes: 16 });
+  const tarball = gzipTar([{ path: "big.txt", text: "x".repeat(64) }]);
+  const result = await small.validate(valid, tarball);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.message).toContain("file limit");
+});
+
+test("rejects a package over the unpacked-size limit", async () => {
+  const small = new SchemaManifestValidator({ maxFileBytes: 1024, maxUnpackedBytes: 32 });
+  const tarball = gzipTar([
+    { path: "a.txt", text: "x".repeat(20) },
+    { path: "b.txt", text: "y".repeat(20) },
+  ]);
+  const result = await small.validate(valid, tarball);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.message).toContain("unpacked size");
+});

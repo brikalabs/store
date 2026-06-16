@@ -328,23 +328,3 @@ export const DeveloperProfile = z.object({
   pluginCount: z.number().int().nonnegative().default(0),
 });
 export type DeveloperProfile = z.infer<typeof DeveloperProfile>;
-
-/**
- * Canonical route templates for the contract. `:name` is a plugin name
- * (URL-encoded, scoped names allowed); `:id` is a developer id.
- */
-export const V1_ROUTES = {
-  registry: "/v1/registry",
-  search: "/v1/search",
-  plugin: "/v1/plugins/:name",
-  versions: "/v1/plugins/:name/versions",
-  readme: "/v1/plugins/:name/readme",
-  icon: "/v1/plugins/:name/icon",
-  verified: "/v1/verified",
-  reviews: "/v1/plugins/:name/reviews",
-  reviewVote: "/v1/plugins/:name/reviews/:reviewId/vote",
-  comments: "/v1/plugins/:name/comments",
-  commentVote: "/v1/plugins/:name/comments/:commentId/vote",
-  developer: "/v1/developers/:id",
-  developerPlugins: "/v1/developers/:id/plugins",
-} as const;

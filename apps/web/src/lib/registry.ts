@@ -16,6 +16,7 @@ import {
   toPluginSummary,
 } from "./npm";
 import {
+  compareVersionsDesc,
   getRegistryPackument,
   getRegistryPluginPage,
   isRegistryName,
@@ -119,7 +120,12 @@ export async function getPluginPage(
   };
 }
 
-/** Build the release list (newest first) from a packument's versions + times. */
+/**
+ * Build the release list (newest first) from a packument's versions + times.
+ * Ordered by semver with a publish-time tiebreak, identical to the registry-side
+ * `versionsFromPackument`, so a release timeline reads the same whether the plugin
+ * is resolved from npm or from our registry.
+ */
 function versionsFromPackument(pkg: Awaited<ReturnType<typeof getPackument>>): PluginVersion[] {
   if (pkg === null) return [];
   const versions = pkg.versions ?? {};
@@ -132,23 +138,31 @@ function versionsFromPackument(pkg: Awaited<ReturnType<typeof getPackument>>): P
       deprecated: manifest.deprecated,
     }),
   );
-  list.sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""));
+  list.sort(
+    (a, b) =>
+      compareVersionsDesc(a.version, b.version) ||
+      (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""),
+  );
   return list;
 }
 
+/**
+ * The public developer profile: the maintainer's plugins plus their profile. When
+ * a `stored` profile is supplied (the D1 `developers` row, read in server
+ * contexts) it is authoritative, so dashboard edits (bio, display name, website,
+ * verification) show publicly. Without it (the isomorphic route loader, which can
+ * run in the browser where there is no D1 binding) it falls back to the
+ * npm-derived base. Demo enrichment only fills fields the developer has not set.
+ */
 export async function getDeveloperPage(
   id: string,
+  stored?: DeveloperProfile,
 ): Promise<{ profile: DeveloperProfile; plugins: PluginSummary[] }> {
   const { plugins } = await searchPlugins(`maintainer:${id}`, 50, 0);
-  const profile = demoProfile(
-    DeveloperProfile.parse({
-      id,
-      displayName: id,
-      pluginCount: plugins.length,
-      verified: false,
-    }),
-    plugins.length,
-  );
+  const base =
+    stored ??
+    DeveloperProfile.parse({ id, displayName: id, pluginCount: plugins.length, verified: false });
+  const profile = demoProfile({ ...base, pluginCount: plugins.length }, plugins.length);
   return { profile, plugins };
 }
 

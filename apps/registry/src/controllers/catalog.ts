@@ -1,8 +1,8 @@
-import { env } from "cloudflare:workers";
 import type { DownloadStats } from "@brika/registry-core";
-import { getDb, regDistTags, regPackages, regVersions } from "@brika/store-db";
+import { type Db, regDistTags, regPackages, regVersions } from "@brika/store-db";
 import { and, eq } from "drizzle-orm";
-import { D1DownloadStore } from "./adapters/d1-downloads";
+import { controller, route } from "../http/router";
+import type { Services } from "../services";
 
 /**
  * `GET /-/v1/packages` - a small catalog of every published package's latest
@@ -48,8 +48,7 @@ function matchesQuery(entry: CatalogEntry, query: string): boolean {
 }
 
 /** Every package's latest non-yanked version, newest first. */
-async function readCatalog(): Promise<CatalogEntry[]> {
-  const db = getDb(env.DB);
+async function readCatalog(db: Db): Promise<CatalogEntry[]> {
   const rows = await db
     .select({
       name: regDistTags.name,
@@ -83,18 +82,18 @@ async function readCatalog(): Promise<CatalogEntry[]> {
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }
 
-export async function handleCatalog(request: Request): Promise<Response> {
+export async function handleCatalog(request: Request, services: Services): Promise<Response> {
   const url = new URL(request.url);
   const limit = clampInt(url.searchParams.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, Number.MAX_SAFE_INTEGER);
   const text = url.searchParams.get("text")?.trim();
 
-  const all = await readCatalog();
+  const all = await readCatalog(services.db);
   const filtered = text ? all.filter((entry) => matchesQuery(entry, text)) : all;
   const page = filtered.slice(offset, offset + limit);
 
   // Attach install stats for just this page's packages (not the whole catalog).
-  const stats = await new D1DownloadStore(getDb(env.DB)).statsFor(page.map((entry) => entry.name));
+  const stats = await services.downloads.statsFor(page.map((entry) => entry.name));
   const packages = page.map((entry) => ({ ...entry, downloads: stats.get(entry.name) }));
 
   return Response.json(
@@ -102,3 +101,9 @@ export async function handleCatalog(request: Request): Promise<Response> {
     { headers: { "cache-control": "public, max-age=60" } },
   );
 }
+
+export const catalogController = controller({
+  name: "catalog",
+  prefix: "/-/v1",
+  routes: [route.get({ path: "/packages", handler: ({ req, ctx }) => handleCatalog(req, ctx) })],
+});

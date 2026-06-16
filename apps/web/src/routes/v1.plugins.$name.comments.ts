@@ -1,9 +1,8 @@
-import { env } from "cloudflare:workers";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { getDb } from "../db/client";
 import { getSessionUserId } from "../lib/auth";
 import { jsonBadRequest, jsonNotFound, jsonOk, jsonUnauthorized } from "../lib/http";
+import { serverContext } from "../lib/server-context";
 import { addComment, ensurePluginCached, listComments } from "../lib/social";
 
 const CommentInput = z.object({
@@ -17,7 +16,7 @@ export const Route = createFileRoute("/v1/plugins/$name/comments")({
     handlers: {
       GET: async ({ request, params }) => {
         const viewerId = await getSessionUserId(request);
-        return jsonOk(await listComments(getDb(env.DB), params.name, viewerId));
+        return jsonOk(await listComments(serverContext().db, params.name, viewerId));
       },
       POST: async ({ request, params }) => {
         const userId = await getSessionUserId(request);
@@ -25,7 +24,7 @@ export const Route = createFileRoute("/v1/plugins/$name/comments")({
         const body: unknown = await request.json();
         const parsed = CommentInput.safeParse(body);
         if (!parsed.success) return jsonBadRequest("Invalid comment");
-        const database = getDb(env.DB);
+        const database = serverContext().db;
         if (!(await ensurePluginCached(database, params.name))) return jsonNotFound();
         await addComment(
           database,

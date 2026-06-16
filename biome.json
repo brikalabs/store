@@ -20,7 +20,22 @@
       "!**/*.md"
     ]
   },
-  "plugins": ["./biome-plugins/no-em-dash.grit"],
+  "plugins": [
+    "./biome-plugins/no-em-dash.grit",
+    {
+      "path": "./biome-plugins/boundaries-pure.grit",
+      "includes": [
+        "**/packages/registry-core/**",
+        "**/packages/contract/**",
+        "**/packages/schema/**",
+        "**/packages/env/**"
+      ]
+    },
+    {
+      "path": "./biome-plugins/boundaries-client.grit",
+      "includes": ["**/apps/web/src/components/**", "**/apps/web/src/lib/use-*.ts"]
+    }
+  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",

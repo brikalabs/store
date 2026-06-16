@@ -1,0 +1,28 @@
+{
+  "name": "@brika/router",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A thin, fully-typed superset over Hono: typed route params, validated bodies, controllers, a throw-based HTTP error channel, and typed URL building",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./npm": "./src/npm.ts"
+  },
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "hono": "^4.12.25",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.5",
+    "typescript": "^6.0.3"
+  }
+}

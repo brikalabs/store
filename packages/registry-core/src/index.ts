@@ -9,6 +9,14 @@ export {
   TransparencyEntry,
 } from "./attestation";
 export {
+  type DeviceGrant,
+  type DeviceRedeemResult,
+  DeviceService,
+  type DeviceServiceOptions,
+  type DeviceStore,
+  type IssuedDeviceCode,
+} from "./device";
+export {
   type DailyDownloads,
   DOWNLOAD_WINDOW_DAYS,
   type DownloadStats,
@@ -58,3 +66,4 @@ export {
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export { type PackageRecord, PackageVersion, Provenance } from "./types";
+export { unenforced } from "./unenforced";

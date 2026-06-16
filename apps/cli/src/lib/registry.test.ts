@@ -91,7 +91,9 @@ describe("RegistryClient", () => {
       },
     });
     await client.deprecate("t", "@brika/plugin-x", "1.2.3", "old");
-    expect(calls[0]?.url).toBe("https://r.test/-/package/%40brika/plugin-x/1.2.3/deprecate");
+    // The name is encoded as a single npm-style segment (`@scope%2Fpkg`); the
+    // registry's `:name` token resolves it back to `@brika/plugin-x`.
+    expect(calls[0]?.url).toBe("https://r.test/-/package/@brika%2Fplugin-x/1.2.3/deprecate");
     expect(calls[0]?.body).toEqual({ message: "old" });
   });
 

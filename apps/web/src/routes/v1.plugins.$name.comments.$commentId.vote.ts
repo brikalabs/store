@@ -1,8 +1,7 @@
-import { env } from "cloudflare:workers";
 import { createFileRoute } from "@tanstack/react-router";
-import { getDb } from "../db/client";
 import { getSessionUserId } from "../lib/auth";
 import { jsonNotFound, jsonOk, jsonUnauthorized } from "../lib/http";
+import { serverContext } from "../lib/server-context";
 import { listComments, toggleCommentUpvote } from "../lib/social";
 
 /**
@@ -16,7 +15,7 @@ export const Route = createFileRoute("/v1/plugins/$name/comments/$commentId/vote
       POST: async ({ request, params }) => {
         const userId = await getSessionUserId(request);
         if (userId === null) return jsonUnauthorized();
-        const database = getDb(env.DB);
+        const database = serverContext().db;
         if (!(await toggleCommentUpvote(database, params.commentId, userId))) return jsonNotFound();
         return jsonOk(await listComments(database, params.name, userId));
       },

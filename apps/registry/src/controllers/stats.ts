@@ -1,6 +1,6 @@
-import { env } from "cloudflare:workers";
-import { getDb } from "@brika/store-db";
-import { D1DownloadStore } from "./adapters/d1-downloads";
+import { PKG, packageName } from "@brika/router/npm";
+import { controller, route } from "../http/router";
+import type { Services } from "../services";
 
 /** Days of per-day history returned for the sidebar download sparkline. */
 const SERIES_DAYS = 30;
@@ -12,10 +12,21 @@ const SERIES_DAYS = 30;
  * catalog carries total/weekly for listings; this adds the series for one
  * package.
  */
-export async function handleDownloads(name: string): Promise<Response> {
-  const stats = await new D1DownloadStore(getDb(env.DB)).statsWithSeries(name, SERIES_DAYS);
+export async function handleDownloads(name: string, services: Services): Promise<Response> {
+  const stats = await services.downloads.statsWithSeries(name, SERIES_DAYS);
   return Response.json(
     { name, total: stats.total, weekly: stats.weekly, series: stats.series },
     { headers: { "cache-control": "public, max-age=60" } },
   );
 }
+
+export const statsController = controller({
+  name: "stats",
+  prefix: "/-/v1",
+  routes: [
+    route.get({
+      path: `/downloads/${PKG}`,
+      handler: ({ params, ctx }) => handleDownloads(packageName(params), ctx),
+    }),
+  ],
+});

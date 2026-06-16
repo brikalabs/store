@@ -6,7 +6,16 @@
  * (only the `@brika` scope is hosted today; community scopes open later) and to
  * Cloudflare's request/object realities. Quotas are not meant as hard ceilings:
  * a publisher who needs more can ask for an increase (see the docs).
+ *
+ * Enforcement status (kept honest on purpose):
+ *   - ENFORCED: `maxTarballBytes` (`PublishService`), `maxFileBytes` +
+ *     `maxUnpackedBytes` (the manifest gate, off the unpacked tarball).
+ *   - NOT YET ENFORCED: the count-based quotas below. They need a usage-counting
+ *     port on the metadata store (versions/packages/scopes) or a rolling-window
+ *     count (the weekly limits); until then, treat them as documentation.
  */
+
+import { unenforced } from "./unenforced";
 
 const MiB = 1024 * 1024;
 
@@ -32,13 +41,13 @@ export interface RegistryLimits {
 }
 
 export const REGISTRY_LIMITS: RegistryLimits = {
-  maxTarballBytes: 20 * MiB,
-  maxFileBytes: 8 * MiB,
-  maxUnpackedBytes: 40 * MiB,
-  maxVersionsPerPackage: 1000,
-  maxPackagesPerScope: 100,
-  maxScopesPerUser: 3,
-  weeklyPackageCreations: 20,
-  weeklyPublishAttempts: 1000,
-  weeklyWindowDays: 7,
+  maxTarballBytes: 20 * MiB, // enforced (PublishService)
+  maxFileBytes: 8 * MiB, // enforced (SchemaManifestValidator)
+  maxUnpackedBytes: 40 * MiB, // enforced (SchemaManifestValidator)
+  maxVersionsPerPackage: unenforced(1000, "needs a count port on the metadata store"),
+  maxPackagesPerScope: unenforced(100, "needs a count port on the metadata store"),
+  maxScopesPerUser: unenforced(3, "needs a count port on the metadata store"),
+  weeklyPackageCreations: unenforced(20, "needs a rolling-window count port"),
+  weeklyPublishAttempts: unenforced(1000, "needs a rolling-window count port"),
+  weeklyWindowDays: unenforced(7, "window for the weekly limits above"),
 };

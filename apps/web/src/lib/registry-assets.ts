@@ -1,5 +1,5 @@
-import { env } from "cloudflare:workers";
 import { readTarGzEntries, tarballPath } from "@brika/registry-core";
+import type { BlobStore } from "./blob-store";
 import { contentTypeFor, REGISTRY_ORIGIN } from "./registry-source";
 
 /**
@@ -116,12 +116,13 @@ async function extractFromTarball(
  * in R2 as JSON (versions are immutable), so it is never recomputed per request.
  */
 export async function getRegistryFileList(
+  assets: BlobStore,
   name: string,
   version: string,
 ): Promise<PluginFileIndex | null> {
   const key = cacheKey(name, version, "__index.json");
-  const cached = await env.ASSETS.get(key);
-  if (cached !== null) return JSON.parse(await cached.text()) as PluginFileIndex;
+  const cached = await assets.get(key);
+  if (cached !== null) return JSON.parse(new TextDecoder().decode(cached)) as PluginFileIndex;
 
   const res = await fetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
   if (!res.ok) return null;
@@ -149,9 +150,7 @@ export async function getRegistryFileList(
     shasum: toHex(sha1),
     integrity: `sha512-${toBase64(sha512)}`,
   };
-  await env.ASSETS.put(key, JSON.stringify(index), {
-    httpMetadata: { contentType: "application/json" },
-  });
+  await assets.put(key, JSON.stringify(index), "application/json");
   return index;
 }
 
@@ -160,6 +159,7 @@ export async function getRegistryFileList(
  * it from the tarball and caching it. Returns null when the asset is absent.
  */
 export async function getRegistryAsset(
+  assets: BlobStore,
   name: string,
   version: string,
   path: string,
@@ -168,25 +168,25 @@ export async function getRegistryAsset(
   // served file always agrees with its index entry and text files render inline
   // instead of downloading. Done on every path, ignoring any stale cached type.
   const key = cacheKey(name, version, path);
-  const cached = await env.ASSETS.get(key);
+  const cached = await assets.get(key);
   if (cached !== null) {
-    const bytes = new Uint8Array(await cached.arrayBuffer());
-    return { bytes, contentType: fileContentType(path, isBinaryContent(bytes)) };
+    return { bytes: cached, contentType: fileContentType(path, isBinaryContent(cached)) };
   }
 
   const bytes = await extractFromTarball(name, version, path);
   if (bytes === null) return null;
   const contentType = fileContentType(path, isBinaryContent(bytes));
-  await env.ASSETS.put(key, bytes, { httpMetadata: { contentType } });
+  await assets.put(key, bytes, contentType);
   return { bytes, contentType };
 }
 
 /** Read a bundled text file (readme, `store.json`) from the tarball, or null. */
 export async function getRegistryAssetText(
+  assets: BlobStore,
   name: string,
   version: string,
   path: string,
 ): Promise<string | null> {
-  const asset = await getRegistryAsset(name, version, path);
+  const asset = await getRegistryAsset(assets, name, version, path);
   return asset === null ? null : new TextDecoder().decode(asset.bytes);
 }

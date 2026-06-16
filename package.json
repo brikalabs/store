@@ -22,6 +22,7 @@
     "test:e2e": "bun run --filter @brika/store-web e2e",
     "typecheck": "bun run --filter '*' typecheck",
     "check:no-em-dash": "bun run scripts/check-no-em-dash.ts",
+    "unenforced": "bun run scripts/list-unenforced.ts",
     "lint": "bunx --bun biome check . && bun run check:no-em-dash",
     "sonar": "bunx --bun biome lint --config-path biome.sonar.jsonc --max-diagnostics=none .",
     "sonar:fix": "bunx --bun biome lint --write --config-path biome.sonar.jsonc --max-diagnostics=none ."
