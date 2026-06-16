@@ -2,7 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2023"],
-    "types": ["@cloudflare/workers-types"]
+    // `bun` (a Node types superset) supplies `node:async_hooks` used by @brika/tx;
+    // node builtins run on the Worker via the `nodejs_compat` flag in wrangler.jsonc.
+    "types": ["@cloudflare/workers-types", "bun"]
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]

@@ -52,6 +52,7 @@ export {
 } from "./packument";
 export type { MetadataReader, TarballReader } from "./ports";
 export {
+  type CommitVersionInput,
   type ManifestValidator,
   type MetadataWriter,
   type OwnershipPolicy,

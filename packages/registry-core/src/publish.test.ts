@@ -16,13 +16,9 @@ function fakes() {
   const meta: MetadataWriter = {
     versionExists: (name, version) =>
       Promise.resolve(versions.some((v) => v.name === name && v.version === version)),
-    ensurePackage: () => Promise.resolve(),
-    insertVersion: (v) => {
-      versions.push(v);
-      return Promise.resolve();
-    },
-    setDistTag: (name, tag, version) => {
-      tags.push({ name, tag, version });
+    commitVersion: ({ version, tag }) => {
+      versions.push(version);
+      tags.push({ name: version.name, tag, version: version.version });
       return Promise.resolve();
     },
   };
@@ -31,6 +27,7 @@ function fakes() {
       puts.push(key);
       return Promise.resolve();
     },
+    delete: () => Promise.resolve(),
   };
   return { versions, tags, puts, meta, tarballs };
 }

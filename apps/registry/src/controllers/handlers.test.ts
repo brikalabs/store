@@ -4,7 +4,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { HttpError } from "@brika/router";
 import { type Db, regDistTags, regPackages, regScopes, regVersions, schema } from "@brika/store-db";
+import { transaction } from "@brika/tx";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import { D1MetadataWriter } from "../adapters/d1-metadata-writer";
+import { R2TarballWriter } from "../adapters/r2-tarball-writer";
 import { issueToken } from "../adapters/token";
 import { buildServices, type Services } from "../services";
 import { handleCatalog } from "./catalog";
@@ -58,6 +61,9 @@ function fakeR2(): R2Bucket {
     put: async (key: string, value: Uint8Array) => {
       store.set(key, value);
       return {};
+    },
+    delete: async (key: string) => {
+      store.delete(key);
     },
   };
   return bucket as unknown as R2Bucket;
@@ -205,5 +211,70 @@ describe("handleDownloads", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toMatchObject({ name: "@brika/x", total: 0, weekly: 0 });
+  });
+});
+
+describe("publish atomicity (commitVersion + transaction)", () => {
+  test("commitVersion writes the package, version, and dist-tag together", async () => {
+    const meta = new D1MetadataWriter(db);
+    await meta.commitVersion({
+      scope: "@brika",
+      tag: "latest",
+      version: {
+        name: "@brika/y",
+        version: "1.0.0",
+        manifest: { name: "@brika/y", version: "1.0.0" },
+        integrity: "sha512-x",
+        shasum: "abc",
+        size: 10,
+        publishedAt: "2026-06-16T00:00:00.000Z",
+        deprecated: null,
+        yanked: false,
+        provenance: null,
+      },
+    });
+
+    expect((await db.select().from(regPackages)).map((r) => r.name)).toContain("@brika/y");
+    const versions = await db.select().from(regVersions);
+    expect(versions.find((r) => r.name === "@brika/y")?.version).toBe("1.0.0");
+    const tags = await db.select().from(regDistTags);
+    expect(tags.find((r) => r.name === "@brika/y")?.version).toBe("1.0.0"); // tag moved in the same unit
+  });
+
+  test("a tarball put is rolled back (deleted) when the surrounding transaction fails", async () => {
+    const store = new Map<string, Uint8Array>();
+    const r2 = {
+      put: async (key: string, value: Uint8Array) => {
+        store.set(key, value);
+      },
+      delete: async (key: string) => {
+        store.delete(key);
+      },
+    } as unknown as R2Bucket;
+    const tarballs = new R2TarballWriter(r2);
+
+    await expect(
+      transaction(async () => {
+        await tarballs.put("@brika/y/-/y-1.0.0.tgz", new Uint8Array([1, 2, 3]));
+        expect(store.size).toBe(1); // staged
+        throw new Error("metadata commit failed");
+      }),
+    ).rejects.toThrow("metadata commit failed");
+
+    expect(store.size).toBe(0); // compensated: no orphan tarball
+  });
+
+  test("a tarball put outside a transaction is a plain write (no rollback)", async () => {
+    const store = new Map<string, Uint8Array>();
+    const r2 = {
+      put: async (key: string, value: Uint8Array) => {
+        store.set(key, value);
+      },
+      delete: async (key: string) => {
+        store.delete(key);
+      },
+    } as unknown as R2Bucket;
+    await new R2TarballWriter(r2).put("k", new Uint8Array([1]));
+    expect(store.size).toBe(1);
   });
 });

@@ -5,6 +5,7 @@ import {
   TransparencyEntry,
 } from "@brika/registry-core";
 import { badRequest, httpError, reply } from "@brika/router";
+import { transaction } from "@brika/tx";
 import { z } from "zod";
 import { requireWrite } from "../auth";
 import { controller, route } from "../http/router";
@@ -85,13 +86,18 @@ export async function publish({
   const tarballBytes = base64ToBytes(tarball);
   const publisher = await withAttestation(identity, tarballBytes, transparencyLog);
 
-  const result = await publishService.publish({
-    name,
-    version,
-    tarball: tarballBytes,
-    manifest,
-    identity: publisher,
-  });
+  // The publish stages the tarball then commits the metadata atomically; running it
+  // in a transaction means a failed metadata commit rolls the staged tarball back,
+  // so a publish is all-or-nothing across R2 + D1.
+  const result = await transaction(() =>
+    publishService.publish({
+      name,
+      version,
+      tarball: tarballBytes,
+      manifest,
+      identity: publisher,
+    }),
+  );
 
   await audit.record({
     action: result.ok ? "publish" : "publish_rejected",

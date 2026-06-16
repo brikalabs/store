@@ -38,6 +38,7 @@
         "@brika/router": "workspace:*",
         "@brika/schema": "workspace:*",
         "@brika/store-db": "workspace:*",
+        "@brika/tx": "workspace:*",
         "drizzle-orm": "^0.45.2",
         "hono": "^4.12.25",
         "zod": "^4.4.3",
@@ -148,6 +149,15 @@
         "zod": "^4.4.3",
       },
     },
+    "packages/tx": {
+      "name": "@brika/tx",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/bun": "^1.3.5",
+        "hono": "^4.12.25",
+        "typescript": "^6.0.3",
+      },
+    },
   },
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.27.1", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.27.1", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg=="],
@@ -221,6 +231,8 @@
     "@brika/store-db": ["@brika/store-db@workspace:packages/db"],
 
     "@brika/store-web": ["@brika/store-web@workspace:apps/web"],
+
+    "@brika/tx": ["@brika/tx@workspace:packages/tx"],
 
     "@clack/core": ["@clack/core@1.4.1", "", { "dependencies": { "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-FILJa1gGKEFTGZAJE9RpVhrjKz3c3h4ar60dSv6cGuDqufQ84YEIS3GAGvZiN+H6yaLbbvTFNejjCC4tXpZEuw=="],
 
