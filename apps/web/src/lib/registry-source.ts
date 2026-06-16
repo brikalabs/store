@@ -208,11 +208,14 @@ function capabilityCounts(manifest: Manifest) {
   };
 }
 
-/** URL the store serves a tarball-bundled asset from (extracted on demand). */
+/**
+ * URL the store serves a tarball-bundled file from (extracted on demand). Path-
+ * based and version-pinned, npm/unpkg style: `/v1/plugins/<name>/files/<version>/<path>`.
+ */
 export function assetUrl(name: string, version: string, path: string): string {
   const clean = path.replace(/^\.?\//, "");
-  const query = new URLSearchParams({ v: version, path: clean });
-  return `/v1/plugins/${encodeURIComponent(name)}/asset?${query.toString()}`;
+  const encodedPath = clean.split("/").map(encodeURIComponent).join("/");
+  return `/v1/plugins/${encodeURIComponent(name)}/files/${encodeURIComponent(version)}/${encodedPath}`;
 }
 
 function mapScreenshots(name: string, version: string, screenshots: Manifest["screenshots"]) {
@@ -405,20 +408,16 @@ export async function fetchRegistryTarball(
   return new Uint8Array(await res.arrayBuffer());
 }
 
-/** Count lines in already-decoded bytes (a `\n`-terminated file counts each line). */
-function countLines(data: Uint8Array): number {
-  if (data.length === 0) return 0;
-  let newlines = 0;
-  for (let i = 0; i < data.length; i += 1) if (data[i] === 0x0a) newlines += 1;
-  return data[data.length - 1] === 0x0a ? newlines : newlines + 1;
-}
-
-/** The published tarball's files (path + unpacked size + line count), sorted by path. */
+/**
+ * The published tarball's files (path + unpacked size), sorted by path. Only the
+ * cheap metadata is read here; file *content* (and its line count) is never
+ * processed server-side - the viewer fetches and counts a file lazily on click.
+ */
 function fileListFromEntries(
   entries: Awaited<ReturnType<typeof readTarGzEntries>>,
-): { path: string; size: number; lines: number }[] {
+): { path: string; size: number }[] {
   return entries
-    .map((entry) => ({ path: entry.path, size: entry.data.length, lines: countLines(entry.data) }))
+    .map((entry) => ({ path: entry.path, size: entry.data.length }))
     .sort((a, b) => a.path.localeCompare(b.path));
 }
 

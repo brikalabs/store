@@ -38,9 +38,7 @@ test("the icon plugin is published, listed, and renders its detail", async ({ pa
 });
 
 test("the icon plugin's generated icon is served from its tarball", async ({ request }) => {
-  const res = await request.get(
-    "/v1/plugins/%40brika%2Fplugin-icon/asset?v=0.1.0&path=assets%2Ficon.svg",
-  );
+  const res = await request.get("/v1/plugins/%40brika%2Fplugin-icon/files/0.1.0/assets/icon.svg");
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toContain("image/svg+xml");
   // The icon was produced by the icon-studio template (gradient + glyph).
@@ -87,7 +85,7 @@ test("the discussion tab shows the seeded threaded comments", async ({ page }) =
 
 test("detail shows a real install count", async ({ page, request }) => {
   // Generate at least one install (tarball download) so the count is non-zero.
-  await request.get("/v1/plugins/@brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");
+  await request.get("/v1/plugins/@brika%2Fplugin-i18n/files/0.1.0/assets/icon.svg");
   await page.goto("/plugins/@brika/plugin-i18n");
   await expect(page.getByText(/\d+ installs/).first()).toBeVisible();
 });
@@ -101,7 +99,7 @@ test("detail shows the tarball integrity hash", async ({ page }) => {
 
 test("detail shows the downloads trend card (Clay chart)", async ({ page, request }) => {
   // Ensure at least one install so the trend card renders.
-  await request.get("/v1/plugins/@brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");
+  await request.get("/v1/plugins/@brika%2Fplugin-i18n/files/0.1.0/assets/icon.svg");
   await page.goto("/plugins/@brika/plugin-i18n");
   await expect(page.getByText("Total downloads")).toBeVisible();
   // The Clay chart kit renders a recharts surface inside the card.
@@ -162,11 +160,11 @@ test("supply chain tab groups dependencies by type (declared, not resolved)", as
 test("supply chain tab lists the real tarball files", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n?tab=supply-chain");
   await expect(page.getByRole("heading", { name: "Files", exact: true })).toBeVisible();
-  // The tarball name, a real bundled file, and its LOC label all appear; the
-  // viewer starts on its empty state until a file is picked.
+  // The tarball name, the top-level manifest (with its badge), and the empty
+  // viewer all appear; folders start collapsed so nested files are not shown.
   await expect(page.getByText("plugin-i18n-0.1.0.tgz")).toBeVisible();
-  await expect(page.getByText("index.ts")).toBeVisible();
-  await expect(page.getByText(/\d+ LOC/).first()).toBeVisible();
+  await expect(page.getByRole("treeitem", { name: /package\.json/ })).toBeVisible();
+  await expect(page.getByText("manifest", { exact: true })).toBeVisible();
   await expect(page.getByText("Select a file to view its contents")).toBeVisible();
   await expect(page.getByRole("link", { name: /Download tarball/i })).toBeVisible();
 });
@@ -178,23 +176,22 @@ test("files explorer: folders collapse/expand and files preview their content", 
   const panel = page.getByRole("tabpanel");
   await expect(panel.getByRole("heading", { name: "Files", exact: true })).toBeVisible();
 
-  // Nested locale folders are collapsed by default (lazy render), so no store.json.
-  await expect(panel.getByText("store.json")).toHaveCount(0);
+  // All folders start collapsed, so the src folder's index.ts is not in the DOM.
+  await expect(panel.getByText("index.ts")).toHaveCount(0);
 
-  // Expanding the `en` folder reveals its store.json. Retry through hydration,
-  // clicking only while still collapsed so the toggle stays idempotent.
-  const storeJson = panel.getByText("store.json");
+  // Expanding the `src` folder reveals index.ts. Retry through hydration, clicking
+  // only while it is still collapsed so the toggle stays idempotent.
+  const indexTs = panel.getByText("index.ts");
   await expect(async () => {
-    if ((await storeJson.count()) === 0) await panel.getByText("en", { exact: true }).click();
-    await expect(storeJson).toBeVisible({ timeout: 500 });
+    if ((await indexTs.count()) === 0) await panel.getByText("src", { exact: true }).click();
+    await expect(indexTs).toBeVisible({ timeout: 500 });
   }).toPass();
 
-  // Clicking a file lazily opens it in the viewer pane (header shows the full
-  // path + a language badge), and its source is fetched and rendered.
+  // Clicking it lazily opens the viewer pane (header shows the full path + a
+  // language badge), and its source is fetched and rendered.
   const previewHeader = panel.getByText("src/index.ts");
   await expect(async () => {
-    if ((await previewHeader.count()) === 0)
-      await panel.getByText("index.ts", { exact: true }).click();
+    if ((await previewHeader.count()) === 0) await indexTs.click();
     await expect(previewHeader).toBeVisible({ timeout: 500 });
   }).toPass();
   await expect(panel.getByText("TS", { exact: true })).toBeVisible();
@@ -243,17 +240,19 @@ test("localized copy renders for the French locale", async ({ page }) => {
 });
 
 test("the icon asset is served from the tarball", async ({ request }) => {
-  const res = await request.get(
-    "/v1/plugins/%40brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg",
-  );
+  const res = await request.get("/v1/plugins/%40brika%2Fplugin-i18n/files/0.1.0/assets/icon.svg");
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toContain("image/svg+xml");
   expect(await res.text()).toContain("<svg");
 });
 
 test("a path-traversal asset request is rejected", async ({ request }) => {
+  // Path-based URLs make traversal a non-starter: the `..` segments either
+  // normalize the URL off the files route (404) or reach the handler and fail
+  // its `..` check (400). Either way the file is never served.
   const res = await request.get(
-    "/v1/plugins/%40brika%2Fplugin-i18n/asset?v=0.1.0&path=../../etc/passwd",
+    "/v1/plugins/%40brika%2Fplugin-i18n/files/0.1.0/%2e%2e/%2e%2e/etc/passwd",
   );
-  expect(res.status()).toBe(400);
+  expect(res.ok()).toBe(false);
+  expect([400, 404]).toContain(res.status());
 });

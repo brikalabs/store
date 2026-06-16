@@ -39,14 +39,18 @@ describe("isRegistryName", () => {
 });
 
 describe("assetUrl", () => {
-  test("builds a root-relative, version-pinned, encoded URL", () => {
+  test("builds a path-based, version-pinned URL (npm/unpkg style)", () => {
     const url = assetUrl("@brika/plugin-i18n", "0.1.0", "./assets/icon.svg");
-    expect(url).toBe("/v1/plugins/%40brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");
+    expect(url).toBe("/v1/plugins/%40brika%2Fplugin-i18n/files/0.1.0/assets/icon.svg");
   });
 
-  test("strips a leading ./ or / from the path", () => {
-    expect(assetUrl("@brika/x", "1.0.0", "/a/b.png")).toContain("path=a%2Fb.png");
-    expect(assetUrl("@brika/x", "1.0.0", "./a/b.png")).toContain("path=a%2Fb.png");
+  test("strips a leading ./ or / and keeps the path segments", () => {
+    expect(assetUrl("@brika/x", "1.0.0", "/a/b.png")).toBe(
+      "/v1/plugins/%40brika%2Fx/files/1.0.0/a/b.png",
+    );
+    expect(assetUrl("@brika/x", "1.0.0", "./a/b.png")).toBe(
+      "/v1/plugins/%40brika%2Fx/files/1.0.0/a/b.png",
+    );
   });
 });
 

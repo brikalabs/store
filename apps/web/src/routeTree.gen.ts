@@ -37,7 +37,7 @@ import { Route as V1PluginsNameVersionsRouteImport } from './routes/v1.plugins.$
 import { Route as V1PluginsNameReviewsRouteImport } from './routes/v1.plugins.$name.reviews'
 import { Route as V1PluginsNameReadmeRouteImport } from './routes/v1.plugins.$name.readme'
 import { Route as V1PluginsNameCommentsRouteImport } from './routes/v1.plugins.$name.comments'
-import { Route as V1PluginsNameAssetRouteImport } from './routes/v1.plugins.$name.asset'
+import { Route as V1PluginsNameFilesSplatRouteImport } from './routes/v1.plugins.$name.files.$'
 import { Route as V1PluginsNameReviewsReviewIdVoteRouteImport } from './routes/v1.plugins.$name.reviews.$reviewId.vote'
 import { Route as V1PluginsNameCommentsCommentIdVoteRouteImport } from './routes/v1.plugins.$name.comments.$commentId.vote'
 
@@ -181,9 +181,9 @@ const V1PluginsNameCommentsRoute = V1PluginsNameCommentsRouteImport.update({
   path: '/comments',
   getParentRoute: () => V1PluginsNameRoute,
 } as any)
-const V1PluginsNameAssetRoute = V1PluginsNameAssetRouteImport.update({
-  id: '/asset',
-  path: '/asset',
+const V1PluginsNameFilesSplatRoute = V1PluginsNameFilesSplatRouteImport.update({
+  id: '/files/$',
+  path: '/files/$',
   getParentRoute: () => V1PluginsNameRoute,
 } as any)
 const V1PluginsNameReviewsReviewIdVoteRoute =
@@ -224,11 +224,11 @@ export interface FileRoutesByFullPath {
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
-  '/v1/plugins/$name/asset': typeof V1PluginsNameAssetRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
+  '/v1/plugins/$name/files/$': typeof V1PluginsNameFilesSplatRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
 }
@@ -257,11 +257,11 @@ export interface FileRoutesByTo {
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
-  '/v1/plugins/$name/asset': typeof V1PluginsNameAssetRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
+  '/v1/plugins/$name/files/$': typeof V1PluginsNameFilesSplatRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
 }
@@ -291,11 +291,11 @@ export interface FileRoutesById {
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
-  '/v1/plugins/$name/asset': typeof V1PluginsNameAssetRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
+  '/v1/plugins/$name/files/$': typeof V1PluginsNameFilesSplatRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
 }
@@ -326,11 +326,11 @@ export interface FileRouteTypes {
     | '/dashboard/plugins/$'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
-    | '/v1/plugins/$name/asset'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
+    | '/v1/plugins/$name/files/$'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
   fileRoutesByTo: FileRoutesByTo
@@ -359,11 +359,11 @@ export interface FileRouteTypes {
     | '/dashboard/plugins/$'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
-    | '/v1/plugins/$name/asset'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
+    | '/v1/plugins/$name/files/$'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
   id:
@@ -392,11 +392,11 @@ export interface FileRouteTypes {
     | '/dashboard/plugins/$'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
-    | '/v1/plugins/$name/asset'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
+    | '/v1/plugins/$name/files/$'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
   fileRoutesById: FileRoutesById
@@ -624,11 +624,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1PluginsNameCommentsRouteImport
       parentRoute: typeof V1PluginsNameRoute
     }
-    '/v1/plugins/$name/asset': {
-      id: '/v1/plugins/$name/asset'
-      path: '/asset'
-      fullPath: '/v1/plugins/$name/asset'
-      preLoaderRoute: typeof V1PluginsNameAssetRouteImport
+    '/v1/plugins/$name/files/$': {
+      id: '/v1/plugins/$name/files/$'
+      path: '/files/$'
+      fullPath: '/v1/plugins/$name/files/$'
+      preLoaderRoute: typeof V1PluginsNameFilesSplatRouteImport
       parentRoute: typeof V1PluginsNameRoute
     }
     '/v1/plugins/$name/reviews/$reviewId/vote': {
@@ -698,19 +698,19 @@ const V1PluginsNameReviewsRouteWithChildren =
   V1PluginsNameReviewsRoute._addFileChildren(V1PluginsNameReviewsRouteChildren)
 
 interface V1PluginsNameRouteChildren {
-  V1PluginsNameAssetRoute: typeof V1PluginsNameAssetRoute
   V1PluginsNameCommentsRoute: typeof V1PluginsNameCommentsRouteWithChildren
   V1PluginsNameReadmeRoute: typeof V1PluginsNameReadmeRoute
   V1PluginsNameReviewsRoute: typeof V1PluginsNameReviewsRouteWithChildren
   V1PluginsNameVersionsRoute: typeof V1PluginsNameVersionsRoute
+  V1PluginsNameFilesSplatRoute: typeof V1PluginsNameFilesSplatRoute
 }
 
 const V1PluginsNameRouteChildren: V1PluginsNameRouteChildren = {
-  V1PluginsNameAssetRoute: V1PluginsNameAssetRoute,
   V1PluginsNameCommentsRoute: V1PluginsNameCommentsRouteWithChildren,
   V1PluginsNameReadmeRoute: V1PluginsNameReadmeRoute,
   V1PluginsNameReviewsRoute: V1PluginsNameReviewsRouteWithChildren,
   V1PluginsNameVersionsRoute: V1PluginsNameVersionsRoute,
+  V1PluginsNameFilesSplatRoute: V1PluginsNameFilesSplatRoute,
 }
 
 const V1PluginsNameRouteWithChildren = V1PluginsNameRoute._addFileChildren(

@@ -9,15 +9,8 @@ import {
   CodeBlockHeader,
   CodeBlockInfo,
 } from "@brika/clay/components/code-block";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateIcon,
-  EmptyStateTitle,
-} from "@brika/clay/components/empty-state";
 import { Separator } from "@brika/clay/components/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@brika/clay/components/tabs";
-import { Tree, TreeItem } from "@brika/clay/components/tree";
 import type { PluginDetail, PluginFile } from "@brika/registry-contract";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -55,6 +48,14 @@ import { GradientAvatar, PluginIcon } from "../components/clay/plugin-icon";
 import { placeholderShotCount, ScreenshotPanels } from "../components/clay/screenshot-panels";
 import { Segmented, segmentClassName } from "../components/clay/segmented";
 import { Stars } from "../components/clay/stars";
+import {
+  Tree,
+  TreeItem,
+  TreeItemBadge,
+  TreeItemContent,
+  TreeItemLabel,
+  TreeItemRow,
+} from "../components/clay/tree";
 import { CommentsSection } from "../components/comments-section";
 import { CopyButton } from "../components/copy-button";
 import { NotFoundPage } from "../components/error-pages";
@@ -809,7 +810,6 @@ interface FileTreeNode {
   path: string;
   isDir: boolean;
   size: number;
-  lines: number;
   fileCount: number;
   children: Map<string, FileTreeNode>;
 }
@@ -829,7 +829,6 @@ function insertPath(root: Map<string, FileTreeNode>, file: PluginFile): void {
       path: prefix,
       isDir: !isLeaf,
       size: isLeaf ? file.size : 0,
-      lines: isLeaf ? (file.lines ?? 0) : 0,
       fileCount: 0,
       children: new Map<string, FileTreeNode>(),
     };
@@ -853,13 +852,6 @@ function buildTree(files: readonly PluginFile[]): Map<string, FileTreeNode> {
   for (const file of files) insertPath(root, file);
   for (const node of root.values()) computeCounts(node);
   return root;
-}
-
-/** The depth-0 directory paths, opened by default so the structure is visible. */
-function topLevelDirIds(tree: Map<string, FileTreeNode>): string[] {
-  const ids: string[] = [];
-  for (const node of tree.values()) if (node.isDir) ids.push(node.path);
-  return ids;
 }
 
 const IMAGE_EXTS = new Set(["svg", "png", "jpg", "jpeg", "gif", "webp", "avif", "ico"]);
@@ -941,19 +933,17 @@ function shikiLang(path: string): string {
   return MAP[ext] ?? "plaintext";
 }
 
-/** The "N LOC" / "N lines · size" labels the tree and viewer show for a file. */
-function fileMeta(file: PluginFile, kind: ReturnType<typeof fileKind>): string {
-  return kind === "text"
-    ? `${file.lines ?? 0} lines · ${formatBytes(file.size)}`
-    : formatBytes(file.size);
+/** Line count of fetched text (a trailing newline does not add a blank line). */
+function countTextLines(text: string): number {
+  if (text.length === 0) return 0;
+  return text.endsWith("\n") ? text.split("\n").length - 1 : text.split("\n").length;
 }
 
-/** The right-aligned metric label shown in each tree row. */
-function treeRowMeta(node: FileTreeNode): string {
-  if (node.isDir) return String(node.fileCount);
-  const kind = fileKind(node.path);
-  if (kind === "text") return `${node.lines} LOC`;
-  return formatBytes(node.size);
+/** The viewer's "N lines · size" / "size" meta, computed from the fetched text. */
+function fileMeta(size: number, kind: ReturnType<typeof fileKind>, text: string | null): string {
+  return kind === "text" && text !== null
+    ? `${countTextLines(text)} lines · ${formatBytes(size)}`
+    : formatBytes(size);
 }
 
 /** Sorted children: dirs first, then files, each group alphabetical. */
@@ -964,64 +954,61 @@ function sortedChildren(level: Map<string, FileTreeNode>): FileTreeNode[] {
   return [...dirs, ...files];
 }
 
-/** The label JSX for a single Tree row: name + right-aligned metric. */
-function TreeRowLabel({ node }: Readonly<{ node: FileTreeNode }>) {
-  return (
-    <span className="flex w-full min-w-0 items-center gap-1">
-      <span className="truncate font-mono text-[11.5px]">{node.name}</span>
-      <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground/60">
-        {treeRowMeta(node)}
-      </span>
-    </span>
-  );
-}
-
-/** Recursively render a level of the file tree as Clay TreeItems. */
+/** Recursively render a level of the file tree, using the Tree slot components. */
 function FileTreeItems({ level }: Readonly<{ level: Map<string, FileTreeNode> }>) {
   return (
     <>
       {sortedChildren(level).map((node) =>
         node.isDir ? (
-          <TreeItem key={node.path} nodeId={node.path} label={<TreeRowLabel node={node} />}>
-            <FileTreeItems level={node.children} />
+          <TreeItem key={node.path} nodeId={node.path} isFolder>
+            <TreeItemRow>
+              <TreeItemLabel>{node.name}</TreeItemLabel>
+            </TreeItemRow>
+            <TreeItemContent>
+              <FileTreeItems level={node.children} />
+            </TreeItemContent>
           </TreeItem>
         ) : (
-          <TreeItem key={node.path} nodeId={node.path} label={<TreeRowLabel node={node} />} />
+          <TreeItem key={node.path} nodeId={node.path}>
+            <TreeItemRow>
+              <TreeItemLabel>{node.name}</TreeItemLabel>
+              {node.name === "package.json" ? <TreeItemBadge>manifest</TreeItemBadge> : null}
+            </TreeItemRow>
+          </TreeItem>
         ),
       )}
     </>
   );
 }
 
+/** A centred message in the viewer pane (plain icon + title + description). */
+function ViewerMessage({ title, children }: Readonly<{ title: string; children?: ReactNode }>) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2.5 p-8 text-center">
+      <FileIcon className="size-8 text-muted-foreground/40" />
+      <span className="font-heading font-semibold text-base text-foreground">{title}</span>
+      {children ? <span className="text-muted-foreground text-sm">{children}</span> : null}
+    </div>
+  );
+}
+
 /** Empty-state shown in the viewer pane when no file is selected. */
 function ViewerEmptyState() {
   return (
-    <EmptyState className="min-h-[260px] justify-center">
-      <EmptyStateIcon>
-        <FileIcon />
-      </EmptyStateIcon>
-      <EmptyStateTitle>Select a file to view its contents</EmptyStateTitle>
-      <EmptyStateDescription>
-        Source is read straight from the published tarball.
-      </EmptyStateDescription>
-    </EmptyState>
+    <ViewerMessage title="Select a file to view its contents">
+      Source is read straight from the published tarball.
+    </ViewerMessage>
   );
 }
 
 /** Not-previewable fallback (binary, oversized, or load error) with an "Open raw" link. */
 function ViewerNotPreviewable({ src, reason }: Readonly<{ src: string; reason: string }>) {
   return (
-    <EmptyState className="min-h-[260px] justify-center">
-      <EmptyStateIcon>
-        <FileIcon />
-      </EmptyStateIcon>
-      <EmptyStateTitle>{reason}</EmptyStateTitle>
-      <EmptyStateDescription>
-        <a href={src} target="_blank" rel="noreferrer" className="font-semibold text-brand">
-          Open raw
-        </a>
-      </EmptyStateDescription>
-    </EmptyState>
+    <ViewerMessage title={reason}>
+      <a href={src} target="_blank" rel="noreferrer" className="font-semibold text-brand">
+        Open raw
+      </a>
+    </ViewerMessage>
   );
 }
 
@@ -1047,7 +1034,7 @@ function ViewerHeader({
               {langLabel(file.path)}
             </Badge>
             <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-              {fileMeta(file, kind)}
+              {fileMeta(file.size, kind, text)}
             </span>
           </span>
         )}
@@ -1073,7 +1060,7 @@ function ViewerHeader({
 /** Image viewer: centered inline preview. */
 function ViewerImage({ src }: Readonly<{ src: string }>) {
   return (
-    <div className="flex min-h-[260px] items-center justify-center p-6">
+    <div className="flex min-h-0 flex-1 items-center justify-center p-6">
       <img src={src} alt="" loading="lazy" className="max-h-[60vh] max-w-full object-contain" />
     </div>
   );
@@ -1082,7 +1069,7 @@ function ViewerImage({ src }: Readonly<{ src: string }>) {
 /** Loading placeholder shown while the file fetch is in flight. */
 function ViewerLoading() {
   return (
-    <div className="flex min-h-[260px] items-center justify-center p-6 text-muted-foreground text-sm">
+    <div className="flex min-h-0 flex-1 items-center justify-center p-6 text-muted-foreground text-sm">
       Loading...
     </div>
   );
@@ -1141,20 +1128,18 @@ function FileViewer({
   }
 
   return (
-    <CodeBlock variant="subtle" className="flex flex-col rounded-none border-0">
+    <CodeBlock variant="subtle" className="flex min-h-0 flex-1 flex-col rounded-none border-0">
       <ViewerHeader file={file} kind={kind} text={text} src={src} />
       {kind === "image" ? (
         <ViewerImage src={src} />
       ) : text === null ? (
         <ViewerLoading />
       ) : (
-        // No vertical scroll here: the source grows with the page; only long
-        // lines scroll horizontally, contained to this column by the grid.
         <CodeBlockContent
           language={shikiLang(file.path)}
           filename={file.path}
           showLineNumbers
-          className="overflow-x-auto"
+          className="min-h-0 flex-1"
         >
           {text}
         </CodeBlockContent>
@@ -1183,10 +1168,10 @@ function FilesSection({
   tarballUrl?: string;
 }>) {
   const tree = useMemo(() => buildTree(files), [files]);
-  const defaultExpanded = useMemo(() => topLevelDirIds(tree), [tree]);
   // A set of all file paths (non-directory) for O(1) membership checks.
   const filePaths = useMemo(() => new Set(files.map((f) => f.path)), [files]);
-  const [expanded, setExpanded] = useState<string[]>(defaultExpanded);
+  // All folders start collapsed; the user opens what they want.
+  const [expanded, setExpanded] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
 
   // Folders must not enter the selected state - filter them out on every change.
@@ -1220,11 +1205,11 @@ function FilesSection({
           <Box className="size-3.5" />
           {tarballName}
         </div>
-        {/* Natural height: the page is the only vertical scroll. The tree and the
-            source flow with the content (no nested vertical scroll); only long
-            code lines scroll horizontally, contained within the viewer column. */}
-        <div className="grid grid-cols-[160px_1fr] sm:grid-cols-[190px_1fr]">
-          <div className="border-border border-r py-1">
+        {/* Adaptive two-pane browser: the row grows with content between a min
+            and a max height (grid minmax). Past the max, the tree and the source
+            each scroll within their own pane; nothing spills into the footer. */}
+        <div className="grid grid-cols-[190px_1fr] grid-rows-[minmax(300px,620px)] sm:grid-cols-[230px_1fr]">
+          <div className="min-h-0 overflow-auto border-border border-r">
             <Tree
               expandedIds={expanded}
               onExpandedChange={setExpanded}
@@ -1234,7 +1219,7 @@ function FilesSection({
               <FileTreeItems level={tree} />
             </Tree>
           </div>
-          <div className="flex min-w-0 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-col">
             <FileViewer name={name} version={version} file={selectedFile} />
           </div>
         </div>
