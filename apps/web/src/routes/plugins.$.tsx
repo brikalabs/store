@@ -1,3 +1,8 @@
+import { Badge } from "@brika/clay/components/badge";
+import { Card } from "@brika/clay/components/card";
+import { Chart } from "@brika/clay/components/chart";
+import { Status, StatusIndicator, StatusLabel } from "@brika/clay/components/status";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@brika/clay/components/tabs";
 import type { PluginDetail } from "@brika/registry-contract";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -24,7 +29,6 @@ import { GithubIcon } from "../components/clay/icons";
 import { GradientAvatar, PluginIcon } from "../components/clay/plugin-icon";
 import { placeholderShotCount, ScreenshotPanels } from "../components/clay/screenshot-panels";
 import { Segmented, segmentClassName } from "../components/clay/segmented";
-import { Sparkline } from "../components/clay/sparkline";
 import { Stars } from "../components/clay/stars";
 import { CommentsSection } from "../components/comments-section";
 import { CopyButton } from "../components/copy-button";
@@ -38,7 +42,21 @@ import { mockComments, mockReviews } from "../lib/mock-social";
 import { getPluginPage } from "../lib/registry";
 import { isRegistryName } from "../lib/registry-source";
 
-const detailSearch = z.object({ lang: z.string().optional() });
+const DETAIL_TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "versions", label: "Versions" },
+  { id: "reviews", label: "Reviews" },
+  { id: "discussion", label: "Discussion" },
+] as const;
+type DetailTab = (typeof DETAIL_TABS)[number]["id"];
+const DETAIL_TAB_IDS = DETAIL_TABS.map((t) => t.id) as [DetailTab, ...DetailTab[]];
+
+// The active tab lives in the URL (`?tab=`), so it is deep-linkable and the back
+// button steps through panels. Invalid/absent -> Overview (kept out of the URL).
+const detailSearch = z.object({
+  lang: z.string().optional(),
+  tab: z.enum(DETAIL_TAB_IDS).optional().catch(undefined),
+});
 
 export const Route = createFileRoute("/plugins/$")({
   validateSearch: (input) => detailSearch.parse(input),
@@ -64,41 +82,6 @@ const PERMISSION_ICONS: LucideIcon[] = [Link2, ShieldCheck, Box];
 
 function localeName(code: string): string {
   return LOCALE_NAMES[code] ?? code.toUpperCase();
-}
-
-type DetailTab = "overview" | "versions" | "reviews" | "discussion";
-
-const DETAIL_TABS: ReadonlyArray<{ id: DetailTab; label: string }> = [
-  { id: "overview", label: "Overview" },
-  { id: "versions", label: "Versions" },
-  { id: "reviews", label: "Reviews" },
-  { id: "discussion", label: "Discussion" },
-];
-
-/** Real, switchable detail tabs: the active one underlined, its panel rendered. */
-function DetailTabs({
-  tab,
-  onPick,
-}: Readonly<{ tab: DetailTab; onPick: (next: DetailTab) => void }>) {
-  return (
-    <div className="flex items-center gap-6 border-border border-b text-sm">
-      {DETAIL_TABS.map(({ id, label }) => (
-        <button
-          key={id}
-          type="button"
-          onClick={() => onPick(id)}
-          aria-current={id === tab ? "page" : undefined}
-          className={
-            id === tab
-              ? "-mb-px border-brand border-b-2 py-2.5 font-semibold text-foreground"
-              : "-mb-px border-transparent border-b-2 py-2.5 font-medium text-muted-foreground hover:text-foreground"
-          }
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 /**
@@ -383,7 +366,7 @@ function PermissionsSection({
 function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
   if (!detail.repository && !detail.homepage) return null;
   return (
-    <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-card p-4">
+    <Card className="flex flex-col gap-2.5 p-4">
       {detail.repository ? (
         <MetaLink href={detail.repository} icon={<GithubIcon className="size-4" />}>
           Repository
@@ -403,7 +386,7 @@ function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
           npm package
         </MetaLink>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -411,29 +394,33 @@ function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
 function SidebarAuthor({ detail }: Readonly<{ detail: PluginDetail }>) {
   if (!detail.author) return null;
   return (
-    <Link
-      to="/developers/$id"
-      params={{ id: detail.author.id }}
-      className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-brand"
-    >
-      <GradientAvatar
-        seed={detail.author.id}
-        label={detail.author.name ?? detail.author.id}
-        size={42}
-        className="rounded-[11px]"
-      />
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate font-semibold text-foreground text-sm">{detail.author.id}</span>
-          {detail.verified ? <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" /> : null}
+    <Card interactive className="p-0">
+      <Link
+        to="/developers/$id"
+        params={{ id: detail.author.id }}
+        className="flex items-center gap-3 p-4"
+      >
+        <GradientAvatar
+          seed={detail.author.id}
+          label={detail.author.name ?? detail.author.id}
+          size={42}
+          className="rounded-[11px]"
+        />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate font-semibold text-foreground text-sm">
+              {detail.author.id}
+            </span>
+            {detail.verified ? <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" /> : null}
+          </div>
+          <div className="text-muted-foreground text-xs">View profile</div>
         </div>
-        <div className="text-muted-foreground text-xs">View profile</div>
-      </div>
-    </Link>
+      </Link>
+    </Card>
   );
 }
 
-/** Keyword chips card; hidden when the plugin declares no keywords. */
+/** Keyword chips; hidden when the plugin declares no keywords. */
 function SidebarKeywords({ keywords }: Readonly<{ keywords: string[] }>) {
   if (keywords.length === 0) return null;
   return (
@@ -443,14 +430,11 @@ function SidebarKeywords({ keywords }: Readonly<{ keywords: string[] }>) {
       </div>
       <div className="flex flex-wrap gap-1.5">
         {keywords.slice(0, 8).map((keyword) => (
-          <Link
-            key={keyword}
-            to="/plugins"
-            search={{ q: keyword }}
-            className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs hover:text-foreground"
-          >
-            {keyword}
-          </Link>
+          <Badge key={keyword} asChild variant="secondary">
+            <Link to="/plugins" search={{ q: keyword }}>
+              {keyword}
+            </Link>
+          </Badge>
         ))}
       </div>
     </div>
@@ -568,17 +552,38 @@ function IntegrityProvenanceSection({
   );
 }
 
+/** Running total of a per-day series, as the `{ts, value}` points the Chart plots. */
+function cumulativePoints(series: number[]): { ts: number; value: number }[] {
+  let sum = 0;
+  return series.map((value, index) => {
+    sum += value;
+    return { ts: index, value: sum };
+  });
+}
+
+/** Week-over-week install trend (%): last 7 days vs the prior 7. */
+function weekTrend(series: number[]): number {
+  const n = series.length;
+  const sum = (from: number, to: number) =>
+    series.slice(Math.max(0, from), Math.max(0, to)).reduce((a, b) => a + b, 0);
+  const recent = sum(n - 7, n);
+  const prior = sum(n - 14, n - 7);
+  if (prior === 0) return recent > 0 ? 100 : 0;
+  return Math.round(((recent - prior) / prior) * 100);
+}
+
 /**
- * Total-installs card with a real download trend sparkline. Shown only when the
- * registry has install history (the npm path carries no per-day series).
+ * Total-installs card with a real download trend, drawn with the Clay chart kit.
+ * Shown only when the registry has install history (npm carries no per-day series).
  */
 function DownloadsCard({
   installs,
   weekly,
   series,
 }: Readonly<{ installs: number; weekly: number; series: number[] }>) {
+  const trend = weekTrend(series);
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+    <Card className="flex flex-col gap-3 p-4">
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-0.5">
           <span className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
@@ -588,23 +593,33 @@ function DownloadsCard({
             {formatCount(installs)}
           </span>
         </div>
-        <span className="inline-flex items-center gap-1 font-mono text-muted-foreground text-xs">
-          <Download className="size-3" />
-          {formatCount(weekly)} / wk
-        </span>
+        {trend !== 0 ? (
+          <Status variant={trend > 0 ? "success" : "destructive"}>
+            <StatusIndicator pulse={false} />
+            <StatusLabel>
+              {trend > 0 ? "+" : ""}
+              {trend}%
+            </StatusLabel>
+          </Status>
+        ) : null}
       </div>
-      <div className="h-20">
-        <Sparkline data={series} />
+      <div className="h-24">
+        <Chart
+          data={cumulativePoints(series)}
+          color="var(--color-brand)"
+          formatValue={formatCount}
+          formatX={(ts) => `Day ${Math.round(ts) + 1}`}
+        />
       </div>
       <div className="flex justify-between font-mono text-muted-foreground text-xs">
         <span>{formatCount(weekly)} this week</span>
         <span>last 30 days</span>
       </div>
-    </div>
+    </Card>
   );
 }
 
-/** Sticky meta sidebar: version/dates card plus the links, author, and keyword cards. */
+/** Sticky meta sidebar: install trend, the meta card, links, author, keywords. */
 function DetailSidebar({
   detail,
   displayLocales,
@@ -621,7 +636,7 @@ function DetailSidebar({
         />
       ) : null}
 
-      <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-card p-4 text-sm">
+      <Card className="flex flex-col gap-2.5 p-4 text-sm">
         <MetaRow label="Version" value={detail.version} mono />
         {detail.updatedAt ? <MetaRow label="Updated" value={formatDate(detail.updatedAt)} /> : null}
         {detail.publishedAt ? (
@@ -632,11 +647,16 @@ function DetailSidebar({
         {displayLocales.length > 0 ? (
           <MetaRow label="Languages" value={String(displayLocales.length)} mono />
         ) : null}
-        {detail.installs !== undefined ? (
-          <MetaRow label="Installs" value={formatCount(detail.installs)} mono />
+        {detail.provenance ? (
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Provenance</span>
+            <Status variant="success">
+              <StatusIndicator pulse={false} />
+              <StatusLabel className="font-semibold text-foreground">Signed</StatusLabel>
+            </Status>
+          </div>
         ) : null}
-        {detail.provenance ? <MetaRow label="Provenance" value="Signed" /> : null}
-      </div>
+      </Card>
 
       <SidebarLinks detail={detail} />
       <SidebarAuthor detail={detail} />
@@ -647,12 +667,22 @@ function DetailSidebar({
 
 function PluginDetailPage() {
   const data = Route.useLoaderData();
-  const { lang } = Route.useSearch();
-  const [tab, setTab] = useState<DetailTab>("overview");
+  const { lang, tab } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const activeTab: DetailTab = tab ?? "overview";
 
   if (data === null) {
     return <NotFoundPage />;
   }
+
+  const onTab = (next: string) => {
+    navigate({
+      // Keep Overview out of the URL for a clean default; replace so tab clicks
+      // don't pile up in history (the back button leaves the page, not steps tabs).
+      search: (prev) => ({ ...prev, tab: next === "overview" ? undefined : (next as DetailTab) }),
+      replace: true,
+    });
+  };
 
   const { detail, readme, versions, readmeLocales } = data;
   const activeLocale = lang ?? (readmeLocales.includes("en") ? "en" : (readmeLocales[0] ?? "en"));
@@ -680,13 +710,19 @@ function PluginDetailPage() {
 
       <InstallCommand id="install" command={`brika install ${detail.name}`} />
 
-      <DetailTabs tab={tab} onPick={setTab} />
+      <Tabs value={activeTab} onValueChange={onTab}>
+        <TabsList variant="line">
+          {DETAIL_TABS.map(({ id, label }) => (
+            <TabsTrigger key={id} value={id}>
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      <div className="grid gap-7 lg:grid-cols-[1fr_290px] lg:items-start">
-        {/* main column: the active tab's panel; the sidebar persists across tabs */}
-        <div className="flex min-w-0 flex-col gap-7">
-          {tab === "overview" ? (
-            <div className="flex flex-col gap-7">
+        <div className="mt-6 grid gap-7 lg:grid-cols-[1fr_290px] lg:items-start">
+          {/* main column: the active tab's panel; the sidebar persists across tabs */}
+          <div className="flex min-w-0 flex-col gap-7">
+            <TabsContent value="overview" className="mt-0 flex flex-col gap-7">
               {screenshotCount > 0 ? (
                 <section className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
@@ -734,44 +770,44 @@ function PluginDetailPage() {
                 devDependencyCount={detail.devDependencyCount}
                 brikaEngine={detail.brikaEngine}
               />
-            </div>
-          ) : null}
+            </TabsContent>
 
-          {tab === "versions" ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
-                <Clock className="size-4 text-muted-foreground" />
-                Changelog
-              </h2>
-              {versions.length > 0 ? (
-                <Changelog versions={versions} />
-              ) : (
-                <p className="text-muted-foreground text-sm">No release history yet.</p>
-              )}
-            </section>
-          ) : null}
+            <TabsContent value="versions" className="mt-0">
+              <section className="flex flex-col gap-3">
+                <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
+                  <Clock className="size-4 text-muted-foreground" />
+                  Changelog
+                </h2>
+                {versions.length > 0 ? (
+                  <Changelog versions={versions} />
+                ) : (
+                  <p className="text-muted-foreground text-sm">No release history yet.</p>
+                )}
+              </section>
+            </TabsContent>
 
-          {tab === "reviews" ? (
-            <ReviewsSection
-              pluginName={detail.name}
-              fallback={isRegistry ? [] : mockReviews(detail.name)}
-            />
-          ) : null}
+            <TabsContent value="reviews" className="mt-0">
+              <ReviewsSection
+                pluginName={detail.name}
+                fallback={isRegistry ? [] : mockReviews(detail.name)}
+              />
+            </TabsContent>
 
-          {tab === "discussion" ? (
-            <CommentsSection
-              pluginName={detail.name}
-              fallback={isRegistry ? [] : mockComments(detail.name)}
-            />
-          ) : null}
+            <TabsContent value="discussion" className="mt-0">
+              <CommentsSection
+                pluginName={detail.name}
+                fallback={isRegistry ? [] : mockComments(detail.name)}
+              />
+            </TabsContent>
+          </div>
+
+          <DetailSidebar
+            detail={detail}
+            displayLocales={displayLocales}
+            downloadsSeries={data.downloadsSeries}
+          />
         </div>
-
-        <DetailSidebar
-          detail={detail}
-          displayLocales={displayLocales}
-          downloadsSeries={data.downloadsSeries}
-        />
-      </div>
+      </Tabs>
     </main>
   );
 }

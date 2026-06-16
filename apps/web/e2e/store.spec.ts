@@ -40,12 +40,13 @@ test("detail shows the tarball integrity hash", async ({ page }) => {
   await expect(page.getByText(/sha512-/).first()).toBeVisible();
 });
 
-test("detail shows the downloads trend card with a sparkline", async ({ page, request }) => {
+test("detail shows the downloads trend card (Clay chart)", async ({ page, request }) => {
   // Ensure at least one install so the trend card renders.
   await request.get("/v1/plugins/@brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");
   await page.goto("/plugins/@brika/plugin-i18n");
   await expect(page.getByText("Total installs")).toBeVisible();
-  await expect(page.getByRole("img", { name: "Install trend" })).toBeVisible();
+  // The Clay chart kit renders a recharts surface inside the card.
+  await expect(page.locator(".recharts-responsive-container").first()).toBeVisible();
 });
 
 test("detail shows the integrity & provenance section (seeded CI publish)", async ({ page }) => {
@@ -64,21 +65,22 @@ test("overview lists real dependencies from the manifest", async ({ page }) => {
   await expect(page.getByText("2 dev dependencies")).toBeVisible();
 });
 
-test("detail tabs switch the panel; sidebar persists", async ({ page }) => {
+test("detail tabs are routed: clicking updates the URL and panel", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n");
   // Overview is the default: dependencies visible.
   await expect(page.getByRole("heading", { name: /Dependencies/i })).toBeVisible();
 
-  // Versions tab -> changelog panel; dependencies gone. Retry the click until the
-  // SPA has hydrated (the SSR button has no handler until then).
+  // Versions tab -> changelog panel + ?tab=versions in the URL. Retry the click
+  // until the SPA has hydrated (the SSR tab has no handler until then).
   await expect(async () => {
-    await page.getByRole("button", { name: "Versions" }).click();
+    await page.getByRole("tab", { name: "Versions" }).click();
     await expect(page.getByRole("heading", { name: "Changelog" })).toBeVisible({ timeout: 1000 });
   }).toPass();
+  await expect(page).toHaveURL(/tab=versions/);
   await expect(page.getByRole("heading", { name: /Dependencies/i })).toHaveCount(0);
 
-  // Reviews tab -> reviews panel.
-  await page.getByRole("button", { name: "Reviews" }).click();
+  // Deep-linking the tab via the URL renders that panel directly (SSR).
+  await page.goto("/plugins/@brika/plugin-i18n?tab=reviews");
   await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
 
   // The sticky sidebar (install count) stays visible across tabs.
