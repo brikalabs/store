@@ -9,6 +9,7 @@ import { revokeToken } from "./adapters/token";
 import { handleCatalog } from "./catalog";
 import { handleDeviceCode, handleDeviceToken } from "./device";
 import { vars } from "./env";
+import { handleDeprecate, handleYank } from "./manage";
 import { decodeSegment, parseTarballVersion } from "./npm-url";
 import { handlePublish } from "./publish";
 
@@ -82,6 +83,28 @@ app.get("/-/v1/packages", (c) => handleCatalog(c.req.raw));
 app.post("/-/publish", (c) => handlePublish(c.req.raw));
 app.post("/-/device/code", () => handleDeviceCode());
 app.post("/-/device/token", (c) => handleDeviceToken(c.req.raw));
+
+// Authenticated post-publish management (deprecate / yank), scoped + unscoped.
+app.post("/-/package/:scope/:pkg/:version/deprecate", (c) =>
+  handleDeprecate(
+    c.req.raw,
+    `${decodeSegment(c.req.param("scope"))}/${c.req.param("pkg")}`,
+    c.req.param("version"),
+  ),
+);
+app.post("/-/package/:pkg/:version/deprecate", (c) =>
+  handleDeprecate(c.req.raw, decodeSegment(c.req.param("pkg")), c.req.param("version")),
+);
+app.post("/-/package/:scope/:pkg/:version/yank", (c) =>
+  handleYank(
+    c.req.raw,
+    `${decodeSegment(c.req.param("scope"))}/${c.req.param("pkg")}`,
+    c.req.param("version"),
+  ),
+);
+app.post("/-/package/:pkg/:version/yank", (c) =>
+  handleYank(c.req.raw, decodeSegment(c.req.param("pkg")), c.req.param("version")),
+);
 
 // Revoke the presented publish token (used by `brika logout`). Idempotent.
 app.post("/-/token/revoke", async (c) => {

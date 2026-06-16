@@ -38,6 +38,20 @@ const PublishResponseSchema = z.object({
   code: z.string().optional(),
 });
 
+const ManageResponseSchema = z.object({
+  ok: z.boolean().optional(),
+  error: z.string().optional(),
+  code: z.string().optional(),
+});
+
+/** A scoped or unscoped package name, with the scope slash percent-encoded for the path. */
+function encodePackagePath(name: string): string {
+  return name
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
 export type DeviceCode = z.infer<typeof DeviceCodeSchema>;
 
 export interface DeviceLogin {
@@ -120,6 +134,39 @@ export class RegistryClient {
     if (res.ok && body.integrity !== undefined) return { integrity: body.integrity };
     const code = body.code === undefined ? "" : ` ${body.code}`;
     throw new CliError(`publish rejected (${res.status}${code}): ${body.error ?? "unknown error"}`);
+  }
+
+  /** Deprecate (or, with `message: null`, un-deprecate) a published version. */
+  async deprecate(
+    token: string,
+    name: string,
+    version: string,
+    message: string | null,
+  ): Promise<void> {
+    await this.#manage(token, name, version, "deprecate", { message });
+  }
+
+  /** Yank (`yanked: true`) or restore (`false`) a published version. */
+  async yank(token: string, name: string, version: string, yanked: boolean): Promise<void> {
+    await this.#manage(token, name, version, "yank", { yanked });
+  }
+
+  /** Shared POST to a management endpoint; throws a `CliError` on rejection. */
+  async #manage(
+    token: string,
+    name: string,
+    version: string,
+    action: "deprecate" | "yank",
+    body: unknown,
+  ): Promise<void> {
+    const path = `/-/package/${encodePackagePath(name)}/${version}/${action}`;
+    const res = await this.#postJson(path, body, token);
+    const parsed = await this.#parse(res, ManageResponseSchema);
+    if (res.ok && parsed.ok === true) return;
+    const code = parsed.code === undefined ? "" : ` ${parsed.code}`;
+    throw new CliError(
+      `${action} rejected (${res.status}${code}): ${parsed.error ?? "unknown error"}`,
+    );
   }
 
   /** Best-effort revoke; never throws (logout must clear locally regardless). */

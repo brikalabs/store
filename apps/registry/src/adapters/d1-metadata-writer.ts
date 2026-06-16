@@ -1,9 +1,13 @@
-import type { MetadataWriter, PackageVersion } from "@brika/registry-core";
+import type { MetadataWriter, PackageVersion, VersionManager } from "@brika/registry-core";
 import { type Db, regDistTags, regPackages, regVersions } from "@brika/store-db";
 import { and, eq } from "drizzle-orm";
 
-/** Persists a published version to D1 (publish side of the metadata store). */
-export class D1MetadataWriter implements MetadataWriter {
+/**
+ * Persists a published version to D1 and mutates its management flags. Covers
+ * both the publish writer (`MetadataWriter`) and the post-publish manager
+ * (`VersionManager`) since they share the same `reg_versions` table.
+ */
+export class D1MetadataWriter implements MetadataWriter, VersionManager {
   readonly #db: Db;
 
   constructor(db: Db) {
@@ -42,5 +46,19 @@ export class D1MetadataWriter implements MetadataWriter {
       .insert(regDistTags)
       .values({ name, tag, version })
       .onConflictDoUpdate({ target: [regDistTags.name, regDistTags.tag], set: { version } });
+  }
+
+  async setDeprecated(name: string, version: string, message: string | null): Promise<void> {
+    await this.#db
+      .update(regVersions)
+      .set({ deprecated: message })
+      .where(and(eq(regVersions.name, name), eq(regVersions.version, version)));
+  }
+
+  async setYanked(name: string, version: string, yanked: boolean): Promise<void> {
+    await this.#db
+      .update(regVersions)
+      .set({ yanked })
+      .where(and(eq(regVersions.name, name), eq(regVersions.version, version)));
   }
 }

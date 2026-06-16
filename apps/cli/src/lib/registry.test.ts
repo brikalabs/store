@@ -81,4 +81,49 @@ describe("RegistryClient", () => {
     });
     await expect(client.requestDeviceCode()).rejects.toBeInstanceOf(CliError);
   });
+
+  test("deprecate posts to the encoded management endpoint with the message", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    const client = new RegistryClient("https://r.test", {
+      fetch: async (input, init) => {
+        calls.push({ url: String(input), body: JSON.parse(String(init?.body)) });
+        return json({ ok: true });
+      },
+    });
+    await client.deprecate("t", "@brika/plugin-x", "1.2.3", "old");
+    expect(calls[0]?.url).toBe("https://r.test/-/package/%40brika/plugin-x/1.2.3/deprecate");
+    expect(calls[0]?.body).toEqual({ message: "old" });
+  });
+
+  test("deprecate --undo sends a null message", async () => {
+    let sent: unknown;
+    const client = new RegistryClient("https://r.test", {
+      fetch: async (_input, init) => {
+        sent = JSON.parse(String(init?.body));
+        return json({ ok: true });
+      },
+    });
+    await client.deprecate("t", "@brika/plugin-x", "1.2.3", null);
+    expect(sent).toEqual({ message: null });
+  });
+
+  test("yank posts the boolean and throws a CliError on rejection", async () => {
+    let sent: unknown;
+    const ok = new RegistryClient("https://r.test", {
+      fetch: async (_input, init) => {
+        sent = JSON.parse(String(init?.body));
+        return json({ ok: true });
+      },
+    });
+    await ok.yank("t", "@brika/plugin-x", "1.2.3", true);
+    expect(sent).toEqual({ yanked: true });
+
+    const denied = new RegistryClient("https://r.test", {
+      fetch: async () =>
+        json({ error: "scope @brika is owned by someone", code: "forbidden" }, 403),
+    });
+    await expect(denied.yank("t", "@brika/plugin-x", "1.2.3", true)).rejects.toBeInstanceOf(
+      CliError,
+    );
+  });
 });

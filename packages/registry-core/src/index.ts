@@ -1,6 +1,12 @@
 export { sha1Hex, sha512Integrity } from "./integrity";
 export { REGISTRY_LIMITS, type RegistryLimits } from "./limits";
 export {
+  type ManageErrorCode,
+  ManagementService,
+  type ManageResult,
+  type VersionManager,
+} from "./manage";
+export {
   type Jwk,
   type JwksProvider,
   OidcClaims,

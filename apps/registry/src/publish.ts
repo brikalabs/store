@@ -1,18 +1,12 @@
 import { env } from "cloudflare:workers";
-import {
-  type PublishErrorCode,
-  type PublishIdentity,
-  PublishService,
-  verifyGithubOidc,
-} from "@brika/registry-core";
-import { type Db, getDb, regAudit } from "@brika/store-db";
+import { type PublishErrorCode, PublishService } from "@brika/registry-core";
+import { getDb, regAudit } from "@brika/store-db";
 import { z } from "zod";
 import { D1MetadataWriter } from "./adapters/d1-metadata-writer";
 import { D1OwnershipPolicy } from "./adapters/d1-ownership";
-import { GithubJwksProvider } from "./adapters/github-jwks";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
 import { R2TarballWriter } from "./adapters/r2-tarball-writer";
-import { verifyToken } from "./adapters/token";
+import { authenticateWrite } from "./auth";
 
 /**
  * `POST /-/publish`. Authenticated by EITHER a GitHub Actions OIDC token (CI,
@@ -20,9 +14,6 @@ import { verifyToken } from "./adapters/token";
  * Body: `{ name, version, manifest, tarball }` (tarball base64). All publish
  * logic + invariants live in `PublishService`; this is the wiring.
  */
-
-const AUDIENCE = "brika-registry";
-const jwks = new GithubJwksProvider();
 
 const PublishBody = z.object({
   name: z.string(),
@@ -56,24 +47,9 @@ function statusForPublishError(code: PublishErrorCode): number {
   }
 }
 
-/** OIDC (CI) first, then a publish token (local). Returns the publish identity. */
-async function authenticate(request: Request, db: Db): Promise<PublishIdentity | null> {
-  const authorization = request.headers.get("authorization");
-  if (authorization === null || !authorization.startsWith("Bearer ")) return null;
-  const token = authorization.slice("Bearer ".length);
-
-  const claims = await verifyGithubOidc(token, jwks, { audience: AUDIENCE });
-  if (claims !== null) return { owner: claims.repository_owner, repository: claims.repository };
-
-  const tokenUser = await verifyToken(db, token);
-  if (tokenUser !== null) return { owner: tokenUser.githubLogin, repository: null };
-
-  return null;
-}
-
 export async function handlePublish(request: Request): Promise<Response> {
   const db = getDb(env.DB);
-  const identity = await authenticate(request, db);
+  const identity = await authenticateWrite(request, db);
   if (identity === null) return reply({ error: "Unauthorized" }, 401);
 
   const raw: unknown = await request.json().catch(() => null);
