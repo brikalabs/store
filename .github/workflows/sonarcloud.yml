@@ -32,9 +32,19 @@ jobs:
         run: bun test --coverage packages apps/registry apps/cli
 
       - name: SonarCloud Scan
-        # sonar.qualitygate.wait=true (sonar-project.properties) makes this step
-        # fail when the Quality Gate fails, so branch protection can require it.
+        # sonar.qualitygate.wait=true (sonar-project.properties) makes the
+        # scanner wait until SonarCloud finishes processing this analysis, so the
+        # measures the gate step reads below are fresh.
         uses: SonarSource/sonarcloud-github-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Quality gate (Brika thresholds)
+        # Custom Quality Gates are a paid SonarCloud feature, so we read the
+        # analysis back via the API and enforce >=90% coverage / 0 issues / 0%
+        # duplication on new code ourselves. This is what makes the job red.
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PR: ${{ github.event.pull_request.number }}
+        run: bun run scripts/check-sonar-gate.ts
