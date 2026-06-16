@@ -169,6 +169,34 @@ test("supply chain tab lists the real tarball files", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Download tarball/i })).toBeVisible();
 });
 
+test("files explorer: folders collapse/expand and files preview their content", async ({
+  page,
+}) => {
+  await page.goto("/plugins/@brika/plugin-i18n?tab=supply-chain");
+  const panel = page.getByRole("tabpanel");
+  await expect(panel.getByRole("heading", { name: "Files", exact: true })).toBeVisible();
+
+  // Nested locale folders are collapsed by default (lazy render), so no store.json.
+  await expect(panel.getByText("store.json")).toHaveCount(0);
+
+  // Expanding the `en` folder reveals its store.json. Retry through hydration,
+  // clicking only while still collapsed so the toggle stays idempotent.
+  const storeJson = panel.getByText("store.json");
+  await expect(async () => {
+    if ((await storeJson.count()) === 0) await panel.getByText("en", { exact: true }).click();
+    await expect(storeJson).toBeVisible({ timeout: 500 });
+  }).toPass();
+
+  // Clicking a file lazily opens its content preview (header shows the full path).
+  const previewHeader = panel.getByText("src/index.ts");
+  await expect(async () => {
+    if ((await previewHeader.count()) === 0)
+      await panel.getByText("index.ts", { exact: true }).click();
+    await expect(previewHeader).toBeVisible({ timeout: 500 });
+  }).toPass();
+  await expect(panel.getByRole("link", { name: "Raw" })).toBeVisible();
+});
+
 test("detail tabs are routed: clicking updates the URL and panel", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n");
   // Overview is the default: its Capabilities section is visible.

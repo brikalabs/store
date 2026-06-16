@@ -10,6 +10,7 @@ import {
   Box,
   Cable,
   Check,
+  ChevronDown,
   ChevronRight,
   Clock,
   Database,
@@ -17,6 +18,7 @@ import {
   ExternalLink,
   File as FileIcon,
   Folder,
+  FolderOpen,
   Globe,
   KeyRound,
   Layers,
@@ -30,8 +32,9 @@ import {
   Sparkles,
   TrendingDown,
   TrendingUp,
+  X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { CapabilityChips } from "../components/clay/capability-chips";
 import { Changelog } from "../components/clay/changelog";
@@ -51,7 +54,7 @@ import { formatBytes, formatCount, formatDate } from "../lib/format";
 import { type GrantFamily, type GrantScope, groupGrants } from "../lib/grants";
 import { mockComments, mockReviews } from "../lib/mock-social";
 import { getPluginPage } from "../lib/registry";
-import { isRegistryName } from "../lib/registry-source";
+import { assetUrl, isRegistryName } from "../lib/registry-source";
 
 const DETAIL_TABS = [
   { id: "overview", label: "Overview" },
@@ -791,8 +794,10 @@ function IntegrityProvenanceSection({
 
 interface FileTreeNode {
   name: string;
+  path: string;
   isDir: boolean;
   size: number;
+  fileCount: number;
   children: Map<string, FileTreeNode>;
 }
 
@@ -810,14 +815,18 @@ interface FileRow {
 function insertPath(root: Map<string, FileTreeNode>, file: PluginFile): void {
   const parts = file.path.split("/").filter(Boolean);
   let level = root;
+  let prefix = "";
   for (let i = 0; i < parts.length; i += 1) {
     const part = parts[i] as string;
+    prefix = prefix ? `${prefix}/${part}` : part;
     const isLeaf = i === parts.length - 1;
     const existing = level.get(part);
     const node = existing ?? {
       name: part,
+      path: prefix,
       isDir: !isLeaf,
       size: isLeaf ? file.size : 0,
+      fileCount: 0,
       children: new Map<string, FileTreeNode>(),
     };
     if (existing === undefined) level.set(part, node);
@@ -825,39 +834,57 @@ function insertPath(root: Map<string, FileTreeNode>, file: PluginFile): void {
   }
 }
 
-/** Count the leaf files anywhere under a node. */
-function countFiles(node: FileTreeNode): number {
+/** Fill each directory's leaf-file count in a single pass (so rows are cheap). */
+function computeCounts(node: FileTreeNode): number {
   if (!node.isDir) return 1;
   let total = 0;
-  for (const child of node.children.values()) total += countFiles(child);
+  for (const child of node.children.values()) total += computeCounts(child);
+  node.fileCount = total;
   return total;
 }
 
-/** Depth-first flatten of a tree level into render rows: dirs first, then files. */
-function flattenTree(
+/** Build the file tree once, with per-directory counts precomputed. */
+function buildTree(files: readonly PluginFile[]): Map<string, FileTreeNode> {
+  const root = new Map<string, FileTreeNode>();
+  for (const file of files) insertPath(root, file);
+  for (const node of root.values()) computeCounts(node);
+  return root;
+}
+
+/** The depth-0 directory paths, opened by default so the structure is visible. */
+function topLevelDirs(tree: Map<string, FileTreeNode>): Set<string> {
+  const open = new Set<string>();
+  for (const node of tree.values()) if (node.isDir) open.add(node.path);
+  return open;
+}
+
+/**
+ * Flatten only the *visible* rows: a collapsed directory contributes its own row
+ * but none of its descendants, so the rendered DOM stays small for big trees.
+ */
+function flattenVisible(
   level: Map<string, FileTreeNode>,
   depth: number,
-  prefix: string,
+  open: Set<string>,
   rows: FileRow[],
 ): void {
   const nodes = [...level.values()];
   const byName = (a: FileTreeNode, b: FileTreeNode) => a.name.localeCompare(b.name);
   for (const dir of nodes.filter((n) => n.isDir).sort(byName)) {
-    const path = prefix ? `${prefix}/${dir.name}` : dir.name;
     rows.push({
-      path,
+      path: dir.path,
       depth,
       isDir: true,
       name: dir.name,
       size: 0,
-      fileCount: countFiles(dir),
+      fileCount: dir.fileCount,
       manifest: false,
     });
-    flattenTree(dir.children, depth + 1, path, rows);
+    if (open.has(dir.path)) flattenVisible(dir.children, depth + 1, open, rows);
   }
   for (const file of nodes.filter((n) => !n.isDir).sort(byName)) {
     rows.push({
-      path: prefix ? `${prefix}/${file.name}` : file.name,
+      path: file.path,
       depth,
       isDir: false,
       name: file.name,
@@ -868,26 +895,282 @@ function flattenTree(
   }
 }
 
-function buildFileRows(files: readonly PluginFile[]): FileRow[] {
-  const root = new Map<string, FileTreeNode>();
-  for (const file of files) insertPath(root, file);
-  const rows: FileRow[] = [];
-  flattenTree(root, 0, "", rows);
-  return rows;
+const IMAGE_EXTS = new Set(["svg", "png", "jpg", "jpeg", "gif", "webp", "avif", "ico"]);
+const TEXT_EXTS = new Set([
+  "ts",
+  "tsx",
+  "js",
+  "jsx",
+  "mjs",
+  "cjs",
+  "json",
+  "jsonc",
+  "md",
+  "markdown",
+  "txt",
+  "css",
+  "scss",
+  "less",
+  "html",
+  "htm",
+  "yml",
+  "yaml",
+  "toml",
+  "xml",
+  "sh",
+  "bash",
+  "env",
+  "map",
+  "csv",
+]);
+const TEXT_NAMES = new Set(["license", "readme", "changelog", ".gitignore", ".npmignore"]);
+// Cap inline previews so a large file never streams megabytes into the page.
+const MAX_PREVIEW_BYTES = 256 * 1024;
+
+function fileKind(path: string): "image" | "text" | "binary" {
+  const dot = path.lastIndexOf(".");
+  const ext = dot === -1 ? "" : path.slice(dot + 1).toLowerCase();
+  if (IMAGE_EXTS.has(ext)) return "image";
+  const base = (path.split("/").pop() ?? "").toLowerCase();
+  if (TEXT_EXTS.has(ext) || TEXT_NAMES.has(base)) return "text";
+  return "binary";
+}
+
+/** The body of a file preview: image, text, or a download fallback. */
+function FileContentBody({
+  kind,
+  previewable,
+  src,
+  text,
+  status,
+}: Readonly<{
+  kind: "image" | "text" | "binary";
+  previewable: boolean;
+  src: string;
+  text: string | null;
+  status: "idle" | "loading" | "error";
+}>) {
+  if (kind === "image") {
+    return (
+      <div className="flex justify-center bg-muted/40 p-6">
+        <img src={src} alt="" loading="lazy" className="max-h-80 max-w-full object-contain" />
+      </div>
+    );
+  }
+  if (kind === "binary" || !previewable) {
+    return (
+      <div className="px-4 py-6 text-center text-muted-foreground text-sm">
+        {kind === "binary" ? "Binary file." : "This file is large."}{" "}
+        <a href={src} target="_blank" rel="noreferrer" className="font-semibold text-brand">
+          Open raw
+        </a>{" "}
+        to view it.
+      </div>
+    );
+  }
+  if (status === "loading") {
+    return <div className="px-4 py-6 text-center text-muted-foreground text-sm">Loading...</div>;
+  }
+  if (status === "error") {
+    return (
+      <div className="px-4 py-6 text-center text-muted-foreground text-sm">
+        Could not load this file.{" "}
+        <a href={src} target="_blank" rel="noreferrer" className="font-semibold text-brand">
+          Open raw
+        </a>
+        .
+      </div>
+    );
+  }
+  return (
+    <pre className="max-h-96 overflow-auto px-4 py-3 font-mono text-[12px] text-foreground leading-relaxed">
+      <code>{text}</code>
+    </pre>
+  );
+}
+
+/**
+ * Lazy file preview: fetches the clicked file's bytes from the (immutable,
+ * R2-cached) asset endpoint only when opened, capped by size, and renders text
+ * inline or an image. Nothing is loaded until the user picks a file.
+ */
+function FileContentView({
+  name,
+  version,
+  file,
+  onClose,
+}: Readonly<{ name: string; version: string; file: PluginFile; onClose: () => void }>) {
+  const src = assetUrl(name, version, file.path);
+  const kind = fileKind(file.path);
+  const previewable = file.size <= MAX_PREVIEW_BYTES;
+  const [text, setText] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  useEffect(() => {
+    if (kind !== "text" || !previewable) return;
+    let active = true;
+    setStatus("loading");
+    setText(null);
+    fetch(src)
+      .then((res) => (res.ok ? res.text() : Promise.reject(new Error("load failed"))))
+      .then((body) => {
+        if (active) {
+          setText(body);
+          setStatus("idle");
+        }
+      })
+      .catch(() => {
+        if (active) setStatus("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [src, kind, previewable]);
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="flex items-center justify-between gap-3 border-border border-b bg-muted px-4 py-2">
+        <span className="inline-flex min-w-0 items-center gap-2 font-mono text-foreground text-xs">
+          <FileIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
+          <span className="truncate">{file.path}</span>
+          <span className="shrink-0 text-muted-foreground">{formatBytes(file.size)}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-3">
+          <a
+            href={src}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-brand text-xs"
+          >
+            Raw
+          </a>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close file preview"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </span>
+      </div>
+      <FileContentBody
+        kind={kind}
+        previewable={previewable}
+        src={src}
+        text={text}
+        status={status}
+      />
+    </div>
+  );
+}
+
+/** One row in the file tree: a collapsible directory or a selectable file. */
+function FileTreeRow({
+  row,
+  isOpen,
+  isSelected,
+  onToggle,
+  onSelect,
+}: Readonly<{
+  row: FileRow;
+  isOpen: boolean;
+  isSelected: boolean;
+  onToggle: (path: string) => void;
+  onSelect: (path: string) => void;
+}>) {
+  const pad = { paddingLeft: `${16 + row.depth * 20}px` };
+  if (row.isDir) {
+    return (
+      <button
+        type="button"
+        onClick={() => onToggle(row.path)}
+        aria-expanded={isOpen}
+        style={pad}
+        className="flex w-full items-center justify-between gap-3 border-border border-b px-4 py-2 text-left transition-colors hover:bg-muted/50"
+      >
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          {isOpen ? (
+            <ChevronDown className="size-3.5 shrink-0 text-muted-foreground/70" />
+          ) : (
+            <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/70" />
+          )}
+          {isOpen ? (
+            <FolderOpen className="size-3.5 shrink-0 text-brand" />
+          ) : (
+            <Folder className="size-3.5 shrink-0 text-brand" />
+          )}
+          <span className="truncate font-mono text-foreground text-xs">{row.name}</span>
+        </span>
+        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+          {row.fileCount} files
+        </span>
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(row.path)}
+      aria-pressed={isSelected}
+      style={pad}
+      className={`flex w-full items-center justify-between gap-3 border-border border-b px-4 py-2 text-left transition-colors ${isSelected ? "bg-brand/10" : "hover:bg-muted/50"}`}
+    >
+      <span className="inline-flex min-w-0 items-center gap-1.5">
+        <span className="size-3.5 shrink-0" />
+        <FileIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
+        <span className="truncate font-mono text-foreground text-xs">{row.name}</span>
+        {row.manifest ? (
+          <span className="shrink-0 rounded-full border border-brand/40 bg-brand/10 px-1.5 py-0.5 font-medium text-[10px] text-brand-ink">
+            manifest
+          </span>
+        ) : null}
+      </span>
+      <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+        {formatBytes(row.size)}
+      </span>
+    </button>
+  );
 }
 
 /**
  * npm-style file explorer for the published tarball: the real file tree (from
- * the bytes the store already unpacks) with per-file sizes and a download link.
+ * the bytes the store already unpacks) with collapsible folders and a lazy,
+ * size-capped content preview. The tree is built once and only the expanded
+ * rows render, so a large package stays cheap.
  */
 function FilesSection({
+  name,
+  version,
   files,
   tarballName,
   tarballUrl,
-}: Readonly<{ files: PluginFile[]; tarballName: string; tarballUrl?: string }>) {
+}: Readonly<{
+  name: string;
+  version: string;
+  files: PluginFile[];
+  tarballName: string;
+  tarballUrl?: string;
+}>) {
+  const tree = useMemo(() => buildTree(files), [files]);
+  const [open, setOpen] = useState<Set<string>>(() => topLevelDirs(tree));
+  const [selected, setSelected] = useState<string | null>(null);
+  const toggle = useCallback((path: string) => {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
+  const rows = useMemo(() => {
+    const out: FileRow[] = [];
+    flattenVisible(tree, 0, open, out);
+    return out;
+  }, [tree, open]);
+
   if (files.length === 0) return null;
-  const rows = buildFileRows(files);
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+  const selectedFile = selected === null ? undefined : files.find((file) => file.path === selected);
+
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -905,28 +1188,14 @@ function FilesSection({
           {tarballName}
         </div>
         {rows.map((row) => (
-          <div
+          <FileTreeRow
             key={row.path}
-            className="flex items-center justify-between gap-3 border-border border-b px-4 py-2"
-            style={{ paddingLeft: `${16 + row.depth * 20}px` }}
-          >
-            <span className="inline-flex min-w-0 items-center gap-2">
-              {row.isDir ? (
-                <Folder className="size-3.5 shrink-0 text-brand" />
-              ) : (
-                <FileIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
-              )}
-              <span className="truncate font-mono text-foreground text-xs">{row.name}</span>
-              {row.manifest ? (
-                <span className="shrink-0 rounded-full border border-brand/40 bg-brand/10 px-1.5 py-0.5 font-medium text-[10px] text-brand-ink">
-                  manifest
-                </span>
-              ) : null}
-            </span>
-            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-              {row.isDir ? `${row.fileCount} files` : formatBytes(row.size)}
-            </span>
-          </div>
+            row={row}
+            isOpen={open.has(row.path)}
+            isSelected={selected === row.path}
+            onToggle={toggle}
+            onSelect={setSelected}
+          />
         ))}
         <div className="flex items-center justify-between gap-2 bg-muted px-4 py-2.5 text-muted-foreground text-xs">
           <span className="inline-flex items-center gap-1.5">
@@ -945,6 +1214,15 @@ function FilesSection({
           ) : null}
         </div>
       </div>
+      {selectedFile ? (
+        <FileContentView
+          key={selectedFile.path}
+          name={name}
+          version={version}
+          file={selectedFile}
+          onClose={() => setSelected(null)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -1190,6 +1468,8 @@ function SupplyChainPanel({ detail }: Readonly<{ detail: PluginDetail }>) {
       />
 
       <FilesSection
+        name={detail.name}
+        version={detail.version}
         files={detail.files ?? []}
         tarballName={tarballName}
         tarballUrl={detail.tarballUrl}
