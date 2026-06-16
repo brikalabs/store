@@ -93,7 +93,7 @@ test("detail shows a real install count", async ({ page, request }) => {
 });
 
 test("detail shows the tarball integrity hash", async ({ page }) => {
-  await page.goto("/plugins/@brika/plugin-i18n");
+  await page.goto("/plugins/@brika/plugin-i18n?tab=supply-chain");
   await expect(page.getByText("Integrity", { exact: true })).toBeVisible();
   // The sha512 prefix of the SRI is rendered.
   await expect(page.getByText(/sha512-/).first()).toBeVisible();
@@ -109,7 +109,7 @@ test("detail shows the downloads trend card (Clay chart)", async ({ page, reques
 });
 
 test("detail shows the integrity & provenance section (seeded CI publish)", async ({ page }) => {
-  await page.goto("/plugins/@brika/plugin-i18n");
+  await page.goto("/plugins/@brika/plugin-i18n?tab=supply-chain");
   await expect(page.getByRole("heading", { name: /Integrity & provenance/i })).toBeVisible();
   await expect(page.getByText("GitHub Actions")).toBeVisible();
   await expect(page.getByText("Source Commit")).toBeVisible();
@@ -123,8 +123,8 @@ test("detail shows the integrity & provenance section (seeded CI publish)", asyn
   await expect(ledger).toHaveAttribute("href", /search\.sigstore\.dev/);
 });
 
-test("overview groups permissions by family with visible scope", async ({ page }) => {
-  await page.goto("/plugins/@brika/plugin-i18n");
+test("permissions tab groups grants by family with visible scope", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-i18n?tab=permissions");
   await expect(page.getByRole("heading", { name: "Permissions requested" })).toBeVisible();
   // Net family: host allow-list, including the wildcard host.
   await expect(page.getByText("Network", { exact: true })).toBeVisible();
@@ -141,27 +141,38 @@ test("overview groups permissions by family with visible scope", async ({ page }
 });
 
 test("snapshot permissions show filesystem read/write path patterns", async ({ page }) => {
-  await page.goto("/plugins/@brika/plugin-snapshot");
+  await page.goto("/plugins/@brika/plugin-snapshot?tab=permissions");
   await expect(page.getByText("Filesystem", { exact: true })).toBeVisible();
   await expect(page.getByText("/data/cache/**")).toBeVisible();
   await expect(page.getByText("dev.brika.fs.write")).toBeVisible();
 });
 
-test("overview lists real dependencies from the manifest", async ({ page }) => {
-  await page.goto("/plugins/@brika/plugin-i18n");
+test("supply chain tab groups dependencies by type (declared, not resolved)", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-i18n?tab=supply-chain");
   await expect(page.getByRole("heading", { name: /Dependencies/i })).toBeVisible();
   await expect(page.getByText("@formatjs/intl")).toBeVisible();
-  await expect(page.getByText("2 dev dependencies")).toBeVisible();
-  // The resolved-version column shows the lockfile pin, and the footer reassures.
-  await expect(page.getByText("Resolved", { exact: true })).toBeVisible();
-  await expect(page.getByText("2.10.5")).toBeVisible();
-  await expect(page.getByText(/No known vulnerabilities/i)).toBeVisible();
+  // Grouped into runtime / peer / dev; the brika engine is the hub-provided peer.
+  await expect(page.getByText("Dev dependencies", { exact: false })).toBeVisible();
+  await expect(page.getByText("provided by hub")).toBeVisible();
+  // Honest to package.json: declared ranges, no resolved/installed versions.
+  await expect(page.getByText("declared in package.json")).toBeVisible();
+  await expect(page.getByText("Resolved", { exact: true })).toHaveCount(0);
+});
+
+test("supply chain tab lists the real tarball files", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-i18n?tab=supply-chain");
+  await expect(page.getByRole("heading", { name: "Files", exact: true })).toBeVisible();
+  // The tarball name and a real bundled file both appear, with the manifest badge.
+  await expect(page.getByText("plugin-i18n-0.1.0.tgz")).toBeVisible();
+  await expect(page.getByText("index.ts")).toBeVisible();
+  await expect(page.getByText("manifest", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Download tarball/i })).toBeVisible();
 });
 
 test("detail tabs are routed: clicking updates the URL and panel", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n");
-  // Overview is the default: dependencies visible.
-  await expect(page.getByRole("heading", { name: /Dependencies/i })).toBeVisible();
+  // Overview is the default: its Capabilities section is visible.
+  await expect(page.getByRole("heading", { name: "Capabilities" })).toBeVisible();
 
   // Versions tab -> changelog panel + ?tab=versions in the URL. Retry the click
   // until the SPA has hydrated (the SSR tab has no handler until then).
@@ -170,7 +181,7 @@ test("detail tabs are routed: clicking updates the URL and panel", async ({ page
     await expect(page.getByRole("heading", { name: "Changelog" })).toBeVisible({ timeout: 1000 });
   }).toPass();
   await expect(page).toHaveURL(/tab=versions/);
-  await expect(page.getByRole("heading", { name: /Dependencies/i })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Capabilities" })).toHaveCount(0);
 
   // Deep-linking the tab via the URL renders that panel directly (SSR).
   await page.goto("/plugins/@brika/plugin-i18n?tab=reviews");
@@ -178,6 +189,17 @@ test("detail tabs are routed: clicking updates the URL and panel", async ({ page
 
   // The sticky sidebar (download count) stays visible across tabs.
   await expect(page.getByText("Total downloads")).toBeVisible();
+});
+
+test("detail tabs show count badges for reviews and discussion", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-i18n");
+  // The seed wrote reviews + comments, so the Reviews and Discussion tabs badge
+  // their counts. (The exact number depends on any real reviews too, so assert
+  // a positive integer follows the label.)
+  const reviewsTab = page.getByRole("tab", { name: /Reviews/ });
+  const discussionTab = page.getByRole("tab", { name: /Discussion/ });
+  await expect(reviewsTab).toContainText(/Reviews\s*\d+/);
+  await expect(discussionTab).toContainText(/Discussion\s*\d+/);
 });
 
 test("localized copy renders for the French locale", async ({ page }) => {

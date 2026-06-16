@@ -159,16 +159,16 @@ function seedDependencies(): void {
       "@formatjs/intl": "^2.10.0",
       "bcp-47": "^2.1.0",
     };
-    // Resolved versions (from the lockfile at publish time) and the digest, so
-    // the Dependencies table + integrity Digest match the design.
-    manifest.resolvedDependencies = {
-      "@brika/sdk": "0.1.4",
-      "@formatjs/intl": "2.10.5",
-      "bcp-47": "2.1.0",
+    // Drop any resolved versions a prior seed left behind (no longer surfaced).
+    manifest.resolvedDependencies = undefined;
+    // The store only has package.json, so it shows declared ranges (not resolved
+    // versions). Dev deps populate the Dev dependencies group; unpacked size and
+    // file count are recomputed from the real tarball when the detail loads.
+    manifest.devDependencies = {
+      typescript: "^6.0.3",
+      "@types/bun": "^1.3.5",
+      "@biomejs/biome": "^2.3.0",
     };
-    manifest.devDependencies = { typescript: "^6.0.3", "@types/bun": "^1.3.5" };
-    manifest.unpackedSize = 10752;
-    manifest.fileCount = 11;
     db.run("UPDATE reg_versions SET manifest = ? WHERE name = ? AND version = ?", [
       JSON.stringify(manifest),
       "@brika/plugin-i18n",

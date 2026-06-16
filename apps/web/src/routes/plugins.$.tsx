@@ -3,7 +3,7 @@ import { Card } from "@brika/clay/components/card";
 import { Chart } from "@brika/clay/components/chart";
 import { Separator } from "@brika/clay/components/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@brika/clay/components/tabs";
-import type { PluginDetail } from "@brika/registry-contract";
+import type { PluginDetail, PluginFile } from "@brika/registry-contract";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   BadgeCheck,
@@ -15,6 +15,7 @@ import {
   Database,
   Download,
   ExternalLink,
+  File as FileIcon,
   Folder,
   Globe,
   KeyRound,
@@ -30,7 +31,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { z } from "zod";
 import { CapabilityChips } from "../components/clay/capability-chips";
 import { Changelog } from "../components/clay/changelog";
@@ -54,6 +55,8 @@ import { isRegistryName } from "../lib/registry-source";
 
 const DETAIL_TABS = [
   { id: "overview", label: "Overview" },
+  { id: "permissions", label: "Permissions" },
+  { id: "supply-chain", label: "Supply chain" },
   { id: "versions", label: "Versions" },
   { id: "reviews", label: "Reviews" },
   { id: "discussion", label: "Discussion" },
@@ -106,105 +109,128 @@ function localeName(code: string): string {
   return LOCALE_NAMES[code] ?? code.toUpperCase();
 }
 
+/** An uppercase group label row inside the dependencies card. */
+function DepGroupLabel({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <div className="border-border border-b bg-muted px-4 py-2 font-semibold text-[10.5px] text-muted-foreground uppercase tracking-[0.05em]">
+      {children}
+    </div>
+  );
+}
+
+/** One dependency row: name (brand-marked / muted) on the left, range on the right. */
+function DepRow({
+  name,
+  range,
+  brand,
+  muted,
+  hubPeer,
+}: Readonly<{ name: string; range: string; brand?: boolean; muted?: boolean; hubPeer?: boolean }>) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-border border-b px-4 py-2.5">
+      <span
+        className={`inline-flex min-w-0 items-center gap-2 font-mono text-xs ${muted ? "text-muted-foreground" : "text-brand"}`}
+      >
+        <Box className="size-3.5 shrink-0 text-muted-foreground/70" />
+        <span className="truncate">{name}</span>
+        {brand ? <ShieldCheck className="size-3 shrink-0 text-brand" /> : null}
+        {hubPeer ? (
+          <span className="shrink-0 rounded-full border border-border bg-muted px-1.5 py-0.5 font-medium font-sans text-[10px] text-muted-foreground">
+            provided by hub
+          </span>
+        ) : null}
+      </span>
+      <span
+        className={`shrink-0 rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-[11px] ${muted ? "text-muted-foreground" : "text-foreground"}`}
+      >
+        {range}
+      </span>
+    </div>
+  );
+}
+
 /**
- * Dependencies table from the real manifest (package -> required range), with a
- * brand marker on `@brika/*` deps, the peer engine, and a dev-dependency count.
- * Hidden when the plugin declares no dependencies and no peers.
+ * Dependencies grouped by type, faithful to what the manifest actually declares:
+ * runtime + peer + dev with their version ranges (no resolved/installed versions,
+ * since the store only has package.json). The `brika` engine surfaces as a peer.
  */
 function DependenciesSection({
   dependencies,
-  resolvedDependencies,
   peerDependencies,
-  devDependencyCount,
+  devDependencies,
   brikaEngine,
 }: Readonly<{
   dependencies?: Record<string, string>;
-  resolvedDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
-  devDependencyCount?: number;
+  devDependencies?: Record<string, string>;
   brikaEngine: string;
 }>) {
   const deps = Object.entries(dependencies ?? {});
-  const resolved = resolvedDependencies ?? {};
-  const hasResolved = Object.keys(resolved).length > 0;
-  const cols = hasResolved ? "grid-cols-[1.6fr_1fr_1fr]" : "grid-cols-[1.6fr_1fr]";
   const peers: [string, string][] = [
     ["brika", brikaEngine],
     ...Object.entries(peerDependencies ?? {}).filter(([name]) => name !== "brika"),
   ];
-  if (deps.length === 0 && Object.keys(peerDependencies ?? {}).length === 0) {
-    // Still show the brika peer for context, but no table.
-    return (
-      <section className="flex flex-col gap-3">
-        <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
-          <Layers className="size-4 text-muted-foreground" />
-          Dependencies
-          <span className="font-medium text-muted-foreground text-sm">0</span>
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          No runtime dependencies. Peers{" "}
-          <span className="font-mono text-foreground">brika@{brikaEngine}</span>.
-        </p>
-      </section>
-    );
-  }
+  const dev = Object.entries(devDependencies ?? {});
+  const DEV_CAP = 8;
+  const devShown = dev.slice(0, DEV_CAP);
+  const devMore = dev.length - devShown.length;
+
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
           <Layers className="size-4 text-muted-foreground" />
           Dependencies
-          <span className="font-medium text-muted-foreground text-sm">{deps.length}</span>
         </h2>
-        {devDependencyCount ? (
-          <span className="text-muted-foreground text-xs">
-            {devDependencyCount} dev dependencies
-          </span>
-        ) : null}
+        <span className="text-muted-foreground text-xs">declared in package.json</span>
+      </div>
+      <div className="flex items-center gap-4 text-muted-foreground text-xs">
+        <span>
+          <strong className="text-foreground">{deps.length}</strong> runtime
+        </span>
+        <span>
+          <strong className="text-foreground">{peers.length}</strong> peer
+        </span>
+        <span>
+          <strong className="text-foreground">{dev.length}</strong> dev
+        </span>
       </div>
       <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <div
-          className={`grid ${cols} gap-3 border-border border-b bg-muted px-4 py-2.5 font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.04em]`}
-        >
-          <span>Package</span>
-          <span>Required</span>
-          {hasResolved ? <span>Resolved</span> : null}
-        </div>
-        {deps.map(([name, range]) => (
-          <div
-            key={name}
-            className={`grid ${cols} items-center gap-3 border-border border-b px-4 py-2.5`}
-          >
-            <span className="inline-flex min-w-0 items-center gap-2 font-mono text-brand text-xs">
-              <Box className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate">{name}</span>
-              {name.startsWith("@brika/") ? (
-                <ShieldCheck className="size-3 shrink-0 text-brand" />
-              ) : null}
-            </span>
-            <span className="font-mono text-foreground text-xs">{range}</span>
-            {hasResolved ? (
-              <span className="font-mono text-muted-foreground text-xs">
-                {resolved[name] ?? "-"}
-              </span>
-            ) : null}
-          </div>
-        ))}
+        {deps.length > 0 ? (
+          <>
+            <DepGroupLabel>Dependencies</DepGroupLabel>
+            {deps.map(([name, range]) => (
+              <DepRow key={name} name={name} range={range} brand={name.startsWith("@brika/")} />
+            ))}
+          </>
+        ) : null}
+        <DepGroupLabel>Peer dependencies</DepGroupLabel>
         {peers.map(([name, range]) => (
-          <div
-            key={name}
-            className="flex items-center gap-2 px-4 py-2.5 text-muted-foreground text-xs"
-          >
-            <Link2 className="size-3.5" /> Peer:{" "}
-            <span className="font-mono text-foreground">
-              {name}@{range}
-            </span>
-          </div>
+          <DepRow key={name} name={name} range={range} hubPeer />
         ))}
+        {dev.length > 0 ? (
+          <>
+            <DepGroupLabel>
+              Dev dependencies{" "}
+              <span className="font-normal text-muted-foreground/60 normal-case">
+                · build &amp; test only
+              </span>
+            </DepGroupLabel>
+            {devShown.map(([name, range]) => (
+              <DepRow key={name} name={name} range={range} muted />
+            ))}
+            {devMore > 0 ? (
+              <div className="px-4 py-2.5 text-muted-foreground text-xs">
+                +{devMore} more dev dependencies
+              </div>
+            ) : null}
+          </>
+        ) : null}
       </div>
-      <div className="flex items-center gap-2 text-muted-foreground text-xs">
-        <ShieldCheck className="size-3.5 text-emerald-500" />
-        No known vulnerabilities · resolved from the lockfile at publish time.
+      <div className="flex items-start gap-2 text-muted-foreground text-xs leading-relaxed">
+        <Box className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/70" />
+        Version ranges as declared by the author. The exact versions a hub installs are resolved at
+        install time, then pinned by the package integrity hash.
       </div>
     </section>
   );
@@ -763,6 +789,166 @@ function IntegrityProvenanceSection({
   );
 }
 
+interface FileTreeNode {
+  name: string;
+  isDir: boolean;
+  size: number;
+  children: Map<string, FileTreeNode>;
+}
+
+interface FileRow {
+  path: string;
+  depth: number;
+  isDir: boolean;
+  name: string;
+  size: number;
+  fileCount: number;
+  manifest: boolean;
+}
+
+/** Insert one tarball path into the nested directory tree. */
+function insertPath(root: Map<string, FileTreeNode>, file: PluginFile): void {
+  const parts = file.path.split("/").filter(Boolean);
+  let level = root;
+  for (let i = 0; i < parts.length; i += 1) {
+    const part = parts[i] as string;
+    const isLeaf = i === parts.length - 1;
+    const existing = level.get(part);
+    const node = existing ?? {
+      name: part,
+      isDir: !isLeaf,
+      size: isLeaf ? file.size : 0,
+      children: new Map<string, FileTreeNode>(),
+    };
+    if (existing === undefined) level.set(part, node);
+    if (!isLeaf) level = node.children;
+  }
+}
+
+/** Count the leaf files anywhere under a node. */
+function countFiles(node: FileTreeNode): number {
+  if (!node.isDir) return 1;
+  let total = 0;
+  for (const child of node.children.values()) total += countFiles(child);
+  return total;
+}
+
+/** Depth-first flatten of a tree level into render rows: dirs first, then files. */
+function flattenTree(
+  level: Map<string, FileTreeNode>,
+  depth: number,
+  prefix: string,
+  rows: FileRow[],
+): void {
+  const nodes = [...level.values()];
+  const byName = (a: FileTreeNode, b: FileTreeNode) => a.name.localeCompare(b.name);
+  for (const dir of nodes.filter((n) => n.isDir).sort(byName)) {
+    const path = prefix ? `${prefix}/${dir.name}` : dir.name;
+    rows.push({
+      path,
+      depth,
+      isDir: true,
+      name: dir.name,
+      size: 0,
+      fileCount: countFiles(dir),
+      manifest: false,
+    });
+    flattenTree(dir.children, depth + 1, path, rows);
+  }
+  for (const file of nodes.filter((n) => !n.isDir).sort(byName)) {
+    rows.push({
+      path: prefix ? `${prefix}/${file.name}` : file.name,
+      depth,
+      isDir: false,
+      name: file.name,
+      size: file.size,
+      fileCount: 0,
+      manifest: file.name === "package.json",
+    });
+  }
+}
+
+function buildFileRows(files: readonly PluginFile[]): FileRow[] {
+  const root = new Map<string, FileTreeNode>();
+  for (const file of files) insertPath(root, file);
+  const rows: FileRow[] = [];
+  flattenTree(root, 0, "", rows);
+  return rows;
+}
+
+/**
+ * npm-style file explorer for the published tarball: the real file tree (from
+ * the bytes the store already unpacks) with per-file sizes and a download link.
+ */
+function FilesSection({
+  files,
+  tarballName,
+  tarballUrl,
+}: Readonly<{ files: PluginFile[]; tarballName: string; tarballUrl?: string }>) {
+  if (files.length === 0) return null;
+  const rows = buildFileRows(files);
+  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
+          <Folder className="size-4 text-muted-foreground" />
+          Files
+        </h2>
+        <span className="text-muted-foreground text-xs">
+          {files.length} files · {formatBytes(totalSize)} unpacked
+        </span>
+      </div>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-2 border-border border-b bg-muted px-4 py-2 font-mono text-[11.5px] text-muted-foreground">
+          <Box className="size-3.5" />
+          {tarballName}
+        </div>
+        {rows.map((row) => (
+          <div
+            key={row.path}
+            className="flex items-center justify-between gap-3 border-border border-b px-4 py-2"
+            style={{ paddingLeft: `${16 + row.depth * 20}px` }}
+          >
+            <span className="inline-flex min-w-0 items-center gap-2">
+              {row.isDir ? (
+                <Folder className="size-3.5 shrink-0 text-brand" />
+              ) : (
+                <FileIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
+              )}
+              <span className="truncate font-mono text-foreground text-xs">{row.name}</span>
+              {row.manifest ? (
+                <span className="shrink-0 rounded-full border border-brand/40 bg-brand/10 px-1.5 py-0.5 font-medium text-[10px] text-brand-ink">
+                  manifest
+                </span>
+              ) : null}
+            </span>
+            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+              {row.isDir ? `${row.fileCount} files` : formatBytes(row.size)}
+            </span>
+          </div>
+        ))}
+        <div className="flex items-center justify-between gap-2 bg-muted px-4 py-2.5 text-muted-foreground text-xs">
+          <span className="inline-flex items-center gap-1.5">
+            <ShieldCheck className="size-3.5 text-emerald-500" />
+            Exactly these files are installed, nothing else runs.
+          </span>
+          {tarballUrl ? (
+            <a
+              href={tarballUrl}
+              className="shrink-0 font-semibold text-brand"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Download tarball
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** Running total of a per-day series, as the `{ts, value}` points the Chart plots. */
 function cumulativePoints(series: number[]): { ts: number; value: number }[] {
   let sum = 0;
@@ -902,20 +1088,19 @@ function DetailSidebar({
 }
 
 /**
- * The Overview tab's main column: screenshots, capabilities, localization,
- * permissions, the readme, integrity/provenance, and dependencies.
+ * The Overview tab's main column: the readable intro only, so it is no longer a
+ * giant scroll. Screenshots, Capabilities, Languages, and About. The heavier
+ * reference sections live in the Permissions and Supply chain tabs.
  */
 function OverviewPanel({
   detail,
   readme,
   displayLocales,
-  grantKeys,
   isRegistry,
 }: Readonly<{
   detail: PluginDetail;
   readme: string | null;
   displayLocales: string[];
-  grantKeys: string[];
   isRegistry: boolean;
 }>) {
   const screenshotCount = isRegistry
@@ -948,8 +1133,6 @@ function OverviewPanel({
 
       <LocalizationSection displayLocales={displayLocales} />
 
-      <PermissionsSection grants={detail.grants} grantKeys={grantKeys} />
-
       {readme ? (
         <section className="flex flex-col gap-3">
           <h2 className="font-bold font-heading text-lg tracking-tight">About</h2>
@@ -958,7 +1141,37 @@ function OverviewPanel({
           </div>
         </section>
       ) : null}
+    </TabsContent>
+  );
+}
 
+/** The Permissions tab: the grant-families section on its own. */
+function PermissionsPanel({
+  detail,
+  grantKeys,
+}: Readonly<{ detail: PluginDetail; grantKeys: string[] }>) {
+  return (
+    <TabsContent value="permissions" className="mt-0 flex flex-col gap-7">
+      {grantKeys.length > 0 ? (
+        <PermissionsSection grants={detail.grants} grantKeys={grantKeys} />
+      ) : (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-bold font-heading text-lg tracking-tight">Permissions requested</h2>
+          <p className="text-muted-foreground text-sm">
+            This plugin requests no permissions. It runs fully sandboxed, with no network, secret,
+            or filesystem access.
+          </p>
+        </section>
+      )}
+    </TabsContent>
+  );
+}
+
+/** The Supply chain tab: integrity &amp; provenance, dependencies, and files together. */
+function SupplyChainPanel({ detail }: Readonly<{ detail: PluginDetail }>) {
+  const tarballName = `${detail.name.split("/").pop() ?? detail.name}-${detail.version}.tgz`;
+  return (
+    <TabsContent value="supply-chain" className="mt-0 flex flex-col gap-7">
       {detail.integrity ? (
         <IntegrityProvenanceSection
           integrity={detail.integrity}
@@ -971,13 +1184,47 @@ function OverviewPanel({
 
       <DependenciesSection
         dependencies={detail.dependencies}
-        resolvedDependencies={detail.resolvedDependencies}
         peerDependencies={detail.peerDependencies}
-        devDependencyCount={detail.devDependencyCount}
+        devDependencies={detail.devDependencies}
         brikaEngine={detail.brikaEngine}
+      />
+
+      <FilesSection
+        files={detail.files ?? []}
+        tarballName={tarballName}
+        tarballUrl={detail.tarballUrl}
       />
     </TabsContent>
   );
+}
+
+/**
+ * Live review/comment counts for the tab badges. Mirrors the sections' rule: the
+ * D1 count when non-empty, else the demo fallback (npm placeholders). Fetched
+ * client-side so the badges are independent of which tab is mounted.
+ */
+function useSocialCounts(name: string | undefined): { reviews: number; comments: number } {
+  const fallbackReviews = name && !isRegistryName(name) ? mockReviews(name).length : 0;
+  const fallbackComments = name && !isRegistryName(name) ? mockComments(name).length : 0;
+  const [apiReviews, setApiReviews] = useState<number | null>(null);
+  const [apiComments, setApiComments] = useState<number | null>(null);
+  useEffect(() => {
+    if (name === undefined) return;
+    const enc = encodeURIComponent(name);
+    const grab = (path: string, set: (n: number) => void) =>
+      fetch(`/v1/plugins/${enc}/${path}`)
+        .then((res) => res.json())
+        .then((json: unknown) => {
+          if (Array.isArray(json)) set(json.length);
+        })
+        .catch(() => undefined);
+    grab("reviews", setApiReviews);
+    grab("comments", setApiComments);
+  }, [name]);
+  return {
+    reviews: apiReviews && apiReviews > 0 ? apiReviews : fallbackReviews,
+    comments: apiComments && apiComments > 0 ? apiComments : fallbackComments,
+  };
 }
 
 function PluginDetailPage() {
@@ -985,6 +1232,7 @@ function PluginDetailPage() {
   const { lang, tab } = Route.useSearch();
   const navigate = Route.useNavigate();
   const activeTab: DetailTab = tab ?? "overview";
+  const counts = useSocialCounts(data?.detail.name);
 
   if (data === null) {
     return <NotFoundPage />;
@@ -1007,6 +1255,10 @@ function PluginDetailPage() {
   const isRegistry = isRegistryName(detail.name);
   const displayLocales = isRegistry ? readmeLocales : demoLocales(detail.name, readmeLocales);
   const grantKeys = Object.keys(detail.grants);
+  const tabCounts: Partial<Record<DetailTab, number>> = {
+    reviews: counts.reviews,
+    discussion: counts.comments,
+  };
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10">
@@ -1022,11 +1274,19 @@ function PluginDetailPage() {
 
       <Tabs value={activeTab} onValueChange={onTab}>
         <TabsList variant="line">
-          {DETAIL_TABS.map(({ id, label }) => (
-            <TabsTrigger key={id} value={id}>
-              {label}
-            </TabsTrigger>
-          ))}
+          {DETAIL_TABS.map(({ id, label }) => {
+            const count = tabCounts[id];
+            return (
+              <TabsTrigger key={id} value={id}>
+                {label}
+                {count ? (
+                  <span className="ml-1.5 font-mono text-[11px] text-muted-foreground/70">
+                    {formatCount(count)}
+                  </span>
+                ) : null}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
         <div className="mt-6 grid gap-7 lg:grid-cols-[1fr_290px] lg:items-start">
@@ -1036,9 +1296,12 @@ function PluginDetailPage() {
               detail={detail}
               readme={readme}
               displayLocales={displayLocales}
-              grantKeys={grantKeys}
               isRegistry={isRegistry}
             />
+
+            <PermissionsPanel detail={detail} grantKeys={grantKeys} />
+
+            <SupplyChainPanel detail={detail} />
 
             <TabsContent value="versions" className="mt-0">
               <section className="flex flex-col gap-3">

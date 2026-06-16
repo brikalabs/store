@@ -258,6 +258,7 @@ export function toPluginDetail(pkg: Packument, downloadsWeekly: number): PluginD
     shasum: manifest.dist?.shasum,
     dependencies: manifest.dependencies,
     peerDependencies: manifest.peerDependencies,
+    devDependencies: manifest.devDependencies,
     devDependencyCount: manifest.devDependencies
       ? Object.keys(manifest.devDependencies).length
       : undefined,

@@ -121,6 +121,13 @@ export const Screenshot = z.object({
 });
 export type Screenshot = z.infer<typeof Screenshot>;
 
+/** One file inside the published tarball: its path and unpacked byte size. */
+export const PluginFile = z.object({
+  path: z.string(),
+  size: z.number().int().nonnegative(),
+});
+export type PluginFile = z.infer<typeof PluginFile>;
+
 /**
  * Build provenance for a CI-published version, anchored on the verified GitHub
  * OIDC token: where the bytes were built from. Absent for local-token publishes.
@@ -166,10 +173,10 @@ export const PluginDetail = PluginSummary.extend({
   provenance: Provenance.optional(),
   /** Runtime dependencies from the manifest: package name -> semver range. */
   dependencies: z.record(z.string(), z.string()).optional(),
-  /** Resolved versions for the dependencies (from the lockfile), keyed by name. */
-  resolvedDependencies: z.record(z.string(), z.string()).optional(),
   /** Peer dependencies from the manifest: package name -> semver range. */
   peerDependencies: z.record(z.string(), z.string()).optional(),
+  /** Dev dependencies from the manifest: package name -> semver range. */
+  devDependencies: z.record(z.string(), z.string()).optional(),
   /** Count of devDependencies declared in the manifest. */
   devDependencyCount: z.number().int().nonnegative().optional(),
   /** Packed (gzipped) tarball size in bytes. */
@@ -178,6 +185,10 @@ export const PluginDetail = PluginSummary.extend({
   unpackedSize: z.number().int().nonnegative().optional(),
   /** Number of files in the tarball. */
   fileCount: z.number().int().nonnegative().optional(),
+  /** The published tarball's files (path + unpacked byte size), for the Files explorer. */
+  files: z.array(PluginFile).optional(),
+  /** Absolute URL of the latest version's tarball (the registry `dist.tarball`). */
+  tarballUrl: ResolvedUrl.optional(),
 });
 export type PluginDetail = z.infer<typeof PluginDetail>;
 

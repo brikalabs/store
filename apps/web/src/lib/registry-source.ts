@@ -111,14 +111,13 @@ const Manifest = z
     dependencies: z.record(z.string(), z.string()).optional(),
     peerDependencies: z.record(z.string(), z.string()).optional(),
     devDependencies: z.record(z.string(), z.string()).optional(),
-    // Resolved dependency versions (from the lockfile), keyed by name.
-    resolvedDependencies: z.record(z.string(), z.string()).optional(),
     unpackedSize: z.number().optional(),
     fileCount: z.number().optional(),
     // Present on packument version entries (the registry computes it), absent on
     // the raw package.json the catalog stores.
     dist: z
       .object({
+        tarball: z.string().optional(),
         integrity: z.string().optional(),
         shasum: z.string().optional(),
         size: z.number().optional(),
@@ -271,14 +270,15 @@ export function manifestToDetail(
     shasum: options.shasum ?? manifest.dist?.shasum,
     provenance: manifest.provenance,
     dependencies: manifest.dependencies,
-    resolvedDependencies: manifest.resolvedDependencies,
     peerDependencies: manifest.peerDependencies,
+    devDependencies: manifest.devDependencies,
     devDependencyCount: manifest.devDependencies
       ? Object.keys(manifest.devDependencies).length
       : undefined,
     size: manifest.dist?.size,
     unpackedSize: manifest.unpackedSize,
     fileCount: manifest.fileCount,
+    tarballUrl: manifest.dist?.tarball,
     publishedAt: options.publishedAt,
     updatedAt: options.updatedAt,
   };
@@ -405,6 +405,15 @@ export async function fetchRegistryTarball(
   return new Uint8Array(await res.arrayBuffer());
 }
 
+/** The published tarball's files (path + unpacked size), sorted by path. */
+function fileListFromEntries(
+  entries: Awaited<ReturnType<typeof readTarGzEntries>>,
+): { path: string; size: number }[] {
+  return entries
+    .map((entry) => ({ path: entry.path, size: entry.data.length }))
+    .sort((a, b) => a.path.localeCompare(b.path));
+}
+
 /** A bundled file's text, located in a set of tar entries by its package path. */
 function entryText(
   entries: Awaited<ReturnType<typeof readTarGzEntries>>,
@@ -489,8 +498,22 @@ export async function getRegistryPluginPage(
   const changelog = changelogPath === undefined ? null : entryText(entries, changelogPath);
   const localized = applyStoreLocale(detail, resolveStoreLocale(entries, locale));
 
+  // The real published file list (and the unpacked size/count it implies) comes
+  // straight from the tarball we just unpacked, falling back to the manifest's
+  // declared values when the tarball could not be fetched.
+  const files = fileListFromEntries(entries);
+  const withFiles: PluginDetail =
+    files.length > 0
+      ? {
+          ...localized,
+          files,
+          fileCount: files.length,
+          unpackedSize: files.reduce((sum, file) => sum + file.size, 0),
+        }
+      : localized;
+
   return {
-    detail: localized,
+    detail: withFiles,
     readme,
     changelog,
     readmeLocales: docLocales(manifest.readme),
