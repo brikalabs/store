@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TransparencyEntry } from "./attestation";
 
 /**
  * Build provenance for a version published from CI: where the bytes came from,
@@ -16,6 +17,8 @@ export const Provenance = z.object({
   workflowRef: z.string().optional(),
   /** Workflow run id, for a link to the build summary. */
   runId: z.string().optional(),
+  /** Public transparency-log entry for the signed artifact (sigstore today). */
+  transparencyLog: TransparencyEntry.optional(),
 });
 export type Provenance = z.infer<typeof Provenance>;
 

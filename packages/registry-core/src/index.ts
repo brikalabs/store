@@ -1,4 +1,14 @@
 export {
+  type AttestationProvider,
+  type AttestInput,
+  attestationProviderIds,
+  clearAttestationProviders,
+  getAttestationProvider,
+  nullAttestationProvider,
+  registerAttestationProvider,
+  TransparencyEntry,
+} from "./attestation";
+export {
   type DailyDownloads,
   DOWNLOAD_WINDOW_DAYS,
   type DownloadStats,

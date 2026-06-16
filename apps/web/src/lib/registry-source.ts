@@ -121,6 +121,14 @@ const Manifest = z
         ref: z.string().optional(),
         workflowRef: z.string().optional(),
         runId: z.string().optional(),
+        transparencyLog: z
+          .object({
+            provider: z.string(),
+            logUrl: z.string(),
+            logIndex: z.string().optional(),
+            integrity: z.string(),
+          })
+          .optional(),
       })
       .optional(),
   })

@@ -516,6 +516,14 @@ function ProvenanceBlock({ provenance }: Readonly<{ provenance: PluginDetail["pr
           </ProvenanceRow>
         ) : null}
         {ref ? <ProvenanceRow label="Ref">{ref}</ProvenanceRow> : null}
+        {provenance.transparencyLog ? (
+          <ProvenanceRow label="Transparency log" href={provenance.transparencyLog.logUrl}>
+            Verify on {provenance.transparencyLog.provider}
+            {provenance.transparencyLog.logIndex
+              ? ` · #${provenance.transparencyLog.logIndex}`
+              : ""}
+          </ProvenanceRow>
+        ) : null}
       </div>
     </div>
   );

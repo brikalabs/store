@@ -1,4 +1,5 @@
 import { CliError } from "@brika/cli-kit";
+import type { TransparencyEntry } from "@brika/registry-core";
 import { z } from "zod";
 
 /**
@@ -65,6 +66,8 @@ export interface PublishRequest {
   readonly manifest: Record<string, unknown>;
   /** The gzipped tarball, base64-encoded. */
   readonly tarball: string;
+  /** Transparency-log entry for the signed tarball (sigstore), when attested. */
+  readonly transparencyLog?: TransparencyEntry;
 }
 
 export interface Published {

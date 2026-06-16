@@ -125,12 +125,23 @@ export type Screenshot = z.infer<typeof Screenshot>;
  * Build provenance for a CI-published version, anchored on the verified GitHub
  * OIDC token: where the bytes were built from. Absent for local-token publishes.
  */
+/** A public transparency-log entry for the signed tarball (sigstore today). */
+export const TransparencyEntry = z.object({
+  provider: z.string(),
+  logUrl: z.url(),
+  logIndex: z.string().optional(),
+  integrity: z.string(),
+});
+export type TransparencyEntry = z.infer<typeof TransparencyEntry>;
+
 export const Provenance = z.object({
   repository: z.string(),
   sha: z.string().optional(),
   ref: z.string().optional(),
   workflowRef: z.string().optional(),
   runId: z.string().optional(),
+  /** Public transparency-log entry for the signed artifact, when attested. */
+  transparencyLog: TransparencyEntry.optional(),
 });
 export type Provenance = z.infer<typeof Provenance>;
 

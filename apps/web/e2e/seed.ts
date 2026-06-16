@@ -117,6 +117,13 @@ function seedProvenance(): void {
     ref: "refs/heads/main",
     workflowRef: "brikalabs/store/.github/workflows/publish.yml@refs/heads/main",
     runId: "16899001",
+    transparencyLog: {
+      provider: "sigstore",
+      logUrl: "https://search.sigstore.dev/?logIndex=148293001",
+      logIndex: "148293001",
+      integrity:
+        "sha512-1tEMdJEPukZTJS6f20hU3Vo54eqDBmvcNvDJlGpRjZdD/cQef1pO7chuh89oevsMTCG2g+MVCfBebHU1Mt4BWA==",
+    },
   });
   db.run("UPDATE reg_versions SET provenance = ? WHERE name = ? AND version = ?", [
     provenance,

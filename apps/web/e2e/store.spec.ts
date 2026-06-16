@@ -56,6 +56,10 @@ test("detail shows the integrity & provenance section (seeded CI publish)", asyn
   await expect(page.getByText("Source commit")).toBeVisible();
   // The integrity copy button is present and interactive.
   await expect(page.getByRole("button", { name: /Copy/i }).first()).toBeVisible();
+  // The sigstore transparency-log link points at the public Rekor entry.
+  const verify = page.getByRole("link", { name: /Verify on sigstore/i });
+  await expect(verify).toBeVisible();
+  await expect(verify).toHaveAttribute("href", /search\.sigstore\.dev/);
 });
 
 test("overview lists real dependencies from the manifest", async ({ page }) => {

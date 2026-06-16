@@ -1,5 +1,11 @@
 import { env } from "cloudflare:workers";
-import { type PublishErrorCode, PublishService } from "@brika/registry-core";
+import {
+  type PublishErrorCode,
+  type PublishIdentity,
+  PublishService,
+  sha512Integrity,
+  TransparencyEntry,
+} from "@brika/registry-core";
 import { getDb, regAudit } from "@brika/store-db";
 import { z } from "zod";
 import { D1MetadataWriter } from "./adapters/d1-metadata-writer";
@@ -20,7 +26,26 @@ const PublishBody = z.object({
   version: z.string(),
   manifest: z.record(z.string(), z.unknown()),
   tarball: z.string(),
+  /** Optional sigstore/transparency-log entry created by the CLI in CI. */
+  transparencyLog: TransparencyEntry.optional(),
 });
+
+/**
+ * Attach the client-provided transparency entry to the (OIDC-derived) provenance,
+ * but only when it can be trusted: the publish is OIDC-authenticated (so it has a
+ * forge-proof identity) AND the attested integrity matches the bytes we received.
+ * Otherwise the attestation is dropped, never blocking the publish.
+ */
+async function withAttestation(
+  identity: PublishIdentity,
+  tarball: Uint8Array,
+  entry: TransparencyEntry | undefined,
+): Promise<PublishIdentity> {
+  if (entry === undefined || identity.provenance === undefined) return identity;
+  const integrity = await sha512Integrity(tarball);
+  if (entry.integrity !== integrity) return identity;
+  return { ...identity, provenance: { ...identity.provenance, transparencyLog: entry } };
+}
 
 function base64ToBytes(value: string): Uint8Array {
   const binary = atob(value);
@@ -55,11 +80,14 @@ export async function handlePublish(request: Request): Promise<Response> {
   const raw: unknown = await request.json().catch(() => null);
   const parsed = PublishBody.safeParse(raw);
   if (!parsed.success) return reply({ error: "Invalid publish body" }, 400);
-  const { name, version, manifest, tarball } = parsed.data;
+  const { name, version, manifest, tarball, transparencyLog } = parsed.data;
 
   if (manifest.name !== name || manifest.version !== version) {
     return reply({ error: "Manifest name/version must match the published name/version" }, 400);
   }
+
+  const tarballBytes = base64ToBytes(tarball);
+  const publisher = await withAttestation(identity, tarballBytes, transparencyLog);
 
   const service = new PublishService(
     new D1MetadataWriter(db),
@@ -70,9 +98,9 @@ export async function handlePublish(request: Request): Promise<Response> {
   const result = await service.publish({
     name,
     version,
-    tarball: base64ToBytes(tarball),
+    tarball: tarballBytes,
     manifest,
-    identity,
+    identity: publisher,
   });
 
   await db.insert(regAudit).values({
