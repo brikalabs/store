@@ -16,14 +16,83 @@ export interface ExtractedAsset {
   readonly contentType: string;
 }
 
-/** One published file: its path and unpacked byte size. */
+/** One published file, npm-style: leading-slash path plus rich metadata. */
 export interface PluginFileEntry {
   readonly path: string;
+  readonly type: "File";
   readonly size: number;
+  readonly contentType: string;
+  readonly hex: string;
+  readonly isBinary: boolean;
+  readonly linesCount: number;
+}
+
+/**
+ * The published tarball's file index, mirroring npm's
+ * `/package/<name>/v/<version>/index`: a map keyed by leading-slash path plus
+ * tarball-level aggregates.
+ */
+export interface PluginFileIndex {
+  readonly files: Record<string, PluginFileEntry>;
+  readonly totalSize: number;
+  readonly fileCount: number;
+  readonly shasum: string;
+  readonly integrity: string;
 }
 
 function cacheKey(name: string, version: string, path: string): string {
   return `reg/${name}@${version}/${path}`;
+}
+
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function toBase64(buffer: ArrayBuffer): string {
+  let binary = "";
+  for (const byte of new Uint8Array(buffer)) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+/** A file is binary if a NUL byte appears in its leading bytes (git's heuristic). */
+function isBinaryContent(bytes: Uint8Array): boolean {
+  return bytes.subarray(0, 8000).includes(0);
+}
+
+/** Newline-delimited line count; a final line without a trailing `\n` still counts. */
+function countLines(bytes: Uint8Array): number {
+  if (bytes.length === 0) return 0;
+  let newlines = 0;
+  for (const byte of bytes) if (byte === 0x0a) newlines += 1;
+  return bytes[bytes.length - 1] === 0x0a ? newlines : newlines + 1;
+}
+
+/**
+ * The file's content type: the precise type for the known asset/image kinds we
+ * serve, otherwise derived from the bytes (text vs binary). Keeps the index
+ * useful without a per-language MIME list to maintain.
+ */
+function fileContentType(path: string, isBinary: boolean): string {
+  const known = contentTypeFor(path);
+  if (known !== "application/octet-stream") return known;
+  return isBinary ? "application/octet-stream" : "text/plain; charset=utf-8";
+}
+
+/** Describe one tarball entry the way npm's file index does. */
+async function describeFile(path: string, bytes: Uint8Array): Promise<PluginFileEntry> {
+  const binary = isBinaryContent(bytes);
+  // Copy into a fresh ArrayBuffer-backed view so the digest input type is
+  // concrete (the tar reader yields `Uint8Array<ArrayBufferLike>`).
+  const digest = await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes));
+  return {
+    path: `/${path}`,
+    type: "File",
+    size: bytes.length,
+    contentType: fileContentType(path, binary),
+    hex: toHex(digest),
+    isBinary: binary,
+    linesCount: binary ? 0 : countLines(bytes),
+  };
 }
 
 /** Fetch the tarball from the registry and pull a single file out of it. */
@@ -40,29 +109,50 @@ async function extractFromTarball(
 }
 
 /**
- * The published tarball's file list (path + unpacked size), sorted by path. The
- * file browser fetches this lazily, only when the Supply chain tab opens, so the
- * detail page never ships the list. Cached in R2 as JSON (versions are
- * immutable), so the tarball is unpacked for the list at most once.
+ * The published tarball's file index, npm-style (a path-keyed map of rich file
+ * metadata plus tarball-level aggregates). The file browser fetches this lazily,
+ * only when the Supply chain tab opens, so the detail page never ships it. The
+ * tarball is unpacked, hashed, and measured exactly once: the result is cached
+ * in R2 as JSON (versions are immutable), so it is never recomputed per request.
  */
 export async function getRegistryFileList(
   name: string,
   version: string,
-): Promise<PluginFileEntry[] | null> {
-  const key = cacheKey(name, version, "__filelist.json");
+): Promise<PluginFileIndex | null> {
+  const key = cacheKey(name, version, "__index.json");
   const cached = await env.ASSETS.get(key);
-  if (cached !== null) return JSON.parse(await cached.text()) as PluginFileEntry[];
+  if (cached !== null) return JSON.parse(await cached.text()) as PluginFileIndex;
 
   const res = await fetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
   if (!res.ok) return null;
-  const entries = await readTarGzEntries(new Uint8Array(await res.arrayBuffer()));
-  const files = entries
-    .map((entry) => ({ path: entry.path, size: entry.data.length }))
-    .sort((a, b) => a.path.localeCompare(b.path));
-  await env.ASSETS.put(key, JSON.stringify(files), {
+  const tarball = new Uint8Array(await res.arrayBuffer());
+  const entries = await readTarGzEntries(tarball);
+
+  const described = await Promise.all(entries.map((entry) => describeFile(entry.path, entry.data)));
+  described.sort((a, b) => a.path.localeCompare(b.path));
+
+  const files: Record<string, PluginFileEntry> = {};
+  let totalSize = 0;
+  for (const file of described) {
+    files[file.path] = file;
+    totalSize += file.size;
+  }
+
+  const [sha1, sha512] = await Promise.all([
+    crypto.subtle.digest("SHA-1", tarball),
+    crypto.subtle.digest("SHA-512", tarball),
+  ]);
+  const index: PluginFileIndex = {
+    files,
+    totalSize,
+    fileCount: described.length,
+    shasum: toHex(sha1),
+    integrity: `sha512-${toBase64(sha512)}`,
+  };
+  await env.ASSETS.put(key, JSON.stringify(index), {
     httpMetadata: { contentType: "application/json" },
   });
-  return files;
+  return index;
 }
 
 /**
@@ -74,18 +164,21 @@ export async function getRegistryAsset(
   version: string,
   path: string,
 ): Promise<ExtractedAsset | null> {
+  // Derive the content type from the bytes (same rule as the file index), so a
+  // served file always agrees with its index entry and text files render inline
+  // instead of downloading. Done on every path, ignoring any stale cached type.
   const key = cacheKey(name, version, path);
   const cached = await env.ASSETS.get(key);
   if (cached !== null) {
-    return { bytes: new Uint8Array(await cached.arrayBuffer()), contentType: contentTypeFor(path) };
+    const bytes = new Uint8Array(await cached.arrayBuffer());
+    return { bytes, contentType: fileContentType(path, isBinaryContent(bytes)) };
   }
 
   const bytes = await extractFromTarball(name, version, path);
   if (bytes === null) return null;
-  await env.ASSETS.put(key, bytes, {
-    httpMetadata: { contentType: contentTypeFor(path) },
-  });
-  return { bytes, contentType: contentTypeFor(path) };
+  const contentType = fileContentType(path, isBinaryContent(bytes));
+  await env.ASSETS.put(key, bytes, { httpMetadata: { contentType } });
+  return { bytes, contentType };
 }
 
 /** Read a bundled text file (readme, `store.json`) from the tarball, or null. */

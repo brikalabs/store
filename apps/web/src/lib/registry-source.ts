@@ -37,6 +37,10 @@ export function isRegistryName(name: string): boolean {
   return name.startsWith(REGISTRY_SCOPE);
 }
 
+// The asset types we actually serve from tarballs: icons, screenshots, readme
+// images, and store.json. Images need an exact type so browsers render them.
+// This is a small, stable set (manifest asset kinds); arbitrary published files
+// derive their type from their bytes instead, so there is no per-language list.
 const CONTENT_TYPES: Record<string, string> = {
   svg: "image/svg+xml",
   png: "image/png",

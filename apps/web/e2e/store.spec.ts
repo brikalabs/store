@@ -45,6 +45,16 @@ test("the icon plugin's generated icon is served from its tarball", async ({ req
   expect(await res.text()).toContain("icon-studio-bg");
 });
 
+test("a source file is served inline as text (matching its file-index type)", async ({
+  request,
+}) => {
+  // The served content type is derived from the bytes, the same rule the file
+  // index uses, so a .ts file is text/* (renders inline) and never octet-stream.
+  const res = await request.get("/v1/plugins/%40brika%2Fplugin-i18n/v/0.1.0/files/src/index.ts");
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("text/");
+});
+
 test("plugin management: deprecated version is badged, yanked version is hidden", async ({
   page,
 }) => {
@@ -196,6 +206,9 @@ test("files explorer: folders collapse/expand and files preview their content", 
   }).toPass();
   await expect(panel.getByText("TS", { exact: true })).toBeVisible();
   await expect(panel.getByRole("button", { name: "Copy code" })).toBeVisible();
+  // The line count comes from the file index (server-computed), so it shows in
+  // the header without the viewer having to count the fetched text.
+  await expect(panel.getByText(/\d+ lines/)).toBeVisible();
   // The fetched source renders (Clay CodeBlock with a line-number gutter).
   await expect(panel.getByText(/TranslateInput/).first()).toBeVisible();
 });

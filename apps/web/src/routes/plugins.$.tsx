@@ -854,45 +854,27 @@ function buildTree(files: readonly PluginFile[]): Map<string, FileTreeNode> {
   return root;
 }
 
-const IMAGE_EXTS = new Set(["svg", "png", "jpg", "jpeg", "gif", "webp", "avif", "ico"]);
-const TEXT_EXTS = new Set([
-  "ts",
-  "tsx",
-  "js",
-  "jsx",
-  "mjs",
-  "cjs",
-  "json",
-  "jsonc",
-  "md",
-  "markdown",
-  "txt",
-  "css",
-  "scss",
-  "less",
-  "html",
-  "htm",
-  "yml",
-  "yaml",
-  "toml",
-  "xml",
-  "sh",
-  "bash",
-  "env",
-  "map",
-  "csv",
-]);
-const TEXT_NAMES = new Set(["license", "readme", "changelog", ".gitignore", ".npmignore"]);
+/**
+ * Flatten npm's path-keyed file index into the array the tree consumes. The
+ * wire paths carry a leading slash (`/src/index.ts`); the tree and asset URLs
+ * work in slash-free paths, so normalize on the way in.
+ */
+function filesFromIndex(json: unknown): PluginFile[] {
+  const map = (json as { files?: unknown }).files;
+  if (map === null || typeof map !== "object") return [];
+  return Object.values(map as Record<string, PluginFile>).map((file) => ({
+    ...file,
+    path: file.path.replace(/^\//, ""),
+  }));
+}
+
 // Cap inline previews so a large file never streams megabytes into the page.
 const MAX_PREVIEW_BYTES = 256 * 1024;
 
-function fileKind(path: string): "image" | "text" | "binary" {
-  const dot = path.lastIndexOf(".");
-  const ext = dot === -1 ? "" : path.slice(dot + 1).toLowerCase();
-  if (IMAGE_EXTS.has(ext)) return "image";
-  const base = (path.split("/").pop() ?? "").toLowerCase();
-  if (TEXT_EXTS.has(ext) || TEXT_NAMES.has(base)) return "text";
-  return "binary";
+/** Viewer kind, taken from the server's content metadata (no extension guessing). */
+function fileKind(file: PluginFile): "image" | "text" | "binary" {
+  if (file.contentType.startsWith("image/")) return "image";
+  return file.isBinary ? "binary" : "text";
 }
 
 /** A short uppercase language tag for a path: `src/x.ts` -> `TS`. */
@@ -933,17 +915,11 @@ function shikiLang(path: string): string {
   return MAP[ext] ?? "plaintext";
 }
 
-/** Line count of fetched text (a trailing newline does not add a blank line). */
-function countTextLines(text: string): number {
-  if (text.length === 0) return 0;
-  return text.endsWith("\n") ? text.split("\n").length - 1 : text.split("\n").length;
-}
-
-/** The viewer's "N lines · size" / "size" meta, computed from the fetched text. */
-function fileMeta(size: number, kind: ReturnType<typeof fileKind>, text: string | null): string {
-  return kind === "text" && text !== null
-    ? `${countTextLines(text)} lines · ${formatBytes(size)}`
-    : formatBytes(size);
+/** The viewer's "N lines · size" / "size" meta, from the server's line count. */
+function fileMeta(file: PluginFile, kind: ReturnType<typeof fileKind>): string {
+  return kind === "text" && file.linesCount > 0
+    ? `${file.linesCount} lines · ${formatBytes(file.size)}`
+    : formatBytes(file.size);
 }
 
 /** Sorted children: dirs first, then files, each group alphabetical. */
@@ -1034,7 +1010,7 @@ function ViewerHeader({
               {langLabel(file.path)}
             </Badge>
             <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-              {fileMeta(file.size, kind, text)}
+              {fileMeta(file, kind)}
             </span>
           </span>
         )}
@@ -1086,7 +1062,7 @@ function FileViewer({
   file,
 }: Readonly<{ name: string; version: string; file: PluginFile | undefined }>) {
   const src = file ? assetUrl(name, version, file.path) : "";
-  const kind = file ? fileKind(file.path) : "binary";
+  const kind = file ? fileKind(file) : "binary";
   const previewable = file !== undefined && file.size <= MAX_PREVIEW_BYTES;
   const [text, setText] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -1220,8 +1196,7 @@ function FilesSection({
     fetch(`${pluginVersionUrl(name, version)}/index`)
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("load failed"))))
       .then((json: unknown) => {
-        const list = (json as { files?: unknown }).files;
-        if (active) setFiles(Array.isArray(list) ? (list as PluginFile[]) : []);
+        if (active) setFiles(filesFromIndex(json));
       })
       .catch(() => {
         if (active) setFailed(true);

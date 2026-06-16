@@ -121,12 +121,36 @@ export const Screenshot = z.object({
 });
 export type Screenshot = z.infer<typeof Screenshot>;
 
-/** One file inside the published tarball: its path and unpacked byte size. */
+/**
+ * One file inside the published tarball, npm-style: a leading-slash path plus
+ * the metadata npm exposes on its file index (content type, a per-file SHA-256,
+ * a binary flag, and the line count) so consumers can render a browser without
+ * fetching every file.
+ */
 export const PluginFile = z.object({
   path: z.string(),
+  type: z.literal("File"),
   size: z.number().int().nonnegative(),
+  contentType: z.string(),
+  hex: z.string(),
+  isBinary: z.boolean(),
+  linesCount: z.number().int().nonnegative(),
 });
 export type PluginFile = z.infer<typeof PluginFile>;
+
+/**
+ * The published tarball's file index, mirroring npm's
+ * `/package/<name>/v/<version>/index`: a map keyed by leading-slash path plus
+ * tarball-level aggregates (total size, file count, shasum, and SRI integrity).
+ */
+export const PluginFileIndex = z.object({
+  files: z.record(z.string(), PluginFile),
+  totalSize: z.number().int().nonnegative(),
+  fileCount: z.number().int().nonnegative(),
+  shasum: z.string(),
+  integrity: z.string(),
+});
+export type PluginFileIndex = z.infer<typeof PluginFileIndex>;
 
 /**
  * Build provenance for a CI-published version, anchored on the verified GitHub
