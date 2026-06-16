@@ -47,4 +47,4 @@ export {
 } from "./publish";
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
 export { readTarGzEntries, type TarEntry } from "./tar";
-export { type PackageRecord, PackageVersion } from "./types";
+export { type PackageRecord, PackageVersion, Provenance } from "./types";

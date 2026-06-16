@@ -22,6 +22,8 @@ export const OidcClaims = z.object({
   sha: z.string().optional(),
   actor: z.string().optional(),
   workflow_ref: z.string().optional(),
+  /** Numeric id of the workflow run, for a build-summary link. */
+  run_id: z.string().optional(),
   exp: z.number(),
   nbf: z.number().optional(),
   iat: z.number().optional(),

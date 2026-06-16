@@ -59,6 +59,7 @@ export function buildPackument(record: PackageRecord, baseUrl: string): Packumen
       dist,
     };
     if (version.deprecated !== null) entry.deprecated = version.deprecated;
+    if (version.provenance !== null) entry.provenance = version.provenance;
 
     versions[version.version] = entry;
     time[version.version] = version.publishedAt;

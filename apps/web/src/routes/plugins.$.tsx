@@ -26,6 +26,7 @@ import { Segmented, segmentClassName } from "../components/clay/segmented";
 import { Sparkline } from "../components/clay/sparkline";
 import { Stars } from "../components/clay/stars";
 import { CommentsSection } from "../components/comments-section";
+import { CopyButton } from "../components/copy-button";
 import { NotFoundPage } from "../components/error-pages";
 import { InstallCommand } from "../components/install-command";
 import { Markdown } from "../components/markdown";
@@ -330,32 +331,114 @@ function SidebarKeywords({ keywords }: Readonly<{ keywords: string[] }>) {
   );
 }
 
-/**
- * Supply-chain trust card: the latest tarball's SHA-512 Subresource Integrity,
- * the exact hash bun pins in the lockfile. Shown truncated, full value on hover.
- */
-function IntegrityCard({ integrity }: Readonly<{ integrity: string }>) {
-  const sep = integrity.indexOf("-");
-  const algo = sep === -1 ? "sha512" : integrity.slice(0, sep);
-  const digest = sep === -1 ? integrity : integrity.slice(sep + 1);
-  const short = digest.length > 22 ? `${digest.slice(0, 14)}…${digest.slice(-6)}` : digest;
+/** A label/value row in the provenance grid; value may be a link. */
+function ProvenanceRow({
+  label,
+  href,
+  children,
+}: Readonly<{ label: string; href?: string; children: ReactNode }>) {
+  const value = href ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="truncate font-mono text-brand text-xs underline decoration-1 underline-offset-2"
+    >
+      {children}
+    </a>
+  ) : (
+    <span className="truncate font-mono text-foreground text-xs">{children}</span>
+  );
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
-      <div className="flex items-center gap-1.5 font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
-        <ShieldCheck className="size-3.5 text-brand-ink" />
-        Integrity
+    <>
+      <span className="font-semibold text-foreground text-xs">{label}</span>
+      {value}
+    </>
+  );
+}
+
+/** The repo path from a GitHub OIDC `workflow_ref` (`owner/repo/<path>@ref`). */
+function workflowPath(workflowRef: string): string {
+  const beforeRef = workflowRef.split("@")[0] ?? workflowRef;
+  const parts = beforeRef.split("/");
+  return parts.length > 2 ? parts.slice(2).join("/") : beforeRef;
+}
+
+/** Built-from-CI block, anchored on the verified OIDC token (cannot be forged). */
+function ProvenanceBlock({ provenance }: Readonly<{ provenance: PluginDetail["provenance"] }>) {
+  if (provenance === undefined) return null;
+  const { repository, sha, ref, workflowRef, runId } = provenance;
+  const repoUrl = `https://github.com/${repository}`;
+  return (
+    <div className="grid grid-cols-[auto_1fr] items-start gap-x-7 gap-y-4 rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-col gap-1.5">
+        <span className="text-muted-foreground text-xs">Built and signed on</span>
+        <span className="inline-flex items-center gap-2 font-bold font-heading text-base text-foreground">
+          <ShieldCheck className="size-4 text-emerald-500" />
+          GitHub Actions
+        </span>
+        {runId ? (
+          <a
+            href={`${repoUrl}/actions/runs/${runId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-foreground text-xs underline underline-offset-2"
+          >
+            View build summary
+          </a>
+        ) : null}
       </div>
-      <code
-        title={integrity}
-        className="block break-all font-mono text-foreground text-xs leading-relaxed"
-      >
-        <span className="text-muted-foreground">{algo}-</span>
-        {short}
-      </code>
-      <p className="text-muted-foreground text-xs leading-relaxed">
-        Pinned in your lockfile; the published version is immutable.
-      </p>
+      <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2.5">
+        <ProvenanceRow label="Source commit" href={sha ? `${repoUrl}/commit/${sha}` : repoUrl}>
+          {repository}
+          {sha ? `@${sha.slice(0, 7)}` : ""}
+        </ProvenanceRow>
+        {workflowRef ? (
+          <ProvenanceRow
+            label="Build file"
+            href={
+              ref
+                ? `${repoUrl}/blob/${ref.replace("refs/heads/", "")}/${workflowPath(workflowRef)}`
+                : repoUrl
+            }
+          >
+            {workflowPath(workflowRef)}
+          </ProvenanceRow>
+        ) : null}
+        {ref ? <ProvenanceRow label="Ref">{ref}</ProvenanceRow> : null}
+      </div>
     </div>
+  );
+}
+
+/**
+ * Main-column "Integrity & provenance" section (npm-style): the tarball's SHA-512
+ * Subresource Integrity (with a copy button) plus, for CI-published versions, the
+ * build provenance derived from the verified GitHub OIDC token.
+ */
+function IntegrityProvenanceSection({
+  integrity,
+  provenance,
+}: Readonly<{ integrity: string; provenance: PluginDetail["provenance"] }>) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
+        <ShieldCheck className="size-4 text-emerald-500" />
+        Integrity &amp; provenance
+      </h2>
+      <p className="text-muted-foreground text-sm leading-relaxed">
+        The integrity hash lets your hub verify the download has not been tampered with. A published
+        version is immutable, and bun pins this hash in your lockfile.
+      </p>
+      <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-border bg-card p-3.5">
+        <span className="min-w-16 font-semibold text-muted-foreground text-xs">Integrity</span>
+        <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-muted px-2.5 py-1.5 font-mono text-foreground text-xs">
+          {integrity}
+        </code>
+        <CopyButton value={integrity} />
+      </div>
+      <ProvenanceBlock provenance={provenance} />
+    </section>
   );
 }
 
@@ -426,9 +509,8 @@ function DetailSidebar({
         {detail.installs !== undefined ? (
           <MetaRow label="Installs" value={formatCount(detail.installs)} mono />
         ) : null}
+        {detail.provenance ? <MetaRow label="Provenance" value="Signed" /> : null}
       </div>
-
-      {detail.integrity ? <IntegrityCard integrity={detail.integrity} /> : null}
 
       <SidebarLinks detail={detail} />
       <SidebarAuthor detail={detail} />
@@ -519,6 +601,13 @@ function PluginDetailPage() {
                 <Markdown>{readme}</Markdown>
               </div>
             </section>
+          ) : null}
+
+          {detail.integrity ? (
+            <IntegrityProvenanceSection
+              integrity={detail.integrity}
+              provenance={detail.provenance}
+            />
           ) : null}
 
           {versions.length > 0 ? (

@@ -48,6 +48,15 @@ test("detail shows the downloads trend card with a sparkline", async ({ page, re
   await expect(page.getByRole("img", { name: "Install trend" })).toBeVisible();
 });
 
+test("detail shows the integrity & provenance section (seeded CI publish)", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-i18n");
+  await expect(page.getByRole("heading", { name: /Integrity & provenance/i })).toBeVisible();
+  await expect(page.getByText("GitHub Actions")).toBeVisible();
+  await expect(page.getByText("Source commit")).toBeVisible();
+  // The integrity copy button is present and interactive.
+  await expect(page.getByRole("button", { name: /Copy/i }).first()).toBeVisible();
+});
+
 test("localized copy renders for the French locale", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n?lang=fr");
   // The fr store.json title + readme replace the default English copy.

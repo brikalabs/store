@@ -52,6 +52,7 @@ const registryManifest = {
   readme: { en: "./README.md", fr: "./README.fr.md" },
   // The registry packument carries the computed integrity on the version's dist.
   dist: { integrity: "sha512-TESTINTEGRITY==", shasum: "deadbeef" },
+  provenance: { repository: "brikalabs/store", sha: "abc1234", runId: "99" },
 };
 
 const registryPackument = {
@@ -146,6 +147,12 @@ describe("getPluginPage", () => {
     expect(page?.detail.integrity).toBe("sha512-TESTINTEGRITY==");
     // The per-day install series feeds the sidebar sparkline.
     expect(page?.downloadsSeries).toEqual([1, 0, 3, 5]);
+    // CI provenance from the packument version entry.
+    expect(page?.detail.provenance).toEqual({
+      repository: "brikalabs/store",
+      sha: "abc1234",
+      runId: "99",
+    });
   });
 
   test("falls through to a 404 for an unknown registry plugin", async () => {

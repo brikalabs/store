@@ -38,6 +38,7 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
       publishedAt: Math.floor(new Date(version.publishedAt).getTime() / 1000),
       deprecated: version.deprecated,
       yanked: version.yanked,
+      provenance: version.provenance ?? undefined,
     });
   }
 

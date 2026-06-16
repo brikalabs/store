@@ -1,7 +1,7 @@
 import { sha1Hex, sha512Integrity } from "./integrity";
 import { REGISTRY_LIMITS } from "./limits";
 import { tarballPath } from "./packument";
-import type { PackageVersion } from "./types";
+import type { PackageVersion, Provenance } from "./types";
 
 /** Who is publishing, derived from a verified OIDC token or a session token. */
 export interface PublishIdentity {
@@ -9,6 +9,8 @@ export interface PublishIdentity {
   readonly owner: string;
   /** `owner/repo` the publish ran from (OIDC), or null for a local token publish. */
   readonly repository: string | null;
+  /** CI build provenance from the verified OIDC token; absent for local publishes. */
+  readonly provenance?: Provenance;
 }
 
 export interface PublishInput {
@@ -150,6 +152,7 @@ export class PublishService {
       publishedAt: this.#clock(),
       deprecated: null,
       yanked: false,
+      provenance: input.identity.provenance ?? null,
     });
     await this.#meta.setDistTag(input.name, "latest", input.version);
 

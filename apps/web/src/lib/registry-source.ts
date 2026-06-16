@@ -111,6 +111,15 @@ const Manifest = z
     // Present on packument version entries (the registry computes it), absent on
     // the raw package.json the catalog stores.
     dist: z.object({ integrity: z.string().optional(), shasum: z.string().optional() }).optional(),
+    provenance: z
+      .object({
+        repository: z.string(),
+        sha: z.string().optional(),
+        ref: z.string().optional(),
+        workflowRef: z.string().optional(),
+        runId: z.string().optional(),
+      })
+      .optional(),
   })
   .loose();
 export type Manifest = z.infer<typeof Manifest>;
@@ -239,6 +248,7 @@ export function manifestToDetail(
     grants: manifest.grants ?? {},
     integrity: options.integrity ?? manifest.dist?.integrity,
     shasum: options.shasum ?? manifest.dist?.shasum,
+    provenance: manifest.provenance,
     publishedAt: options.publishedAt,
     updatedAt: options.updatedAt,
   };

@@ -31,6 +31,8 @@ export const regVersions = sqliteTable(
     publishedAt: integer("published_at").notNull().default(epoch),
     deprecated: text("deprecated"),
     yanked: integer("yanked", { mode: "boolean" }).notNull().default(false),
+    /** CI build provenance from the GitHub OIDC token; null for local publishes. */
+    provenance: text("provenance", { mode: "json" }).$type<Record<string, unknown>>(),
   },
   (t) => [primaryKey({ columns: [t.name, t.version] })],
 );

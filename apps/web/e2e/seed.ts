@@ -104,7 +104,31 @@ async function publish(plugin: string, token: string): Promise<void> {
   }
 }
 
+/**
+ * Attach simulated CI provenance to one published version, so the e2e covers the
+ * Integrity & provenance section. A real OIDC publish sets this from the verified
+ * token; the local seed has only a token, so it writes the row directly.
+ */
+function seedProvenance(): void {
+  const db = new Database(findLocalD1());
+  const provenance = JSON.stringify({
+    repository: "brikalabs/store",
+    sha: "0c59e6f7a1b2c3d4",
+    ref: "refs/heads/main",
+    workflowRef: "brikalabs/store/.github/workflows/publish.yml@refs/heads/main",
+    runId: "16899001",
+  });
+  db.run("UPDATE reg_versions SET provenance = ? WHERE name = ? AND version = ?", [
+    provenance,
+    "@brika/plugin-i18n",
+    "0.1.0",
+  ]);
+  db.close();
+  log("seeded CI provenance on @brika/plugin-i18n@0.1.0");
+}
+
 await waitForRegistry();
 const token = await mintToken();
 for (const plugin of EXAMPLES) await publish(plugin, token);
+seedProvenance();
 log(`done (dir: ${dirname(findLocalD1())})`);

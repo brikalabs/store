@@ -121,6 +121,19 @@ export const Screenshot = z.object({
 });
 export type Screenshot = z.infer<typeof Screenshot>;
 
+/**
+ * Build provenance for a CI-published version, anchored on the verified GitHub
+ * OIDC token: where the bytes were built from. Absent for local-token publishes.
+ */
+export const Provenance = z.object({
+  repository: z.string(),
+  sha: z.string().optional(),
+  ref: z.string().optional(),
+  workflowRef: z.string().optional(),
+  runId: z.string().optional(),
+});
+export type Provenance = z.infer<typeof Provenance>;
+
 /** Full plugin detail, returned by `GET /v1/plugins/:name`. */
 export const PluginDetail = PluginSummary.extend({
   repository: z.url().optional(),
@@ -138,6 +151,8 @@ export const PluginDetail = PluginSummary.extend({
   integrity: z.string().optional(),
   /** Legacy SHA-1 checksum of the tarball, for parity with npm tooling. */
   shasum: z.string().optional(),
+  /** CI build provenance (GitHub OIDC) for the latest version, when published from CI. */
+  provenance: Provenance.optional(),
 });
 export type PluginDetail = z.infer<typeof PluginDetail>;
 
