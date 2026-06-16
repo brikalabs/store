@@ -162,10 +162,12 @@ test("supply chain tab groups dependencies by type (declared, not resolved)", as
 test("supply chain tab lists the real tarball files", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n?tab=supply-chain");
   await expect(page.getByRole("heading", { name: "Files", exact: true })).toBeVisible();
-  // The tarball name and a real bundled file both appear, with the manifest badge.
+  // The tarball name, a real bundled file, and its LOC label all appear; the
+  // viewer starts on its empty state until a file is picked.
   await expect(page.getByText("plugin-i18n-0.1.0.tgz")).toBeVisible();
   await expect(page.getByText("index.ts")).toBeVisible();
-  await expect(page.getByText("manifest", { exact: true })).toBeVisible();
+  await expect(page.getByText(/\d+ LOC/).first()).toBeVisible();
+  await expect(page.getByText("Select a file to view its contents")).toBeVisible();
   await expect(page.getByRole("link", { name: /Download tarball/i })).toBeVisible();
 });
 
@@ -187,14 +189,18 @@ test("files explorer: folders collapse/expand and files preview their content", 
     await expect(storeJson).toBeVisible({ timeout: 500 });
   }).toPass();
 
-  // Clicking a file lazily opens its content preview (header shows the full path).
+  // Clicking a file lazily opens it in the viewer pane (header shows the full
+  // path + a language badge), and its source is fetched and rendered.
   const previewHeader = panel.getByText("src/index.ts");
   await expect(async () => {
     if ((await previewHeader.count()) === 0)
       await panel.getByText("index.ts", { exact: true }).click();
     await expect(previewHeader).toBeVisible({ timeout: 500 });
   }).toPass();
-  await expect(panel.getByRole("link", { name: "Raw" })).toBeVisible();
+  await expect(panel.getByText("TS", { exact: true })).toBeVisible();
+  await expect(panel.getByRole("button", { name: /Copy/ })).toBeVisible();
+  // The fetched source renders (with a line-number gutter).
+  await expect(panel.getByText(/TranslateInput/).first()).toBeVisible();
 });
 
 test("detail tabs are routed: clicking updates the URL and panel", async ({ page }) => {

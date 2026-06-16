@@ -121,10 +121,12 @@ export const Screenshot = z.object({
 });
 export type Screenshot = z.infer<typeof Screenshot>;
 
-/** One file inside the published tarball: its path and unpacked byte size. */
+/** One file inside the published tarball: its path, unpacked byte size, and line count. */
 export const PluginFile = z.object({
   path: z.string(),
   size: z.number().int().nonnegative(),
+  /** Line count, for the "N LOC" label on text files (computed at publish read). */
+  lines: z.number().int().nonnegative().optional(),
 });
 export type PluginFile = z.infer<typeof PluginFile>;
 

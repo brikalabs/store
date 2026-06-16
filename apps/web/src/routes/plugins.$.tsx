@@ -32,7 +32,6 @@ import {
   Sparkles,
   TrendingDown,
   TrendingUp,
-  X,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
@@ -797,6 +796,7 @@ interface FileTreeNode {
   path: string;
   isDir: boolean;
   size: number;
+  lines: number;
   fileCount: number;
   children: Map<string, FileTreeNode>;
 }
@@ -807,8 +807,8 @@ interface FileRow {
   isDir: boolean;
   name: string;
   size: number;
+  lines: number;
   fileCount: number;
-  manifest: boolean;
 }
 
 /** Insert one tarball path into the nested directory tree. */
@@ -826,6 +826,7 @@ function insertPath(root: Map<string, FileTreeNode>, file: PluginFile): void {
       path: prefix,
       isDir: !isLeaf,
       size: isLeaf ? file.size : 0,
+      lines: isLeaf ? (file.lines ?? 0) : 0,
       fileCount: 0,
       children: new Map<string, FileTreeNode>(),
     };
@@ -877,8 +878,8 @@ function flattenVisible(
       isDir: true,
       name: dir.name,
       size: 0,
+      lines: 0,
       fileCount: dir.fileCount,
-      manifest: false,
     });
     if (open.has(dir.path)) flattenVisible(dir.children, depth + 1, open, rows);
   }
@@ -889,8 +890,8 @@ function flattenVisible(
       isDir: false,
       name: file.name,
       size: file.size,
+      lines: file.lines,
       fileCount: 0,
-      manifest: file.name === "package.json",
     });
   }
 }
@@ -936,15 +937,58 @@ function fileKind(path: string): "image" | "text" | "binary" {
   return "binary";
 }
 
-/** The body of a file preview: image, text, or a download fallback. */
-function FileContentBody({
+/** A short uppercase language tag for a path: `src/x.ts` -> `TS`. */
+function langLabel(path: string): string {
+  const dot = path.lastIndexOf(".");
+  const ext = dot === -1 ? "" : path.slice(dot + 1).toUpperCase();
+  return ext || "FILE";
+}
+
+/** The "N LOC" / "N lines · size" labels the tree and viewer show for a file. */
+function fileMeta(file: PluginFile, kind: ReturnType<typeof fileKind>): string {
+  return kind === "text"
+    ? `${file.lines ?? 0} lines · ${formatBytes(file.size)}`
+    : formatBytes(file.size);
+}
+
+/** Source with a sticky line-number gutter; the content scrolls under it. */
+function CodeView({ text }: Readonly<{ text: string }>) {
+  const raw = text.split("\n");
+  const count = raw.length > 1 && raw[raw.length - 1] === "" ? raw.length - 1 : raw.length;
+  const body = count < raw.length ? raw.slice(0, count).join("\n") : text;
+  const numbers = Array.from({ length: Math.max(count, 1) }, (_, i) => i + 1).join("\n");
+  return (
+    <div className="flex min-w-max font-mono text-[11.5px] leading-[1.65]">
+      <pre className="sticky left-0 shrink-0 select-none border-border border-r bg-card px-3 py-2 text-right text-muted-foreground/50">
+        {numbers}
+      </pre>
+      <pre className="px-3 py-2 text-foreground">{body}</pre>
+    </div>
+  );
+}
+
+/** A centred "not previewable" panel (binary, oversized, or load error). */
+function NotViewable({ src, reason }: Readonly<{ src: string; reason: string }>) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+      <FileIcon className="size-6 text-muted-foreground/40" />
+      <span className="text-foreground text-sm">{reason}</span>
+      <a href={src} target="_blank" rel="noreferrer" className="font-semibold text-brand text-xs">
+        Open raw
+      </a>
+    </div>
+  );
+}
+
+/** The viewer body for the selected file: image, source, or a fallback panel. */
+function FileViewerContent({
   kind,
   previewable,
   src,
   text,
   status,
 }: Readonly<{
-  kind: "image" | "text" | "binary";
+  kind: ReturnType<typeof fileKind>;
   previewable: boolean;
   src: string;
   text: string | null;
@@ -952,61 +996,44 @@ function FileContentBody({
 }>) {
   if (kind === "image") {
     return (
-      <div className="flex justify-center bg-muted/40 p-6">
-        <img src={src} alt="" loading="lazy" className="max-h-80 max-w-full object-contain" />
+      <div className="flex h-full items-center justify-center p-6">
+        <img src={src} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
       </div>
     );
   }
-  if (kind === "binary" || !previewable) {
+  if (kind === "binary") return <NotViewable src={src} reason="This is a built or binary file." />;
+  if (!previewable) return <NotViewable src={src} reason="This file is large." />;
+  if (status === "error") return <NotViewable src={src} reason="Could not load this file." />;
+  if (text === null) {
     return (
-      <div className="px-4 py-6 text-center text-muted-foreground text-sm">
-        {kind === "binary" ? "Binary file." : "This file is large."}{" "}
-        <a href={src} target="_blank" rel="noreferrer" className="font-semibold text-brand">
-          Open raw
-        </a>{" "}
-        to view it.
+      <div className="flex h-full items-center justify-center p-6 text-muted-foreground text-sm">
+        Loading...
       </div>
     );
   }
-  if (status === "loading") {
-    return <div className="px-4 py-6 text-center text-muted-foreground text-sm">Loading...</div>;
-  }
-  if (status === "error") {
-    return (
-      <div className="px-4 py-6 text-center text-muted-foreground text-sm">
-        Could not load this file.{" "}
-        <a href={src} target="_blank" rel="noreferrer" className="font-semibold text-brand">
-          Open raw
-        </a>
-        .
-      </div>
-    );
-  }
-  return (
-    <pre className="max-h-96 overflow-auto px-4 py-3 font-mono text-[12px] text-foreground leading-relaxed">
-      <code>{text}</code>
-    </pre>
-  );
+  return <CodeView text={text} />;
 }
 
 /**
- * Lazy file preview: fetches the clicked file's bytes from the (immutable,
- * R2-cached) asset endpoint only when opened, capped by size, and renders text
- * inline or an image. Nothing is loaded until the user picks a file.
+ * The right pane: lazily fetches the selected file's bytes from the (immutable,
+ * R2-cached) asset endpoint, capped by size, and renders source with line
+ * numbers, an image, or a fallback. Shows an empty state until a file is picked.
  */
-function FileContentView({
+function FileViewer({
   name,
   version,
   file,
-  onClose,
-}: Readonly<{ name: string; version: string; file: PluginFile; onClose: () => void }>) {
-  const src = assetUrl(name, version, file.path);
-  const kind = fileKind(file.path);
-  const previewable = file.size <= MAX_PREVIEW_BYTES;
+}: Readonly<{ name: string; version: string; file: PluginFile | undefined }>) {
+  const src = file ? assetUrl(name, version, file.path) : "";
+  const kind = file ? fileKind(file.path) : "binary";
+  const previewable = file !== undefined && file.size <= MAX_PREVIEW_BYTES;
   const [text, setText] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   useEffect(() => {
-    if (kind !== "text" || !previewable) return;
+    if (file === undefined || kind !== "text" || !previewable) {
+      setText(null);
+      return;
+    }
     let active = true;
     setStatus("loading");
     setText(null);
@@ -1024,46 +1051,65 @@ function FileContentView({
     return () => {
       active = false;
     };
-  }, [src, kind, previewable]);
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <div className="flex items-center justify-between gap-3 border-border border-b bg-muted px-4 py-2">
-        <span className="inline-flex min-w-0 items-center gap-2 font-mono text-foreground text-xs">
-          <FileIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
-          <span className="truncate">{file.path}</span>
-          <span className="shrink-0 text-muted-foreground">{formatBytes(file.size)}</span>
+  }, [src, kind, previewable, file]);
+
+  if (file === undefined) {
+    return (
+      <div className="flex h-full min-w-0 flex-col items-center justify-center gap-2 p-6 text-center">
+        <FileIcon className="size-7 text-muted-foreground/40" />
+        <span className="font-medium text-foreground text-sm">
+          Select a file to view its contents
         </span>
-        <span className="flex shrink-0 items-center gap-3">
-          <a
-            href={src}
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-brand text-xs"
-          >
-            Raw
-          </a>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close file preview"
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
+        <span className="text-muted-foreground text-xs">
+          Source is read straight from the published tarball.
         </span>
       </div>
-      <FileContentBody
-        kind={kind}
-        previewable={previewable}
-        src={src}
-        text={text}
-        status={status}
-      />
+    );
+  }
+  return (
+    <div className="flex h-full min-w-0 flex-col">
+      <div className="flex items-center justify-between gap-3 border-border border-b bg-muted px-3.5 py-2">
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <span className="truncate font-mono text-foreground text-xs">{file.path}</span>
+          <span className="shrink-0 rounded-md border border-border bg-card px-1.5 py-0.5 font-semibold text-[10px] text-muted-foreground">
+            {langLabel(file.path)}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-3">
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {fileMeta(file, kind)}
+          </span>
+          {kind === "text" && text !== null ? (
+            <CopyButton
+              value={text}
+              className="inline-flex items-center gap-1 font-semibold text-[11.5px] text-brand"
+            />
+          ) : (
+            <a
+              href={src}
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-[11.5px] text-brand"
+            >
+              Raw
+            </a>
+          )}
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto bg-card">
+        <FileViewerContent
+          kind={kind}
+          previewable={previewable}
+          src={src}
+          text={text}
+          status={status}
+        />
+      </div>
     </div>
   );
 }
 
-/** One row in the file tree: a collapsible directory or a selectable file. */
+/** One compact row in the file tree: a collapsible directory or selectable file. */
 function FileTreeRow({
   row,
   isOpen,
@@ -1077,7 +1123,7 @@ function FileTreeRow({
   onToggle: (path: string) => void;
   onSelect: (path: string) => void;
 }>) {
-  const pad = { paddingLeft: `${16 + row.depth * 20}px` };
+  const pad = { paddingLeft: `${10 + row.depth * 14}px` };
   if (row.isDir) {
     return (
       <button
@@ -1085,47 +1131,39 @@ function FileTreeRow({
         onClick={() => onToggle(row.path)}
         aria-expanded={isOpen}
         style={pad}
-        className="flex w-full items-center justify-between gap-3 border-border border-b px-4 py-2 text-left transition-colors hover:bg-muted/50"
+        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left transition-colors hover:bg-muted/60"
       >
-        <span className="inline-flex min-w-0 items-center gap-1.5">
-          {isOpen ? (
-            <ChevronDown className="size-3.5 shrink-0 text-muted-foreground/70" />
-          ) : (
-            <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/70" />
-          )}
-          {isOpen ? (
-            <FolderOpen className="size-3.5 shrink-0 text-brand" />
-          ) : (
-            <Folder className="size-3.5 shrink-0 text-brand" />
-          )}
-          <span className="truncate font-mono text-foreground text-xs">{row.name}</span>
-        </span>
-        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-          {row.fileCount} files
+        {isOpen ? (
+          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground/70" />
+        ) : (
+          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/70" />
+        )}
+        {isOpen ? (
+          <FolderOpen className="size-3.5 shrink-0 text-brand" />
+        ) : (
+          <Folder className="size-3.5 shrink-0 text-brand" />
+        )}
+        <span className="truncate font-mono text-[11.5px] text-foreground">{row.name}</span>
+        <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground/60">
+          {row.fileCount}
         </span>
       </button>
     );
   }
+  const right = fileKind(row.path) === "text" ? `${row.lines} LOC` : formatBytes(row.size);
   return (
     <button
       type="button"
       onClick={() => onSelect(row.path)}
       aria-pressed={isSelected}
       style={pad}
-      className={`flex w-full items-center justify-between gap-3 border-border border-b px-4 py-2 text-left transition-colors ${isSelected ? "bg-brand/10" : "hover:bg-muted/50"}`}
+      className={`flex w-full items-center gap-1.5 px-2 py-1.5 text-left transition-colors ${isSelected ? "bg-brand/10 text-brand-ink" : "hover:bg-muted/60"}`}
     >
-      <span className="inline-flex min-w-0 items-center gap-1.5">
-        <span className="size-3.5 shrink-0" />
-        <FileIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
-        <span className="truncate font-mono text-foreground text-xs">{row.name}</span>
-        {row.manifest ? (
-          <span className="shrink-0 rounded-full border border-brand/40 bg-brand/10 px-1.5 py-0.5 font-medium text-[10px] text-brand-ink">
-            manifest
-          </span>
-        ) : null}
-      </span>
-      <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-        {formatBytes(row.size)}
+      <span className="size-3.5 shrink-0" />
+      <FileIcon className="size-3.5 shrink-0 text-muted-foreground/50" />
+      <span className="truncate font-mono text-[11.5px]">{row.name}</span>
+      <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground/60">
+        {right}
       </span>
     </button>
   );
@@ -1187,17 +1225,22 @@ function FilesSection({
           <Box className="size-3.5" />
           {tarballName}
         </div>
-        {rows.map((row) => (
-          <FileTreeRow
-            key={row.path}
-            row={row}
-            isOpen={open.has(row.path)}
-            isSelected={selected === row.path}
-            onToggle={toggle}
-            onSelect={setSelected}
-          />
-        ))}
-        <div className="flex items-center justify-between gap-2 bg-muted px-4 py-2.5 text-muted-foreground text-xs">
+        <div className="grid h-[400px] grid-cols-[160px_1fr] sm:grid-cols-[190px_1fr]">
+          <div className="overflow-auto border-border border-r py-1">
+            {rows.map((row) => (
+              <FileTreeRow
+                key={row.path}
+                row={row}
+                isOpen={open.has(row.path)}
+                isSelected={selected === row.path}
+                onToggle={toggle}
+                onSelect={setSelected}
+              />
+            ))}
+          </div>
+          <FileViewer name={name} version={version} file={selectedFile} />
+        </div>
+        <div className="flex items-center justify-between gap-2 border-border border-t bg-muted px-4 py-2.5 text-muted-foreground text-xs">
           <span className="inline-flex items-center gap-1.5">
             <ShieldCheck className="size-3.5 text-emerald-500" />
             Exactly these files are installed, nothing else runs.
@@ -1214,15 +1257,6 @@ function FilesSection({
           ) : null}
         </div>
       </div>
-      {selectedFile ? (
-        <FileContentView
-          key={selectedFile.path}
-          name={name}
-          version={version}
-          file={selectedFile}
-          onClose={() => setSelected(null)}
-        />
-      ) : null}
     </section>
   );
 }

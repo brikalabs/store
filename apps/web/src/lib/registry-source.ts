@@ -405,12 +405,20 @@ export async function fetchRegistryTarball(
   return new Uint8Array(await res.arrayBuffer());
 }
 
-/** The published tarball's files (path + unpacked size), sorted by path. */
+/** Count lines in already-decoded bytes (a `\n`-terminated file counts each line). */
+function countLines(data: Uint8Array): number {
+  if (data.length === 0) return 0;
+  let newlines = 0;
+  for (let i = 0; i < data.length; i += 1) if (data[i] === 0x0a) newlines += 1;
+  return data[data.length - 1] === 0x0a ? newlines : newlines + 1;
+}
+
+/** The published tarball's files (path + unpacked size + line count), sorted by path. */
 function fileListFromEntries(
   entries: Awaited<ReturnType<typeof readTarGzEntries>>,
-): { path: string; size: number }[] {
+): { path: string; size: number; lines: number }[] {
   return entries
-    .map((entry) => ({ path: entry.path, size: entry.data.length }))
+    .map((entry) => ({ path: entry.path, size: entry.data.length, lines: countLines(entry.data) }))
     .sort((a, b) => a.path.localeCompare(b.path));
 }
 
