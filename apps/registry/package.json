@@ -2,7 +2,15 @@
   "name": "@brika/registry",
   "version": "0.1.0",
   "private": true,
+  "description": "Cloudflare Worker serving the Brika plugin registry: npm-compatible reads, GitHub-identity publish, and package management",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brikalabs/store.git",
+    "directory": "apps/registry"
+  },
+  "license": "MIT",
+  "author": "Brika Labs",
   "scripts": {
     "dev": "wrangler dev --persist-to ../web/.wrangler/state",
     "deploy": "wrangler deploy",

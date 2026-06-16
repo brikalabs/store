@@ -2,7 +2,15 @@
   "name": "@brika/registry-cli",
   "version": "0.1.0",
   "private": true,
+  "description": "The `brika` CLI for publishing Brika plugins to the registry via GitHub identity",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brikalabs/store.git",
+    "directory": "apps/cli"
+  },
+  "license": "MIT",
+  "author": "Brika Labs",
   "bin": {
     "brika": "./src/index.ts"
   },

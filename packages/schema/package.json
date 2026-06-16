@@ -3,6 +3,13 @@
   "version": "0.4.0",
   "description": "Canonical Zod schemas for Brika plugin manifests and store/registry metadata",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brikalabs/store.git",
+    "directory": "packages/schema"
+  },
+  "license": "MIT",
+  "author": "Brika Labs",
   "exports": {
     ".": "./src/index.ts",
     "./plugin": "./src/plugin.ts",

@@ -4,6 +4,13 @@
   "private": true,
   "description": "A thin, fully-typed superset over Hono: typed route params, validated bodies, controllers, a throw-based HTTP error channel, and typed URL building",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brikalabs/store.git",
+    "directory": "packages/router"
+  },
+  "license": "MIT",
+  "author": "Brika Labs",
   "exports": {
     ".": "./src/index.ts",
     "./npm": "./src/npm.ts"
