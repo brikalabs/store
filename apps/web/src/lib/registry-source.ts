@@ -108,6 +108,9 @@ const Manifest = z
     sparks: z.array(z.unknown()).optional(),
     pages: z.array(z.unknown()).optional(),
     deprecated: z.string().optional(),
+    // Present on packument version entries (the registry computes it), absent on
+    // the raw package.json the catalog stores.
+    dist: z.object({ integrity: z.string().optional(), shasum: z.string().optional() }).optional(),
   })
   .loose();
 export type Manifest = z.infer<typeof Manifest>;
@@ -197,6 +200,9 @@ export interface MapOptions {
   readonly installs?: number;
   /** Trailing-week installs. */
   readonly downloadsWeekly?: number;
+  /** SRI of the latest tarball (`sha512-...`). */
+  readonly integrity?: string;
+  readonly shasum?: string;
 }
 
 /**
@@ -230,6 +236,8 @@ export function manifestToDetail(
     license: manifest.license,
     capabilities: capabilityCounts(manifest),
     grants: manifest.grants ?? {},
+    integrity: options.integrity ?? manifest.dist?.integrity,
+    shasum: options.shasum ?? manifest.dist?.shasum,
     publishedAt: options.publishedAt,
     updatedAt: options.updatedAt,
   };

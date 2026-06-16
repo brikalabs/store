@@ -50,6 +50,8 @@ const registryManifest = {
   engines: { brika: "^0.1.0" },
   icon: "./assets/icon.svg",
   readme: { en: "./README.md", fr: "./README.fr.md" },
+  // The registry packument carries the computed integrity on the version's dist.
+  dist: { integrity: "sha512-TESTINTEGRITY==", shasum: "deadbeef" },
 };
 
 const registryPackument = {
@@ -138,6 +140,8 @@ describe("getPluginPage", () => {
     expect(page?.readmeLocales).toEqual(["en", "fr"]);
     // Install stats are read from the registry's downloads endpoint.
     expect(page?.detail.installs).toBe(1234);
+    // The tarball SHA-512 integrity is surfaced from the packument's dist.
+    expect(page?.detail.integrity).toBe("sha512-TESTINTEGRITY==");
   });
 
   test("falls through to a 404 for an unknown registry plugin", async () => {

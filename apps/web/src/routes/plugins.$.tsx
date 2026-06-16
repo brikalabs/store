@@ -328,6 +328,35 @@ function SidebarKeywords({ keywords }: Readonly<{ keywords: string[] }>) {
   );
 }
 
+/**
+ * Supply-chain trust card: the latest tarball's SHA-512 Subresource Integrity,
+ * the exact hash bun pins in the lockfile. Shown truncated, full value on hover.
+ */
+function IntegrityCard({ integrity }: Readonly<{ integrity: string }>) {
+  const sep = integrity.indexOf("-");
+  const algo = sep === -1 ? "sha512" : integrity.slice(0, sep);
+  const digest = sep === -1 ? integrity : integrity.slice(sep + 1);
+  const short = digest.length > 22 ? `${digest.slice(0, 14)}…${digest.slice(-6)}` : digest;
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center gap-1.5 font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
+        <ShieldCheck className="size-3.5 text-brand-ink" />
+        Integrity
+      </div>
+      <code
+        title={integrity}
+        className="block break-all font-mono text-foreground text-xs leading-relaxed"
+      >
+        <span className="text-muted-foreground">{algo}-</span>
+        {short}
+      </code>
+      <p className="text-muted-foreground text-xs leading-relaxed">
+        Pinned in your lockfile; the published version is immutable.
+      </p>
+    </div>
+  );
+}
+
 /** Sticky meta sidebar: version/dates card plus the links, author, and keyword cards. */
 function DetailSidebar({
   detail,
@@ -347,6 +376,8 @@ function DetailSidebar({
           <MetaRow label="Languages" value={String(displayLocales.length)} mono />
         ) : null}
       </div>
+
+      {detail.integrity ? <IntegrityCard integrity={detail.integrity} /> : null}
 
       <SidebarLinks detail={detail} />
       <SidebarAuthor detail={detail} />

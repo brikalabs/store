@@ -71,6 +71,7 @@ const NpmVersionManifest = z.object({
   sparks: z.array(z.unknown()).optional(),
   pages: z.array(z.unknown()).optional(),
   deprecated: z.string().optional(),
+  dist: z.object({ integrity: z.string().optional(), shasum: z.string().optional() }).optional(),
 });
 type VersionManifest = z.infer<typeof NpmVersionManifest>;
 
@@ -250,6 +251,8 @@ export function toPluginDetail(pkg: Packument, downloadsWeekly: number): PluginD
     license: manifest.license ?? pkg.license,
     capabilities: capabilityCounts(manifest),
     grants: manifest.grants ?? {},
+    integrity: manifest.dist?.integrity,
+    shasum: manifest.dist?.shasum,
     publishedAt: pkg.time?.created,
     updatedAt: pkg.time?.[latest],
   };

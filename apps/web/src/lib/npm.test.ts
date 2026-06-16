@@ -46,6 +46,7 @@ const packument = {
       screenshots: [{ src: "s1.png", caption: "One" }, "s2.png"],
       tools: [{}, {}],
       blocks: [{}],
+      dist: { integrity: "sha512-NPMHASH==", shasum: "cafebabe" },
     },
   },
   time: { created: "2026-01-01T00:00:00.000Z", "1.2.0": "2026-02-01T00:00:00.000Z" },
@@ -81,6 +82,8 @@ describe("toPluginDetail", () => {
     expect(detail?.author?.id).toBe("octocat");
     expect(detail?.repository).toBe("https://github.com/o/x");
     expect(detail?.screenshots).toHaveLength(2);
+    expect(detail?.integrity).toBe("sha512-NPMHASH==");
+    expect(detail?.shasum).toBe("cafebabe");
   });
 
   test("returns null when the latest version is not a Brika plugin", () => {

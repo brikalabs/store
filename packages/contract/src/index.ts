@@ -131,6 +131,13 @@ export const PluginDetail = PluginSummary.extend({
   readmeUrl: ResolvedUrl.optional(),
   /** Ordered screenshots shown on the listing (URLs resolved; captions localized). */
   screenshots: z.array(Screenshot).default([]),
+  /**
+   * Subresource Integrity of the latest version's tarball (`sha512-<base64>`),
+   * the supply-chain anchor bun pins in the lockfile. Shown as a trust signal.
+   */
+  integrity: z.string().optional(),
+  /** Legacy SHA-1 checksum of the tarball, for parity with npm tooling. */
+  shasum: z.string().optional(),
 });
 export type PluginDetail = z.infer<typeof PluginDetail>;
 

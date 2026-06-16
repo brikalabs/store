@@ -33,6 +33,13 @@ test("detail shows a real install count", async ({ page, request }) => {
   await expect(page.getByText(/\d+ installs/).first()).toBeVisible();
 });
 
+test("detail shows the tarball integrity hash", async ({ page }) => {
+  await page.goto("/plugins/@brika/plugin-i18n");
+  await expect(page.getByText("Integrity", { exact: true })).toBeVisible();
+  // The sha512 prefix of the SRI is rendered.
+  await expect(page.getByText(/sha512-/).first()).toBeVisible();
+});
+
 test("localized copy renders for the French locale", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n?lang=fr");
   // The fr store.json title + readme replace the default English copy.
