@@ -4,28 +4,22 @@ import { getRegistryAsset } from "../lib/registry-assets";
 import { isRegistryName, isSafeAssetPath } from "../lib/registry-source";
 
 /**
- * `GET /v1/plugins/:name/files/<version>/<path>` - serve a file bundled inside a
- * registry tarball, npm/unpkg style with the version and path in the URL (not a
- * query string). The icon, screenshots, readme images, and the file browser all
- * resolve through here. Version-pinned, so the response is immutable and cached
- * aggressively. Only `@brika/*` names use this; npm plugins come from jsDelivr.
+ * `GET /v1/plugins/:name/v/:version/files/<path>` - serve a single file bundled
+ * inside a registry tarball, npm-style with the version and path in the URL. The
+ * icon, screenshots, readme images, and the file viewer resolve through here.
+ * Version-pinned, so the response is immutable. Only `@brika/*` names use this.
  */
-export const Route = createFileRoute("/v1/plugins/$name/files/$")({
+export const Route = createFileRoute("/v1/plugins/$name/v/$version/files/$")({
   server: {
     handlers: {
       GET: async ({ params }) => {
         const name = decodeURIComponent(params.name);
         if (!isRegistryName(name)) return jsonNotFound();
 
-        // The splat is `<version>/<path...>`; split on the first slash.
-        const splat = params._splat ?? "";
-        const slash = splat.indexOf("/");
-        if (slash <= 0) return jsonBadRequest("version and path are required");
-        const version = splat.slice(0, slash);
-        const path = splat.slice(slash + 1);
+        const path = params._splat ?? "";
         if (!isSafeAssetPath(path)) return jsonBadRequest("invalid asset path");
 
-        const asset = await getRegistryAsset(name, version, path);
+        const asset = await getRegistryAsset(name, params.version, path);
         if (asset === null) return jsonNotFound();
 
         // Copy into a fresh ArrayBuffer-backed view so the body type is concrete

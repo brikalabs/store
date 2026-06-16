@@ -38,7 +38,7 @@ test("the icon plugin is published, listed, and renders its detail", async ({ pa
 });
 
 test("the icon plugin's generated icon is served from its tarball", async ({ request }) => {
-  const res = await request.get("/v1/plugins/%40brika%2Fplugin-icon/files/0.1.0/assets/icon.svg");
+  const res = await request.get("/v1/plugins/%40brika%2Fplugin-icon/v/0.1.0/files/assets/icon.svg");
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toContain("image/svg+xml");
   // The icon was produced by the icon-studio template (gradient + glyph).
@@ -85,7 +85,7 @@ test("the discussion tab shows the seeded threaded comments", async ({ page }) =
 
 test("detail shows a real install count", async ({ page, request }) => {
   // Generate at least one install (tarball download) so the count is non-zero.
-  await request.get("/v1/plugins/@brika%2Fplugin-i18n/files/0.1.0/assets/icon.svg");
+  await request.get("/v1/plugins/@brika%2Fplugin-i18n/v/0.1.0/files/assets/icon.svg");
   await page.goto("/plugins/@brika/plugin-i18n");
   await expect(page.getByText(/\d+ installs/).first()).toBeVisible();
 });
@@ -99,7 +99,7 @@ test("detail shows the tarball integrity hash", async ({ page }) => {
 
 test("detail shows the downloads trend card (Clay chart)", async ({ page, request }) => {
   // Ensure at least one install so the trend card renders.
-  await request.get("/v1/plugins/@brika%2Fplugin-i18n/files/0.1.0/assets/icon.svg");
+  await request.get("/v1/plugins/@brika%2Fplugin-i18n/v/0.1.0/files/assets/icon.svg");
   await page.goto("/plugins/@brika/plugin-i18n");
   await expect(page.getByText("Total downloads")).toBeVisible();
   // The Clay chart kit renders a recharts surface inside the card.
@@ -240,7 +240,7 @@ test("localized copy renders for the French locale", async ({ page }) => {
 });
 
 test("the icon asset is served from the tarball", async ({ request }) => {
-  const res = await request.get("/v1/plugins/%40brika%2Fplugin-i18n/files/0.1.0/assets/icon.svg");
+  const res = await request.get("/v1/plugins/%40brika%2Fplugin-i18n/v/0.1.0/files/assets/icon.svg");
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toContain("image/svg+xml");
   expect(await res.text()).toContain("<svg");
@@ -251,7 +251,7 @@ test("a path-traversal asset request is rejected", async ({ request }) => {
   // normalize the URL off the files route (404) or reach the handler and fail
   // its `..` check (400). Either way the file is never served.
   const res = await request.get(
-    "/v1/plugins/%40brika%2Fplugin-i18n/files/0.1.0/%2e%2e/%2e%2e/etc/passwd",
+    "/v1/plugins/%40brika%2Fplugin-i18n/v/0.1.0/files/%2e%2e/%2e%2e/etc/passwd",
   );
   expect(res.ok()).toBe(false);
   expect([400, 404]).toContain(res.status());

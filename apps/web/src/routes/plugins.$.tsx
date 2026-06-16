@@ -67,7 +67,7 @@ import { formatBytes, formatCount, formatDate } from "../lib/format";
 import { type GrantFamily, type GrantScope, groupGrants } from "../lib/grants";
 import { mockComments, mockReviews } from "../lib/mock-social";
 import { getPluginPage } from "../lib/registry";
-import { assetUrl, isRegistryName } from "../lib/registry-source";
+import { assetUrl, isRegistryName, pluginVersionUrl } from "../lib/registry-source";
 
 const DETAIL_TABS = [
   { id: "overview", label: "Overview" },
@@ -1148,46 +1148,88 @@ function FileViewer({
   );
 }
 
-/**
- * npm-style file explorer for the published tarball: the real file tree (from
- * the bytes the store already unpacks) with collapsible folders and a lazy,
- * size-capped content preview. The tree is built once and only the expanded
- * rows render, so a large package stays cheap.
- */
-function FilesSection({
+/** The bounded two-pane browser once the file list has loaded: tree + viewer. */
+function FileBrowser({
   name,
   version,
   files,
-  tarballName,
-  tarballUrl,
-}: Readonly<{
-  name: string;
-  version: string;
-  files: PluginFile[];
-  tarballName: string;
-  tarballUrl?: string;
-}>) {
+}: Readonly<{ name: string; version: string; files: PluginFile[] }>) {
   const tree = useMemo(() => buildTree(files), [files]);
   // A set of all file paths (non-directory) for O(1) membership checks.
   const filePaths = useMemo(() => new Set(files.map((f) => f.path)), [files]);
   // All folders start collapsed; the user opens what they want.
   const [expanded, setExpanded] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
-
   // Folders must not enter the selected state - filter them out on every change.
   const handleSelect = useCallback(
-    (ids: string[]) => {
-      setSelected(ids.filter((id) => filePaths.has(id)));
-    },
+    (ids: string[]) => setSelected(ids.filter((id) => filePaths.has(id))),
     [filePaths],
   );
-
-  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-  const selectedPath = selected[0] ?? null;
   const selectedFile =
-    selectedPath === null ? undefined : files.find((f) => f.path === selectedPath);
+    selected[0] === undefined ? undefined : files.find((f) => f.path === selected[0]);
 
-  if (files.length === 0) return null;
+  return (
+    // Adaptive two-pane browser: the row grows with content between a min and a
+    // max height (grid minmax). Past the max, the tree and the source each scroll
+    // within their own pane; nothing spills into the footer.
+    <div className="grid grid-cols-[190px_1fr] grid-rows-[minmax(300px,620px)] sm:grid-cols-[230px_1fr]">
+      <div className="min-h-0 overflow-auto border-border border-r">
+        <Tree
+          expandedIds={expanded}
+          onExpandedChange={setExpanded}
+          selectedIds={selected}
+          onSelectedChange={handleSelect}
+        >
+          <FileTreeItems level={tree} />
+        </Tree>
+      </div>
+      <div className="flex min-h-0 min-w-0 flex-col">
+        <FileViewer name={name} version={version} file={selectedFile} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * npm-style file browser for the published tarball. The file *list* is fetched
+ * lazily from `/v1/plugins/:name/files/:version` when this mounts (i.e. when the
+ * Supply chain tab opens), so the detail page never ships it. File contents are
+ * then fetched per file on click, capped by size.
+ */
+function FilesSection({
+  name,
+  version,
+  tarballName,
+  tarballUrl,
+  fileCount,
+  unpackedSize,
+}: Readonly<{
+  name: string;
+  version: string;
+  tarballName: string;
+  tarballUrl?: string;
+  fileCount?: number;
+  unpackedSize?: number;
+}>) {
+  const [files, setFiles] = useState<PluginFile[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setFiles(null);
+    setFailed(false);
+    fetch(`${pluginVersionUrl(name, version)}/index`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("load failed"))))
+      .then((json: unknown) => {
+        const list = (json as { files?: unknown }).files;
+        if (active) setFiles(Array.isArray(list) ? (list as PluginFile[]) : []);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [name, version]);
 
   return (
     <section className="flex flex-col gap-3">
@@ -1197,7 +1239,7 @@ function FilesSection({
           Files
         </h2>
         <span className="text-muted-foreground text-xs">
-          {files.length} files · {formatBytes(totalSize)} unpacked
+          {fileCount ?? 0} files · {formatBytes(unpackedSize ?? 0)} unpacked
         </span>
       </div>
       <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -1205,24 +1247,13 @@ function FilesSection({
           <Box className="size-3.5" />
           {tarballName}
         </div>
-        {/* Adaptive two-pane browser: the row grows with content between a min
-            and a max height (grid minmax). Past the max, the tree and the source
-            each scroll within their own pane; nothing spills into the footer. */}
-        <div className="grid grid-cols-[190px_1fr] grid-rows-[minmax(300px,620px)] sm:grid-cols-[230px_1fr]">
-          <div className="min-h-0 overflow-auto border-border border-r">
-            <Tree
-              expandedIds={expanded}
-              onExpandedChange={setExpanded}
-              selectedIds={selected}
-              onSelectedChange={handleSelect}
-            >
-              <FileTreeItems level={tree} />
-            </Tree>
+        {files === null || failed ? (
+          <div className="flex h-[300px] items-center justify-center text-muted-foreground text-sm">
+            {failed ? "Could not load the file list." : "Loading files..."}
           </div>
-          <div className="flex min-h-0 min-w-0 flex-col">
-            <FileViewer name={name} version={version} file={selectedFile} />
-          </div>
-        </div>
+        ) : (
+          <FileBrowser name={name} version={version} files={files} />
+        )}
         <div className="flex items-center justify-between gap-2 border-border border-t bg-muted px-4 py-2.5 text-muted-foreground text-xs">
           <span className="inline-flex items-center gap-1.5">
             <ShieldCheck className="size-3.5 text-emerald-500" />
@@ -1484,13 +1515,18 @@ function SupplyChainPanel({ detail }: Readonly<{ detail: PluginDetail }>) {
         brikaEngine={detail.brikaEngine}
       />
 
-      <FilesSection
-        name={detail.name}
-        version={detail.version}
-        files={detail.files ?? []}
-        tarballName={tarballName}
-        tarballUrl={detail.tarballUrl}
-      />
+      {/* The file browser is only for our own tarballs (registry plugins); it
+          fetches the file list lazily on mount. */}
+      {isRegistryName(detail.name) ? (
+        <FilesSection
+          name={detail.name}
+          version={detail.version}
+          tarballName={tarballName}
+          tarballUrl={detail.tarballUrl}
+          fileCount={detail.fileCount}
+          unpackedSize={detail.unpackedSize}
+        />
+      ) : null}
     </TabsContent>
   );
 }

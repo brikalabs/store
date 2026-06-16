@@ -185,8 +185,6 @@ export const PluginDetail = PluginSummary.extend({
   unpackedSize: z.number().int().nonnegative().optional(),
   /** Number of files in the tarball. */
   fileCount: z.number().int().nonnegative().optional(),
-  /** The published tarball's files (path + unpacked byte size), for the Files explorer. */
-  files: z.array(PluginFile).optional(),
   /** Absolute URL of the latest version's tarball (the registry `dist.tarball`). */
   tarballUrl: ResolvedUrl.optional(),
 });

@@ -16,6 +16,12 @@ export interface ExtractedAsset {
   readonly contentType: string;
 }
 
+/** One published file: its path and unpacked byte size. */
+export interface PluginFileEntry {
+  readonly path: string;
+  readonly size: number;
+}
+
 function cacheKey(name: string, version: string, path: string): string {
   return `reg/${name}@${version}/${path}`;
 }
@@ -31,6 +37,32 @@ async function extractFromTarball(
   const entries = await readTarGzEntries(new Uint8Array(await res.arrayBuffer()));
   const entry = entries.find((candidate) => candidate.path === path);
   return entry?.data ?? null;
+}
+
+/**
+ * The published tarball's file list (path + unpacked size), sorted by path. The
+ * file browser fetches this lazily, only when the Supply chain tab opens, so the
+ * detail page never ships the list. Cached in R2 as JSON (versions are
+ * immutable), so the tarball is unpacked for the list at most once.
+ */
+export async function getRegistryFileList(
+  name: string,
+  version: string,
+): Promise<PluginFileEntry[] | null> {
+  const key = cacheKey(name, version, "__filelist.json");
+  const cached = await env.ASSETS.get(key);
+  if (cached !== null) return JSON.parse(await cached.text()) as PluginFileEntry[];
+
+  const res = await fetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
+  if (!res.ok) return null;
+  const entries = await readTarGzEntries(new Uint8Array(await res.arrayBuffer()));
+  const files = entries
+    .map((entry) => ({ path: entry.path, size: entry.data.length }))
+    .sort((a, b) => a.path.localeCompare(b.path));
+  await env.ASSETS.put(key, JSON.stringify(files), {
+    httpMetadata: { contentType: "application/json" },
+  });
+  return files;
 }
 
 /**

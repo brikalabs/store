@@ -210,12 +210,18 @@ function capabilityCounts(manifest: Manifest) {
 
 /**
  * URL the store serves a tarball-bundled file from (extracted on demand). Path-
- * based and version-pinned, npm/unpkg style: `/v1/plugins/<name>/files/<version>/<path>`.
+ * based and version-pinned, npm style: `/v1/plugins/<name>/v/<version>/files/<path>`.
+ * The file *list* for a version lives at `/v1/plugins/<name>/v/<version>/index`.
  */
 export function assetUrl(name: string, version: string, path: string): string {
   const clean = path.replace(/^\.?\//, "");
   const encodedPath = clean.split("/").map(encodeURIComponent).join("/");
-  return `/v1/plugins/${encodeURIComponent(name)}/files/${encodeURIComponent(version)}/${encodedPath}`;
+  return `${pluginVersionUrl(name, version)}/files/${encodedPath}`;
+}
+
+/** The npm-style `/v1/plugins/<name>/v/<version>` base for a published version. */
+export function pluginVersionUrl(name: string, version: string): string {
+  return `/v1/plugins/${encodeURIComponent(name)}/v/${encodeURIComponent(version)}`;
 }
 
 function mapScreenshots(name: string, version: string, screenshots: Manifest["screenshots"]) {
@@ -408,19 +414,6 @@ export async function fetchRegistryTarball(
   return new Uint8Array(await res.arrayBuffer());
 }
 
-/**
- * The published tarball's files (path + unpacked size), sorted by path. Only the
- * cheap metadata is read here; file *content* (and its line count) is never
- * processed server-side - the viewer fetches and counts a file lazily on click.
- */
-function fileListFromEntries(
-  entries: Awaited<ReturnType<typeof readTarGzEntries>>,
-): { path: string; size: number }[] {
-  return entries
-    .map((entry) => ({ path: entry.path, size: entry.data.length }))
-    .sort((a, b) => a.path.localeCompare(b.path));
-}
-
 /** A bundled file's text, located in a set of tar entries by its package path. */
 function entryText(
   entries: Awaited<ReturnType<typeof readTarGzEntries>>,
@@ -505,22 +498,21 @@ export async function getRegistryPluginPage(
   const changelog = changelogPath === undefined ? null : entryText(entries, changelogPath);
   const localized = applyStoreLocale(detail, resolveStoreLocale(entries, locale));
 
-  // The real published file list (and the unpacked size/count it implies) comes
-  // straight from the tarball we just unpacked, falling back to the manifest's
-  // declared values when the tarball could not be fetched.
-  const files = fileListFromEntries(entries);
-  const withFiles: PluginDetail =
-    files.length > 0
+  // The unpacked size/count come from the tarball we just unpacked (for the
+  // Digest row and the sidebar). The full file *list* is not shipped here - the
+  // file browser fetches it lazily from `/v1/plugins/:name/files/:version` when
+  // the Supply chain tab opens, so a large package keeps the detail payload lean.
+  const withMeta: PluginDetail =
+    entries.length > 0
       ? {
           ...localized,
-          files,
-          fileCount: files.length,
-          unpackedSize: files.reduce((sum, file) => sum + file.size, 0),
+          fileCount: entries.length,
+          unpackedSize: entries.reduce((sum, entry) => sum + entry.data.length, 0),
         }
       : localized;
 
   return {
-    detail: withFiles,
+    detail: withMeta,
     readme,
     changelog,
     readmeLocales: docLocales(manifest.readme),

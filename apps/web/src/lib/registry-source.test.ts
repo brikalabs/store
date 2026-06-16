@@ -41,15 +41,15 @@ describe("isRegistryName", () => {
 describe("assetUrl", () => {
   test("builds a path-based, version-pinned URL (npm/unpkg style)", () => {
     const url = assetUrl("@brika/plugin-i18n", "0.1.0", "./assets/icon.svg");
-    expect(url).toBe("/v1/plugins/%40brika%2Fplugin-i18n/files/0.1.0/assets/icon.svg");
+    expect(url).toBe("/v1/plugins/%40brika%2Fplugin-i18n/v/0.1.0/files/assets/icon.svg");
   });
 
   test("strips a leading ./ or / and keeps the path segments", () => {
     expect(assetUrl("@brika/x", "1.0.0", "/a/b.png")).toBe(
-      "/v1/plugins/%40brika%2Fx/files/1.0.0/a/b.png",
+      "/v1/plugins/%40brika%2Fx/v/1.0.0/files/a/b.png",
     );
     expect(assetUrl("@brika/x", "1.0.0", "./a/b.png")).toBe(
-      "/v1/plugins/%40brika%2Fx/files/1.0.0/a/b.png",
+      "/v1/plugins/%40brika%2Fx/v/1.0.0/files/a/b.png",
     );
   });
 });
