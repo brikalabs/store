@@ -26,6 +26,27 @@ test("the snapshot plugin lists its capabilities", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Snapshot & Compress" })).toBeVisible();
 });
 
+test("the icon plugin is published, listed, and renders its detail", async ({ page }) => {
+  // Search surfaces the registry plugin first.
+  await page.goto("/plugins?q=icon");
+  await expect(page.getByText("Icon Studio").first()).toBeVisible();
+  // Detail renders with the install command and the tarball-extracted readme.
+  await page.goto("/plugins/@brika/plugin-icon");
+  await expect(page.getByRole("heading", { name: "Icon Studio" }).first()).toBeVisible();
+  await expect(page.getByText("@brika/plugin-icon").first()).toBeVisible();
+  await expect(page.getByText(/200k\+ glyphs/i).first()).toBeVisible();
+});
+
+test("the icon plugin's generated icon is served from its tarball", async ({ request }) => {
+  const res = await request.get(
+    "/v1/plugins/%40brika%2Fplugin-icon/asset?v=0.1.0&path=assets%2Ficon.svg",
+  );
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("image/svg+xml");
+  // The icon was produced by the icon-studio template (gradient + glyph).
+  expect(await res.text()).toContain("icon-studio-bg");
+});
+
 test("detail shows a real install count", async ({ page, request }) => {
   // Generate at least one install (tarball download) so the count is non-zero.
   await request.get("/v1/plugins/@brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");

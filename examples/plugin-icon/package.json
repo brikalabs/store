@@ -1,0 +1,85 @@
+{
+  "$schema": "https://store.brika.dev/schema/plugin.json",
+  "name": "@brika/plugin-icon",
+  "version": "0.1.0",
+  "displayName": "Icon Studio",
+  "description": "Generate crisp square plugin icons from 200k+ glyphs, gradients, and monograms, right inside your Brika hub.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "icon": "./assets/icon.svg",
+  "keywords": ["brika-plugin", "icon", "svg", "design", "gradient"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brikalabs/store.git",
+    "directory": "examples/plugin-icon"
+  },
+  "engines": {
+    "brika": "^0.1.0"
+  },
+  "dependencies": {
+    "@brika/sdk": "^0.1.0",
+    "@brika/icon-studio-core": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "@types/bun": "^1.3.5"
+  },
+  "files": ["src", "assets", "locales", "README.md"],
+  "readme": {
+    "en": "./README.md"
+  },
+  "tools": [
+    {
+      "id": "generate-icon",
+      "description": "Render a square SVG icon from a glyph, gradient, and optional monogram",
+      "icon": "shapes",
+      "color": "#6366F1"
+    },
+    {
+      "id": "search-glyphs",
+      "description": "Search 200k+ glyphs from Lucide, Simple Icons, and Iconify",
+      "icon": "search",
+      "color": "#DB2777"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "icon-from-text",
+      "name": "Icon from text",
+      "description": "Generate an icon from a name or short prompt",
+      "category": "transform",
+      "icon": "wand-sparkles"
+    }
+  ],
+  "bricks": [
+    {
+      "id": "icon-preview",
+      "name": "Icon preview",
+      "description": "Preview a generated icon on your board",
+      "families": ["sm", "md"]
+    }
+  ],
+  "preferences": [
+    {
+      "name": "style",
+      "type": "dropdown",
+      "label": "Default style",
+      "description": "How generated icons are filled",
+      "default": "gradient",
+      "options": [{ "value": "gradient" }, { "value": "flat" }, { "value": "monogram" }]
+    },
+    {
+      "name": "format",
+      "type": "dropdown",
+      "label": "Export format",
+      "default": "svg",
+      "options": [{ "value": "svg" }, { "value": "png" }]
+    }
+  ],
+  "grants": {
+    "dev.brika.net.fetch": { "allow": ["api.iconify.design", "*.simpleicons.org"] },
+    "dev.brika.fs.read": { "paths": ["/bundle"] },
+    "dev.brika.fs.write": { "paths": ["/data/cache/**"] }
+  }
+}

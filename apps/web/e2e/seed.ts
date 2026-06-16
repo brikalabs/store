@@ -13,7 +13,7 @@ import { dirname, join } from "node:path";
 
 const REGISTRY_URL = process.env.BRIKA_REGISTRY ?? "http://localhost:8787";
 const REPO_ROOT = join(import.meta.dir, "../../..");
-const EXAMPLES = ["plugin-i18n", "plugin-snapshot", "plugin-clock"];
+const EXAMPLES = ["plugin-i18n", "plugin-snapshot", "plugin-clock", "plugin-icon"];
 const TOKEN_TTL_SECONDS = 60 * 60;
 
 function log(message: string): void {
