@@ -13,6 +13,27 @@ function capabilityTotal(plugin: PluginSummary): number {
   return c.tools + c.blocks + c.bricks + c.sparks + c.pages;
 }
 
+/** Install count from the registry, falling back to weekly npm downloads, else nothing. */
+function InstallsBadge({ plugin }: PluginCardProps) {
+  if (plugin.installs === undefined) {
+    if (plugin.downloadsWeekly > 0) {
+      return (
+        <span className="inline-flex items-center gap-1">
+          <Download className="size-3" />
+          {formatCount(plugin.downloadsWeekly)}
+        </span>
+      );
+    }
+    return null;
+  }
+  return (
+    <span className="inline-flex items-center gap-1" title="Installs from the registry">
+      <Download className="size-3" />
+      {formatCount(plugin.installs)} installs
+    </span>
+  );
+}
+
 export function PluginCard({ plugin }: PluginCardProps) {
   const capabilities = capabilityTotal(plugin);
   return (
@@ -44,17 +65,7 @@ export function PluginCard({ plugin }: PluginCardProps) {
         <span className="rounded-md border border-border bg-muted px-2 py-1">
           v{plugin.version}
         </span>
-        {plugin.installs !== undefined ? (
-          <span className="inline-flex items-center gap-1" title="Installs from the registry">
-            <Download className="size-3" />
-            {formatCount(plugin.installs)} installs
-          </span>
-        ) : plugin.downloadsWeekly > 0 ? (
-          <span className="inline-flex items-center gap-1">
-            <Download className="size-3" />
-            {formatCount(plugin.downloadsWeekly)}
-          </span>
-        ) : null}
+        <InstallsBadge plugin={plugin} />
         {plugin.rating ? (
           <span className="inline-flex items-center gap-1 text-amber-500">
             <Stars value={plugin.rating.average} starClassName="size-3" />

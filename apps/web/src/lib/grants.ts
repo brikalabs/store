@@ -181,7 +181,7 @@ export function groupGrants(grants: Record<string, unknown>): GrantFamily[] {
       label: spec.label,
       risk: spec.risk,
       verbs: uniq(entries.map((e) => e.verb).filter((v) => v.length > 0)),
-      grantIds: entries.map((e) => e.id).sort(),
+      grantIds: entries.map((e) => e.id).sort((a, b) => a.localeCompare(b)),
       scope: buildScope(family, entries),
     });
   }

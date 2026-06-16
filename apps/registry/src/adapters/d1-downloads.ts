@@ -3,7 +3,6 @@ import {
   downloadSeries,
   epochDay,
   summarizeDownloads,
-  ZERO_DOWNLOADS,
 } from "@brika/registry-core";
 import { type Db, regDownloads } from "@brika/store-db";
 import { eq, inArray, sql } from "drizzle-orm";
@@ -76,4 +75,4 @@ export class D1DownloadStore {
   }
 }
 
-export { ZERO_DOWNLOADS };
+export { ZERO_DOWNLOADS } from "@brika/registry-core";

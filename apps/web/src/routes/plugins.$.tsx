@@ -276,6 +276,27 @@ function DetailBreadcrumb({
   );
 }
 
+/** All-time installs from the registry, falling back to weekly npm downloads, else nothing. */
+function HeaderInstalls({ detail }: Readonly<{ detail: PluginDetail }>) {
+  if (detail.installs === undefined) {
+    if (detail.downloadsWeekly > 0) {
+      return (
+        <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
+          <Download className="size-3.5" />
+          {formatCount(detail.downloadsWeekly)} installs / week
+        </span>
+      );
+    }
+    return null;
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
+      <Download className="size-3.5" />
+      {formatCount(detail.installs)} installs
+    </span>
+  );
+}
+
 /** Plugin icon, title + badges, the inline meta row, description, and the install CTA. */
 function DetailHeader({
   detail,
@@ -343,17 +364,7 @@ function DetailHeader({
       </div>
       <div className="flex flex-col items-end gap-2">
         <AddToHubButton command={`brika install ${detail.name}`} />
-        {detail.installs !== undefined ? (
-          <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
-            <Download className="size-3.5" />
-            {formatCount(detail.installs)} installs
-          </span>
-        ) : detail.downloadsWeekly > 0 ? (
-          <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
-            <Download className="size-3.5" />
-            {formatCount(detail.downloadsWeekly)} installs / week
-          </span>
-        ) : null}
+        <HeaderInstalls detail={detail} />
       </div>
     </div>
   );
@@ -771,18 +782,18 @@ function IntegrityProvenanceSection({
           </code>
           <CopyButton value={integrity} />
         </div>
-        {digestSize !== undefined ? (
+        {digestSize === undefined ? null : (
           <>
             <Separator />
             <div className="flex items-center gap-2.5">
               <span className="min-w-16 font-semibold text-muted-foreground text-xs">Digest</span>
               <span className="font-mono text-foreground text-xs">
                 tarball · {formatBytes(digestSize)}
-                {fileCount !== undefined ? ` · ${fileCount} files` : ""}
+                {fileCount === undefined ? "" : ` · ${fileCount} files`}
               </span>
             </div>
           </>
-        ) : null}
+        )}
       </div>
       <ProvenanceBlock provenance={provenance} />
     </section>
@@ -855,7 +866,7 @@ function DownloadsCard({
             {formatCount(installs)}
           </span>
         </div>
-        {trend !== 0 ? <TrendPill trend={trend} /> : null}
+        {trend === 0 ? null : <TrendPill trend={trend} />}
       </div>
       <div className="h-24">
         <Chart
@@ -943,11 +954,9 @@ function OverviewPanel({
   displayLocales: string[];
   isRegistry: boolean;
 }>) {
-  const screenshotCount = isRegistry
-    ? detail.screenshots.length
-    : detail.screenshots.length > 0
-      ? detail.screenshots.length
-      : placeholderShotCount(detail.name);
+  const fallbackShotCount =
+    detail.screenshots.length > 0 ? detail.screenshots.length : placeholderShotCount(detail.name);
+  const screenshotCount = isRegistry ? detail.screenshots.length : fallbackShotCount;
   return (
     <TabsContent value="overview" className="mt-0 flex flex-col gap-7">
       {screenshotCount > 0 ? (

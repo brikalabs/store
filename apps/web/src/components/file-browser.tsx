@@ -327,23 +327,28 @@ function FileViewer({
     return <ViewerNotPreviewable src={src} reason="Could not load this file." />;
   }
 
+  let body: ReactNode;
+  if (kind === "image") {
+    body = <ViewerImage src={src} />;
+  } else if (text === null) {
+    body = <ViewerLoading />;
+  } else {
+    body = (
+      <CodeBlockContent
+        language={shikiLang(file.path)}
+        filename={file.path}
+        showLineNumbers
+        className="min-h-0 flex-1"
+      >
+        {text}
+      </CodeBlockContent>
+    );
+  }
+
   return (
     <CodeBlock variant="subtle" className="flex min-h-0 flex-1 flex-col rounded-none border-0">
       <ViewerHeader file={file} kind={kind} text={text} src={src} />
-      {kind === "image" ? (
-        <ViewerImage src={src} />
-      ) : text === null ? (
-        <ViewerLoading />
-      ) : (
-        <CodeBlockContent
-          language={shikiLang(file.path)}
-          filename={file.path}
-          showLineNumbers
-          className="min-h-0 flex-1"
-        >
-          {text}
-        </CodeBlockContent>
-      )}
+      {body}
     </CodeBlock>
   );
 }

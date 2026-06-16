@@ -74,6 +74,21 @@ export interface JsonLogRecord {
   readonly error?: string;
 }
 
+/**
+ * Stringify a thrown value for the log record. An `Error` becomes its stack
+ * (falling back to its message); anything else is JSON-serialized, with a final
+ * `String()` fallback so circular or non-serializable values still log something
+ * instead of "[object Object]".
+ */
+function stringifyError(error: unknown): string {
+  if (error instanceof Error) return error.stack ?? error.message;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
 /** Build the structured record for an entry (exposed so a custom logger can reuse it). */
 export function toJsonRecord(entry: RouteLogEntry, message: string): JsonLogRecord {
   return {
@@ -92,7 +107,7 @@ export function toJsonRecord(entry: RouteLogEntry, message: string): JsonLogReco
         ? undefined
         : { controller: entry.controller, handler: entry.handler, source: entry.source },
     network: entry.clientIp === undefined ? undefined : { client_ip: entry.clientIp },
-    error: entry.error === undefined ? undefined : String(entry.error),
+    error: entry.error === undefined ? undefined : stringifyError(entry.error),
   };
 }
 

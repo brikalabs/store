@@ -1,6 +1,6 @@
 import { cn } from "@brika/clay";
 import { ChevronRight, File as FileIcon, Folder } from "lucide-react";
-import { createContext, type ReactNode, useContext } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
 
 /**
  * A small file-tree primitive built in-repo so we can match the store's design
@@ -58,17 +58,24 @@ export function Tree({
   className?: string;
   children: ReactNode;
 }>) {
-  const expanded = new Set(expandedIds);
-  const selected = new Set(selectedIds);
-  const onToggle = (id: string) => {
-    const next = new Set(expanded);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    onExpandedChange?.([...next]);
-  };
-  const onSelect = (id: string) => onSelectedChange?.([id]);
+  const expanded = useMemo(() => new Set(expandedIds), [expandedIds]);
+  const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const onToggle = useCallback(
+    (id: string) => {
+      const next = new Set(expanded);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      onExpandedChange?.([...next]);
+    },
+    [expanded, onExpandedChange],
+  );
+  const onSelect = useCallback((id: string) => onSelectedChange?.([id]), [onSelectedChange]);
+  const value = useMemo(
+    () => ({ expanded, selected, onToggle, onSelect }),
+    [expanded, selected, onToggle, onSelect],
+  );
   return (
-    <TreeContext.Provider value={{ expanded, selected, onToggle, onSelect }}>
+    <TreeContext.Provider value={value}>
       <div role="tree" className={cn("flex flex-col py-1.5", className)}>
         {children}
       </div>
@@ -87,12 +94,15 @@ export function TreeItem({
   const depth = parent === null ? 0 : parent.depth + 1;
   const open = tree.expanded.has(nodeId);
   const selected = tree.selected.has(nodeId);
-  const activate = () => (isFolder ? tree.onToggle(nodeId) : tree.onSelect(nodeId));
-  return (
-    <ItemContext.Provider value={{ isFolder, open, selected, depth, activate }}>
-      {children}
-    </ItemContext.Provider>
+  const activate = useCallback(
+    () => (isFolder ? tree.onToggle(nodeId) : tree.onSelect(nodeId)),
+    [isFolder, nodeId, tree.onToggle, tree.onSelect],
   );
+  const value = useMemo(
+    () => ({ isFolder, open, selected, depth, activate }),
+    [isFolder, open, selected, depth, activate],
+  );
+  return <ItemContext.Provider value={value}>{children}</ItemContext.Provider>;
 }
 
 // One indent step. The chevron column and each guide column share this width so

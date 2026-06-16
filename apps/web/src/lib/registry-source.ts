@@ -13,14 +13,11 @@ import { z } from "zod";
 import {
   capabilityCounts,
   docLocales,
-  LocalizedDoc,
+  manifestFields,
   mapScreenshots,
-  Person,
   personName,
   pickDocPath,
-  Repository,
   repoUrl,
-  Screenshot,
 } from "./manifest-mapping";
 
 // Localized-doc helpers are shared mapping; re-exported so the registry facade
@@ -90,29 +87,7 @@ export function isSafeAssetPath(path: string): boolean {
 const Manifest = z
   .object({
     name: z.string(),
-    version: z.string(),
-    description: z.string().optional(),
-    displayName: z.string().optional(),
-    license: z.string().optional(),
-    homepage: z.string().optional(),
-    keywords: z.array(z.string()).optional(),
-    engines: z.object({ brika: z.string().optional() }).optional(),
-    repository: Repository.optional(),
-    author: Person.optional(),
-    icon: z.string().optional(),
-    screenshots: z.array(Screenshot).optional(),
-    readme: LocalizedDoc.optional(),
-    changelog: LocalizedDoc.optional(),
-    grants: z.record(z.string(), z.unknown()).optional(),
-    tools: z.array(z.unknown()).optional(),
-    blocks: z.array(z.unknown()).optional(),
-    bricks: z.array(z.unknown()).optional(),
-    sparks: z.array(z.unknown()).optional(),
-    pages: z.array(z.unknown()).optional(),
-    deprecated: z.string().optional(),
-    dependencies: z.record(z.string(), z.string()).optional(),
-    peerDependencies: z.record(z.string(), z.string()).optional(),
-    devDependencies: z.record(z.string(), z.string()).optional(),
+    ...manifestFields,
     unpackedSize: z.number().optional(),
     fileCount: z.number().optional(),
     // Present on packument version entries (the registry computes it), absent on

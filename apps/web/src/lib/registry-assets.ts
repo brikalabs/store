@@ -50,7 +50,7 @@ function toHex(buffer: ArrayBuffer): string {
 
 function toBase64(buffer: ArrayBuffer): string {
   let binary = "";
-  for (const byte of new Uint8Array(buffer)) binary += String.fromCharCode(byte);
+  for (const byte of new Uint8Array(buffer)) binary += String.fromCodePoint(byte);
   return btoa(binary);
 }
 
@@ -64,7 +64,7 @@ function countLines(bytes: Uint8Array): number {
   if (bytes.length === 0) return 0;
   let newlines = 0;
   for (const byte of bytes) if (byte === 0x0a) newlines += 1;
-  return bytes[bytes.length - 1] === 0x0a ? newlines : newlines + 1;
+  return bytes.at(-1) === 0x0a ? newlines : newlines + 1;
 }
 
 /**

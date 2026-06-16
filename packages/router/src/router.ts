@@ -114,8 +114,8 @@ export interface RouteInfo {
 
 /** Extract the `file:line:col` from one `Error.stack` frame. */
 function frameLocation(frame: string): string | undefined {
-  const inParens = frame.match(/\(([^()]+)\)\s*$/);
-  const loc = inParens?.[1] ?? frame.match(/\bat\s+(.+?)\s*$/)?.[1];
+  const inParens = /\(([^()]+)\)\s*$/.exec(frame);
+  const loc = inParens?.[1] ?? /\bat\s+(.+?)\s*$/.exec(frame)?.[1];
   return loc?.replace(/^file:\/\//, "");
 }
 
@@ -131,7 +131,7 @@ function topFile(stack: string | undefined): string {
 }
 
 /** This module's own file (captured from a load-time stack), so we can skip its frames. */
-const ROUTER_FILE = topFile(new Error().stack);
+const ROUTER_FILE = topFile(new Error("router module location probe").stack);
 
 /**
  * Best-effort `file:line:col` of the first caller outside this module, captured at

@@ -20,7 +20,12 @@ import { link, type ParamEncoder, type PathParams } from "./url";
  * "Not a slash" is written `\x2f` rather than the literal `/` so the pattern can
  * still be tokenized by splitting on `/`; the matcher reads it as `/`.
  */
-export const PKG = ":scope{@[^\\x2f]+}?/:pkg{[^-][^\\x2f]*}";
+// The literal type annotation preserves the exact pattern string for type-level
+// `PathParams` inference (the value otherwise widens to `string`). `String.raw` keeps
+// the runtime value identical without doubling the backslashes; the no-substitution
+// template makes its output exactly the annotated literal, so the cast is sound.
+export const PKG =
+  String.raw`:scope{@[^\x2f]+}?/:pkg{[^-][^\x2f]*}` as ":scope{@[^\\x2f]+}?/:pkg{[^-][^\\x2f]*}";
 
 /** Matched {@link PKG} params: `scope` is present only for the scoped two-segment form. */
 export interface PackageParams {
