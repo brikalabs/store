@@ -94,6 +94,8 @@ export const PluginSummary = z.object({
   keywords: z.array(z.string()).default([]),
   iconUrl: ResolvedUrl.optional(),
   downloadsWeekly: z.number().int().nonnegative().default(0),
+  /** All-time install count (tarball downloads). Absent when not tracked (npm). */
+  installs: z.number().int().nonnegative().optional(),
   rating: RatingSummary.optional(),
   capabilities: PluginCapabilityCounts.optional(),
   /** the `engines.brika` semver range of the latest version */

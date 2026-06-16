@@ -1,13 +1,16 @@
 import { env } from "cloudflare:workers";
+import type { DownloadStats } from "@brika/registry-core";
 import { getDb, regDistTags, regPackages, regVersions } from "@brika/store-db";
 import { and, eq } from "drizzle-orm";
+import { D1DownloadStore } from "./adapters/d1-downloads";
 
 /**
  * `GET /-/v1/packages` - a small catalog of every published package's latest
  * (non-yanked) version, so the storefront can enumerate `@brika/*` plugins. The
  * npm protocol has no list endpoint; this is our minimal addition. The hosted
  * `@brika` scope is bounded (see REGISTRY_LIMITS.maxPackagesPerScope), so reading
- * every latest row and filtering/paginating in memory is cheap and exact.
+ * every latest row and filtering/paginating in memory is cheap and exact. Each
+ * entry carries its install stats so a listing renders counts without N reads.
  */
 
 export interface CatalogEntry {
@@ -21,6 +24,7 @@ export interface CatalogEntry {
   readonly createdAt: string;
   readonly size: number;
   readonly integrity: string;
+  readonly downloads?: DownloadStats;
 }
 
 const DEFAULT_LIMIT = 50;
@@ -87,7 +91,11 @@ export async function handleCatalog(request: Request): Promise<Response> {
 
   const all = await readCatalog();
   const filtered = text ? all.filter((entry) => matchesQuery(entry, text)) : all;
-  const packages = filtered.slice(offset, offset + limit);
+  const page = filtered.slice(offset, offset + limit);
+
+  // Attach install stats for just this page's packages (not the whole catalog).
+  const stats = await new D1DownloadStore(getDb(env.DB)).statsFor(page.map((entry) => entry.name));
+  const packages = page.map((entry) => ({ ...entry, downloads: stats.get(entry.name) }));
 
   return Response.json(
     { packages, total: filtered.length },

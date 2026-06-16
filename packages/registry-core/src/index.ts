@@ -1,3 +1,11 @@
+export {
+  type DailyDownloads,
+  DOWNLOAD_WINDOW_DAYS,
+  type DownloadStats,
+  epochDay,
+  summarizeDownloads,
+  ZERO_DOWNLOADS,
+} from "./downloads";
 export { sha1Hex, sha512Integrity } from "./integrity";
 export { REGISTRY_LIMITS, type RegistryLimits } from "./limits";
 export {

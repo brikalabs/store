@@ -26,6 +26,13 @@ test("the snapshot plugin lists its capabilities", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Snapshot & Compress" })).toBeVisible();
 });
 
+test("detail shows a real install count", async ({ page, request }) => {
+  // Generate at least one install (tarball download) so the count is non-zero.
+  await request.get("/v1/plugins/@brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");
+  await page.goto("/plugins/@brika/plugin-i18n");
+  await expect(page.getByText(/\d+ installs/).first()).toBeVisible();
+});
+
 test("localized copy renders for the French locale", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n?lang=fr");
   // The fr store.json title + readme replace the default English copy.

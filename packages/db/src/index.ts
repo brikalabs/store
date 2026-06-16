@@ -4,6 +4,7 @@ export {
   regAudit,
   regDeviceAuth,
   regDistTags,
+  regDownloads,
   regPackages,
   regScopes,
   regTokens,

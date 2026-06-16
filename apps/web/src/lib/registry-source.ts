@@ -112,15 +112,24 @@ const Manifest = z
   .loose();
 export type Manifest = z.infer<typeof Manifest>;
 
+const DownloadStats = z.object({ total: z.number(), weekly: z.number() });
+
 const CatalogEntry = z.object({
   name: z.string(),
   version: z.string(),
   manifest: Manifest,
   publishedAt: z.string().optional(),
   createdAt: z.string().optional(),
+  downloads: DownloadStats.optional(),
 });
 
 const CatalogResponse = z.object({ packages: z.array(CatalogEntry), total: z.number() });
+
+const DownloadsResponse = z.object({
+  name: z.string(),
+  total: z.number(),
+  weekly: z.number(),
+});
 
 const Packument = z.object({
   name: z.string(),
@@ -184,6 +193,10 @@ function mapScreenshots(name: string, version: string, screenshots: Manifest["sc
 export interface MapOptions {
   readonly publishedAt?: string;
   readonly updatedAt?: string;
+  /** All-time installs from the registry's download stats. */
+  readonly installs?: number;
+  /** Trailing-week installs. */
+  readonly downloadsWeekly?: number;
 }
 
 /**
@@ -209,7 +222,8 @@ export function manifestToDetail(
     keywords: manifest.keywords ?? [],
     iconUrl: manifest.icon ? assetUrl(name, version, manifest.icon) : undefined,
     screenshots: mapScreenshots(name, version, manifest.screenshots),
-    downloadsWeekly: 0,
+    downloadsWeekly: options.downloadsWeekly ?? 0,
+    installs: options.installs,
     brikaEngine,
     repository: repoUrl(manifest.repository),
     homepage: manifest.homepage,
@@ -274,6 +288,24 @@ export async function getRegistryPackument(name: string): Promise<Packument | nu
   if (!res.ok) return null;
   const parsed = Packument.safeParse(await res.json());
   return parsed.success ? parsed.data : null;
+}
+
+/** Install stats for a package (all-time + trailing week); zero on any failure. */
+export async function getRegistryDownloads(
+  name: string,
+): Promise<{ total: number; weekly: number }> {
+  try {
+    const res = await fetch(`${REGISTRY_ORIGIN}/-/v1/downloads/${encodeName(name)}`, {
+      headers: { accept: "application/json" },
+    });
+    if (!res.ok) return { total: 0, weekly: 0 };
+    const parsed = DownloadsResponse.safeParse(await res.json());
+    return parsed.success
+      ? { total: parsed.data.total, weekly: parsed.data.weekly }
+      : { total: 0, weekly: 0 };
+  } catch {
+    return { total: 0, weekly: 0 };
+  }
 }
 
 export async function fetchRegistryTarball(
@@ -349,9 +381,12 @@ export async function getRegistryPluginPage(
   const manifest = pkg.versions?.[latest];
   if (manifest === undefined) return null;
 
+  const downloads = await getRegistryDownloads(name);
   const detail = manifestToDetail(manifest, {
     publishedAt: pkg.time?.created,
     updatedAt: pkg.time?.[latest],
+    installs: downloads.total,
+    downloadsWeekly: downloads.weekly,
   });
   if (detail === null) return null;
 
@@ -391,6 +426,8 @@ export async function listRegistryPlugins(
     const summary = manifestToSummary(entry.manifest, {
       publishedAt: entry.createdAt,
       updatedAt: entry.publishedAt,
+      installs: entry.downloads?.total,
+      downloadsWeekly: entry.downloads?.weekly,
     });
     return summary === null ? [] : [summary];
   });

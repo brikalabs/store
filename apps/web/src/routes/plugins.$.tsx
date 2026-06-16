@@ -169,7 +169,12 @@ function DetailHeader({
       </div>
       <div className="flex flex-col items-end gap-2">
         <AddToHubButton command={`brika install ${detail.name}`} />
-        {detail.downloadsWeekly > 0 ? (
+        {detail.installs !== undefined ? (
+          <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
+            <Download className="size-3.5" />
+            {formatCount(detail.installs)} installs
+          </span>
+        ) : detail.downloadsWeekly > 0 ? (
           <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
             <Download className="size-3.5" />
             {formatCount(detail.downloadsWeekly)} installs / week

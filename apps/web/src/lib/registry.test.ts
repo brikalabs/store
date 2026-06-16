@@ -67,6 +67,7 @@ const catalog = {
       manifest: registryManifest,
       publishedAt: "2026-06-16T00:00:00.000Z",
       createdAt: "2026-06-16T00:00:00.000Z",
+      downloads: { total: 5000, weekly: 120 },
     },
   ],
   total: 1,
@@ -89,6 +90,9 @@ function stubAll() {
   globalThis.fetch = ((input: string | URL | Request) => {
     const url = typeof input === "string" ? input : input.toString();
     if (url.includes("/-/v1/packages")) return Promise.resolve(json(catalog));
+    if (url.includes("/-/v1/downloads")) {
+      return Promise.resolve(json({ name: "@brika/plugin-i18n", total: 1234, weekly: 42 }));
+    }
     if (url.endsWith(".tgz")) {
       return Promise.resolve(new Response(tarball, { status: 200 }));
     }
@@ -100,10 +104,12 @@ function stubAll() {
 }
 
 describe("searchPlugins", () => {
-  test("includes registry plugins on the first page", async () => {
+  test("includes registry plugins with real install counts on the first page", async () => {
     stubAll();
     const { plugins, total } = await searchPlugins(undefined, 12, 0);
-    expect(plugins.some((p) => p.name === "@brika/plugin-i18n")).toBe(true);
+    const i18n = plugins.find((p) => p.name === "@brika/plugin-i18n");
+    expect(i18n).toBeDefined();
+    expect(i18n?.installs).toBe(5000);
     expect(total).toBeGreaterThanOrEqual(1);
   });
 
@@ -130,6 +136,8 @@ describe("getPluginPage", () => {
     expect(page?.detail.displayName).toBe("Boite i18n");
     expect(page?.readme).toContain("French readme");
     expect(page?.readmeLocales).toEqual(["en", "fr"]);
+    // Install stats are read from the registry's downloads endpoint.
+    expect(page?.detail.installs).toBe(1234);
   });
 
   test("falls through to a 404 for an unknown registry plugin", async () => {

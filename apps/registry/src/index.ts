@@ -3,6 +3,7 @@ import { ResolveService } from "@brika/registry-core";
 import { getDb } from "@brika/store-db";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
+import { D1DownloadStore } from "./adapters/d1-downloads";
 import { D1MetadataReader } from "./adapters/d1-metadata";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { revokeToken } from "./adapters/token";
@@ -12,6 +13,7 @@ import { vars } from "./env";
 import { handleDeprecate, handleYank } from "./manage";
 import { decodeSegment, parseTarballVersion } from "./npm-url";
 import { handlePublish } from "./publish";
+import { handleDownloads } from "./stats";
 
 /**
  * The Brika registry: an npm-compatible resolve surface so `bun add` installs
@@ -60,6 +62,12 @@ async function tarball(c: Context, name: string, file: string): Promise<Response
   if (version === null) return c.json({ error: "Not found" }, 404);
   const stream = await resolver(baseUrlFor(c.req.url)).tarball(name, version);
   if (stream === null) return c.json({ error: "Not found" }, 404);
+
+  // A served tarball is an install signal: count it off the response path so the
+  // download never waits on (or fails from) the counter. Edge-cached repeat
+  // installs skip the Worker, so counts are a lower bound, like npm's own.
+  c.executionCtx.waitUntil(new D1DownloadStore(getDb(env.DB)).record(name).catch(() => {}));
+
   return c.body(stream, 200, {
     "content-type": "application/octet-stream",
     // Tarballs are immutable, so they can be cached forever.
@@ -78,6 +86,12 @@ app.get("/", (c) => c.json({ name: "Brika registry", protocol: "npm" }));
 
 // Catalog of published packages so the store can enumerate `@brika/*` plugins.
 app.get("/-/v1/packages", (c) => handleCatalog(c.req.raw));
+
+// Install stats (all-time + trailing week), scoped and unscoped.
+app.get("/-/v1/downloads/:scope/:pkg", (c) =>
+  handleDownloads(`${decodeSegment(c.req.param("scope"))}/${c.req.param("pkg")}`),
+);
+app.get("/-/v1/downloads/:pkg", (c) => handleDownloads(decodeSegment(c.req.param("pkg"))));
 
 // Authenticated publish + device authorization (RFC 8628).
 app.post("/-/publish", (c) => handlePublish(c.req.raw));
