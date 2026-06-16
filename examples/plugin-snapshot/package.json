@@ -1,0 +1,106 @@
+{
+  "$schema": "https://store.brika.dev/schema/plugin.json",
+  "name": "@brika/plugin-snapshot",
+  "version": "0.2.0",
+  "displayName": "Snapshot & Compress",
+  "description": "Capture point-in-time snapshots of your hub state and store them compressed with gzip or brotli.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "icon": "./assets/icon.svg",
+  "keywords": ["brika-plugin", "snapshot", "backup", "compression", "gzip", "brotli"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brikalabs/store.git",
+    "directory": "examples/plugin-snapshot"
+  },
+  "engines": {
+    "brika": ">=0.1.0"
+  },
+  "files": ["src", "assets", "data", "locales", "README.md"],
+  "tools": [
+    {
+      "id": "take-snapshot",
+      "description": "Capture the current hub state as a compressed snapshot",
+      "icon": "camera",
+      "color": "#0EA5E9"
+    },
+    {
+      "id": "restore-snapshot",
+      "description": "Restore hub state from a snapshot",
+      "icon": "history",
+      "color": "#22C55E"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "auto-snapshot",
+      "name": "Auto snapshot",
+      "description": "Take a snapshot on a schedule or trigger",
+      "category": "action",
+      "icon": "camera"
+    }
+  ],
+  "bricks": [
+    {
+      "id": "snapshot-status",
+      "name": "Snapshot status",
+      "description": "Show the latest snapshot size and age",
+      "category": "monitoring",
+      "icon": "archive",
+      "families": ["sm", "md"],
+      "config": [
+        {
+          "name": "showRatio",
+          "type": "checkbox",
+          "label": "Show compression ratio",
+          "default": true
+        }
+      ]
+    }
+  ],
+  "preferences": [
+    {
+      "name": "algorithm",
+      "type": "dropdown",
+      "label": "Compression algorithm",
+      "description": "Algorithm used to compress snapshots",
+      "default": "gzip",
+      "options": [{ "value": "gzip" }, { "value": "brotli" }, { "value": "none" }]
+    },
+    {
+      "name": "level",
+      "type": "number",
+      "label": "Compression level",
+      "description": "Higher levels compress more but use more CPU",
+      "default": 6,
+      "min": 1,
+      "max": 9,
+      "step": 1
+    },
+    {
+      "name": "retention",
+      "type": "number",
+      "label": "Snapshots to keep",
+      "default": 10,
+      "min": 1,
+      "max": 100
+    }
+  ],
+  "grants": {
+    "dev.brika.fs.read": { "paths": ["/bundle", "/data/**"] },
+    "dev.brika.fs.write": { "paths": ["/data/**", "/data/cache/**"] },
+    "dev.brika.secrets.get": { "keys": ["backupEncryptionKey"] },
+    "dev.brika.secrets.set": { "keys": ["backupEncryptionKey"] },
+    "dev.brika.secrets.delete": { "keys": ["backupEncryptionKey"] }
+  },
+  "resources": {
+    "fs": {
+      "maxFileBytes": "50mb",
+      "quotas": {
+        "data": "500mb",
+        "cache": "100mb"
+      }
+    }
+  }
+}

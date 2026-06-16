@@ -1,0 +1,8 @@
+{
+  "title": "Kit de herramientas i18n",
+  "description": "Traduce, formatea y localiza contenido en mas de 40 idiomas, directamente en tu hub de Brika. Incluye un catalogo sin conexion para ingles, frances, aleman y espanol, con traduccion automatica opcional usando tu propia clave de API.",
+  "screenshotCaptions": [
+    "Traducir una frase entre dos idiomas",
+    "Gestiona tu catalogo de mensajes"
+  ]
+}

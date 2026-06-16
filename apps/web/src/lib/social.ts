@@ -5,9 +5,17 @@ import {
   type RatingSummary,
   Review,
 } from "@brika/registry-contract";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
-import { comments, developers, plugins, reviews, users } from "../db/schema";
+import {
+  comments,
+  commentVotes,
+  developers,
+  plugins,
+  reviews,
+  reviewVotes,
+  users,
+} from "../db/schema";
 import { getPluginPage } from "./registry";
 
 /** Upsert the GitHub user behind a session. */
@@ -97,7 +105,27 @@ async function recomputeRating(database: Db, pluginName: string): Promise<void> 
     .where(eq(plugins.name, pluginName));
 }
 
-export async function listReviews(database: Db, pluginName: string): Promise<Review[]> {
+/** The subset of `ids` the user has cast a vote on, for the viewer-state flag. */
+async function votedIds(
+  database: Db,
+  table: typeof reviewVotes | typeof commentVotes,
+  column: typeof reviewVotes.reviewId | typeof commentVotes.commentId,
+  userId: string | null,
+  ids: string[],
+): Promise<Set<string>> {
+  if (userId === null || ids.length === 0) return new Set();
+  const rows = await database
+    .select({ id: column })
+    .from(table)
+    .where(and(eq(table.userId, userId), inArray(column, ids)));
+  return new Set(rows.map((row) => row.id));
+}
+
+export async function listReviews(
+  database: Db,
+  pluginName: string,
+  viewerId: string | null = null,
+): Promise<Review[]> {
   const rows = await database
     .select({
       id: reviews.id,
@@ -118,6 +146,14 @@ export async function listReviews(database: Db, pluginName: string): Promise<Rev
     .where(eq(reviews.pluginName, pluginName))
     .orderBy(desc(reviews.createdAt));
 
+  const voted = await votedIds(
+    database,
+    reviewVotes,
+    reviewVotes.reviewId,
+    viewerId,
+    rows.map((row) => row.id),
+  );
+
   return rows.map((row) =>
     Review.parse({
       id: row.id,
@@ -133,10 +169,54 @@ export async function listReviews(database: Db, pluginName: string): Promise<Rev
       body: row.body,
       versionReviewed: row.versionReviewed ?? undefined,
       helpfulCount: row.helpfulCount,
+      viewerVotedHelpful: voted.has(row.id),
       createdAt: new Date(row.createdAt * 1000).toISOString(),
       edited: row.edited,
     }),
   );
+}
+
+/**
+ * Toggle the requesting user's "helpful" vote on a review and refresh the
+ * review's `helpfulCount` from the authoritative vote rows. Idempotent per
+ * (user, review): a second call removes the vote. Returns false when the review
+ * does not exist. The review's own author may not vote on it.
+ */
+export async function toggleReviewHelpful(
+  database: Db,
+  reviewId: string,
+  userId: string,
+): Promise<boolean> {
+  const found = await database
+    .select({ authorId: reviews.userId })
+    .from(reviews)
+    .where(eq(reviews.id, reviewId))
+    .limit(1);
+  const review = found[0];
+  if (review === undefined || review.authorId === userId) return false;
+
+  const existing = await database
+    .select({ userId: reviewVotes.userId })
+    .from(reviewVotes)
+    .where(and(eq(reviewVotes.reviewId, reviewId), eq(reviewVotes.userId, userId)))
+    .limit(1);
+  if (existing[0] === undefined) {
+    await database.insert(reviewVotes).values({ reviewId, userId, value: 1 });
+  } else {
+    await database
+      .delete(reviewVotes)
+      .where(and(eq(reviewVotes.reviewId, reviewId), eq(reviewVotes.userId, userId)));
+  }
+
+  const counted = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(reviewVotes)
+    .where(eq(reviewVotes.reviewId, reviewId));
+  await database
+    .update(reviews)
+    .set({ helpfulCount: counted[0]?.count ?? 0 })
+    .where(eq(reviews.id, reviewId));
+  return true;
 }
 
 export async function upsertReview(
@@ -184,7 +264,22 @@ export async function getRatingSummary(
   return { average: row.average, count: row.count };
 }
 
-export async function listComments(database: Db, pluginName: string): Promise<Comment[]> {
+/** Upvote totals per comment for a plugin, keyed by comment id. */
+async function commentUpvoteCounts(database: Db, pluginName: string): Promise<Map<string, number>> {
+  const rows = await database
+    .select({ commentId: commentVotes.commentId, count: sql<number>`count(*)` })
+    .from(commentVotes)
+    .innerJoin(comments, eq(commentVotes.commentId, comments.id))
+    .where(eq(comments.pluginName, pluginName))
+    .groupBy(commentVotes.commentId);
+  return new Map(rows.map((row) => [row.commentId, row.count]));
+}
+
+export async function listComments(
+  database: Db,
+  pluginName: string,
+  viewerId: string | null = null,
+): Promise<Comment[]> {
   const rows = await database
     .select({
       id: comments.id,
@@ -203,6 +298,17 @@ export async function listComments(database: Db, pluginName: string): Promise<Co
     .where(eq(comments.pluginName, pluginName))
     .orderBy(comments.createdAt);
 
+  const [upvotes, voted] = await Promise.all([
+    commentUpvoteCounts(database, pluginName),
+    votedIds(
+      database,
+      commentVotes,
+      commentVotes.commentId,
+      viewerId,
+      rows.map((row) => row.id),
+    ),
+  ]);
+
   return rows.map((row) =>
     CommentSchema.parse({
       id: row.id,
@@ -215,11 +321,46 @@ export async function listComments(database: Db, pluginName: string): Promise<Co
         avatarUrl: row.avatarUrl ?? undefined,
       },
       body: row.deleted ? "[deleted]" : row.body,
+      upvotes: upvotes.get(row.id) ?? 0,
+      viewerUpvoted: voted.has(row.id),
       createdAt: new Date(row.createdAt * 1000).toISOString(),
       edited: row.edited,
       deleted: row.deleted,
     }),
   );
+}
+
+/**
+ * Toggle the requesting user's upvote on a comment. Idempotent per (user,
+ * comment). Returns false when the comment does not exist or is deleted; a user
+ * may not upvote their own comment.
+ */
+export async function toggleCommentUpvote(
+  database: Db,
+  commentId: string,
+  userId: string,
+): Promise<boolean> {
+  const found = await database
+    .select({ authorId: comments.userId, deleted: comments.deleted })
+    .from(comments)
+    .where(eq(comments.id, commentId))
+    .limit(1);
+  const comment = found[0];
+  if (comment === undefined || comment.deleted || comment.authorId === userId) return false;
+
+  const existing = await database
+    .select({ userId: commentVotes.userId })
+    .from(commentVotes)
+    .where(and(eq(commentVotes.commentId, commentId), eq(commentVotes.userId, userId)))
+    .limit(1);
+  if (existing[0] === undefined) {
+    await database.insert(commentVotes).values({ commentId, userId, value: 1 });
+  } else {
+    await database
+      .delete(commentVotes)
+      .where(and(eq(commentVotes.commentId, commentId), eq(commentVotes.userId, userId)));
+  }
+  return true;
 }
 
 export async function addComment(

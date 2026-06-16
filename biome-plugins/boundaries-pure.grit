@@ -1,0 +1,44 @@
+language js
+
+// Boundary guard for the runtime-agnostic packages. Rather than enumerate every
+// forbidden dependency, this is an ALLOWLIST: a pure package may import only
+// relative paths, node:/bun: builtins, and zod (its one runtime dependency).
+// Everything else, a Cloudflare or DB or framework import, an app, or another
+// @brika package, is flagged automatically, so the rule never needs touching
+// when new infrastructure appears. Scoped in biome.json (plugins[].includes) to
+// packages/registry-core, packages/contract, packages/schema, packages/env.
+//
+// To allow a new dependency, add it to the `or { ... }` allowlist below (and to
+// the package's package.json). The leading/trailing `.` stands in for the source
+// string's quote (Biome's GritQL regex matches the whole string): `.zod.` is the
+// exact package, `.zod/.*` a subpath, and `.[.].*` a relative path (its source
+// begins with a literal dot).
+
+// Every import / export / require form whose source string we must inspect.
+pattern import_source($source) {
+  or {
+    `import $_ from $source`,
+    `import * as $_ from $source`,
+    `import $source`,
+    `export { $_ } from $source`,
+    `export type { $_ } from $source`,
+    `export * from $source`,
+    `export * as $_ from $source`,
+    `import($source)`,
+    `require($source)`
+  }
+}
+
+import_source($source) where {
+  $source <: not or {
+    r".[.].*",
+    r".node:.*",
+    r".bun:.*",
+    r".zod.",
+    r".zod/.*"
+  },
+  register_diagnostic(
+    span = $source,
+    message = "Import boundary: a runtime-agnostic package may import only relative paths, node:/bun: builtins, and zod. No infrastructure, app, or cross-package dependency is allowed."
+  )
+}

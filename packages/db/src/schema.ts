@@ -31,6 +31,8 @@ export const regVersions = sqliteTable(
     publishedAt: integer("published_at").notNull().default(epoch),
     deprecated: text("deprecated"),
     yanked: integer("yanked", { mode: "boolean" }).notNull().default(false),
+    /** CI build provenance from the GitHub OIDC token; null for local publishes. */
+    provenance: text("provenance", { mode: "json" }).$type<Record<string, unknown>>(),
   },
   (t) => [primaryKey({ columns: [t.name, t.version] })],
 );
@@ -53,6 +55,24 @@ export const regScopes = sqliteTable("reg_scopes", {
   githubOwner: text("github_owner").notNull(),
   createdAt: integer("created_at").notNull().default(epoch),
 });
+
+/**
+ * Per-day tarball download counts: the install signal. One row per (package,
+ * day-bucket), incremented when a tarball is served. Total installs is the sum
+ * across days; "weekly" is the trailing-7-day window. Day is the unix epoch day
+ * number (`unixepoch() / 86400`), so range queries are plain integer compares.
+ */
+export const regDownloads = sqliteTable(
+  "reg_downloads",
+  {
+    name: text("name")
+      .notNull()
+      .references(() => regPackages.name, { onDelete: "cascade" }),
+    day: integer("day").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.name, t.day] })],
+);
 
 /** Append-only audit log of publishes and ownership changes. */
 export const regAudit = sqliteTable("reg_audit", {

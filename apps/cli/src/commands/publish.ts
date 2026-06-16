@@ -1,5 +1,6 @@
 import { CliError, defineCommand } from "@brika/cli-kit";
 import * as p from "@brika/cli-kit/prompts";
+import { attestPackage } from "../lib/attest";
 import { loadConfig } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
 import { prepare } from "./prepare";
@@ -30,6 +31,18 @@ export const publish = defineCommand({
     if (token === undefined) {
       throw new CliError("not logged in - run `brika login` (or set BRIKA_TOKEN)");
     }
+
+    // Sign + record the tarball in a public transparency log (sigstore) when
+    // running in CI. Best-effort: an unattested release still publishes.
+    const transparencyLog =
+      (await attestPackage({
+        integrity: packed.integrity,
+        subject: `${packed.name}@${packed.version}`,
+      })) ?? undefined;
+    if (transparencyLog !== undefined) {
+      p.log.success(`Attested via ${transparencyLog.provider}: ${transparencyLog.logUrl}`);
+    }
+
     const spin = p.spinner();
     spin.start(`Publishing to ${registry}`);
     const { integrity } = await new RegistryClient(registry)
@@ -38,6 +51,7 @@ export const publish = defineCommand({
         version: packed.version,
         manifest: packed.manifest,
         tarball: Buffer.from(packed.tarball).toString("base64"),
+        transparencyLog,
       })
       .catch((error: unknown) => {
         spin.stop("Publish rejected");

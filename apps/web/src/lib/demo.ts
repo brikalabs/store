@@ -30,40 +30,32 @@ export function demoSummary<T extends PluginSummary>(plugin: T): T {
   };
 }
 
-/** A permission grant with the human-readable reason shown on the plugin page. */
-export type Grant = { description: string };
-
-const PERMISSIONS: { key: string; description: string }[] = [
-  { key: "dev.brika.net.fetch", description: "Reach external services over HTTPS" },
-  { key: "dev.brika.secrets.read", description: "Read the configured secret keys" },
-  { key: "dev.brika.storage.kv", description: "Cache state in the hub's key-value store" },
-  { key: "dev.brika.hub.read", description: "Read hub configuration and device state" },
-  { key: "dev.brika.notify.send", description: "Send notifications to the hub owner" },
+// A pool of realistic *scoped* grants for npm plugins, which carry none of
+// their own. The value is the requested scope (the same shape registry plugins
+// declare), so the Permissions section renders real host/path/secret scopes.
+const PERMISSION_POOL: { key: string; scope: unknown }[] = [
+  { key: "dev.brika.net.fetch", scope: { allow: ["api.openai.com", "*.githubusercontent.com"] } },
+  { key: "dev.brika.secrets.get", scope: { keys: ["apiKey"] } },
+  { key: "dev.brika.secrets.set", scope: { keys: ["apiKey"] } },
+  { key: "dev.brika.fs.read", scope: { paths: ["/bundle", "/data/**"] } },
+  { key: "dev.brika.storage.kv", scope: { namespaces: ["cache"] } },
 ];
 
-/** Fill a plugin's missing permission grants with a stable, described set. */
-export function demoGrants(name: string, real: Record<string, unknown>): Record<string, Grant> {
-  if (Object.keys(real).length > 0) {
-    // Real grants may lack descriptions; backfill from the catalogue when we can.
-    return Object.fromEntries(
-      Object.entries(real).map(([key, value]) => {
-        const described = PERMISSIONS.find((permission) => permission.key === key);
-        const fromValue =
-          value && typeof value === "object" && "description" in value
-            ? String((value as { description: unknown }).description)
-            : undefined;
-        return [key, { description: fromValue ?? described?.description ?? "Hub capability" }];
-      }),
-    );
-  }
+/**
+ * Fill a plugin's missing permission grants with a stable, scoped set. Real
+ * grants (registry plugins) pass through untouched so their declared scope is
+ * preserved; npm plugins, which carry none, get a deterministic synthesized set.
+ */
+export function demoGrants(name: string, real: Record<string, unknown>): Record<string, unknown> {
+  if (Object.keys(real).length > 0) return real;
   const h = hashString(name);
   const count = 2 + (h % 3); // 2..4 permissions
-  const out: Record<string, Grant> = {};
+  const out: Record<string, unknown> = {};
   for (let index = 0; index < count; index += 1) {
-    const permission = PERMISSIONS[
-      (h + index) % PERMISSIONS.length
-    ] as (typeof PERMISSIONS)[number];
-    out[permission.key] = { description: permission.description };
+    const permission = PERMISSION_POOL[
+      (h + index) % PERMISSION_POOL.length
+    ] as (typeof PERMISSION_POOL)[number];
+    out[permission.key] = permission.scope;
   }
   return out;
 }

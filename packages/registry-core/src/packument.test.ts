@@ -57,6 +57,7 @@ test("builds an npm packument with dist and dist-tags", () => {
     tarball: "https://registry.brika.dev/@brika/plugin-x/-/plugin-x-1.0.0.tgz",
     integrity: "sha512-aaa",
     shasum: "abc123",
+    size: 10,
   });
   expect(packument.versions["1.0.0"]?.dependencies).toEqual({ foo: "^1.0.0" });
 });

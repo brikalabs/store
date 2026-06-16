@@ -37,6 +37,10 @@ import { Route as V1PluginsNameVersionsRouteImport } from './routes/v1.plugins.$
 import { Route as V1PluginsNameReviewsRouteImport } from './routes/v1.plugins.$name.reviews'
 import { Route as V1PluginsNameReadmeRouteImport } from './routes/v1.plugins.$name.readme'
 import { Route as V1PluginsNameCommentsRouteImport } from './routes/v1.plugins.$name.comments'
+import { Route as V1PluginsNameVVersionChar91indexChar93RouteImport } from './routes/v1.plugins.$name.v.$version.[index]'
+import { Route as V1PluginsNameReviewsReviewIdVoteRouteImport } from './routes/v1.plugins.$name.reviews.$reviewId.vote'
+import { Route as V1PluginsNameCommentsCommentIdVoteRouteImport } from './routes/v1.plugins.$name.comments.$commentId.vote'
+import { Route as V1PluginsNameVVersionFilesSplatRouteImport } from './routes/v1.plugins.$name.v.$version.files.$'
 
 const DeviceRoute = DeviceRouteImport.update({
   id: '/device',
@@ -178,6 +182,30 @@ const V1PluginsNameCommentsRoute = V1PluginsNameCommentsRouteImport.update({
   path: '/comments',
   getParentRoute: () => V1PluginsNameRoute,
 } as any)
+const V1PluginsNameVVersionChar91indexChar93Route =
+  V1PluginsNameVVersionChar91indexChar93RouteImport.update({
+    id: '/v/$version/index',
+    path: '/v/$version/index',
+    getParentRoute: () => V1PluginsNameRoute,
+  } as any)
+const V1PluginsNameReviewsReviewIdVoteRoute =
+  V1PluginsNameReviewsReviewIdVoteRouteImport.update({
+    id: '/$reviewId/vote',
+    path: '/$reviewId/vote',
+    getParentRoute: () => V1PluginsNameReviewsRoute,
+  } as any)
+const V1PluginsNameCommentsCommentIdVoteRoute =
+  V1PluginsNameCommentsCommentIdVoteRouteImport.update({
+    id: '/$commentId/vote',
+    path: '/$commentId/vote',
+    getParentRoute: () => V1PluginsNameCommentsRoute,
+  } as any)
+const V1PluginsNameVVersionFilesSplatRoute =
+  V1PluginsNameVVersionFilesSplatRouteImport.update({
+    id: '/v/$version/files/$',
+    path: '/v/$version/files/$',
+    getParentRoute: () => V1PluginsNameRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -204,10 +232,14 @@ export interface FileRoutesByFullPath {
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
-  '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRoute
+  '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
-  '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRoute
+  '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
+  '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
+  '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
+  '/v1/plugins/$name/v/$version/index': typeof V1PluginsNameVVersionChar91indexChar93Route
+  '/v1/plugins/$name/v/$version/files/$': typeof V1PluginsNameVVersionFilesSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -234,10 +266,14 @@ export interface FileRoutesByTo {
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
-  '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRoute
+  '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
-  '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRoute
+  '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
+  '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
+  '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
+  '/v1/plugins/$name/v/$version/index': typeof V1PluginsNameVVersionChar91indexChar93Route
+  '/v1/plugins/$name/v/$version/files/$': typeof V1PluginsNameVVersionFilesSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -265,10 +301,14 @@ export interface FileRoutesById {
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
-  '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRoute
+  '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
-  '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRoute
+  '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
+  '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
+  '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
+  '/v1/plugins/$name/v/$version/index': typeof V1PluginsNameVVersionChar91indexChar93Route
+  '/v1/plugins/$name/v/$version/files/$': typeof V1PluginsNameVVersionFilesSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -301,6 +341,10 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
+    | '/v1/plugins/$name/comments/$commentId/vote'
+    | '/v1/plugins/$name/reviews/$reviewId/vote'
+    | '/v1/plugins/$name/v/$version/index'
+    | '/v1/plugins/$name/v/$version/files/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -331,6 +375,10 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
+    | '/v1/plugins/$name/comments/$commentId/vote'
+    | '/v1/plugins/$name/reviews/$reviewId/vote'
+    | '/v1/plugins/$name/v/$version/index'
+    | '/v1/plugins/$name/v/$version/files/$'
   id:
     | '__root__'
     | '/'
@@ -361,6 +409,10 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
+    | '/v1/plugins/$name/comments/$commentId/vote'
+    | '/v1/plugins/$name/reviews/$reviewId/vote'
+    | '/v1/plugins/$name/v/$version/index'
+    | '/v1/plugins/$name/v/$version/files/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -586,6 +638,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1PluginsNameCommentsRouteImport
       parentRoute: typeof V1PluginsNameRoute
     }
+    '/v1/plugins/$name/v/$version/index': {
+      id: '/v1/plugins/$name/v/$version/index'
+      path: '/v/$version/index'
+      fullPath: '/v1/plugins/$name/v/$version/index'
+      preLoaderRoute: typeof V1PluginsNameVVersionChar91indexChar93RouteImport
+      parentRoute: typeof V1PluginsNameRoute
+    }
+    '/v1/plugins/$name/reviews/$reviewId/vote': {
+      id: '/v1/plugins/$name/reviews/$reviewId/vote'
+      path: '/$reviewId/vote'
+      fullPath: '/v1/plugins/$name/reviews/$reviewId/vote'
+      preLoaderRoute: typeof V1PluginsNameReviewsReviewIdVoteRouteImport
+      parentRoute: typeof V1PluginsNameReviewsRoute
+    }
+    '/v1/plugins/$name/comments/$commentId/vote': {
+      id: '/v1/plugins/$name/comments/$commentId/vote'
+      path: '/$commentId/vote'
+      fullPath: '/v1/plugins/$name/comments/$commentId/vote'
+      preLoaderRoute: typeof V1PluginsNameCommentsCommentIdVoteRouteImport
+      parentRoute: typeof V1PluginsNameCommentsRoute
+    }
+    '/v1/plugins/$name/v/$version/files/$': {
+      id: '/v1/plugins/$name/v/$version/files/$'
+      path: '/v/$version/files/$'
+      fullPath: '/v1/plugins/$name/v/$version/files/$'
+      preLoaderRoute: typeof V1PluginsNameVVersionFilesSplatRouteImport
+      parentRoute: typeof V1PluginsNameRoute
+    }
   }
 }
 
@@ -613,18 +693,48 @@ const AuthGithubRouteWithChildren = AuthGithubRoute._addFileChildren(
   AuthGithubRouteChildren,
 )
 
+interface V1PluginsNameCommentsRouteChildren {
+  V1PluginsNameCommentsCommentIdVoteRoute: typeof V1PluginsNameCommentsCommentIdVoteRoute
+}
+
+const V1PluginsNameCommentsRouteChildren: V1PluginsNameCommentsRouteChildren = {
+  V1PluginsNameCommentsCommentIdVoteRoute:
+    V1PluginsNameCommentsCommentIdVoteRoute,
+}
+
+const V1PluginsNameCommentsRouteWithChildren =
+  V1PluginsNameCommentsRoute._addFileChildren(
+    V1PluginsNameCommentsRouteChildren,
+  )
+
+interface V1PluginsNameReviewsRouteChildren {
+  V1PluginsNameReviewsReviewIdVoteRoute: typeof V1PluginsNameReviewsReviewIdVoteRoute
+}
+
+const V1PluginsNameReviewsRouteChildren: V1PluginsNameReviewsRouteChildren = {
+  V1PluginsNameReviewsReviewIdVoteRoute: V1PluginsNameReviewsReviewIdVoteRoute,
+}
+
+const V1PluginsNameReviewsRouteWithChildren =
+  V1PluginsNameReviewsRoute._addFileChildren(V1PluginsNameReviewsRouteChildren)
+
 interface V1PluginsNameRouteChildren {
-  V1PluginsNameCommentsRoute: typeof V1PluginsNameCommentsRoute
+  V1PluginsNameCommentsRoute: typeof V1PluginsNameCommentsRouteWithChildren
   V1PluginsNameReadmeRoute: typeof V1PluginsNameReadmeRoute
-  V1PluginsNameReviewsRoute: typeof V1PluginsNameReviewsRoute
+  V1PluginsNameReviewsRoute: typeof V1PluginsNameReviewsRouteWithChildren
   V1PluginsNameVersionsRoute: typeof V1PluginsNameVersionsRoute
+  V1PluginsNameVVersionChar91indexChar93Route: typeof V1PluginsNameVVersionChar91indexChar93Route
+  V1PluginsNameVVersionFilesSplatRoute: typeof V1PluginsNameVVersionFilesSplatRoute
 }
 
 const V1PluginsNameRouteChildren: V1PluginsNameRouteChildren = {
-  V1PluginsNameCommentsRoute: V1PluginsNameCommentsRoute,
+  V1PluginsNameCommentsRoute: V1PluginsNameCommentsRouteWithChildren,
   V1PluginsNameReadmeRoute: V1PluginsNameReadmeRoute,
-  V1PluginsNameReviewsRoute: V1PluginsNameReviewsRoute,
+  V1PluginsNameReviewsRoute: V1PluginsNameReviewsRouteWithChildren,
   V1PluginsNameVersionsRoute: V1PluginsNameVersionsRoute,
+  V1PluginsNameVVersionChar91indexChar93Route:
+    V1PluginsNameVVersionChar91indexChar93Route,
+  V1PluginsNameVVersionFilesSplatRoute: V1PluginsNameVVersionFilesSplatRoute,
 }
 
 const V1PluginsNameRouteWithChildren = V1PluginsNameRoute._addFileChildren(

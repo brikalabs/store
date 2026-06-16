@@ -1,5 +1,38 @@
+export {
+  type AttestationProvider,
+  type AttestInput,
+  attestationProviderIds,
+  clearAttestationProviders,
+  getAttestationProvider,
+  nullAttestationProvider,
+  registerAttestationProvider,
+  TransparencyEntry,
+} from "./attestation";
+export {
+  type DeviceGrant,
+  type DeviceRedeemResult,
+  DeviceService,
+  type DeviceServiceOptions,
+  type DeviceStore,
+  type IssuedDeviceCode,
+} from "./device";
+export {
+  type DailyDownloads,
+  DOWNLOAD_WINDOW_DAYS,
+  type DownloadStats,
+  downloadSeries,
+  epochDay,
+  summarizeDownloads,
+  ZERO_DOWNLOADS,
+} from "./downloads";
 export { sha1Hex, sha512Integrity } from "./integrity";
 export { REGISTRY_LIMITS, type RegistryLimits } from "./limits";
+export {
+  type ManageErrorCode,
+  ManagementService,
+  type ManageResult,
+  type VersionManager,
+} from "./manage";
 export {
   type Jwk,
   type JwksProvider,
@@ -19,6 +52,7 @@ export {
 } from "./packument";
 export type { MetadataReader, TarballReader } from "./ports";
 export {
+  type CommitVersionInput,
   type ManifestValidator,
   type MetadataWriter,
   type OwnershipPolicy,
@@ -32,4 +66,5 @@ export {
 } from "./publish";
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
 export { readTarGzEntries, type TarEntry } from "./tar";
-export { type PackageRecord, PackageVersion } from "./types";
+export { type PackageRecord, PackageVersion, Provenance } from "./types";
+export { unenforced } from "./unenforced";

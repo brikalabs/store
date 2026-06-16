@@ -16,13 +16,9 @@ function fakes() {
   const meta: MetadataWriter = {
     versionExists: (name, version) =>
       Promise.resolve(versions.some((v) => v.name === name && v.version === version)),
-    ensurePackage: () => Promise.resolve(),
-    insertVersion: (v) => {
-      versions.push(v);
-      return Promise.resolve();
-    },
-    setDistTag: (name, tag, version) => {
-      tags.push({ name, tag, version });
+    commitVersion: ({ version, tag }) => {
+      versions.push(version);
+      tags.push({ name: version.name, tag, version: version.version });
       return Promise.resolve();
     },
   };
@@ -31,6 +27,7 @@ function fakes() {
       puts.push(key);
       return Promise.resolve();
     },
+    delete: () => Promise.resolve(),
   };
   return { versions, tags, puts, meta, tarballs };
 }
@@ -65,7 +62,27 @@ test("publishes: integrity computed, tarball + version + dist-tag written", asyn
   }
   expect(f.puts).toEqual(["@brika/plugin-x/-/plugin-x-1.0.0.tgz"]);
   expect(f.versions).toHaveLength(1);
+  expect(f.versions[0]?.provenance).toBeNull();
   expect(f.tags).toEqual([{ name: "@brika/plugin-x", tag: "latest", version: "1.0.0" }]);
+});
+
+test("persists CI provenance from the publish identity", async () => {
+  const f = fakes();
+  const service = new PublishService(f.meta, f.tarballs, validManifest, allow);
+  const result = await service.publish({
+    ...input,
+    identity: {
+      owner: "brikalabs",
+      repository: "brikalabs/plugin-x",
+      provenance: { repository: "brikalabs/plugin-x", sha: "a96a3a4", runId: "123" },
+    },
+  });
+  expect(result.ok).toBe(true);
+  expect(f.versions[0]?.provenance).toEqual({
+    repository: "brikalabs/plugin-x",
+    sha: "a96a3a4",
+    runId: "123",
+  });
 });
 
 test("rejects when ownership denies, without writing", async () => {

@@ -1,9 +1,15 @@
 language js
 
-// Ban the em dash (U+2014) in string literals. Biome's plugin engine can only
-// see string nodes, so comments and template literals are covered by the
-// repo-wide `check:no-em-dash` guard instead. Use commas, colons, or
-// parentheses in prose; this keeps copy consistent across the storefront.
+// Flag the em dash (U+2014) in string literals, live in the editor.
+//
+// Biome's Grit engine can also match template and JSX-text nodes, but not
+// comments (those are trivia, not AST nodes). Rather than carry fragile
+// multi-node matching here, this plugin stays scoped to string literals (the
+// common case for prose copy) so the LSP surfaces them as you type. The
+// repo-wide `check:no-em-dash` guard is the comprehensive gate: it scans raw
+// text, so it also covers comments, template literals, and JSX text. Use
+// commas, colons, or parentheses in prose; this keeps copy consistent across
+// the storefront.
 `$str` where {
   $str <: string(),
   $str <: r".*—.*",

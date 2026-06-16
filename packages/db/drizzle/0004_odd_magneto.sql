@@ -1,0 +1,1 @@
+ALTER TABLE `reg_versions` ADD `provenance` text;

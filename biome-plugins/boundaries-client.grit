@@ -1,0 +1,46 @@
+language js
+
+// Boundary guard for browser-only code: React components and `use-*` hooks. They
+// ship in the client bundle, so they must not import a server-only module, the
+// env accessor, the DB client/schema, the auth/session or social data layers, the
+// per-request composition root, or the asset/device writers. Data reaches the
+// client through route loaders and the `/v1` API, not direct imports; a server
+// module in the client bundle would crash (`cloudflare:workers`) or bloat it
+// (drizzle). Scoped in biome.json (plugins[].includes) to apps/web components and
+// `lib/use-*` hooks; routes are excluded (their server handlers legitimately use
+// these).
+//
+// A leaf-name DENYLIST: the trailing `.` stands in for the source string's closing
+// quote (Biome's regex is a whole-string match), so `.*/auth.` matches both
+// `../lib/auth` and `./auth` exactly, and not the pure `auth-cookies`.
+
+pattern import_source($source) {
+  or {
+    `import $_ from $source`,
+    `import * as $_ from $source`,
+    `import $source`,
+    `export { $_ } from $source`,
+    `export type { $_ } from $source`,
+    `export * from $source`,
+    `export * as $_ from $source`,
+    `import($source)`,
+    `require($source)`
+  }
+}
+
+import_source($source) where {
+  $source <: or {
+    r".*/env.",
+    r".*/server-context.",
+    r".*/auth.",
+    r".*/social.",
+    r".*/registry-assets.",
+    r".*/device-approval.",
+    r".*/db/client.",
+    r".*/db/schema."
+  },
+  register_diagnostic(
+    span = $source,
+    message = "Import boundary: browser-only code (components, use-* hooks) must not import a server-only module (env, db, auth, social, server-context, asset/device writers). Reach data through a route loader or the /v1 API instead."
+  )
+}

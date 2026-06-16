@@ -9,6 +9,7 @@
     "directory": "packages/contract"
   },
   "license": "MIT",
+  "author": "Brika Labs",
   "exports": {
     ".": "./src/index.ts"
   },

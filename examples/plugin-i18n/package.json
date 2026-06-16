@@ -1,0 +1,88 @@
+{
+  "$schema": "https://store.brika.dev/schema/plugin.json",
+  "name": "@brika/plugin-i18n",
+  "version": "0.1.0",
+  "displayName": "i18n Toolkit",
+  "description": "Translate, format, and localize content across 40+ languages right inside your Brika hub.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "icon": "./assets/icon.svg",
+  "keywords": ["brika-plugin", "i18n", "localization", "translation", "language"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brikalabs/store.git",
+    "directory": "examples/plugin-i18n"
+  },
+  "engines": {
+    "brika": "^0.1.0"
+  },
+  "dependencies": {
+    "@brika/sdk": "^0.1.0",
+    "@formatjs/intl": "^2.10.0",
+    "bcp-47": "^2.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "@types/bun": "^1.3.5"
+  },
+  "files": ["src", "assets", "locales", "README.md", "README.fr.md"],
+  "readme": {
+    "en": "./README.md",
+    "fr": "./README.fr.md"
+  },
+  "screenshots": [
+    { "src": "./assets/screenshot-translate.svg", "caption": "Translate a phrase between any two languages", "alt": "The translate panel showing English to French" },
+    { "src": "./assets/screenshot-catalog.svg", "caption": "Manage your message catalog", "alt": "A table of localized message keys" }
+  ],
+  "tools": [
+    {
+      "id": "translate",
+      "description": "Translate text from one language to another",
+      "icon": "languages",
+      "color": "#F97316"
+    },
+    {
+      "id": "detect-language",
+      "description": "Detect the language of a piece of text",
+      "icon": "scan-text",
+      "color": "#0EA5E9"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "localize-message",
+      "name": "Localize message",
+      "description": "Resolve a message key for the active locale",
+      "category": "transform",
+      "icon": "languages"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "defaultLocale",
+      "type": "dropdown",
+      "label": "Default language",
+      "description": "The locale used when a translation is missing",
+      "default": "en",
+      "options": [
+        { "value": "en" },
+        { "value": "fr" },
+        { "value": "de" },
+        { "value": "es" }
+      ]
+    },
+    {
+      "name": "apiKey",
+      "type": "password",
+      "label": "Translation API key",
+      "description": "Optional key for the machine-translation backend"
+    }
+  ],
+  "grants": {
+    "dev.brika.net.fetch": { "allow": ["translation.googleapis.com", "*.deepl.com"] },
+    "dev.brika.netLocal.fetch": { "ports": [11434] },
+    "dev.brika.secrets.get": { "keys": ["apiKey"] },
+    "dev.brika.secrets.set": { "keys": ["apiKey"] }
+  }
+}

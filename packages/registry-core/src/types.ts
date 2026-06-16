@@ -1,4 +1,26 @@
 import { z } from "zod";
+import { TransparencyEntry } from "./attestation";
+
+/**
+ * Build provenance for a version published from CI: where the bytes came from,
+ * derived from the verified GitHub Actions OIDC token (so it cannot be forged).
+ * Null for local token publishes, which carry no CI attestation.
+ */
+export const Provenance = z.object({
+  /** `owner/repo` the publish ran from. */
+  repository: z.string(),
+  /** Commit SHA the build ran against. */
+  sha: z.string().optional(),
+  /** Git ref (branch/tag) of the build. */
+  ref: z.string().optional(),
+  /** Workflow file reference, e.g. `owner/repo/.github/workflows/publish.yml@ref`. */
+  workflowRef: z.string().optional(),
+  /** Workflow run id, for a link to the build summary. */
+  runId: z.string().optional(),
+  /** Public transparency-log entry for the signed artifact (sigstore today). */
+  transparencyLog: TransparencyEntry.optional(),
+});
+export type Provenance = z.infer<typeof Provenance>;
 
 /**
  * A single published, immutable package version, as held by the metadata store.
@@ -22,6 +44,8 @@ export const PackageVersion = z.object({
   deprecated: z.string().nullable().default(null),
   /** Yanked versions are hidden from new installs but kept for existing locks. */
   yanked: z.boolean().default(false),
+  /** CI build provenance (GitHub OIDC), or null for local token publishes. */
+  provenance: Provenance.nullable().default(null),
 });
 export type PackageVersion = z.infer<typeof PackageVersion>;
 

@@ -30,6 +30,7 @@ declare global {
   namespace Cloudflare {
     interface Env {
       DB: D1Database;
+      // @unenforced: provisioned for npm-metadata cache-aside, not wired yet
       CACHE: KVNamespace;
       ASSETS: R2Bucket;
     }

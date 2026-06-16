@@ -4,7 +4,13 @@
   "private": true,
   "description": "CLI framework for Brika tools. Vendored from the hub monorepo until @brika/cli-kit is published; keep in sync.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brikalabs/store.git",
+    "directory": "packages/cli-kit"
+  },
   "license": "MIT",
+  "author": "Brika Labs",
   "exports": {
     ".": "./src/index.ts",
     "./prompts": "./src/prompts.ts"

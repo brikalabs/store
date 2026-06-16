@@ -1,4 +1,6 @@
 import { CliError } from "@brika/cli-kit";
+import type { TransparencyEntry } from "@brika/registry-core";
+import { npmLink } from "@brika/router/npm";
 import { z } from "zod";
 
 /**
@@ -38,6 +40,12 @@ const PublishResponseSchema = z.object({
   code: z.string().optional(),
 });
 
+const ManageResponseSchema = z.object({
+  ok: z.boolean().optional(),
+  error: z.string().optional(),
+  code: z.string().optional(),
+});
+
 export type DeviceCode = z.infer<typeof DeviceCodeSchema>;
 
 export interface DeviceLogin {
@@ -51,6 +59,8 @@ export interface PublishRequest {
   readonly manifest: Record<string, unknown>;
   /** The gzipped tarball, base64-encoded. */
   readonly tarball: string;
+  /** Transparency-log entry for the signed tarball (sigstore), when attested. */
+  readonly transparencyLog?: TransparencyEntry;
 }
 
 export interface Published {
@@ -120,6 +130,42 @@ export class RegistryClient {
     if (res.ok && body.integrity !== undefined) return { integrity: body.integrity };
     const code = body.code === undefined ? "" : ` ${body.code}`;
     throw new CliError(`publish rejected (${res.status}${code}): ${body.error ?? "unknown error"}`);
+  }
+
+  /** Deprecate (or, with `message: null`, un-deprecate) a published version. */
+  async deprecate(
+    token: string,
+    name: string,
+    version: string,
+    message: string | null,
+  ): Promise<void> {
+    await this.#manage(token, name, version, "deprecate", { message });
+  }
+
+  /** Yank (`yanked: true`) or restore (`false`) a published version. */
+  async yank(token: string, name: string, version: string, yanked: boolean): Promise<void> {
+    await this.#manage(token, name, version, "yank", { yanked });
+  }
+
+  /** Shared POST to a management endpoint; throws a `CliError` on rejection. */
+  async #manage(
+    token: string,
+    name: string,
+    version: string,
+    action: "deprecate" | "yank",
+    body: unknown,
+  ): Promise<void> {
+    const path =
+      action === "deprecate"
+        ? npmLink("/-/package/:name/:version/deprecate", { name, version })
+        : npmLink("/-/package/:name/:version/yank", { name, version });
+    const res = await this.#postJson(path, body, token);
+    const parsed = await this.#parse(res, ManageResponseSchema);
+    if (res.ok && parsed.ok === true) return;
+    const code = parsed.code === undefined ? "" : ` ${parsed.code}`;
+    throw new CliError(
+      `${action} rejected (${res.status}${code}): ${parsed.error ?? "unknown error"}`,
+    );
   }
 
   /** Best-effort revoke; never throws (logout must clear locally regardless). */

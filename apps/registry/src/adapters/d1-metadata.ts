@@ -1,4 +1,9 @@
-import type { MetadataReader, PackageRecord, PackageVersion } from "@brika/registry-core";
+import {
+  type MetadataReader,
+  type PackageRecord,
+  type PackageVersion,
+  Provenance,
+} from "@brika/registry-core";
 import { type Db, regDistTags, regPackages, regVersions } from "@brika/store-db";
 import { eq } from "drizzle-orm";
 
@@ -37,6 +42,9 @@ export class D1MetadataReader implements MetadataReader {
       publishedAt: new Date(row.publishedAt * 1000).toISOString(),
       deprecated: row.deprecated,
       yanked: row.yanked,
+      provenance: Provenance.nullable()
+        .catch(null)
+        .parse(row.provenance ?? null),
     }));
 
     return {

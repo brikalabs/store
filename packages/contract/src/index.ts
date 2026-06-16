@@ -13,6 +13,16 @@ import { z } from "zod";
  */
 export const CONTRACT_VERSION = "1.0";
 
+/**
+ * A resolved asset URL: either an absolute `http(s)` URL (e.g. a jsDelivr CDN
+ * link for an npm-hosted plugin) or a root-relative path served by the same
+ * origin (e.g. `/v1/plugins/:name/asset?...` for a registry-hosted plugin whose
+ * assets are extracted from the tarball). Both resolve correctly in an
+ * `<img src>` or a `fetch`, so the contract accepts either form.
+ */
+export const ResolvedUrl = z.union([z.url(), z.string().regex(/^\/[^/]/, "root-relative path")]);
+export type ResolvedUrl = z.infer<typeof ResolvedUrl>;
+
 /** Capability flags a registry advertises through `GET /v1/registry`. */
 export const RegistryFeature = z.enum([
   // discovery core (mandatory)
@@ -82,8 +92,10 @@ export const PluginSummary = z.object({
   version: z.string(),
   author: PluginAuthor.optional(),
   keywords: z.array(z.string()).default([]),
-  iconUrl: z.url().optional(),
+  iconUrl: ResolvedUrl.optional(),
   downloadsWeekly: z.number().int().nonnegative().default(0),
+  /** All-time install count (tarball downloads). Absent when not tracked (npm). */
+  installs: z.number().int().nonnegative().optional(),
   rating: RatingSummary.optional(),
   capabilities: PluginCapabilityCounts.optional(),
   /** the `engines.brika` semver range of the latest version */
@@ -103,11 +115,66 @@ export type PluginSummary = z.infer<typeof PluginSummary>;
  * the manifest screenshot's default `caption`); `alt` is the a11y description.
  */
 export const Screenshot = z.object({
-  url: z.url(),
+  url: ResolvedUrl,
   caption: z.string().optional(),
   alt: z.string().optional(),
 });
 export type Screenshot = z.infer<typeof Screenshot>;
+
+/**
+ * One file inside the published tarball, npm-style: a leading-slash path plus
+ * the metadata npm exposes on its file index (content type, a per-file SHA-256,
+ * a binary flag, and the line count) so consumers can render a browser without
+ * fetching every file.
+ */
+export const PluginFile = z.object({
+  path: z.string(),
+  type: z.literal("File"),
+  size: z.number().int().nonnegative(),
+  contentType: z.string(),
+  hex: z.string(),
+  isBinary: z.boolean(),
+  linesCount: z.number().int().nonnegative(),
+});
+export type PluginFile = z.infer<typeof PluginFile>;
+
+/**
+ * The published tarball's file index, mirroring npm's
+ * `/package/<name>/v/<version>/index`: a map keyed by leading-slash path plus
+ * tarball-level aggregates (total size, file count, shasum, and SRI integrity).
+ */
+export const PluginFileIndex = z.object({
+  files: z.record(z.string(), PluginFile),
+  totalSize: z.number().int().nonnegative(),
+  fileCount: z.number().int().nonnegative(),
+  shasum: z.string(),
+  integrity: z.string(),
+});
+export type PluginFileIndex = z.infer<typeof PluginFileIndex>;
+
+/**
+ * Build provenance for a CI-published version, anchored on the verified GitHub
+ * OIDC token: where the bytes were built from. Absent for local-token publishes.
+ */
+/** A public transparency-log entry for the signed tarball (sigstore today). */
+export const TransparencyEntry = z.object({
+  provider: z.string(),
+  logUrl: z.url(),
+  logIndex: z.string().optional(),
+  integrity: z.string(),
+});
+export type TransparencyEntry = z.infer<typeof TransparencyEntry>;
+
+export const Provenance = z.object({
+  repository: z.string(),
+  sha: z.string().optional(),
+  ref: z.string().optional(),
+  workflowRef: z.string().optional(),
+  runId: z.string().optional(),
+  /** Public transparency-log entry for the signed artifact, when attested. */
+  transparencyLog: TransparencyEntry.optional(),
+});
+export type Provenance = z.infer<typeof Provenance>;
 
 /** Full plugin detail, returned by `GET /v1/plugins/:name`. */
 export const PluginDetail = PluginSummary.extend({
@@ -116,9 +183,34 @@ export const PluginDetail = PluginSummary.extend({
   license: z.string().optional(),
   /** reverse-DNS permission requests, e.g. `"dev.brika.net.fetch"` */
   grants: z.record(z.string(), z.unknown()).default({}),
-  readmeUrl: z.url().optional(),
+  readmeUrl: ResolvedUrl.optional(),
   /** Ordered screenshots shown on the listing (URLs resolved; captions localized). */
   screenshots: z.array(Screenshot).default([]),
+  /**
+   * Subresource Integrity of the latest version's tarball (`sha512-<base64>`),
+   * the supply-chain anchor bun pins in the lockfile. Shown as a trust signal.
+   */
+  integrity: z.string().optional(),
+  /** Legacy SHA-1 checksum of the tarball, for parity with npm tooling. */
+  shasum: z.string().optional(),
+  /** CI build provenance (GitHub OIDC) for the latest version, when published from CI. */
+  provenance: Provenance.optional(),
+  /** Runtime dependencies from the manifest: package name -> semver range. */
+  dependencies: z.record(z.string(), z.string()).optional(),
+  /** Peer dependencies from the manifest: package name -> semver range. */
+  peerDependencies: z.record(z.string(), z.string()).optional(),
+  /** Dev dependencies from the manifest: package name -> semver range. */
+  devDependencies: z.record(z.string(), z.string()).optional(),
+  /** Count of devDependencies declared in the manifest. */
+  devDependencyCount: z.number().int().nonnegative().optional(),
+  /** Packed (gzipped) tarball size in bytes. */
+  size: z.number().int().nonnegative().optional(),
+  /** Unpacked size of the tarball contents in bytes. */
+  unpackedSize: z.number().int().nonnegative().optional(),
+  /** Number of files in the tarball. */
+  fileCount: z.number().int().nonnegative().optional(),
+  /** Absolute URL of the latest version's tarball (the registry `dist.tarball`). */
+  tarballUrl: ResolvedUrl.optional(),
 });
 export type PluginDetail = z.infer<typeof PluginDetail>;
 
@@ -199,7 +291,10 @@ export const Review = z.object({
   title: z.string().optional(),
   body: z.string(),
   versionReviewed: z.string().optional(),
+  /** How many community members marked this review helpful. */
   helpfulCount: z.number().int().nonnegative().default(0),
+  /** Whether the requesting user has marked it helpful (false when anonymous). */
+  viewerVotedHelpful: z.boolean().default(false),
   createdAt: z.iso.datetime(),
   edited: z.boolean().default(false),
 });
@@ -211,6 +306,10 @@ export const Comment = z.object({
   parentId: z.string().nullable().default(null),
   author: Reviewer,
   body: z.string(),
+  /** Net upvotes (the comment "grade"). */
+  upvotes: z.number().int().nonnegative().default(0),
+  /** Whether the requesting user has upvoted (false when anonymous). */
+  viewerUpvoted: z.boolean().default(false),
   createdAt: z.iso.datetime(),
   edited: z.boolean().default(false),
   deleted: z.boolean().default(false),
@@ -229,21 +328,3 @@ export const DeveloperProfile = z.object({
   pluginCount: z.number().int().nonnegative().default(0),
 });
 export type DeveloperProfile = z.infer<typeof DeveloperProfile>;
-
-/**
- * Canonical route templates for the contract. `:name` is a plugin name
- * (URL-encoded, scoped names allowed); `:id` is a developer id.
- */
-export const V1_ROUTES = {
-  registry: "/v1/registry",
-  search: "/v1/search",
-  plugin: "/v1/plugins/:name",
-  versions: "/v1/plugins/:name/versions",
-  readme: "/v1/plugins/:name/readme",
-  icon: "/v1/plugins/:name/icon",
-  verified: "/v1/verified",
-  reviews: "/v1/plugins/:name/reviews",
-  comments: "/v1/plugins/:name/comments",
-  developer: "/v1/developers/:id",
-  developerPlugins: "/v1/developers/:id/plugins",
-} as const;

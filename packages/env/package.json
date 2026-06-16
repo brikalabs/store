@@ -4,6 +4,13 @@
   "private": true,
   "description": "Typed, validated, cached Worker env accessors (secrets + vars) built on Zod",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brikalabs/store.git",
+    "directory": "packages/env"
+  },
+  "license": "MIT",
+  "author": "Brika Labs",
   "exports": {
     ".": "./src/index.ts"
   },

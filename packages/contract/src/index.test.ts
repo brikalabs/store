@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { PluginDetail, PluginSummary, RegistryCapabilities, SearchQuery, V1_ROUTES } from "./index";
+import { PluginDetail, PluginSummary, RegistryCapabilities, SearchQuery } from "./index";
 
 test("SearchQuery coerces strings and applies defaults", () => {
   const parsed = SearchQuery.parse({ limit: "30", offset: "10" });
@@ -61,9 +61,4 @@ test("RegistryCapabilities validates the feature set", () => {
     RegistryCapabilities.safeParse({ name: "x", contractVersion: "1.0", features: ["nope"] })
       .success,
   ).toBe(false);
-});
-
-test("V1_ROUTES expose the contract paths", () => {
-  expect(V1_ROUTES.plugin).toBe("/v1/plugins/:name");
-  expect(V1_ROUTES.search).toBe("/v1/search");
 });

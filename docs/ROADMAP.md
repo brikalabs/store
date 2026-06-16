@@ -9,16 +9,19 @@ Status of the platform and the precise next steps. Legend: ✅ done and verified
 | --- | --- |
 | Store: SSR pages (home, browse, plugin detail, developer profile) | ✅ |
 | Store: `/v1` discovery contract (search, plugin, versions, readme, icon, verified) | ✅ |
-| Store: social (GitHub OAuth, reviews, comments, votes) | ✅ |
+| Store: social (GitHub OAuth, reviews, comments, helpful/upvote grading) | ✅ |
 | Store: media (icon, localized readme/changelog, screenshots via jsDelivr) | ✅ |
 | Store: developer console (profile, your packages, publish setup) | ✅ |
 | Store: marketplace redesign (ember accent, Cmd+K, multi-column) | 🟡 |
+| Store: Playwright e2e (browse, detail, localization, assets) | ✅ |
 | Registry M1: npm-compatible resolve (`bun add` works) | ✅ proven |
 | Registry M2: publish domain core (OIDC verify + gates) | ✅ |
 | Registry M2: `/-/publish` + device-flow endpoints (proven round-trip) | ✅ |
 | Registry: Hono routing, tests, deploy doc | ✅ |
+| Registry: deprecate + yank management (endpoints + `brika` CLI) | ✅ |
+| Registry: `/-/v1/packages` catalog + CORS for cross-origin reads | ✅ |
 | Registry M3: hub scoped-registry install | ⬜ |
-| Registry M4: store reads registry data for `@brika` | ⬜ |
+| Registry M4: store reads registry data for `@brika` (catalog, packument, tarball assets, localized copy) | ✅ proven |
 | brika CLI: `auth login` / `publish` / `install` (brika repo) | ⬜ |
 | `@brika/schema`: per-locale metadata format + publish-gate validation | ✅ |
 | Deploy + GitHub OAuth app + OIDC trusted publishing | 🔑 |
@@ -45,21 +48,29 @@ Largely built. Remaining:
 - ✅ **M2 publish domain core** (`registry-core`): `verifyGithubOidc` and
   `PublishService` (ownership gate -> data gate -> immutability -> integrity ->
   write), fully unit-tested.
-- ⬜ **M2 endpoints** (next code step):
-  - `POST /-/publish`: verify OIDC (or a session token) -> `PublishIdentity` ->
-    a D1-backed `OwnershipPolicy` (scope + linked repo) + a `@brika/schema`
-    `ManifestValidator` -> `PublishService` -> R2/D1 writers.
-  - `/-/device/code` + `/-/device/token`: OAuth device flow issuing short-lived,
-    scope-limited publish tokens (stored in the CLI's keychain).
-  - `reg_scopes` / `reg_scope_members` / `reg_tokens` / `reg_audit` tables.
+- ✅ **M2 endpoints**: `POST /-/publish` (OIDC or registry token -> `PublishIdentity`
+  -> D1 `OwnershipPolicy` + `@brika/schema` `ManifestValidator` -> `PublishService`
+  -> R2/D1 writers), `/-/device/code` + `/-/device/token` (RFC 8628), audited via
+  `reg_audit`. `REGISTRY_URL` pins the packument's tarball origin (no `Host`
+  trust). Proven round-trip with the example plugins.
+- ✅ **Management**: `ManagementService` (deprecate + yank, ownership-gated,
+  reversible) behind `POST /-/package/:name/:version/{deprecate,yank}` and the
+  `brika deprecate` / `brika yank` CLI commands. Yank hides a version from new
+  installs (packument + catalog) while keeping the bytes; deprecate surfaces a
+  warning. Audited.
 - ⬜ **M3 hub install**: ship the `@brika:registry` scoped-registry config; verify
   an end-to-end install of an `@brika` plugin into a hub from the registry.
-- ⬜ **M4 store integration**: `@brika` plugin pages read registry data (no npm
-  sync for those); show provenance; deprecate/yank in the console.
+- ✅ **M4 store integration**: the storefront reads `@brika/*` from the registry,
+  not npm. A `/-/v1/packages` catalog (npm has no list endpoint) + the
+  npm-compatible packument feed the listing/detail; tarball-bundled assets (icon,
+  screenshots, readme, localized `store.json`) are extracted and served by the
+  store (`/v1/plugins/:name/asset`, R2-cached) so registry plugins render with
+  localized copy. Proven end to end with Playwright.
 - ⬜ **M5 community scopes** (later): let community claim scopes and publish to
   the registry; until then community stays on npm.
-- ⬜ **M6 hardening**: malware-scan hook, abuse/takedown, audit surfacing,
-  R2 + D1 backups, rate limits.
+- 🟡 **M6 hardening**: done so far - tarball-origin pinning, asset path-traversal
+  guard, scoped read-only CORS, ownership-gated management, audit log. Remaining:
+  malware-scan hook, abuse/takedown surfacing, R2 + D1 backups, rate limits.
 
 ## Brika repo (separate)
 

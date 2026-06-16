@@ -1,9 +1,8 @@
-import { env } from "cloudflare:workers";
 import { createFileRoute } from "@tanstack/react-router";
-import { getDb } from "../db/client";
 import { clearReturnCookie, readOauthState, readReturnPath, sessionCookie } from "../lib/auth";
 import { vars } from "../lib/env";
 import { exchangeCode, fetchUser } from "../lib/github";
+import { serverContext } from "../lib/server-context";
 import { markDeveloperVerified, upsertUser } from "../lib/social";
 
 /** `GET /auth/github/callback`: finish OAuth, upsert the user, set the session. */
@@ -24,7 +23,7 @@ export const Route = createFileRoute("/auth/github/callback")({
         const ghUser = await fetchUser(token);
         if (ghUser === null) return new Response("Could not load GitHub user", { status: 502 });
 
-        const database = getDb(env.DB);
+        const database = serverContext().db;
         const userId = `gh_${ghUser.id}`;
         await upsertUser(database, {
           id: userId,

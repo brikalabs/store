@@ -2,10 +2,12 @@
 /**
  * Repo-wide em dash (U+2014) guard.
  *
- * The Biome plugin (`biome-plugins/no-em-dash.grit`) only sees string literals,
- * so this catches the rest: comments, template literals, and JSX text. We scan
- * tracked source files via `git grep` and fail if any em dash is found, pointing
- * the author at a comma, colon, or parentheses instead.
+ * The Biome plugin (`biome-plugins/no-em-dash.grit`) flags em dashes in string
+ * literals live in the editor, but it cannot see comments (trivia, not AST
+ * nodes). This script is the comprehensive gate: it scans the raw text of
+ * tracked source files via `git grep`, so it catches every occurrence (comments,
+ * template literals, and JSX text included) and fails the build, pointing the
+ * author at a comma, colon, or parentheses instead.
  *
  * Markdown is intentionally excluded: `docs/CONVENTIONS.md` documents the banned
  * character itself, which is the one legitimate occurrence in the repo.

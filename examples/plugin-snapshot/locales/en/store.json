@@ -1,0 +1,4 @@
+{
+  "title": "Snapshot & Compress",
+  "description": "Capture point-in-time snapshots of your hub state and store them compressed with gzip or brotli. Keep a rolling window of recent snapshots and restore any of them in one click."
+}

@@ -1,0 +1,8 @@
+{
+  "title": "i18n Toolkit",
+  "description": "Translate, format, and localize content across 40+ languages right inside your Brika hub. Ships an offline catalog for English, French, German, and Spanish, with optional machine translation when you bring your own API key.",
+  "screenshotCaptions": [
+    "Translate a phrase between any two languages",
+    "Manage your message catalog"
+  ]
+}

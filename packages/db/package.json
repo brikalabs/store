@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "description": "Shared Cloudflare D1 schema + client for the Brika registry",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brikalabs/store.git",
+    "directory": "packages/db"
+  },
+  "license": "MIT",
+  "author": "Brika Labs",
   "exports": {
     ".": "./src/index.ts"
   },

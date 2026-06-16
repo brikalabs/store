@@ -1,7 +1,7 @@
 import { sha1Hex, sha512Integrity } from "./integrity";
 import { REGISTRY_LIMITS } from "./limits";
 import { tarballPath } from "./packument";
-import type { PackageVersion } from "./types";
+import type { PackageVersion, Provenance } from "./types";
 
 /** Who is publishing, derived from a verified OIDC token or a session token. */
 export interface PublishIdentity {
@@ -9,6 +9,8 @@ export interface PublishIdentity {
   readonly owner: string;
   /** `owner/repo` the publish ran from (OIDC), or null for a local token publish. */
   readonly repository: string | null;
+  /** CI build provenance from the verified OIDC token; absent for local publishes. */
+  readonly provenance?: Provenance;
 }
 
 export interface PublishInput {
@@ -52,17 +54,29 @@ export interface OwnershipPolicy {
   ): Promise<{ ok: true } | { ok: false; message: string }>;
 }
 
+/** The package + version + tag a publish writes as one atomic unit. */
+export interface CommitVersionInput {
+  readonly scope: string | null;
+  readonly version: PackageVersion;
+  readonly tag: string;
+}
+
 /** Write side of the metadata store (publish only). */
 export interface MetadataWriter {
   versionExists(name: string, version: string): Promise<boolean>;
-  ensurePackage(name: string, scope: string | null): Promise<void>;
-  insertVersion(version: PackageVersion): Promise<void>;
-  setDistTag(name: string, tag: string, version: string): Promise<void>;
+  /**
+   * Atomically create the package (if new), insert the version, and move the tag.
+   * All-or-nothing: a partial failure must leave the metadata untouched, so a
+   * version row never exists without its `latest` tag (or vice versa).
+   */
+  commitVersion(input: CommitVersionInput): Promise<void>;
 }
 
 /** Write side of tarball storage. */
 export interface TarballWriter {
   put(key: string, data: Uint8Array): Promise<void>;
+  /** Remove an object, e.g. to compensate a publish whose metadata write failed. */
+  delete(key: string): Promise<void>;
 }
 
 export interface PublishOptions {
@@ -136,22 +150,27 @@ export class PublishService {
     const shasum = await sha1Hex(input.tarball);
     const size = input.tarball.byteLength;
 
-    // 6. Write tarball first, then metadata (a dangling tarball is harmless;
-    //    a version row without bytes would not be).
+    // 6. Write the tarball first (a `delete`-able object the caller can compensate
+    //    if the next step fails), then commit the metadata atomically. Running this
+    //    inside a transaction at the edge means a failed `commitVersion` rolls the
+    //    tarball back, so a publish is all-or-nothing across both stores.
     await this.#tarballs.put(tarballPath(input.name, input.version), input.tarball);
-    await this.#meta.ensurePackage(input.name, scopeOf(input.name));
-    await this.#meta.insertVersion({
-      name: input.name,
-      version: input.version,
-      manifest: input.manifest,
-      integrity,
-      shasum,
-      size,
-      publishedAt: this.#clock(),
-      deprecated: null,
-      yanked: false,
+    await this.#meta.commitVersion({
+      scope: scopeOf(input.name),
+      tag: "latest",
+      version: {
+        name: input.name,
+        version: input.version,
+        manifest: input.manifest,
+        integrity,
+        shasum,
+        size,
+        publishedAt: this.#clock(),
+        deprecated: null,
+        yanked: false,
+        provenance: input.identity.provenance ?? null,
+      },
     });
-    await this.#meta.setDistTag(input.name, "latest", input.version);
 
     return { ok: true, integrity, shasum, size };
   }

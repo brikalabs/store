@@ -15,6 +15,13 @@ export const vars = defineEnv(
     // Base URL of the store that hosts the device-approval page. Defaults to
     // prod; set in .dev.vars (http://localhost:3000) to run the flow locally.
     STORE_URL: z.url().min(1).default("https://store.brika.dev"),
+    // Canonical public origin of THIS registry, used to build the `dist.tarball`
+    // URLs in every packument. Pinning it here (rather than trusting the request
+    // `Host`) means a spoofed `Host` header can never make us advertise tarballs
+    // on another origin, and it lets local dev point bun at `localhost` (set
+    // REGISTRY_URL=http://localhost:8787 in .dev.vars). Empty -> fall back to the
+    // request origin, which is correct once a single custom domain is attached.
+    REGISTRY_URL: z.union([z.url(), z.literal("")]).default(""),
   },
   () => env,
 );
