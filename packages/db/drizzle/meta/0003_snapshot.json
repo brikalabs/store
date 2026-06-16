@@ -115,9 +115,7 @@
       "indexes": {
         "reg_device_auth_user_code_unique": {
           "name": "reg_device_auth_user_code_unique",
-          "columns": [
-            "user_code"
-          ],
+          "columns": ["user_code"],
           "isUnique": true
         }
       },
@@ -157,22 +155,15 @@
           "name": "reg_dist_tags_name_reg_packages_name_fk",
           "tableFrom": "reg_dist_tags",
           "tableTo": "reg_packages",
-          "columnsFrom": [
-            "name"
-          ],
-          "columnsTo": [
-            "name"
-          ],
+          "columnsFrom": ["name"],
+          "columnsTo": ["name"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "reg_dist_tags_name_tag_pk": {
-          "columns": [
-            "name",
-            "tag"
-          ],
+          "columns": ["name", "tag"],
           "name": "reg_dist_tags_name_tag_pk"
         }
       },
@@ -211,22 +202,15 @@
           "name": "reg_downloads_name_reg_packages_name_fk",
           "tableFrom": "reg_downloads",
           "tableTo": "reg_packages",
-          "columnsFrom": [
-            "name"
-          ],
-          "columnsTo": [
-            "name"
-          ],
+          "columnsFrom": ["name"],
+          "columnsTo": ["name"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "reg_downloads_name_day_pk": {
-          "columns": [
-            "name",
-            "day"
-          ],
+          "columns": ["name", "day"],
           "name": "reg_downloads_name_day_pk"
         }
       },
@@ -418,22 +402,15 @@
           "name": "reg_versions_name_reg_packages_name_fk",
           "tableFrom": "reg_versions",
           "tableTo": "reg_packages",
-          "columnsFrom": [
-            "name"
-          ],
-          "columnsTo": [
-            "name"
-          ],
+          "columnsFrom": ["name"],
+          "columnsTo": ["name"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "reg_versions_name_version_pk": {
-          "columns": [
-            "name",
-            "version"
-          ],
+          "columns": ["name", "version"],
           "name": "reg_versions_name_version_pk"
         }
       },
