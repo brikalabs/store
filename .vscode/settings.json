@@ -15,7 +15,7 @@
     "projectKey": "brikalabs_store"
   },
 
-  // OPTIONAL — Connected Mode: pulls the EXACT quality profile from SonarCloud
+  // OPTIONAL (Connected Mode): pulls the EXACT quality profile from SonarCloud
   // and respects issues marked false-positive there. Analysis still runs locally
   // (nothing is sent to the cloud to analyze). Fill in org + project key, then
   // uncomment. Without this, SonarLint uses the built-in "Sonar way" rules.
