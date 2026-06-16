@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   assetUrl,
+  compareVersionsDesc,
   contentTypeFor,
   docLocales,
   isRegistryName,
@@ -152,5 +153,34 @@ describe("versionsFromPackument", () => {
     });
     expect(versions.map((v) => v.version)).toEqual(["0.2.0", "0.1.0"]);
     expect(versions[0]?.deprecated).toBe("use 0.3");
+  });
+
+  test("orders by semver when versions share a publish timestamp", () => {
+    // Three versions published in the same second must still order newest-first.
+    const sameTime = "2026-01-01T00:00:00.000Z";
+    const mk = (version: string) => ({ name: "@brika/p", version, engines: { brika: "^0.1.0" } });
+    const versions = versionsFromPackument({
+      name: "@brika/p",
+      "dist-tags": { latest: "1.2.0" },
+      versions: { "1.1.0": mk("1.1.0"), "1.2.0": mk("1.2.0"), "1.0.0": mk("1.0.0") },
+      time: { "1.0.0": sameTime, "1.1.0": sameTime, "1.2.0": sameTime },
+    });
+    expect(versions.map((v) => v.version)).toEqual(["1.2.0", "1.1.0", "1.0.0"]);
+  });
+});
+
+describe("compareVersionsDesc", () => {
+  test("orders core versions newest-first", () => {
+    expect([..."1.0.0 2.0.0 1.2.0 1.10.0".split(" ")].sort(compareVersionsDesc)).toEqual([
+      "2.0.0",
+      "1.10.0",
+      "1.2.0",
+      "1.0.0",
+    ]);
+  });
+
+  test("a release outranks its prerelease", () => {
+    expect(compareVersionsDesc("1.0.0", "1.0.0-rc.1")).toBeLessThan(0);
+    expect(compareVersionsDesc("1.0.0-rc.2", "1.0.0-rc.1")).toBeLessThan(0);
   });
 });

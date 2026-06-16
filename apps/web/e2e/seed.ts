@@ -8,7 +8,8 @@
  * idempotent and safe to run before every Playwright run.
  */
 import { Database } from "bun:sqlite";
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 const REGISTRY_URL = process.env.BRIKA_REGISTRY ?? "http://localhost:8787";
@@ -86,15 +87,21 @@ async function mintToken(): Promise<string> {
   return token;
 }
 
-async function publish(plugin: string, token: string): Promise<void> {
-  const dir = join(REPO_ROOT, "examples", plugin);
-  const proc = Bun.spawn(["bun", join(REPO_ROOT, "apps/cli/src/index.ts"), "publish", dir], {
+/** Run a `brika` subcommand against the local registry; returns code + output. */
+async function runCli(args: string[], token: string): Promise<{ code: number; output: string }> {
+  const proc = Bun.spawn(["bun", join(REPO_ROOT, "apps/cli/src/index.ts"), ...args], {
     env: { ...process.env, BRIKA_REGISTRY: REGISTRY_URL, BRIKA_TOKEN: token },
     stderr: "pipe",
     stdout: "pipe",
   });
   const code = await proc.exited;
   const output = `${await new Response(proc.stdout).text()}${await new Response(proc.stderr).text()}`;
+  return { code, output };
+}
+
+async function publish(plugin: string, token: string): Promise<void> {
+  const dir = join(REPO_ROOT, "examples", plugin);
+  const { code, output } = await runCli(["publish", dir], token);
   if (code === 0) {
     log(`published ${plugin}`);
   } else if (output.includes("already exists") || output.includes("exists")) {
@@ -224,6 +231,53 @@ function seedGrants(): void {
   db.close();
 }
 
+/**
+ * Exercise the plugin-management lifecycle through the real CLI against the
+ * live registry: publish a throwaway package at three versions, deprecate the
+ * middle one, and yank the oldest. The storefront then shows the deprecation
+ * badge and hides the yanked version, so the e2e covers manage end to end.
+ * All steps are idempotent (re-publish is a 409 no-op; deprecate/yank are too).
+ */
+async function seedManagement(token: string): Promise<void> {
+  const name = "@brika/plugin-managed";
+  const dir = join(tmpdir(), "brika-managed-fixture");
+  mkdirSync(join(dir, "src"), { recursive: true });
+  mkdirSync(join(dir, "assets"), { recursive: true });
+  writeFileSync(join(dir, "src", "index.ts"), `export default { name: "${name}" };\n`);
+  writeFileSync(join(dir, "README.md"), "# Managed Demo\n\nExercises deprecate and yank.\n");
+  writeFileSync(
+    join(dir, "assets", "icon.svg"),
+    '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#64748B"/></svg>\n',
+  );
+  const base = {
+    $schema: "https://store.brika.dev/schema/plugin.json",
+    name,
+    displayName: "Managed Demo",
+    description: "A throwaway plugin used to exercise deprecate and yank.",
+    license: "MIT",
+    type: "module",
+    main: "./src/index.ts",
+    icon: "./assets/icon.svg",
+    engines: { brika: "^0.1.0" },
+    files: ["src", "assets", "README.md"],
+    readme: { en: "./README.md" },
+    tools: [{ id: "noop", description: "Does nothing" }],
+  };
+  for (const version of ["1.0.0", "1.1.0", "1.2.0"]) {
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ ...base, version }, null, 2));
+    const { code, output } = await runCli(["publish", dir], token);
+    if (code !== 0 && !output.includes("exists")) {
+      throw new Error(`failed to publish ${name}@${version}:\n${output}`);
+    }
+  }
+  rmSync(dir, { recursive: true, force: true });
+  const deprecate = await runCli(["deprecate", name, "1.1.0", "Superseded by 1.2.0"], token);
+  if (deprecate.code !== 0) throw new Error(`deprecate failed:\n${deprecate.output}`);
+  const yank = await runCli(["yank", name, "1.0.0"], token);
+  if (yank.code !== 0) throw new Error(`yank failed:\n${yank.output}`);
+  log(`managed ${name}: published 3 versions, deprecated 1.1.0, yanked 1.0.0`);
+}
+
 await waitForRegistry();
 const token = await mintToken();
 for (const plugin of EXAMPLES) await publish(plugin, token);
@@ -231,4 +285,5 @@ seedProvenance();
 seedDependencies();
 seedGrants();
 seedDownloadHistory();
+await seedManagement(token);
 log(`done (dir: ${dirname(findLocalD1())})`);

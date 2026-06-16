@@ -306,6 +306,31 @@ export function docLocales(doc: LocalizedDoc | undefined): string[] {
   return Object.keys(doc);
 }
 
+function parseSemver(version: string): { nums: number[]; pre: string } {
+  const dash = version.indexOf("-");
+  const core = dash === -1 ? version : version.slice(0, dash);
+  const pre = dash === -1 ? "" : version.slice(dash + 1);
+  return { nums: core.split(".").map((n) => Number.parseInt(n, 10) || 0), pre };
+}
+
+/**
+ * Newest-first semver comparator: 2.0.0 > 1.9.0 > 1.0.0 > 1.0.0-rc.1. Used to
+ * order the release timeline by version rather than publish time, since versions
+ * published in the same second tie on the timestamp.
+ */
+export function compareVersionsDesc(a: string, b: string): number {
+  const pa = parseSemver(a);
+  const pb = parseSemver(b);
+  for (let i = 0; i < 3; i += 1) {
+    const diff = (pb.nums[i] ?? 0) - (pa.nums[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  // A release outranks any prerelease of the same core version.
+  if (pa.pre === "" && pb.pre !== "") return -1;
+  if (pa.pre !== "" && pb.pre === "") return 1;
+  return pb.pre.localeCompare(pa.pre);
+}
+
 /** Build the release list (newest first) from a registry packument. */
 export function versionsFromPackument(pkg: Packument): PluginVersion[] {
   const versions = pkg.versions ?? {};
@@ -318,7 +343,11 @@ export function versionsFromPackument(pkg: Packument): PluginVersion[] {
       deprecated: manifest.deprecated,
     }),
   );
-  list.sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""));
+  list.sort(
+    (a, b) =>
+      compareVersionsDesc(a.version, b.version) ||
+      (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""),
+  );
   return list;
 }
 

@@ -47,6 +47,24 @@ test("the icon plugin's generated icon is served from its tarball", async ({ req
   expect(await res.text()).toContain("icon-studio-bg");
 });
 
+test("plugin management: deprecated version is badged, yanked version is hidden", async ({
+  page,
+}) => {
+  // The seed published @brika/plugin-managed at 1.0.0/1.1.0/1.2.0, then deprecated
+  // 1.1.0 and yanked 1.0.0 through the real CLI. The Versions tab should reflect it.
+  await page.goto("/plugins/@brika/plugin-managed?tab=versions");
+  // Scope to the versions panel so the header's latest-version label doesn't match.
+  const panel = page.getByRole("tabpanel");
+  await expect(panel.getByRole("heading", { name: "Changelog" })).toBeVisible();
+  // Newest-first: 1.2.0 is Latest, 1.1.0 carries the Deprecated badge, and 1.0.0
+  // was yanked so it never appears.
+  await expect(panel.getByText("v1.2.0")).toBeVisible();
+  await expect(panel.getByText("v1.1.0")).toBeVisible();
+  await expect(panel.getByText("Latest")).toBeVisible();
+  await expect(panel.getByText("Deprecated")).toBeVisible();
+  await expect(panel.getByText("v1.0.0")).toHaveCount(0);
+});
+
 test("detail shows a real install count", async ({ page, request }) => {
   // Generate at least one install (tarball download) so the count is non-zero.
   await request.get("/v1/plugins/@brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");
