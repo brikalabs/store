@@ -40,4 +40,23 @@ export function summarizeDownloads(
   return { total, weekly };
 }
 
+/**
+ * The per-day install counts for the trailing `days` window, oldest day first
+ * and zero-filled for days with no installs. Drives the sidebar download
+ * sparkline. Rows outside the window are ignored.
+ */
+export function downloadSeries(
+  rows: ReadonlyArray<DailyDownloads>,
+  todayDay: number,
+  days: number,
+): number[] {
+  const start = todayDay - (days - 1);
+  const series = new Array<number>(Math.max(days, 0)).fill(0);
+  for (const row of rows) {
+    const index = row.day - start;
+    if (index >= 0 && index < series.length) series[index] = (series[index] ?? 0) + row.count;
+  }
+  return series;
+}
+
 export const ZERO_DOWNLOADS: DownloadStats = { total: 0, weekly: 0 };

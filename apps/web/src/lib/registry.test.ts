@@ -93,7 +93,9 @@ function stubAll() {
     const url = typeof input === "string" ? input : input.toString();
     if (url.includes("/-/v1/packages")) return Promise.resolve(json(catalog));
     if (url.includes("/-/v1/downloads")) {
-      return Promise.resolve(json({ name: "@brika/plugin-i18n", total: 1234, weekly: 42 }));
+      return Promise.resolve(
+        json({ name: "@brika/plugin-i18n", total: 1234, weekly: 42, series: [1, 0, 3, 5] }),
+      );
     }
     if (url.endsWith(".tgz")) {
       return Promise.resolve(new Response(tarball, { status: 200 }));
@@ -142,6 +144,8 @@ describe("getPluginPage", () => {
     expect(page?.detail.installs).toBe(1234);
     // The tarball SHA-512 integrity is surfaced from the packument's dist.
     expect(page?.detail.integrity).toBe("sha512-TESTINTEGRITY==");
+    // The per-day install series feeds the sidebar sparkline.
+    expect(page?.downloadsSeries).toEqual([1, 0, 3, 5]);
   });
 
   test("falls through to a 404 for an unknown registry plugin", async () => {

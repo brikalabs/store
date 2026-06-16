@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { DOWNLOAD_WINDOW_DAYS, epochDay, summarizeDownloads, ZERO_DOWNLOADS } from "./downloads";
+import {
+  DOWNLOAD_WINDOW_DAYS,
+  downloadSeries,
+  epochDay,
+  summarizeDownloads,
+  ZERO_DOWNLOADS,
+} from "./downloads";
 
 describe("epochDay", () => {
   test("floors milliseconds to a UTC day number", () => {
@@ -30,6 +36,32 @@ describe("summarizeDownloads", () => {
 
   test("counts today only within both totals", () => {
     expect(summarizeDownloads([{ day: today, count: 7 }], today)).toEqual({ total: 7, weekly: 7 });
+  });
+});
+
+describe("downloadSeries", () => {
+  const today = 100;
+
+  test("returns a zero-filled, oldest-first window of per-day counts", () => {
+    const rows = [
+      { day: today, count: 4 },
+      { day: today - 2, count: 9 },
+      { day: today - 6, count: 1 },
+      { day: today - 30, count: 99 }, // outside a 7-day window
+    ];
+    expect(downloadSeries(rows, today, 7)).toEqual([1, 0, 0, 0, 9, 0, 4]);
+  });
+
+  test("sums multiple rows that fall on the same day bucket", () => {
+    const rows = [
+      { day: today, count: 2 },
+      { day: today, count: 3 },
+    ];
+    expect(downloadSeries(rows, today, 3)).toEqual([0, 0, 5]);
+  });
+
+  test("is all zeros with no rows", () => {
+    expect(downloadSeries([], today, 4)).toEqual([0, 0, 0, 0]);
   });
 });
 

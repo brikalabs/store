@@ -77,6 +77,7 @@ export async function getPluginPage(
   changelog: string | null;
   readmeLocales: string[];
   versions: PluginVersion[];
+  downloadsSeries: number[];
 } | null> {
   // `@brika/*` resolves from our registry (real data: install counts, integrity,
   // localized copy, no demo enrichment); fall through to npm only if it is not
@@ -113,6 +114,8 @@ export async function getPluginPage(
     readmeLocales: docLocales(manifest?.readme),
     // Newest five releases for the changelog timeline (from the same packument).
     versions: versionsFromPackument(pkg).slice(0, 5),
+    // npm has no per-day series; the sparkline is registry-only.
+    downloadsSeries: [],
   };
 }
 

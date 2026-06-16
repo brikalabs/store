@@ -23,6 +23,7 @@ import { GithubIcon } from "../components/clay/icons";
 import { GradientAvatar, PluginIcon } from "../components/clay/plugin-icon";
 import { placeholderShotCount, ScreenshotPanels } from "../components/clay/screenshot-panels";
 import { Segmented, segmentClassName } from "../components/clay/segmented";
+import { Sparkline } from "../components/clay/sparkline";
 import { Stars } from "../components/clay/stars";
 import { CommentsSection } from "../components/comments-section";
 import { NotFoundPage } from "../components/error-pages";
@@ -358,13 +359,59 @@ function IntegrityCard({ integrity }: Readonly<{ integrity: string }>) {
   );
 }
 
+/**
+ * Total-installs card with a real download trend sparkline. Shown only when the
+ * registry has install history (the npm path carries no per-day series).
+ */
+function DownloadsCard({
+  installs,
+  weekly,
+  series,
+}: Readonly<{ installs: number; weekly: number; series: number[] }>) {
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
+            Total installs
+          </span>
+          <span className="font-bold font-heading text-2xl text-foreground leading-tight">
+            {formatCount(installs)}
+          </span>
+        </div>
+        <span className="inline-flex items-center gap-1 font-mono text-muted-foreground text-xs">
+          <Download className="size-3" />
+          {formatCount(weekly)} / wk
+        </span>
+      </div>
+      <div className="h-20">
+        <Sparkline data={series} />
+      </div>
+      <div className="flex justify-between font-mono text-muted-foreground text-xs">
+        <span>{formatCount(weekly)} this week</span>
+        <span>last 30 days</span>
+      </div>
+    </div>
+  );
+}
+
 /** Sticky meta sidebar: version/dates card plus the links, author, and keyword cards. */
 function DetailSidebar({
   detail,
   displayLocales,
-}: Readonly<{ detail: PluginDetail; displayLocales: string[] }>) {
+  downloadsSeries,
+}: Readonly<{ detail: PluginDetail; displayLocales: string[]; downloadsSeries: number[] }>) {
+  const hasTrend = downloadsSeries.some((value) => value > 0);
   return (
     <aside className="flex flex-col gap-4 lg:sticky lg:top-20">
+      {hasTrend ? (
+        <DownloadsCard
+          installs={detail.installs ?? 0}
+          weekly={detail.downloadsWeekly}
+          series={downloadsSeries}
+        />
+      ) : null}
+
       <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-card p-4 text-sm">
         <MetaRow label="Version" value={detail.version} mono />
         {detail.updatedAt ? <MetaRow label="Updated" value={formatDate(detail.updatedAt)} /> : null}
@@ -375,6 +422,9 @@ function DetailSidebar({
         <MetaRow label="Brika engine" value={detail.brikaEngine} mono />
         {displayLocales.length > 0 ? (
           <MetaRow label="Languages" value={String(displayLocales.length)} mono />
+        ) : null}
+        {detail.installs !== undefined ? (
+          <MetaRow label="Installs" value={formatCount(detail.installs)} mono />
         ) : null}
       </div>
 
@@ -491,7 +541,11 @@ function PluginDetailPage() {
           />
         </div>
 
-        <DetailSidebar detail={detail} displayLocales={displayLocales} />
+        <DetailSidebar
+          detail={detail}
+          displayLocales={displayLocales}
+          downloadsSeries={data.downloadsSeries}
+        />
       </div>
     </main>
   );

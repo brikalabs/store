@@ -2,6 +2,7 @@ export {
   type DailyDownloads,
   DOWNLOAD_WINDOW_DAYS,
   type DownloadStats,
+  downloadSeries,
   epochDay,
   summarizeDownloads,
   ZERO_DOWNLOADS,

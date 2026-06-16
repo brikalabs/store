@@ -1,5 +1,6 @@
 import {
   type DownloadStats,
+  downloadSeries,
   epochDay,
   summarizeDownloads,
   ZERO_DOWNLOADS,
@@ -40,6 +41,16 @@ export class D1DownloadStore {
       .from(regDownloads)
       .where(eq(regDownloads.name, name));
     return summarizeDownloads(rows, epochDay(this.#now()));
+  }
+
+  /** Stats plus the per-day series for the trailing `days`-day sparkline window. */
+  async statsWithSeries(name: string, days: number): Promise<DownloadStats & { series: number[] }> {
+    const rows = await this.#db
+      .select({ day: regDownloads.day, count: regDownloads.count })
+      .from(regDownloads)
+      .where(eq(regDownloads.name, name));
+    const today = epochDay(this.#now());
+    return { ...summarizeDownloads(rows, today), series: downloadSeries(rows, today, days) };
   }
 
   /** Install stats for a set of packages, keyed by name (absent -> zero). */

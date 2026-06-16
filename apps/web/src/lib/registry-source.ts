@@ -132,6 +132,7 @@ const DownloadsResponse = z.object({
   name: z.string(),
   total: z.number(),
   weekly: z.number(),
+  series: z.array(z.number()).optional(),
 });
 
 const Packument = z.object({
@@ -298,21 +299,31 @@ export async function getRegistryPackument(name: string): Promise<Packument | nu
   return parsed.success ? parsed.data : null;
 }
 
-/** Install stats for a package (all-time + trailing week); zero on any failure. */
-export async function getRegistryDownloads(
-  name: string,
-): Promise<{ total: number; weekly: number }> {
+export interface RegistryDownloads {
+  readonly total: number;
+  readonly weekly: number;
+  /** Trailing 30-day per-day install counts (oldest first) for the sparkline. */
+  readonly series: number[];
+}
+
+const NO_DOWNLOADS: RegistryDownloads = { total: 0, weekly: 0, series: [] };
+
+/** Install stats for a package (all-time + trailing week + series); zero on failure. */
+export async function getRegistryDownloads(name: string): Promise<RegistryDownloads> {
   try {
     const res = await fetch(`${REGISTRY_ORIGIN}/-/v1/downloads/${encodeName(name)}`, {
       headers: { accept: "application/json" },
     });
-    if (!res.ok) return { total: 0, weekly: 0 };
+    if (!res.ok) return NO_DOWNLOADS;
     const parsed = DownloadsResponse.safeParse(await res.json());
-    return parsed.success
-      ? { total: parsed.data.total, weekly: parsed.data.weekly }
-      : { total: 0, weekly: 0 };
+    if (!parsed.success) return NO_DOWNLOADS;
+    return {
+      total: parsed.data.total,
+      weekly: parsed.data.weekly,
+      series: parsed.data.series ?? [],
+    };
   } catch {
-    return { total: 0, weekly: 0 };
+    return NO_DOWNLOADS;
   }
 }
 
@@ -369,6 +380,8 @@ export interface RegistryPluginPage {
   readonly changelog: string | null;
   readonly readmeLocales: string[];
   readonly versions: PluginVersion[];
+  /** Trailing 30-day install counts for the sidebar sparkline (empty for none). */
+  readonly downloadsSeries: number[];
 }
 
 /**
@@ -413,6 +426,7 @@ export async function getRegistryPluginPage(
     changelog,
     readmeLocales: docLocales(manifest.readme),
     versions: versionsFromPackument(pkg).slice(0, 5),
+    downloadsSeries: downloads.series,
   };
 }
 

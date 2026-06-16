@@ -40,6 +40,14 @@ test("detail shows the tarball integrity hash", async ({ page }) => {
   await expect(page.getByText(/sha512-/).first()).toBeVisible();
 });
 
+test("detail shows the downloads trend card with a sparkline", async ({ page, request }) => {
+  // Ensure at least one install so the trend card renders.
+  await request.get("/v1/plugins/@brika%2Fplugin-i18n/asset?v=0.1.0&path=assets%2Ficon.svg");
+  await page.goto("/plugins/@brika/plugin-i18n");
+  await expect(page.getByText("Total installs")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Install trend" })).toBeVisible();
+});
+
 test("localized copy renders for the French locale", async ({ page }) => {
   await page.goto("/plugins/@brika/plugin-i18n?lang=fr");
   // The fr store.json title + readme replace the default English copy.
