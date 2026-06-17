@@ -25,7 +25,7 @@ export interface BlameInfo {
  * read.
  */
 export interface MarkerKindSpec {
-  /** Lowercase identifier used in source (`mock`, `unenforced`, `todo`). */
+  /** Lowercase identifier used in the tag, e.g. `mock` or `unenforced`. */
   readonly name: string;
   /** Human label for reports and the editor tree. */
   readonly title: string;

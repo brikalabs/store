@@ -3,38 +3,38 @@
     {
       "name": "mock",
       "title": "Mock data",
-      "description": "Synthesized stand-in data shown until the real source is wired (then delete it).",
-      "severity": "info"
+      "severity": "info",
+      "description": "Stand-in data shown until the real source is wired."
     },
     {
       "name": "stub",
       "title": "Stub",
-      "description": "Placeholder implementation/behaviour that is not real logic yet.",
-      "severity": "warning"
+      "severity": "warning",
+      "description": "Placeholder behaviour that is not real logic yet."
     },
     {
       "name": "unenforced",
       "title": "Unenforced",
-      "description": "A limit, rule, or contract field declared before it is enforced in code.",
-      "severity": "warning"
+      "severity": "warning",
+      "description": "A rule declared before it is enforced in code."
     },
     {
       "name": "todo",
       "title": "Todo",
-      "description": "Planned work that is not built yet.",
-      "severity": "info"
+      "severity": "info",
+      "description": "Planned work that is not built yet."
     },
     {
       "name": "hack",
       "title": "Hack",
-      "description": "A deliberate shortcut that works but should be revisited.",
-      "severity": "warning"
+      "severity": "warning",
+      "description": "A shortcut that works but should be revisited."
     },
     {
       "name": "fixme",
       "title": "Fixme",
-      "description": "A known defect: code that is wrong or fragile and needs a real fix.",
-      "severity": "warning"
+      "severity": "warning",
+      "description": "A known defect that needs a real fix."
     }
   ]
 }
