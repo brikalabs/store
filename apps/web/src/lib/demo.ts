@@ -8,8 +8,10 @@ import { hashString } from "../components/clay/gradients";
  * values from the entity name (deterministic: the same plugin always looks the
  * same) so every screen shows the full design.
  *
- * This is a presentation shim, isolated on purpose: delete this module and drop
- * the `demo*` calls in `registry.ts` once the D1 social/curation tables land.
+ * Each generator is tagged with a mock marker comment naming the real source it
+ * stands in for, so it shows up in `bun run markers` (and the editor). This is a
+ * presentation shim, isolated on purpose: delete this module and drop the `demo*`
+ * calls in `registry.ts` once the D1 social/curation tables land.
  */
 
 const LOCALE_POOL = ["en", "fr", "de", "es", "ja", "zh", "pt", "it", "nl", "ko"];
@@ -18,6 +20,7 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+// @mock: D1 plugins rating / verified / featured / weekly downloads
 /** Fill a summary's missing rating, downloads, and curation flags. */
 export function demoSummary<T extends PluginSummary>(plugin: T): T {
   const h = hashString(plugin.name);
@@ -41,6 +44,7 @@ const PERMISSION_POOL: { key: string; scope: unknown }[] = [
   { key: "dev.brika.storage.kv", scope: { namespaces: ["cache"] } },
 ];
 
+// @mock: manifest grants + grant-spec catalogue
 /**
  * Fill a plugin's missing permission grants with a stable, scoped set. Real
  * grants (registry plugins) pass through untouched so their declared scope is
@@ -68,26 +72,25 @@ export function demoDetail(detail: PluginDetail): PluginDetail {
   };
 }
 
+// @mock: readme locales + bundled locales/<lang>/store.json
 /** Stable list of locale codes a plugin "ships", with `en` always first. */
 export function demoLocales(name: string, real: string[]): string[] {
   if (real.length > 0) return real;
   const h = hashString(name);
   const count = 1 + (h % 6); // 1..6 languages
-  return [
-    "en",
-    ...LOCALE_POOL.slice(1, count).filter((_, i) => (h >> i) % 2 === 0 || i < count - 1),
-  ].slice(0, count);
+  const tail = LOCALE_POOL.slice(1, count).filter((_, i) => (h >> i) % 2 === 0 || i < count - 1);
+  return ["en", ...tail].slice(0, count);
 }
 
+// @mock: D1 developers bio / verified
 /** Fill a developer profile's missing bio and verification for the profile page. */
 export function demoProfile(profile: DeveloperProfile, pluginCount: number): DeveloperProfile {
   const h = hashString(profile.id);
   const plural = pluginCount === 1 ? "plugin" : "plugins";
+  const synthBio = `Maintainer of ${pluginCount} Brika ${plural}, published to npm and mirrored here.`;
   return {
     ...profile,
     verified: profile.verified || h % 4 < 3,
-    bio:
-      profile.bio ??
-      `Maintainer of ${pluginCount} Brika ${plural}, published to npm and mirrored here.`,
+    bio: profile.bio ?? synthBio,
   };
 }

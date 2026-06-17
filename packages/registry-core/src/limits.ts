@@ -15,8 +15,6 @@
  *     count (the weekly limits); until then, treat them as documentation.
  */
 
-import { unenforced } from "./unenforced";
-
 const MiB = 1024 * 1024;
 
 export interface RegistryLimits {
@@ -44,10 +42,10 @@ export const REGISTRY_LIMITS: RegistryLimits = {
   maxTarballBytes: 20 * MiB, // enforced (PublishService)
   maxFileBytes: 8 * MiB, // enforced (SchemaManifestValidator)
   maxUnpackedBytes: 40 * MiB, // enforced (SchemaManifestValidator)
-  maxVersionsPerPackage: unenforced(1000, "needs a count port on the metadata store"),
-  maxPackagesPerScope: unenforced(100, "needs a count port on the metadata store"),
-  maxScopesPerUser: unenforced(3, "needs a count port on the metadata store"),
-  weeklyPackageCreations: unenforced(20, "needs a rolling-window count port"),
-  weeklyPublishAttempts: unenforced(1000, "needs a rolling-window count port"),
-  weeklyWindowDays: unenforced(7, "window for the weekly limits above"),
+  maxVersionsPerPackage: 1000, // @unenforced: needs a count port on the metadata store
+  maxPackagesPerScope: 100, // @unenforced: needs a count port on the metadata store
+  maxScopesPerUser: 3, // @unenforced: needs a count port on the metadata store
+  weeklyPackageCreations: 20, // @unenforced: needs a rolling-window count port
+  weeklyPublishAttempts: 1000, // @unenforced: needs a rolling-window count port
+  weeklyWindowDays: 7, // @unenforced: window for the weekly limits above
 };

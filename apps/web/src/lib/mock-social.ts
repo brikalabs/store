@@ -5,7 +5,8 @@ import { hashString } from "../components/clay/gradients";
  * Mock reviews and discussion. The social layer (reviews/comments) lives in D1,
  * which isn't provisioned in the demo, so these deterministic fallbacks let the
  * plugin page render its Reviews distribution and threaded Discussion. The real
- * `/v1` data takes over whenever the API returns anything. Delete with `demo.ts`
+ * `/v1` data takes over whenever the API returns anything. Each generator carries
+ * a mock marker comment so it surfaces in `bun run markers`; delete with `demo.ts`
  * once D1 is wired in.
  */
 
@@ -55,6 +56,7 @@ function pick<T>(list: T[], seed: number): T {
   return list[seed % list.length] as T;
 }
 
+// @mock: D1 reviews (real via /v1 for registry plugins)
 export function mockReviews(name: string): Review[] {
   const h = hashString(name);
   const count = 3 + (h % 2); // 3 or 4
@@ -76,6 +78,7 @@ export function mockReviews(name: string): Review[] {
   });
 }
 
+// @mock: D1 comments (real via /v1 for registry plugins)
 export function mockComments(name: string): Comment[] {
   const h = hashString(name);
   const asker = pick(REVIEWERS, h + 1);

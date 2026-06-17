@@ -6,6 +6,7 @@ import { Image } from "./image";
 
 const MAX_THUMBS = 5;
 
+// @mock: tarball screenshots (manifest assets)
 // Picsum's `/id/N` endpoint serves a specific pre-existing photo (no slow
 // per-seed generation), so deterministic placeholders load quickly.
 function placeholder(seed: string, index: number): string {
@@ -57,10 +58,8 @@ export function ScreenshotPanels({
   className,
 }: Readonly<{ images?: string[]; seed: string; count?: number; className?: string }>) {
   const total = images && images.length > 0 ? images.length : (count ?? placeholderShotCount(seed));
-  const urls =
-    images && images.length > 0
-      ? images
-      : Array.from({ length: total }, (_, index) => placeholder(seed, index));
+  const shots = Array.from({ length: total }, (_, index) => placeholder(seed, index));
+  const urls = images && images.length > 0 ? images : shots;
   const [active, setActive] = useState(0);
   const safeActive = Math.min(active, urls.length - 1);
   const go = (delta: number) => setActive((urls.length + safeActive + delta) % urls.length);

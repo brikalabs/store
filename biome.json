@@ -14,7 +14,9 @@
       "!biome.json",
       "!**/node_modules",
       "!**/dist",
+      "!**/out",
       "!**/coverage",
+      "!**/*.svg",
       "!**/routeTree.gen.ts",
       "!**/worker-configuration.d.ts",
       "!**/*.md"

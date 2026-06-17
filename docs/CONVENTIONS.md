@@ -42,31 +42,50 @@ followed by review otherwise. Run `bun run lint`, `bun run typecheck`, and
 - **Thin HTTP layer.** Routes parse, build the identity, call a service, and
   serialize. No business logic in handlers.
 
-## Tracking gaps (`@unenforced`)
+## Tracking gaps (markers)
 
-When a limit, rule, or contract field is *declared* before it is *enforced*, mark
-the spot so it never masquerades as a guarantee. Prefer the **typed marker** when
-there is a value to wrap, the **comment** when there is not.
+When a spot in the code is *intentionally incomplete*, mark it with a comment so
+it never masquerades as finished. The [`brika-markers`](../packages/markers)
+engine tracks six built-in **kinds** (edit or extend them in
+[`markers.config.json`](../markers.config.json)), each a distinct promise about
+what is missing:
+
+| Kind | What it means |
+| --- | --- |
+| `mock` | Synthesized stand-in **data** shown until the real source is wired (then delete) |
+| `stub` | Placeholder **implementation/behaviour** that is not real logic yet |
+| `unenforced` | A limit, rule, or contract field **declared before it is enforced** in code |
+| `todo` | Planned work **not built yet** |
+| `hack` | A deliberate **shortcut** that works but should be revisited |
+| `fixme` | A known **defect**: code that is wrong or fragile and needs a real fix |
+
+Write a `// @kind: reason` comment on, or just above, the spot; the reason is
+required. For a synthesized value, mark the **function** that produces it (one
+marker), not each field it returns.
 
 ```ts
-// Typed marker (real, compiler-visible, IDE find-references, reason required):
-import { unenforced } from "@brika/registry-core";
-maxFileBytes: unenforced(8 * MiB, "needs tar inspection in the manifest gate"),
+maxScopesPerUser: 3, // @unenforced: needs a count port on the metadata store
 
-// Comment form, for a gap with no value to wrap (e.g. a missing check):
-// @unenforced: weekly publish window is not rate-limited yet
+// @mock: D1 plugins rating / verified / featured
+export function demoSummary(plugin) { ... }
 ```
 
-`unenforced()` is the identity function at runtime, so it changes nothing except
-making the gap explicit and searchable. `bun run unenforced` lists every marker
-of both forms (file, line, reason). It is informational (always exits 0): it
-exists so the gap between "declared" and "enforced" stays visible and reviewable
-rather than silently rotting.
+Markers are comments on purpose: nothing ships to production (no runtime helper),
+so they are a dev, CI, and editor concern only. `bun run markers` lists every
+marker of every kind (file, line, reason); `bun run markers --kind mock` (or
+`bun run unenforced`) filters. It is informational (always exits 0): it exists so
+the gap between "declared" and "done" stays visible and reviewable rather than
+silently rotting.
 
 > A Biome plugin cannot do this: its GritQL engine only sees string/code nodes,
 > not comments (which is also why the em-dash guard is a script, not a plugin).
-> The typed `unenforced()` helper is the "real annotation" equivalent, and it
-> needs no plugin: the compiler and IDE find every call natively.
+> The markers engine scans comments directly, and the same parser backs the
+> **Brika Markers** VSCode extension (diagnostics, CodeLens, and a tree view), so
+> the editor and CI agree on what counts as a marker.
+
+> Do not write the literal tag (`@mock`, `@unenforced`, ...) in prose or doc
+> comments inside `.ts`/`.tsx` files, or the scanner reads it as a real marker.
+> The tags in this Markdown file are fine: docs are not scanned.
 
 ## Composition root (wiring)
 
