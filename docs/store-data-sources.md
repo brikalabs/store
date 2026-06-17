@@ -47,8 +47,17 @@ placeholder. The guiding split:
 4. **Developer profiles** are still `demoProfile`; wire `developers` (bio,
    verified, avatar) once the profile-edit console is connected end to end.
 
+## Tracking the shims
+
+Every synthesized generator carries a `// @mock: <real source>` marker (tracked by
+[`brika-markers`](../packages/markers)), so the placeholders are not invisible:
+`bun run markers --kind mock` lists each one (file, line, and the real source that
+should replace it), and the Brika Markers VSCode extension shows them inline. See
+[CONVENTIONS.md](CONVENTIONS.md#tracking-gaps-markers).
+
 ## Removing the shims
 
 `lib/demo.ts` and `lib/mock-social.ts` are deliberately isolated. When the items
 above are done, delete the two modules and the `demo*` / `mock*` call sites
-(`registry.ts`, `plugins.$.tsx`); nothing else depends on them.
+(`registry.ts`, `plugins.$.tsx`); `bun run markers --kind mock` then returns
+nothing for them. Nothing else depends on them.

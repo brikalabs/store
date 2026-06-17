@@ -1,0 +1,124 @@
+{
+  "name": "brika-markers",
+  "displayName": "Brika Markers",
+  "version": "0.1.0",
+  "description": "Marker engine, CLI, and VSCode extension: track intentionally-incomplete spots (mock, stub, unenforced, todo, hack, fixme) as comments",
+  "type": "module",
+  "private": true,
+  "publisher": "brikalabs",
+  "license": "MIT",
+  "author": "Brika Labs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brikalabs/store.git",
+    "directory": "packages/markers"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Visualization"
+  ],
+  "main": "./out/extension.cjs",
+  "bin": {
+    "markers": "./src/cli.ts"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "brikaMarkers",
+          "title": "Markers",
+          "icon": "media/markers.svg"
+        }
+      ]
+    },
+    "views": {
+      "brikaMarkers": [
+        {
+          "id": "brikaMarkers.tree",
+          "name": "Markers",
+          "contextualTitle": "Markers"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "brikaMarkers.refresh",
+        "title": "Rescan workspace",
+        "category": "Brika Markers",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "brikaMarkers.toggleSort",
+        "title": "Toggle sort: by kind / by date",
+        "category": "Brika Markers",
+        "icon": "$(sort-precedence)"
+      },
+      {
+        "command": "brikaMarkers.reveal",
+        "title": "Reveal marker",
+        "category": "Brika Markers"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "brikaMarkers.toggleSort",
+          "when": "view == brikaMarkers.tree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "brikaMarkers.refresh",
+          "when": "view == brikaMarkers.tree",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "brikaMarkers.reveal",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Brika Markers",
+      "properties": {
+        "brikaMarkers.enabledKinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "mock",
+              "stub",
+              "unenforced",
+              "todo",
+              "hack",
+              "fixme"
+            ]
+          },
+          "default": [],
+          "description": "Marker kinds to surface (diagnostics, CodeLens, tree). Empty means all kinds from markers.config.json; list names to show only those."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "bun run build",
+    "build": "bun build src/extension.ts --target=node --format=cjs --outfile=out/extension.cjs --external=vscode",
+    "package": "bunx --bun @vscode/vsce package --no-dependencies --out brika-markers.vsix",
+    "install:editor": "bun run package && ${BRIKA_EDITOR:-code} --install-extension brika-markers.vsix --force",
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0"
+  }
+}

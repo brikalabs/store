@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Markers Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/markers"],
+      "outFiles": ["${workspaceFolder}/packages/markers/out/**/*.cjs"],
+      "preLaunchTask": "markers: build extension"
+    }
+  ]
+}

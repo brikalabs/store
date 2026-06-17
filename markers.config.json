@@ -1,0 +1,40 @@
+{
+  "kinds": [
+    {
+      "name": "mock",
+      "title": "Mock data",
+      "severity": "info",
+      "description": "Stand-in data shown until the real source is wired."
+    },
+    {
+      "name": "stub",
+      "title": "Stub",
+      "severity": "warning",
+      "description": "Placeholder behaviour that is not real logic yet."
+    },
+    {
+      "name": "unenforced",
+      "title": "Unenforced",
+      "severity": "warning",
+      "description": "A rule declared before it is enforced in code."
+    },
+    {
+      "name": "todo",
+      "title": "Todo",
+      "severity": "info",
+      "description": "Planned work that is not built yet."
+    },
+    {
+      "name": "hack",
+      "title": "Hack",
+      "severity": "warning",
+      "description": "A shortcut that works but should be revisited."
+    },
+    {
+      "name": "fixme",
+      "title": "Fixme",
+      "severity": "warning",
+      "description": "A known defect that needs a real fix."
+    }
+  ]
+}

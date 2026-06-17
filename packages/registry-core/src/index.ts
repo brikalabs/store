@@ -67,4 +67,3 @@ export {
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export { type PackageRecord, PackageVersion, Provenance } from "./types";
-export { unenforced } from "./unenforced";
