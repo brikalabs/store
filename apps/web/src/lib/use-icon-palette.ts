@@ -3,26 +3,24 @@ import { type Gradient, gradientFor } from "../components/clay/gradients";
 
 /**
  * Derive a plugin's accent gradient from its actual icon instead of a random
- * hash. We draw the icon to a tiny canvas, pick its most saturated meaningful
- * color (ignoring transparent / near-white / near-black pixels), and build a
- * light→dark gradient from it. Falls back to the deterministic hash gradient
- * when there's no icon, the image can't be read (CORS), or it's monochrome.
+ * hash. Plugin icons are SVGs, so we read the colors straight out of the markup
+ * (`fill`/`stroke`/`stop-color`) - reliable and canvas-free, where drawing an
+ * SVG with a gradient fill to a canvas often reads back blank. Raster icons fall
+ * back to sampling pixels. Either way we take the icon's most vivid color and
+ * build a light->dark gradient from it, falling back to the deterministic hash
+ * gradient when there's no icon or no usable color.
  */
 export function useIconPalette(iconUrl: string | undefined, seed: string): Gradient {
   const [gradient, setGradient] = useState<Gradient>(() => gradientFor(seed));
 
   useEffect(() => {
     setGradient(gradientFor(seed));
-    if (!iconUrl || typeof document === "undefined") return;
+    if (!iconUrl) return;
 
     let active = true;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const extracted = extractGradient(img);
+    iconGradient(iconUrl).then((extracted) => {
       if (active && extracted) setGradient(extracted);
-    };
-    img.src = iconUrl;
+    });
     return () => {
       active = false;
     };
@@ -31,16 +29,94 @@ export function useIconPalette(iconUrl: string | undefined, seed: string): Gradi
   return gradient;
 }
 
-/** Draw the icon to a tiny canvas and read back its RGBA pixels (null if 2D unsupported). */
-function readIconPixels(img: HTMLImageElement): Uint8ClampedArray | null {
-  const size = 24;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return null;
-  ctx.drawImage(img, 0, 0, size, size);
-  return ctx.getImageData(0, 0, size, size).data;
+export interface Rgb {
+  r: number;
+  g: number;
+  b: number;
+}
+
+/** Fetch the icon and derive a gradient from it, or null if nothing is usable. */
+async function iconGradient(iconUrl: string): Promise<Gradient | null> {
+  try {
+    const response = await fetch(iconUrl);
+    if (!response.ok) return null;
+    const type = response.headers.get("content-type") ?? "";
+    const color =
+      type.includes("svg") || iconUrl.endsWith(".svg")
+        ? dominantSvgColor(await response.text())
+        : await dominantRasterColor(await response.blob());
+    return color ? gradientFromColor(color) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Light->dark two-stop gradient around a base color, matching the tile look. */
+function gradientFromColor({ r, g, b }: Rgb): Gradient {
+  return [shift(r, g, b, 1.15, 22), shift(r, g, b, 0.72, 0)];
+}
+
+const HEX_COLOR = /#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/gi;
+
+/**
+ * The icon's main color, read from the SVG source: the most saturated `#rrggbb`
+ * (or `#rgb`) value, skipping the near-white/near-black used for glyphs and
+ * outlines. Returns null when the markup declares no usable hex color.
+ */
+export function dominantSvgColor(svg: string): Rgb | null {
+  let best: Rgb | null = null;
+  let bestSat = -1;
+  for (const match of svg.matchAll(HEX_COLOR)) {
+    const color = parseHex(match[0]);
+    if (!isMeaningful(color)) continue;
+    const sat = saturation(color);
+    if (sat > bestSat) {
+      bestSat = sat;
+      best = color;
+    }
+  }
+  return best;
+}
+
+function parseHex(hex: string): Rgb {
+  const body = hex.slice(1);
+  const full =
+    body.length === 3
+      ? `${body[0]}${body[0]}${body[1]}${body[1]}${body[2]}${body[2]}`
+      : body;
+  return {
+    r: Number.parseInt(full.slice(0, 2), 16),
+    g: Number.parseInt(full.slice(2, 4), 16),
+    b: Number.parseInt(full.slice(4, 6), 16),
+  };
+}
+
+function saturation({ r, g, b }: Rgb): number {
+  return Math.max(r, g, b) - Math.min(r, g, b);
+}
+
+/** Skip transparent/near-white/near-black so a glyph or outline doesn't win. */
+function isMeaningful({ r, g, b }: Rgb): boolean {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  return !(max > 244 && min > 244) && max >= 20;
+}
+
+/** Decode a raster icon and read its area-dominant color from a 24x24 sample. */
+async function dominantRasterColor(blob: Blob): Promise<Rgb | null> {
+  if (typeof createImageBitmap === "undefined" || typeof document === "undefined") return null;
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 24;
+    canvas.height = 24;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(bitmap, 0, 0, 24, 24);
+    return dominantColor(ctx.getImageData(0, 0, 24, 24).data);
+  } finally {
+    bitmap.close();
+  }
 }
 
 interface ColorBin {
@@ -71,15 +147,13 @@ function meaningfulPixel(data: Uint8ClampedArray, i: number): Pixel | null {
 }
 
 /**
- * The icon's main color, by area rather than by peak saturation. Meaningful
- * pixels are binned into a coarse RGB histogram (4 bits/channel, so shades
- * merge); the heaviest bin wins, each pixel weighted slightly by its saturation
- * so a large flat background beats a small bright accent while a faint tint still
- * reads. Returns the winning bin's mean color, or null when nothing meaningful
- * remains. Averaging every colored pixel instead would blend a blue-and-yellow
- * icon into a muddy grey.
+ * The dominant color of RGBA pixels, by area rather than by peak saturation.
+ * Meaningful pixels are binned into a coarse RGB histogram (4 bits/channel, so
+ * shades merge); the heaviest bin wins, each pixel weighted slightly by its
+ * saturation so a large flat background beats a small bright accent. Returns the
+ * winning bin's mean color, or null when nothing meaningful remains.
  */
-function dominantColor(data: Uint8ClampedArray): { r: number; g: number; b: number } | null {
+function dominantColor(data: Uint8ClampedArray): Rgb | null {
   const bins = new Map<number, ColorBin>();
   let best: ColorBin | null = null;
 
@@ -99,20 +173,6 @@ function dominantColor(data: Uint8ClampedArray): { r: number; g: number; b: numb
 
   if (best === null) return null;
   return { r: best.r / best.weight, g: best.g / best.weight, b: best.b / best.weight };
-}
-
-function extractGradient(img: HTMLImageElement): Gradient | null {
-  try {
-    const data = readIconPixels(img);
-    if (!data) return null;
-    const color = dominantColor(data);
-    if (!color) return null;
-    const { r, g, b } = color;
-    return [shift(r, g, b, 1.15, 22), shift(r, g, b, 0.72, 0)];
-  } catch {
-    // canvas tainted by a non-CORS image; keep the hash fallback.
-    return null;
-  }
 }
 
 function shift(r: number, g: number, b: number, factor: number, lift: number): string {
