@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { dominantColor, imageMimeType } from "./use-icon-palette";
+import { dominantColor, imageMimeType, stripCanvasTaint } from "./use-icon-palette";
 
 /** Build an RGBA buffer from runs of `[count, [r, g, b]]` (all fully opaque). */
 function rgba(runs: Array<[number, [number, number, number]]>): Uint8ClampedArray {
@@ -69,5 +69,21 @@ describe("imageMimeType", () => {
 
   test("returns null for bytes it can't identify", () => {
     expect(imageMimeType(bytes(0x00, 0x01, 0x02, 0x03))).toBeNull();
+  });
+});
+
+describe("stripCanvasTaint", () => {
+  test("removes a foreignObject (which taints the canvas) but keeps the colored shapes", () => {
+    const svg =
+      '<svg><rect fill="#2193b0"/><foreignObject x="0" y="0"><div xmlns="http://www.w3.org/1999/xhtml" style="backdrop-filter:blur(15px)"></div></foreignObject><circle fill="#ffcc00"/></svg>';
+    const out = stripCanvasTaint(svg);
+    expect(out).not.toContain("foreignObject");
+    expect(out).toContain('<rect fill="#2193b0"/>');
+    expect(out).toContain('<circle fill="#ffcc00"/>');
+  });
+
+  test("leaves an SVG without a foreignObject untouched", () => {
+    const svg = '<svg><rect fill="#2193b0"/></svg>';
+    expect(stripCanvasTaint(svg)).toBe(svg);
   });
 });

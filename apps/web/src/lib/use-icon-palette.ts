@@ -45,7 +45,13 @@ async function iconColor(iconUrl: string): Promise<Rgb | null> {
     // fail to decode and fall back to the hash gradient).
     const bytes = new Uint8Array(await response.arrayBuffer());
     const type = imageMimeType(bytes) ?? response.headers.get("content-type") ?? "";
-    const url = URL.createObjectURL(new Blob([bytes], { type }));
+    // An SVG `<foreignObject>` can embed arbitrary HTML, so the browser taints the
+    // canvas and getImageData throws; strip it (it's a decorative blur) so the
+    // icon stays readable.
+    const source = type.includes("svg")
+      ? new Blob([stripCanvasTaint(new TextDecoder().decode(bytes))], { type })
+      : new Blob([bytes], { type });
+    const url = URL.createObjectURL(source);
     try {
       return await sampleColor(url);
     } finally {
@@ -54,6 +60,19 @@ async function iconColor(iconUrl: string): Promise<Rgb | null> {
   } catch {
     return null;
   }
+}
+
+const FOREIGN_OBJECT = /<foreignObject[\s\S]*?<\/foreignObject>/gi;
+
+/**
+ * Remove `<foreignObject>` from SVG markup so the icon can be drawn to a canvas
+ * and read back. It can embed arbitrary (even cross-origin) HTML, so browsers
+ * taint the canvas when such an SVG is drawn and `getImageData` throws. The
+ * element is decorative (a backdrop blur on these icons), so dropping it keeps
+ * the colors intact.
+ */
+export function stripCanvasTaint(svg: string): string {
+  return svg.replace(FOREIGN_OBJECT, "");
 }
 
 /** True when `bytes` begins with the byte signature `sig`. */

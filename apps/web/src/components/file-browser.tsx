@@ -275,6 +275,16 @@ function ViewerLoading() {
   );
 }
 
+// Pinned line-number gutter for the source viewer. `sticky left-0` keeps line
+// numbers visible during horizontal scroll (they still scroll vertically with
+// the code). The background is an opaque rebuild of the same token layers the
+// code-block header paints (white card -> subtle tint -> header tint), so the
+// gutter matches the header bar exactly *and* hides code scrolling underneath
+// it (Clay's own gutter token is semi-transparent, which would let it show).
+const STICKY_GUTTER =
+  "[&>*:first-child]:sticky [&>*:first-child]:left-0 [&>*:first-child]:z-10 " +
+  "[&>*:first-child]:[background:linear-gradient(var(--code-block-header-bg),var(--code-block-header-bg)),linear-gradient(var(--code-block-subtle-bg),var(--code-block-subtle-bg)),var(--card)]";
+
 /**
  * The right pane: lazily fetches the selected file's bytes from the (immutable,
  * R2-cached) asset endpoint, capped by size, and renders source with line
@@ -349,7 +359,7 @@ function FileViewer({
           language={shikiLang(file.path)}
           filename={file.path}
           showLineNumbers
-          className="min-h-full w-max min-w-full [&>*:first-child]:sticky [&>*:first-child]:left-0 [&>*:first-child]:z-10 [&>*:first-child]:bg-muted"
+          className={`min-h-full w-max min-w-full ${STICKY_GUTTER}`}
         >
           {text}
         </CodeBlockContent>
