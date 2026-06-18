@@ -2,13 +2,10 @@ import { useEffect, useState } from "react";
 import { type Gradient, gradientFor } from "../components/clay/gradients";
 
 /**
- * Derive a plugin's accent gradient from its actual icon, for any image format.
- * We rasterize the icon with the browser - which decodes png/jpeg/webp/gif/svg
- * alike - through a same-origin `blob:` URL (so the canvas isn't tainted) and
- * read its dominant color. SVG gradient fills can still read back blank or taint
- * a canvas in some browsers, so when sampling finds nothing we fall back to
- * reading the colors out of the SVG markup. Failing everything, we keep the
- * deterministic hash gradient.
+ * Derive a plugin's accent gradient from its actual icon. The icon is fetched,
+ * rasterized on a canvas (the browser decodes png/jpeg/webp/svg alike) and its
+ * dominant color sampled, then turned into a light->dark gradient. Falls back to
+ * the deterministic hash gradient when there's no icon or it can't be read.
  */
 export function useIconPalette(iconUrl: string | undefined, seed: string): Gradient {
   const [gradient, setGradient] = useState<Gradient>(() => gradientFor(seed));
@@ -35,62 +32,44 @@ export interface Rgb {
   b: number;
 }
 
-const SAMPLE = 24;
+const SAMPLE = 32;
 
-/** The icon's dominant color: SVG markup for SVGs, sampled pixels for raster formats. */
+/** Fetch the icon and read its dominant color off a canvas, or null if unreadable. */
 async function iconColor(iconUrl: string): Promise<Rgb | null> {
+  if (typeof document === "undefined") return null;
   try {
     const response = await fetch(iconUrl);
     if (!response.ok) return null;
-    const blob = await response.blob();
-    const type = response.headers.get("content-type") ?? "";
-
-    // Rasterizing an SVG to a canvas drops its gradient fills - usually the
-    // background, i.e. the main color - leaving only solid accents, so read the
-    // markup first; only fall back to pixels if it declares no usable color.
-    if (type.includes("svg") || iconUrl.endsWith(".svg")) {
-      return dominantSvgColor(await blob.text()) ?? (await sampleImageColor(blob));
+    const url = URL.createObjectURL(await response.blob());
+    try {
+      return await sampleColor(url);
+    } finally {
+      URL.revokeObjectURL(url);
     }
-    return sampleImageColor(blob);
   } catch {
     return null;
   }
 }
 
+/** Draw the icon to a small canvas (same-origin blob, so it isn't tainted) and read it back. */
+async function sampleColor(url: string): Promise<Rgb | null> {
+  const image = new Image();
+  image.src = url;
+  await image.decode();
+
+  const canvas = document.createElement("canvas");
+  canvas.width = SAMPLE;
+  canvas.height = SAMPLE;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (ctx === null) return null;
+
+  ctx.drawImage(image, 0, 0, SAMPLE, SAMPLE);
+  return dominantColor(ctx.getImageData(0, 0, SAMPLE, SAMPLE).data);
+}
+
 /** Light->dark two-stop gradient around a base color, matching the tile look. */
 function gradientFromColor({ r, g, b }: Rgb): Gradient {
   return [shift(r, g, b, 1.15, 22), shift(r, g, b, 0.72, 0)];
-}
-
-/** Rasterize any browser-renderable image to a small canvas and read its dominant color. */
-async function sampleImageColor(blob: Blob): Promise<Rgb | null> {
-  if (typeof document === "undefined" || typeof URL.createObjectURL !== "function") return null;
-  const url = URL.createObjectURL(blob);
-  try {
-    const image = await loadImage(url);
-    if (image === null) return null;
-    const canvas = document.createElement("canvas");
-    canvas.width = SAMPLE;
-    canvas.height = SAMPLE;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (ctx === null) return null;
-    ctx.drawImage(image, 0, 0, SAMPLE, SAMPLE);
-    return dominantColor(ctx.getImageData(0, 0, SAMPLE, SAMPLE).data);
-  } catch {
-    return null; // a tainted canvas throws on read (some SVGs)
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-/** Load an `<img>` from a same-origin blob URL; resolves null on a decode/load error. */
-function loadImage(src: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.addEventListener("load", () => resolve(image));
-    image.addEventListener("error", () => resolve(null));
-    image.src = src;
-  });
 }
 
 interface ColorBin {
@@ -123,11 +102,12 @@ function meaningfulPixel(data: Uint8ClampedArray, i: number): Pixel | null {
 /**
  * The dominant color of RGBA pixels, by area rather than by peak saturation.
  * Meaningful pixels are binned into a coarse RGB histogram (4 bits/channel, so
- * shades merge); the heaviest bin wins, each pixel weighted slightly by its
- * saturation so a large flat background beats a small bright accent. Returns the
- * winning bin's mean color, or null when nothing meaningful remains.
+ * shades merge); the heaviest bin wins, each pixel weighted gently by its
+ * saturation so a large flat background beats a small bright accent (the blue
+ * field of a weather icon over its yellow sun) while a near-grey field still
+ * reads. Returns the winning bin's mean color, or null when nothing remains.
  */
-function dominantColor(data: Uint8ClampedArray): Rgb | null {
+export function dominantColor(data: Uint8ClampedArray): Rgb | null {
   const bins = new Map<number, ColorBin>();
   let best: ColorBin | null = null;
 
@@ -136,7 +116,7 @@ function dominantColor(data: Uint8ClampedArray): Rgb | null {
     if (px === null) continue;
     const key = ((px.r >> 4) << 8) | ((px.g >> 4) << 4) | (px.b >> 4);
     const bin = bins.get(key) ?? { r: 0, g: 0, b: 0, weight: 0 };
-    const weight = 1 + px.sat / 32;
+    const weight = 1 + px.sat / 128;
     bin.r += px.r * weight;
     bin.g += px.g * weight;
     bin.b += px.b * weight;
@@ -147,71 +127,6 @@ function dominantColor(data: Uint8ClampedArray): Rgb | null {
 
   if (best === null) return null;
   return { r: best.r / best.weight, g: best.g / best.weight, b: best.b / best.weight };
-}
-
-// 6-digit alternative first so `#2193B0` isn't truncated to the 3-digit `#219`.
-const STOP_COLOR = /stop-color\s*[:=]\s*["']?\s*(#(?:[0-9a-f]{6}|[0-9a-f]{3})\b)/gi;
-const ANY_HEX = /#(?:[0-9a-f]{6}|[0-9a-f]{3})\b/gi;
-
-/**
- * The icon's main color, read from its SVG markup. The generator paints the
- * background with a gradient and accents with solid fills, so the gradient
- * `stop-color`s are the main color - prefer them, and only consider every
- * declared color when the icon has no gradient (e.g. a flat fill). Within a set
- * we take the most saturated, skipping the near-white/near-black of glyphs and
- * outlines. Null when no usable hex color is declared.
- */
-export function dominantSvgColor(svg: string): Rgb | null {
-  return mostSaturated(collectHex(svg, STOP_COLOR, 1)) ?? mostSaturated(collectHex(svg, ANY_HEX, 0));
-}
-
-/** Meaningful colors matched by `pattern`, read from capture `group`. */
-function collectHex(svg: string, pattern: RegExp, group: number): Rgb[] {
-  const colors: Rgb[] = [];
-  for (const match of svg.matchAll(pattern)) {
-    const hex = match[group];
-    if (hex === undefined) continue;
-    const color = parseHex(hex);
-    if (isMeaningful(color)) colors.push(color);
-  }
-  return colors;
-}
-
-function mostSaturated(colors: Rgb[]): Rgb | null {
-  let best: Rgb | null = null;
-  let bestSat = -1;
-  for (const color of colors) {
-    const sat = saturation(color);
-    if (sat > bestSat) {
-      bestSat = sat;
-      best = color;
-    }
-  }
-  return best;
-}
-
-function parseHex(hex: string): Rgb {
-  const body = hex.slice(1);
-  const full =
-    body.length === 3
-      ? `${body[0]}${body[0]}${body[1]}${body[1]}${body[2]}${body[2]}`
-      : body;
-  return {
-    r: Number.parseInt(full.slice(0, 2), 16),
-    g: Number.parseInt(full.slice(2, 4), 16),
-    b: Number.parseInt(full.slice(4, 6), 16),
-  };
-}
-
-function saturation({ r, g, b }: Rgb): number {
-  return Math.max(r, g, b) - Math.min(r, g, b);
-}
-
-/** Skip transparent/near-white/near-black so a glyph or outline doesn't win. */
-function isMeaningful({ r, g, b }: Rgb): boolean {
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  return !(max > 244 && min > 244) && max >= 20;
 }
 
 function shift(r: number, g: number, b: number, factor: number, lift: number): string {
