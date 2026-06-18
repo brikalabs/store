@@ -9,7 +9,7 @@ import {
 } from "@brika/clay";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, KeyRound, ShieldCheck } from "lucide-react";
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { GithubIcon } from "../components/clay/icons";
 import { type CurrentUser, useCurrentUser } from "../lib/use-current-user";
@@ -39,8 +39,8 @@ function withSeparator(value: string): string {
 
 /** True only on a local dev origin; auto-approval is gated to these. */
 function isLocalHost(): boolean {
-  if (typeof window === "undefined") return false;
-  const { hostname } = window.location;
+  if (typeof document === "undefined") return false;
+  const { hostname } = globalThis.location;
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
 }
 
@@ -50,7 +50,7 @@ function isLocalHost(): boolean {
 const SLOT_CLASS =
   "h-14 w-[42px] rounded-xl font-medium font-mono text-2xl text-foreground data-[active=true]:border-brand data-[active=true]:ring-brand/25";
 
-function CodeSlot({ index }: { index: number }) {
+function CodeSlot({ index }: Readonly<{ index: number }>) {
   return (
     <InputOTPGroup>
       <InputOTPSlot index={index} className={SLOT_CLASS} />
@@ -66,7 +66,7 @@ interface DeviceBodyProps {
   value: string;
   submitting: boolean;
   onValueChange: (next: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void;
 }
 
 /** The action area below the heading: loading skeleton, sign-in, success, or the OTP form. */
@@ -79,7 +79,7 @@ function DeviceBody({
   submitting,
   onValueChange,
   onSubmit,
-}: DeviceBodyProps) {
+}: Readonly<DeviceBodyProps>) {
   if (loading) {
     return <div className="h-[50px] w-full animate-pulse rounded-xl bg-muted" />;
   }
@@ -159,7 +159,7 @@ function DeviceBody({
       </div>
 
       <p className="flex items-center gap-2 text-muted-foreground text-[13px]">
-        Signed in as
+        <span>Signed in as</span>
         <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
           <Avatar className="size-[18px]">
             <AvatarImage src={user.avatarUrl ?? undefined} alt={user.login} />
@@ -207,7 +207,7 @@ function DevicePage() {
     void submitApprove(normalized);
   }, [loading, user, code, submitApprove]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     void submitApprove(value);
   }

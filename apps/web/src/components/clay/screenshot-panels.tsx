@@ -1,7 +1,7 @@
 import { cn } from "@brika/clay";
 import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { useState } from "react";
-import { GRADIENTS, hashString } from "./gradients";
+import { gradientFor as gradientForSeed, hashString } from "./gradients";
 import { Image } from "./image";
 
 const MAX_THUMBS = 5;
@@ -19,8 +19,8 @@ export function placeholderShotCount(seed: string): number {
   return 5 + (hashString(seed) % 4);
 }
 
-function gradientFor(seed: string, index: number) {
-  return GRADIENTS[(hashString(seed) + index * 3) % GRADIENTS.length] ?? GRADIENTS[0];
+function gradientFor(seed: string, index: number): readonly [string, string] {
+  return gradientForSeed(`${seed}#${index}`);
 }
 
 /** Tasteful gradient used while/if a screenshot image can't be shown. */
@@ -29,7 +29,7 @@ function GradientFallback({
   index,
   showIcon = true,
 }: Readonly<{ seed: string; index: number; showIcon?: boolean }>) {
-  const gradient = gradientFor(seed, index) as readonly [string, string];
+  const gradient = gradientFor(seed, index);
   return (
     <div
       className="flex size-full items-center justify-center"

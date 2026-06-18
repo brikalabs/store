@@ -1,7 +1,7 @@
 import { Button, Textarea } from "@brika/clay";
 import { Comment } from "@brika/registry-contract";
 import { ChevronUp } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import { z } from "zod";
 import { formatDate } from "../lib/format";
 import { useCurrentUser } from "../lib/use-current-user";
@@ -65,7 +65,7 @@ export function CommentsSection({ pluginName, fallback = [] }: Props) {
     if (parsed.success) setComments(parsed.data);
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (body.trim().length === 0) return;
     setSubmitting(true);

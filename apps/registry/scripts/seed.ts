@@ -64,11 +64,7 @@ for (const name of names) {
   const scope = name.startsWith("@") ? (name.split("/")[0] ?? "") : "";
   statements.push(
     `INSERT OR REPLACE INTO reg_packages (name, scope) VALUES (${sql(name)}, ${sql(scope)});`,
-  );
-  statements.push(
     `INSERT OR REPLACE INTO reg_versions (name, version, manifest, integrity, shasum, size, yanked) VALUES (${sql(name)}, ${sql(latest)}, ${sql(JSON.stringify(version))}, ${sql(version.dist.integrity)}, ${sql(version.dist.shasum)}, ${bytes.length}, 0);`,
-  );
-  statements.push(
     `INSERT OR REPLACE INTO reg_dist_tags (name, tag, version) VALUES (${sql(name)}, 'latest', ${sql(latest)});`,
   );
   console.error(`seeded ${name}@${latest} (${bytes.length} bytes)`);

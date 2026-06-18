@@ -13,7 +13,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type ReactNode, type SyntheticEvent, useState } from "react";
 import type { Gradient } from "./clay/gradients";
 import { GradientAvatar, PluginIcon } from "./clay/plugin-icon";
 import { PluginCard } from "./plugin-card";
@@ -66,7 +66,7 @@ export function DiscoverIndex({
   const trending = plugins.slice(0, 5);
   const sorted = sortPlugins(plugins, sort);
 
-  function submitFilter(event: FormEvent) {
+  function submitFilter(event: SyntheticEvent) {
     event.preventDefault();
     const next = term.trim();
     navigate({ to: "/plugins", search: next.length > 0 ? { q: next } : {} });

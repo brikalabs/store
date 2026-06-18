@@ -7,7 +7,7 @@ import {
 } from "@brika/registry-contract";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Box, Check, Copy, ExternalLink, Pencil, Plus, Rocket, ShieldCheck } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import { AdminShell } from "../components/admin-shell";
 import { GithubIcon } from "../components/clay/icons";
 import { GradientAvatar, PluginIcon } from "../components/clay/plugin-icon";
@@ -62,7 +62,8 @@ function AdminConsole({ login, avatarUrl }: Readonly<{ login: string; avatarUrl?
         const parsed = DeveloperProfileSchema.safeParse(json);
         if (active && parsed.success) setProfile(parsed.data);
       });
-    fetch(`/v1/search?q=${encodeURIComponent(`maintainer:${login}`)}&limit=50`)
+    const maintainerQuery = encodeURIComponent(`maintainer:${login}`);
+    fetch(`/v1/search?q=${maintainerQuery}&limit=50`)
       .then((res) => res.json())
       .then((json: unknown) => {
         const parsed = SearchResponse.safeParse(json);
@@ -180,7 +181,7 @@ function PluginRow({ plugin }: Readonly<{ plugin: PluginSummary }>) {
       <div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 font-semibold text-emerald-600 text-xs dark:text-emerald-400">
           <span className="size-1.5 rounded-full bg-current" />
-          Published
+          <span>Published</span>
         </span>
       </div>
       <div className="text-muted-foreground text-sm">{caps > 0 ? `${caps} capabilities` : "·"}</div>
@@ -211,7 +212,7 @@ function ProfileEditor({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setSaved(false);

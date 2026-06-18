@@ -54,7 +54,7 @@ export function Image({
           ))
         : null}
 
-      {status !== "error" ? (
+      {status === "error" ? null : (
         <img
           src={src}
           alt={alt}
@@ -68,7 +68,7 @@ export function Image({
             imgClassName,
           )}
         />
-      ) : null}
+      )}
     </div>
   );
 }

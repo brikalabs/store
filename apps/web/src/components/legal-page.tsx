@@ -36,9 +36,9 @@ function textOf(children: ReactNode): string {
 
 function stripInlineMarkdown(text: string): string {
   return text
-    .replace(/\*\*/g, "")
+    .replaceAll("**", "")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/`/g, "");
+    .replaceAll("`", "");
 }
 
 interface ParsedDoc {

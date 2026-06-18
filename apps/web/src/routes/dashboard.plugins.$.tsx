@@ -231,7 +231,7 @@ function EditListing({ detail, locales }: Readonly<{ detail: PluginDetail; local
                     key={code}
                     className="flex items-center gap-1.5 rounded-lg border border-brand/40 bg-brand/10 px-3 py-1.5 font-semibold text-brand-ink text-xs"
                   >
-                    English
+                    <span>English</span>
                     <span className="font-bold text-[10px] opacity-70">DEFAULT</span>
                   </span>
                 ) : (

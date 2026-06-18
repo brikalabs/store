@@ -4,7 +4,7 @@ import type { SVGProps } from "react";
  * GitHub mark in the lucide visual language (sized via `className`, e.g.
  * `size-4`). lucide-react dropped brand glyphs, so the store ships its own.
  */
-export function GithubIcon({ className = "size-4", ...props }: SVGProps<SVGSVGElement>) {
+export function GithubIcon({ className = "size-4", ...props }: Readonly<SVGProps<SVGSVGElement>>) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -23,7 +23,7 @@ export function GithubIcon({ className = "size-4", ...props }: SVGProps<SVGSVGEl
 }
 
 /** X (formerly Twitter) mark, sized via `className`. */
-export function XIcon({ className = "size-4", ...props }: SVGProps<SVGSVGElement>) {
+export function XIcon({ className = "size-4", ...props }: Readonly<SVGProps<SVGSVGElement>>) {
   return (
     <svg
       viewBox="0 0 24 24"

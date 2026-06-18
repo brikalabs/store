@@ -82,3 +82,10 @@ test("rejects an unknown signing key", async () => {
   const empty: JwksProvider = { keys: () => Promise.resolve([]) };
   expect(await verifyGithubOidc(token, empty, { audience: AUD, now: NOW })).toBeNull();
 });
+
+test("rejects a token whose header is not valid JSON", async () => {
+  const badHeader = base64UrlEncode(new TextEncoder().encode("{ not json"));
+  const payload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(baseClaims())));
+  const token = `${badHeader}.${payload}.AAAA`;
+  expect(await verifyGithubOidc(token, jwks, { audience: AUD, now: NOW })).toBeNull();
+});

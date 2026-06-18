@@ -34,6 +34,23 @@ function InstallsBadge({ plugin }: PluginCardProps) {
   );
 }
 
+/** Rating badge, falling back to a capability count, then nothing. */
+function PluginMeta({
+  plugin,
+  capabilities,
+}: Readonly<{ plugin: PluginSummary; capabilities: number }>) {
+  if (plugin.rating) {
+    return (
+      <span className="inline-flex items-center gap-1 text-amber-500">
+        <Stars value={plugin.rating.average} starClassName="size-3" />
+        {plugin.rating.average.toFixed(1)}
+      </span>
+    );
+  }
+  if (capabilities > 0) return <span>{capabilities} capabilities</span>;
+  return null;
+}
+
 export function PluginCard({ plugin }: PluginCardProps) {
   const capabilities = capabilityTotal(plugin);
   return (
@@ -66,14 +83,7 @@ export function PluginCard({ plugin }: PluginCardProps) {
           v{plugin.version}
         </span>
         <InstallsBadge plugin={plugin} />
-        {plugin.rating ? (
-          <span className="inline-flex items-center gap-1 text-amber-500">
-            <Stars value={plugin.rating.average} starClassName="size-3" />
-            {plugin.rating.average.toFixed(1)}
-          </span>
-        ) : capabilities > 0 ? (
-          <span>{capabilities} capabilities</span>
-        ) : null}
+        <PluginMeta plugin={plugin} capabilities={capabilities} />
       </div>
     </Link>
   );

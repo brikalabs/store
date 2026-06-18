@@ -26,7 +26,7 @@ export function ServerErrorPage({ onRetry }: Readonly<{ onRetry?: () => void }>)
       primary={{
         label: "Try again",
         icon: RotateCw,
-        onClick: onRetry ?? (() => window.location.reload()),
+        onClick: onRetry ?? (() => globalThis.location.reload()),
       }}
       secondary={{ label: "Status page", icon: ExternalLink, href: "https://status.brika.dev" }}
       mono="UncaughtSparkError: the hamsters stopped running"

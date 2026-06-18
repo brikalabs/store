@@ -16,7 +16,7 @@ export function useIconPalette(iconUrl: string | undefined, seed: string): Gradi
     if (!iconUrl || typeof document === "undefined") return;
 
     let active = true;
-    const img = new window.Image();
+    const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       const extracted = extractGradient(img);

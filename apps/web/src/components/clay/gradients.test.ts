@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { GRADIENTS, gradientCss, gradientFor, hashString } from "./gradients";
+import { gradientCss, gradientFor, hashString } from "./gradients";
 
 describe("hashString", () => {
   test("is deterministic and non-negative", () => {
@@ -14,10 +14,15 @@ describe("hashString", () => {
 });
 
 describe("gradientFor", () => {
-  test("picks a palette from the table, stable per seed", () => {
+  test("generates a stable two-stop hex gradient per seed", () => {
     const g = gradientFor("@brika/plugin-snapshot");
-    expect(GRADIENTS).toContainEqual(g);
+    expect(g).toHaveLength(2);
+    for (const stop of g) expect(stop).toMatch(/^#[0-9a-f]{6}$/);
     expect(gradientFor("@brika/plugin-snapshot")).toEqual(g);
+  });
+
+  test("differs across seeds", () => {
+    expect(gradientFor("@brika/plugin-i18n")).not.toEqual(gradientFor("@brika/plugin-clock"));
   });
 });
 
