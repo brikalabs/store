@@ -338,7 +338,7 @@ function FileViewer({
         language={shikiLang(file.path)}
         filename={file.path}
         showLineNumbers
-        className="min-h-0 flex-1"
+        className="min-h-0 flex-1 overflow-y-auto"
       >
         {text}
       </CodeBlockContent>
