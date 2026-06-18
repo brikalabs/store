@@ -43,48 +43,62 @@ function readIconPixels(img: HTMLImageElement): Uint8ClampedArray | null {
   return ctx.getImageData(0, 0, size, size).data;
 }
 
+interface ColorBin {
+  r: number;
+  g: number;
+  b: number;
+  weight: number;
+}
+
+interface Pixel {
+  r: number;
+  g: number;
+  b: number;
+  sat: number;
+}
+
+/** A meaningful pixel at offset `i`, or null for transparent/near-white/near-black. */
+function meaningfulPixel(data: Uint8ClampedArray, i: number): Pixel | null {
+  if ((data[i + 3] ?? 0) < 128) return null;
+  const r = data[i] ?? 0;
+  const g = data[i + 1] ?? 0;
+  const b = data[i + 2] ?? 0;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max > 244 && min > 244) return null; // near-white
+  if (max < 20) return null; // near-black
+  return { r, g, b, sat: max - min };
+}
+
 /**
- * Pick a representative color from RGBA pixels: the most saturated meaningful
- * pixel when the icon has color, otherwise the average. Transparent, near-white,
- * and near-black pixels are ignored. Null when nothing meaningful remains.
+ * The icon's main color, by area rather than by peak saturation. Meaningful
+ * pixels are binned into a coarse RGB histogram (4 bits/channel, so shades
+ * merge); the heaviest bin wins, each pixel weighted slightly by its saturation
+ * so a large flat background beats a small bright accent while a faint tint still
+ * reads. Returns the winning bin's mean color, or null when nothing meaningful
+ * remains. Averaging every colored pixel instead would blend a blue-and-yellow
+ * icon into a muddy grey.
  */
 function dominantColor(data: Uint8ClampedArray): { r: number; g: number; b: number } | null {
-  let sumR = 0;
-  let sumG = 0;
-  let sumB = 0;
-  let count = 0;
-  let bestSat = 0;
-  let satR = 0;
-  let satG = 0;
-  let satB = 0;
+  const bins = new Map<number, ColorBin>();
+  let best: ColorBin | null = null;
 
   for (let i = 0; i < data.length; i += 4) {
-    const r = data[i] as number;
-    const g = data[i + 1] as number;
-    const b = data[i + 2] as number;
-    const a = data[i + 3] as number;
-    if (a < 128) continue;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    if (max > 240 && min > 240) continue; // near-white
-    if (max < 24) continue; // near-black
-    sumR += r;
-    sumG += g;
-    sumB += b;
-    count += 1;
-    const sat = max - min;
-    if (sat > bestSat) {
-      bestSat = sat;
-      satR = r;
-      satG = g;
-      satB = b;
-    }
+    const px = meaningfulPixel(data, i);
+    if (px === null) continue;
+    const key = ((px.r >> 4) << 8) | ((px.g >> 4) << 4) | (px.b >> 4);
+    const bin = bins.get(key) ?? { r: 0, g: 0, b: 0, weight: 0 };
+    const weight = 1 + px.sat / 32;
+    bin.r += px.r * weight;
+    bin.g += px.g * weight;
+    bin.b += px.b * weight;
+    bin.weight += weight;
+    bins.set(key, bin);
+    if (best === null || bin.weight > best.weight) best = bin;
   }
 
-  if (count === 0) return null;
-  return bestSat > 40
-    ? { r: satR, g: satG, b: satB }
-    : { r: sumR / count, g: sumG / count, b: sumB / count };
+  if (best === null) return null;
+  return { r: best.r / best.weight, g: best.g / best.weight, b: best.b / best.weight };
 }
 
 function extractGradient(img: HTMLImageElement): Gradient | null {
