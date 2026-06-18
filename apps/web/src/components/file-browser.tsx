@@ -334,14 +334,22 @@ function FileViewer({
     body = <ViewerLoading />;
   } else {
     body = (
-      <CodeBlockContent
-        language={shikiLang(file.path)}
-        filename={file.path}
-        showLineNumbers
-        className="min-h-0 flex-1 overflow-y-auto"
-      >
-        {text}
-      </CodeBlockContent>
+      // Single scroll region for the source. `w-max min-w-full` lets the grid
+      // grow to its content so Clay's inner `overflow-x-auto` never adds a
+      // second scrollbar: short files fill the pane (vertical scroll only),
+      // wide files scroll both axes on this one container. The gutter (first
+      // child) is pinned with `sticky left-0` so line numbers stay visible
+      // during horizontal scroll, while still scrolling vertically with the code.
+      <div className="min-h-0 flex-1 overflow-auto">
+        <CodeBlockContent
+          language={shikiLang(file.path)}
+          filename={file.path}
+          showLineNumbers
+          className="w-max min-w-full [&>*:first-child]:sticky [&>*:first-child]:left-0 [&>*:first-child]:z-10"
+        >
+          {text}
+        </CodeBlockContent>
+      </div>
     );
   }
 

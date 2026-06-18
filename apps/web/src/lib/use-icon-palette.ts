@@ -37,19 +37,21 @@ export interface Rgb {
 
 const SAMPLE = 24;
 
-/** The icon's dominant color, from pixels for any format, or SVG markup as a fallback. */
+/** The icon's dominant color: SVG markup for SVGs, sampled pixels for raster formats. */
 async function iconColor(iconUrl: string): Promise<Rgb | null> {
   try {
     const response = await fetch(iconUrl);
     if (!response.ok) return null;
     const blob = await response.blob();
-
-    const sampled = await sampleImageColor(blob);
-    if (sampled) return sampled;
-
     const type = response.headers.get("content-type") ?? "";
-    if (type.includes("svg") || iconUrl.endsWith(".svg")) return dominantSvgColor(await blob.text());
-    return null;
+
+    // Rasterizing an SVG to a canvas drops its gradient fills - usually the
+    // background, i.e. the main color - leaving only solid accents, so read the
+    // markup first; only fall back to pixels if it declares no usable color.
+    if (type.includes("svg") || iconUrl.endsWith(".svg")) {
+      return dominantSvgColor(await blob.text()) ?? (await sampleImageColor(blob));
+    }
+    return sampleImageColor(blob);
   } catch {
     return null;
   }
@@ -147,19 +149,38 @@ function dominantColor(data: Uint8ClampedArray): Rgb | null {
   return { r: best.r / best.weight, g: best.g / best.weight, b: best.b / best.weight };
 }
 
-const HEX_COLOR = /#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/gi;
+// 6-digit alternative first so `#2193B0` isn't truncated to the 3-digit `#219`.
+const STOP_COLOR = /stop-color\s*[:=]\s*["']?\s*(#(?:[0-9a-f]{6}|[0-9a-f]{3})\b)/gi;
+const ANY_HEX = /#(?:[0-9a-f]{6}|[0-9a-f]{3})\b/gi;
 
 /**
- * Fallback for SVG icons a canvas can't read: the most saturated `#rrggbb` (or
- * `#rgb`) declared in the markup, skipping the near-white/near-black used for
- * glyphs and outlines. Null when the markup declares no usable hex color.
+ * The icon's main color, read from its SVG markup. The generator paints the
+ * background with a gradient and accents with solid fills, so the gradient
+ * `stop-color`s are the main color - prefer them, and only consider every
+ * declared color when the icon has no gradient (e.g. a flat fill). Within a set
+ * we take the most saturated, skipping the near-white/near-black of glyphs and
+ * outlines. Null when no usable hex color is declared.
  */
 export function dominantSvgColor(svg: string): Rgb | null {
+  return mostSaturated(collectHex(svg, STOP_COLOR, 1)) ?? mostSaturated(collectHex(svg, ANY_HEX, 0));
+}
+
+/** Meaningful colors matched by `pattern`, read from capture `group`. */
+function collectHex(svg: string, pattern: RegExp, group: number): Rgb[] {
+  const colors: Rgb[] = [];
+  for (const match of svg.matchAll(pattern)) {
+    const hex = match[group];
+    if (hex === undefined) continue;
+    const color = parseHex(hex);
+    if (isMeaningful(color)) colors.push(color);
+  }
+  return colors;
+}
+
+function mostSaturated(colors: Rgb[]): Rgb | null {
   let best: Rgb | null = null;
   let bestSat = -1;
-  for (const match of svg.matchAll(HEX_COLOR)) {
-    const color = parseHex(match[0]);
-    if (!isMeaningful(color)) continue;
+  for (const color of colors) {
     const sat = saturation(color);
     if (sat > bestSat) {
       bestSat = sat;
