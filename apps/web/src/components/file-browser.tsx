@@ -340,12 +340,16 @@ function FileViewer({
       // wide files scroll both axes on this one container. The gutter (first
       // child) is pinned with `sticky left-0` so line numbers stay visible
       // during horizontal scroll, while still scrolling vertically with the code.
+      // Clay's gutter token is semi-transparent, so force an opaque `bg-muted`
+      // or the scrolling code would show through the pinned column. `min-h-full`
+      // makes the grid fill the pane for short files (grid stretches the row) so
+      // the gutter band runs full height instead of stopping at the last line.
       <div className="min-h-0 flex-1 overflow-auto">
         <CodeBlockContent
           language={shikiLang(file.path)}
           filename={file.path}
           showLineNumbers
-          className="w-max min-w-full [&>*:first-child]:sticky [&>*:first-child]:left-0 [&>*:first-child]:z-10"
+          className="min-h-full w-max min-w-full [&>*:first-child]:sticky [&>*:first-child]:left-0 [&>*:first-child]:z-10 [&>*:first-child]:bg-muted"
         >
           {text}
         </CodeBlockContent>

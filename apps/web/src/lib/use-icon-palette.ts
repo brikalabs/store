@@ -40,7 +40,12 @@ async function iconColor(iconUrl: string): Promise<Rgb | null> {
   try {
     const response = await fetch(iconUrl);
     if (!response.ok) return null;
-    const url = URL.createObjectURL(await response.blob());
+    // Don't trust the server's content-type: an `<img>` only decodes with a real
+    // image MIME, so sniff it from the bytes (a mislabeled .svg would otherwise
+    // fail to decode and fall back to the hash gradient).
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const type = imageMimeType(bytes) ?? response.headers.get("content-type") ?? "";
+    const url = URL.createObjectURL(new Blob([bytes], { type }));
     try {
       return await sampleColor(url);
     } finally {
@@ -49,6 +54,24 @@ async function iconColor(iconUrl: string): Promise<Rgb | null> {
   } catch {
     return null;
   }
+}
+
+/** True when `bytes` begins with the byte signature `sig`. */
+function startsWith(bytes: Uint8Array, sig: number[]): boolean {
+  return sig.every((byte, i) => bytes[i] === byte);
+}
+
+/** Sniff an image MIME from the leading bytes, so a wrong/missing content-type still decodes. */
+export function imageMimeType(bytes: Uint8Array): string | null {
+  if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47])) return "image/png";
+  if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "image/jpeg";
+  if (startsWith(bytes, [0x47, 0x49, 0x46, 0x38])) return "image/gif";
+  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes.subarray(8), [0x57, 0x45, 0x42, 0x50])) {
+    return "image/webp";
+  }
+  const head = new TextDecoder().decode(bytes.subarray(0, 256)).trimStart().toLowerCase();
+  if (head.startsWith("<svg") || head.startsWith("<?xml")) return "image/svg+xml";
+  return null;
 }
 
 /** Draw the icon to a small canvas (same-origin blob, so it isn't tainted) and read it back. */

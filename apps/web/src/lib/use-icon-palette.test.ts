@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { dominantColor } from "./use-icon-palette";
+import { dominantColor, imageMimeType } from "./use-icon-palette";
 
 /** Build an RGBA buffer from runs of `[count, [r, g, b]]` (all fully opaque). */
 function rgba(runs: Array<[number, [number, number, number]]>): Uint8ClampedArray {
@@ -48,5 +48,26 @@ describe("dominantColor", () => {
 
   test("returns null when no meaningful pixels remain", () => {
     expect(dominantColor(rgba([[100, [255, 255, 255]]]))).toBeNull();
+  });
+});
+
+describe("imageMimeType", () => {
+  const bytes = (...n: number[]) => new Uint8Array(n);
+
+  test("detects SVG from markup, ignoring leading whitespace", () => {
+    expect(imageMimeType(new TextEncoder().encode('<svg xmlns="http://x">'))).toBe("image/svg+xml");
+    expect(imageMimeType(new TextEncoder().encode('\n  <?xml version="1.0"?><svg>'))).toBe(
+      "image/svg+xml",
+    );
+  });
+
+  test("detects raster formats by magic bytes", () => {
+    expect(imageMimeType(bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a))).toBe("image/png");
+    expect(imageMimeType(bytes(0xff, 0xd8, 0xff, 0xe0))).toBe("image/jpeg");
+    expect(imageMimeType(bytes(0x47, 0x49, 0x46, 0x38, 0x39, 0x61))).toBe("image/gif");
+  });
+
+  test("returns null for bytes it can't identify", () => {
+    expect(imageMimeType(bytes(0x00, 0x01, 0x02, 0x03))).toBeNull();
   });
 });
