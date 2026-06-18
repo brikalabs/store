@@ -85,7 +85,10 @@ export function imageMimeType(bytes: Uint8Array): string | null {
   if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47])) return "image/png";
   if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "image/jpeg";
   if (startsWith(bytes, [0x47, 0x49, 0x46, 0x38])) return "image/gif";
-  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes.subarray(8), [0x57, 0x45, 0x42, 0x50])) {
+  if (
+    startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) &&
+    startsWith(bytes.subarray(8), [0x57, 0x45, 0x42, 0x50])
+  ) {
     return "image/webp";
   }
   const head = new TextDecoder().decode(bytes.subarray(0, 256)).trimStart().toLowerCase();
