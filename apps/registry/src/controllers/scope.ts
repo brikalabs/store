@@ -2,22 +2,25 @@ import { badRequest, httpError, reply } from "@brika/router";
 import { regScopes } from "@brika/store-db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import type { MemberRef, ScopeRole } from "../adapters/d1-scope-members";
 import { requireWrite } from "../auth";
 import { controller, route } from "../http/router";
 import { isCanonicalScope, ownedBy } from "../names";
 import type { Services } from "../services";
 
 /**
- * Scope management, owner-gated (the scope's owner identity, not an admin):
+ * Scope management. A scope must be created before anything publishes under it, and is
+ * governed by its MEMBERS (JSR-style):
  *
- *   PUT  /-/scope/:scope                create/claim a scope for the caller
- *   POST /-/scope/:scope/display-name   body `{ displayName: string | null }`
+ *   PUT    /-/scope/:scope                       create/claim a scope (caller becomes admin)
+ *   GET    /-/scope/:scope/members               list members (any member)
+ *   PUT    /-/scope/:scope/member/:provider/:id  add or re-role a member (admin)
+ *   DELETE /-/scope/:scope/member/:provider/:id  remove a member (admin)
+ *   POST   /-/scope/:scope/display-name          set the publisher label (admin)
  *
- * A scope must be explicitly created before anything can be published under it (the
- * publish ownership gate rejects an unknown scope). Creation is the only way a scope is
- * claimed; whoever creates it owns it. The display name is the trusted publisher label
- * shown by the storefront (e.g. "Brika Labs" for `@brika`); a manifest's free-text
- * `author` cannot override it. Only the owner can set it; null clears it.
+ * `member` may publish under the scope; `admin` may also manage members and the display
+ * name. A scope always keeps at least one admin. The `reg_scopes` owner/displayName is
+ * the public verified-publisher attribution; authorization is by membership.
  */
 
 /** A scope row keyed by the caller's identity, shared by the read-then-act handlers. */
@@ -26,12 +29,42 @@ async function readScope(ctx: Services, scope: string) {
   return rows[0];
 }
 
+/** The member reference for the authenticated caller. */
+function callerRef(provider: string, owner: string): MemberRef {
+  return { provider, id: owner };
+}
+
 /**
- * `PUT /-/scope/:scope` - create/claim a scope. Idempotent: `201` when newly created,
- * `200` when the caller already owns it, `409` when someone else does. The claim is
- * race-safe (insert-then-reread): `onConflictDoNothing` keeps the first writer's row, so
- * two identities racing to create the same scope resolve to one owner and the loser gets
- * `409` rather than a wrongly-granted claim.
+ * Authenticate, then require the caller is a member of the scope (404 when the scope
+ * does not exist, 403 when they are not a member). Returns the caller's identity + role.
+ */
+async function requireScopeMember(
+  ctx: Services,
+  scope: string,
+  req: Request,
+): Promise<{ identity: Awaited<ReturnType<typeof requireWrite>>; role: ScopeRole }> {
+  const identity = await requireWrite(req, ctx.db);
+  const role = await ctx.scopeMembers.roleOf(scope, callerRef(identity.provider, identity.owner));
+  if (role === null) {
+    if ((await readScope(ctx, scope)) === undefined) {
+      throw httpError(404, `scope ${scope} does not exist`, "not_found");
+    }
+    throw httpError(403, `you are not a member of ${scope}`, "forbidden");
+  }
+  return { identity, role };
+}
+
+/** Like {@link requireScopeMember}, but the caller must be an `admin`. */
+async function requireScopeAdmin(ctx: Services, scope: string, req: Request) {
+  const { identity, role } = await requireScopeMember(ctx, scope, req);
+  if (role !== "admin") throw httpError(403, `you are not an admin of ${scope}`, "forbidden");
+  return identity;
+}
+
+/**
+ * `PUT /-/scope/:scope` - create/claim a scope. Idempotent: `201` when newly created
+ * (the caller is seeded as its first admin), `200` when the caller already owns it,
+ * `409` when someone else does. The claim is race-safe (insert-then-reread).
  */
 export async function createScope({
   params,
@@ -42,7 +75,7 @@ export async function createScope({
   readonly req: Request;
   readonly ctx: Services;
 }): Promise<Response> {
-  const { db, audit } = ctx;
+  const { db, audit, scopeMembers } = ctx;
   const { scope } = params;
   if (!isCanonicalScope(scope)) {
     throw badRequest(
@@ -72,6 +105,8 @@ export async function createScope({
       "conflict",
     );
   }
+  // The creator is the scope's first admin; membership is what authorizes publishing.
+  await scopeMembers.upsert(scope, owner, "admin");
   await audit.record({
     action: "scope_create",
     packageName: scope,
@@ -80,6 +115,97 @@ export async function createScope({
     detail: null,
   });
   return reply({ ok: true, scope, owner, created: true }, 201);
+}
+
+/** `GET /-/scope/:scope/members` - list the scope's members (any member may view). */
+export async function listMembers({
+  params,
+  req,
+  ctx,
+}: {
+  readonly params: { readonly scope: string };
+  readonly req: Request;
+  readonly ctx: Services;
+}): Promise<Response> {
+  const { scope } = params;
+  await requireScopeMember(ctx, scope, req);
+  return reply({ ok: true, scope, members: await ctx.scopeMembers.list(scope) }, 200);
+}
+
+const MemberBody = z.object({ role: z.enum(["admin", "member"]) });
+
+/**
+ * `PUT /-/scope/:scope/member/:provider/:id` - add a member or change their role
+ * (admin only). Demoting the last admin is rejected so a scope always keeps one.
+ */
+export async function putMember({
+  params,
+  body,
+  req,
+  ctx,
+}: {
+  readonly params: { readonly scope: string; readonly provider: string; readonly id: string };
+  readonly body: z.infer<typeof MemberBody>;
+  readonly req: Request;
+  readonly ctx: Services;
+}): Promise<Response> {
+  const { scope, provider, id } = params;
+  const identity = await requireScopeAdmin(ctx, scope, req);
+  const target: MemberRef = { provider, id };
+
+  const current = await ctx.scopeMembers.roleOf(scope, target);
+  if (
+    current === "admin" &&
+    body.role === "member" &&
+    (await ctx.scopeMembers.adminCount(scope)) <= 1
+  ) {
+    throw httpError(409, `scope ${scope} must keep at least one admin`, "conflict");
+  }
+
+  await ctx.scopeMembers.upsert(scope, target, body.role);
+  await ctx.audit.record({
+    action: "scope_member_set",
+    packageName: scope,
+    version: null,
+    actor: identity,
+    detail: { provider, id, role: body.role },
+  });
+  return reply({ ok: true, scope, member: { provider, id, role: body.role } }, 200);
+}
+
+/**
+ * `DELETE /-/scope/:scope/member/:provider/:id` - remove a member (admin only).
+ * Removing the last admin is rejected.
+ */
+export async function deleteMember({
+  params,
+  req,
+  ctx,
+}: {
+  readonly params: { readonly scope: string; readonly provider: string; readonly id: string };
+  readonly req: Request;
+  readonly ctx: Services;
+}): Promise<Response> {
+  const { scope, provider, id } = params;
+  const identity = await requireScopeAdmin(ctx, scope, req);
+  const target: MemberRef = { provider, id };
+
+  const role = await ctx.scopeMembers.roleOf(scope, target);
+  if (role === null)
+    throw httpError(404, `${provider}:${id} is not a member of ${scope}`, "not_found");
+  if (role === "admin" && (await ctx.scopeMembers.adminCount(scope)) <= 1) {
+    throw httpError(409, `scope ${scope} must keep at least one admin`, "conflict");
+  }
+
+  await ctx.scopeMembers.remove(scope, target);
+  await ctx.audit.record({
+    action: "scope_member_remove",
+    packageName: scope,
+    version: null,
+    actor: identity,
+    detail: { provider, id },
+  });
+  return reply({ ok: true, scope, removed: { provider, id } }, 200);
 }
 
 /**
@@ -110,6 +236,7 @@ const DisplayNameBody = z.object({
     .nullable(),
 });
 
+/** `POST /-/scope/:scope/display-name` - set the verified publisher label (admin only). */
 export async function setDisplayName({
   params,
   body,
@@ -123,13 +250,7 @@ export async function setDisplayName({
 }): Promise<Response> {
   const { db, audit } = ctx;
   const { scope } = params;
-  const identity = await requireWrite(req, db);
-
-  const row = await readScope(ctx, scope);
-  if (row === undefined) throw httpError(404, `scope ${scope} does not exist`, "not_found");
-  if (!ownedBy(row, identity)) {
-    throw httpError(403, `scope ${scope} is owned by ${row.ownerId}`, "forbidden");
-  }
+  const identity = await requireScopeAdmin(ctx, scope, req);
 
   await db
     .update(regScopes)
@@ -150,6 +271,9 @@ export const scopeController = controller({
   prefix: "/-/scope",
   routes: [
     route.put({ path: "/:scope", handler: createScope }),
+    route.get({ path: "/:scope/members", handler: listMembers }),
+    route.put({ path: "/:scope/member/:provider/:id", body: MemberBody, handler: putMember }),
+    route.delete({ path: "/:scope/member/:provider/:id", handler: deleteMember }),
     route.post({ path: "/:scope/display-name", body: DisplayNameBody, handler: setDisplayName }),
   ],
 });

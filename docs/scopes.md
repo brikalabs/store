@@ -57,21 +57,57 @@ people racing to create the same scope resolve to a single owner.
 
 ## Ownership and publishing
 
-A scope is owned by the provider-qualified identity that created it (today that is a
-GitHub user or org, via OIDC trusted publishing or a device-flow token). Publishing
-enforces this:
+A scope is governed by its **members** (provider-qualified identities; today that is a
+GitHub user or org, via OIDC trusted publishing or a device-flow token). Publishing is
+gated on membership:
 
 - Publishing to a scope that does not exist is rejected — **create it first**.
-- Publishing to a scope owned by a different identity is rejected (`403`).
+- Publishing to a scope you are not a member of is rejected (`403`).
 
-So there is no way to publish a package under a scope you do not own, and no
+So there is no way to publish under a scope you are not a member of, and no
 first-publish race to claim one.
+
+## Members and roles
+
+Like [JSR](https://jsr.io/docs/scopes), a scope has members with one of two roles:
+
+- **member** — may publish versions under the scope.
+- **admin** — everything a member can, plus manage members and set the display name.
+
+The creator is the scope's first **admin**. A scope always keeps **at least one admin**:
+demoting or removing the last admin is rejected (`409`). All member management is
+admin-only.
+
+```sh
+# List members (any member)
+curl https://registry.brika.dev/-/scope/@brika/members -H "authorization: Bearer $TOKEN"
+
+# Add or re-role a member (admin) - provider + id in the path, role in the body
+curl -X PUT https://registry.brika.dev/-/scope/@brika/member/github/alice \
+  -H "authorization: Bearer $TOKEN" -H "content-type: application/json" \
+  -d '{"role":"member"}'
+
+# Remove a member (admin)
+curl -X DELETE https://registry.brika.dev/-/scope/@brika/member/github/alice \
+  -H "authorization: Bearer $TOKEN"
+```
+
+| Action | Status | Who |
+|---|---|---|
+| Add / re-role a member | `200` | admin |
+| Remove a member | `200` | admin |
+| List members | `200` | any member |
+| Demote / remove the last admin | `409` | (rejected) |
+| Not an admin / member | `403` | |
+
+There is no separate invite-acceptance step yet: an admin adds a member directly by
+`(provider, id)`. (JSR-style invitations are a possible later refinement.)
 
 ## Display name
 
-A scope owner can set a public **display name** shown by the storefront as the trusted
-publisher (e.g. "Brika Labs" for `@brika`), which overrides a manifest's free-text
-`author`:
+A scope **admin** can set a public **display name** shown by the storefront as the
+trusted publisher (e.g. "Brika Labs" for `@brika`), which overrides a manifest's
+free-text `author`:
 
 ```sh
 curl -X POST https://registry.brika.dev/-/scope/@brika/display-name \
@@ -80,16 +116,10 @@ curl -X POST https://registry.brika.dev/-/scope/@brika/display-name \
   -d '{"displayName":"Brika Labs"}'
 ```
 
-Only the scope owner can set it; `null` clears it (the owner id is shown instead).
+`null` clears it (the owner id is shown instead).
 
 ## Reserved scopes
 
 `@brika` and other official namespaces are reserved for the Brika team. Overly generic
 scope names may be declined or reclaimed under the
 [Acceptable Use Policy](../apps/web/src/content/legal/acceptable-use.md).
-
-## Planned
-
-Today a scope has a single owner. **Multi-member scopes with roles** (admin/member,
-inviting other accounts, "always at least one admin") are the planned next step, mirroring
-the rest of the JSR model.

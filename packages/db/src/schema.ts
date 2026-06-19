@@ -76,6 +76,30 @@ export const regScopes = sqliteTable("reg_scopes", {
 });
 
 /**
+ * Scope membership and roles (JSR-style). A scope can have several members; each is a
+ * provider-qualified identity with a role: `admin` (manage members + everything a
+ * member can) or `member` (publish under the scope). The scope creator is seeded as the
+ * first admin. Publishing is gated on membership, not the single `reg_scopes` owner; the
+ * `reg_scopes` owner/displayName remains the public verified-publisher attribution.
+ */
+export const regScopeMembers = sqliteTable(
+  "reg_scope_members",
+  {
+    scope: text("scope")
+      .notNull()
+      .references(() => regScopes.scope, { onDelete: "cascade" }),
+    /** Identity provider of the member (e.g. `github`). */
+    provider: text("provider").notNull().default("github"),
+    /** Member id within the provider (e.g. a GitHub login or org). */
+    memberId: text("member_id").notNull(),
+    /** `admin` or `member`. */
+    role: text("role").notNull().default("member"),
+    createdAt: integer("created_at").notNull().default(epoch),
+  },
+  (t) => [primaryKey({ columns: [t.scope, t.provider, t.memberId] })],
+);
+
+/**
  * Per-day tarball download counts: the install signal. One row per (package,
  * day-bucket), incremented when a tarball is served. Total installs is the sum
  * across days; "weekly" is the trailing-7-day window. Day is the unix epoch day

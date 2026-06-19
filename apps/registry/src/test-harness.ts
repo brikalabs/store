@@ -1,7 +1,15 @@
 import { Database } from "bun:sqlite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type Db, regDistTags, regPackages, regScopes, regVersions, schema } from "@brika/store-db";
+import {
+  type Db,
+  regDistTags,
+  regPackages,
+  regScopeMembers,
+  regScopes,
+  regVersions,
+  schema,
+} from "@brika/store-db";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
 /**
@@ -50,11 +58,15 @@ export function fakeR2(): R2Bucket {
 
 /**
  * Seed the canonical example package used across the registry tests: `@brika/x@1.0.0`
- * plus its `@brika` scope (owned by `owner`) and `latest` dist-tag. Token issuance is
- * left to the caller, since only the auth-facing tests need one.
+ * plus its `@brika` scope (owned by `owner`, who is seeded as the scope's admin member
+ * so membership-based publish authorization passes) and `latest` dist-tag. Token
+ * issuance is left to the caller, since only the auth-facing tests need one.
  */
 export async function seedExamplePackage(db: Db, owner: string): Promise<void> {
   await db.insert(regScopes).values({ scope: "@brika", ownerId: owner });
+  await db
+    .insert(regScopeMembers)
+    .values({ scope: "@brika", provider: "github", memberId: owner, role: "admin" });
   await db.insert(regPackages).values({ name: "@brika/x", scope: "@brika" });
   await db.insert(regVersions).values({
     name: "@brika/x",

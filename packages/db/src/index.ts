@@ -6,6 +6,7 @@ export {
   regDistTags,
   regDownloads,
   regPackages,
+  regScopeMembers,
   regScopes,
   regTokens,
   regVersions,

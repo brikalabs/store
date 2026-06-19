@@ -11,6 +11,7 @@ import { D1DownloadStore } from "./adapters/d1-downloads";
 import { D1MetadataReader } from "./adapters/d1-metadata";
 import { D1MetadataWriter } from "./adapters/d1-metadata-writer";
 import { D1OwnershipPolicy } from "./adapters/d1-ownership";
+import { D1ScopeMembers } from "./adapters/d1-scope-members";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { R2TarballWriter } from "./adapters/r2-tarball-writer";
@@ -60,6 +61,8 @@ export function buildServices(
     ),
     /** Post-publish management: deprecate, yank. */
     management: new ManagementService(new D1MetadataWriter(db), new D1OwnershipPolicy(db)),
+    /** Scope membership + roles (publish gating and member management). */
+    scopeMembers: new D1ScopeMembers(db),
     /** Per-day install-count store: record + stats. */
     downloads: new D1DownloadStore(db),
     /** Device-authorization flow (RFC 8628). */

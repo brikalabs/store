@@ -95,8 +95,15 @@ globally unique, and owned by whoever creates it. Publishing never claims a scop
 implicitly: the ownership gate rejects an unknown scope ("create it first") and
 requires an exact `(provider, ownerId)` match otherwise, so there is no
 first-publish claim to race and no way to land a package under a scope you do not
-own. Creation is idempotent and race-safe (insert-then-reread). Multi-member scopes
-with roles (admin/member, invites) are the planned next step.
+own. Creation is idempotent and race-safe (insert-then-reread).
+
+**Scopes have members and roles** (JSR-style). `reg_scope_members` holds each scope's
+members as provider-qualified identities with a role: `member` (may publish) or `admin`
+(also manages members + the display name). The creator is seeded as the first admin, a
+scope always keeps at least one admin, and **publish authorization is membership** (not
+the single `reg_scopes` owner, which remains the public verified-publisher attribution).
+Member management lives under `PUT`/`DELETE /-/scope/:scope/member/:provider/:id` and
+`GET /-/scope/:scope/members`, all admin-gated except the member-only listing.
 
 **Identity is provider-qualified.** A `PublishIdentity` is `{ provider, owner, … }`
 and scope ownership stores `(ownerProvider, ownerId)`, so the registry is not

@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { PublishService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
-import { type Db, regDistTags, regPackages, regScopes, regVersions } from "@brika/store-db";
+import {
+  type Db,
+  regDistTags,
+  regPackages,
+  regScopeMembers,
+  regScopes,
+  regVersions,
+} from "@brika/store-db";
 import { transaction } from "@brika/tx";
 import { eq } from "drizzle-orm";
 import { D1MetadataWriter } from "../adapters/d1-metadata-writer";
@@ -31,7 +38,9 @@ mock.module("cloudflare:workers", () => ({
 
 const { publish } = await import("./publish");
 const { deprecate, yank, takedown, restore } = await import("./manage");
-const { createScope, setDisplayName } = await import("./scope");
+const { createScope, deleteMember, listMembers, putMember, setDisplayName } = await import(
+  "./scope"
+);
 
 /** The status a handler yields, whether it returns a Response or throws an HttpError. */
 async function statusOf(run: Promise<Response>): Promise<number> {
@@ -123,7 +132,11 @@ describe("publish (auth + invariant + ownership gates)", () => {
   });
 
   test("413 when the tarball is over the size limit", async () => {
-    await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" }); // scope must exist
+    // The scope must exist and the publisher must be a member to reach the size check.
+    await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" });
+    await db
+      .insert(regScopeMembers)
+      .values({ scope: "@brika", memberId: "octocat", role: "admin" });
     const token = await issueToken(db, "octocat");
     // A 1-byte cap rejects even the tiny 3-byte "AAAA" tarball.
     const ctx = {
@@ -159,12 +172,19 @@ describe("createScope (explicit scope claim)", () => {
     ).toBe(400);
   });
 
-  test("201 creates and claims the scope for the caller", async () => {
+  test("201 creates the scope and seeds the caller as its admin member", async () => {
     const token = await issueToken(db, "alice");
     const res = await createScope({ params, req: post(undefined, token), ctx: services(db) });
     expect(res.status).toBe(201);
     const rows = await db.select().from(regScopes).where(eq(regScopes.scope, "@team"));
     expect(rows[0]).toMatchObject({ ownerProvider: "github", ownerId: "alice" });
+    const members = await db
+      .select()
+      .from(regScopeMembers)
+      .where(eq(regScopeMembers.scope, "@team"));
+    expect(members).toEqual([
+      expect.objectContaining({ provider: "github", memberId: "alice", role: "admin" }),
+    ]);
   });
 
   test("200 (idempotent) when the caller already owns the scope", async () => {
@@ -192,6 +212,121 @@ describe("createScope (explicit scope claim)", () => {
     expect([a, b].filter((s) => s === 201)).toHaveLength(1);
     expect([a, b].filter((s) => s === 409)).toHaveLength(1);
     expect(await db.select().from(regScopes).where(eq(regScopes.scope, "@team"))).toHaveLength(1);
+  });
+});
+
+describe("scope members (roles + invariants)", () => {
+  const scope = "@team";
+  const memberParams = (id: string) => ({ scope, provider: "github", id });
+  const membersOf = () => db.select().from(regScopeMembers).where(eq(regScopeMembers.scope, scope));
+
+  /** Create `@team` with `adminLogin` as its admin; return that admin's token. */
+  async function seedScopeAdmin(adminLogin: string): Promise<string> {
+    const token = await issueToken(db, adminLogin);
+    await createScope({ params: { scope }, req: post(undefined, token), ctx: services(db) });
+    return token;
+  }
+
+  test("an admin adds a member; a non-admin cannot", async () => {
+    const alice = await seedScopeAdmin("alice");
+    const res = await putMember({
+      params: memberParams("bob"),
+      body: { role: "member" },
+      req: post(undefined, alice),
+      ctx: services(db),
+    });
+    expect(res.status).toBe(200);
+    expect((await membersOf()).map((m) => m.memberId).sort((a, b) => a.localeCompare(b))).toEqual([
+      "alice",
+      "bob",
+    ]);
+
+    const bob = await issueToken(db, "bob"); // a plain member, not an admin
+    expect(
+      await statusOf(
+        putMember({
+          params: memberParams("carol"),
+          body: { role: "member" },
+          req: post(undefined, bob),
+          ctx: services(db),
+        }),
+      ),
+    ).toBe(403);
+  });
+
+  test("a newly added member can publish under the scope", async () => {
+    const alice = await seedScopeAdmin("alice");
+    await putMember({
+      params: memberParams("bob"),
+      body: { role: "member" },
+      req: post(undefined, alice),
+      ctx: services(db),
+    });
+    const bob = await issueToken(db, "bob");
+    const body = {
+      name: "@team/x",
+      version: "1.0.0",
+      manifest: { name: "@team/x", version: "1.0.0" },
+      tarball: "AAAA",
+    };
+    // Reaches the size/validation gate (not 403), i.e. membership authorized the publish.
+    expect(await statusOf(publish({ body, req: post(body, bob), ctx: services(db) }))).not.toBe(
+      403,
+    );
+  });
+
+  test("listMembers requires membership", async () => {
+    const alice = await seedScopeAdmin("alice");
+    expect(
+      (await listMembers({ params: { scope }, req: post(undefined, alice), ctx: services(db) }))
+        .status,
+    ).toBe(200);
+    const stranger = await issueToken(db, "bob");
+    expect(
+      await statusOf(
+        listMembers({ params: { scope }, req: post(undefined, stranger), ctx: services(db) }),
+      ),
+    ).toBe(403);
+  });
+
+  test("the last admin cannot be demoted or removed (409)", async () => {
+    const alice = await seedScopeAdmin("alice");
+    expect(
+      await statusOf(
+        putMember({
+          params: memberParams("alice"),
+          body: { role: "member" },
+          req: post(undefined, alice),
+          ctx: services(db),
+        }),
+      ),
+    ).toBe(409);
+    expect(
+      await statusOf(
+        deleteMember({
+          params: memberParams("alice"),
+          req: post(undefined, alice),
+          ctx: services(db),
+        }),
+      ),
+    ).toBe(409);
+  });
+
+  test("with a second admin, one admin can be removed", async () => {
+    const alice = await seedScopeAdmin("alice");
+    await putMember({
+      params: memberParams("bob"),
+      body: { role: "admin" },
+      req: post(undefined, alice),
+      ctx: services(db),
+    });
+    const res = await deleteMember({
+      params: memberParams("alice"),
+      req: post(undefined, alice),
+      ctx: services(db),
+    });
+    expect(res.status).toBe(200);
+    expect((await membersOf()).map((m) => m.memberId)).toEqual(["bob"]);
   });
 });
 
