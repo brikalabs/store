@@ -1,6 +1,7 @@
 import type { CatalogEntry, CatalogReader } from "@brika/registry-core";
-import { type Db, regDistTags, regPackages, regScopes, regVersions } from "@brika/store-db";
 import { and, eq } from "drizzle-orm";
+import type { Db } from "../client";
+import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
 
 /**
  * Cloudflare D1 implementation of the {@link CatalogReader} port: every package's latest

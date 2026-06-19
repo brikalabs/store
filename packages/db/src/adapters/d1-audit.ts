@@ -1,5 +1,6 @@
 import type { AuditEntry, AuditLog } from "@brika/registry-core";
-import { type Db, regAudit } from "@brika/store-db";
+import type { Db } from "../client";
+import { regAudit } from "../schema";
 
 /**
  * D1 implementation of the {@link AuditLog} port: the append-only `reg_audit` table.

@@ -1,6 +1,7 @@
 import type { MemberRef, ScopeRecord, ScopeStore } from "@brika/registry-core";
-import { type Db, regScopes } from "@brika/store-db";
 import { eq } from "drizzle-orm";
+import type { Db } from "../client";
+import { regScopes } from "../schema";
 
 /** Cloudflare D1 implementation of the {@link ScopeStore} port (the `reg_scopes` table). */
 export class D1ScopeStore implements ScopeStore {

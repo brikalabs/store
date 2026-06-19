@@ -1,6 +1,7 @@
 import type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "@brika/registry-core";
-import { type Db, regScopeMembers } from "@brika/store-db";
 import { and, eq, sql } from "drizzle-orm";
+import type { Db } from "../client";
+import { regScopeMembers } from "../schema";
 
 /** Narrow a stored role string to the `ScopeRole` union (the column only ever holds these). */
 function toRole(value: string): ScopeRole {

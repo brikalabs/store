@@ -4,8 +4,9 @@ import {
   type ScopeMembers,
   scopeOf,
 } from "@brika/registry-core";
-import { type Db, regScopes } from "@brika/store-db";
 import { eq } from "drizzle-orm";
+import type { Db } from "../client";
+import { regScopes } from "../schema";
 
 /**
  * Membership-based publish authorization: a scope must be explicitly CREATED (see the

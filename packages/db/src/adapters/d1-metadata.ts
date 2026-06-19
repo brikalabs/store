@@ -5,8 +5,9 @@ import {
   Provenance,
   type ScopePublisher,
 } from "@brika/registry-core";
-import { type Db, regDistTags, regPackages, regScopes, regVersions } from "@brika/store-db";
 import { eq } from "drizzle-orm";
+import type { Db } from "../client";
+import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
 
 /** Reads package metadata from D1 and assembles the domain `PackageRecord`. */
 export class D1MetadataReader implements MetadataReader {

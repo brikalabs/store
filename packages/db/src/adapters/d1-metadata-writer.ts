@@ -1,8 +1,9 @@
 import type { CommitVersionInput, MetadataWriter, VersionManager } from "@brika/registry-core";
-import { type Db, regDistTags, regPackages, regVersions } from "@brika/store-db";
 import { type TransactionalDb, transactionalDb } from "@brika/tx";
 import { and, eq } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
+import type { Db } from "../client";
+import { regDistTags, regPackages, regVersions } from "../schema";
 
 /**
  * Persists a published version to D1 and mutates its management flags. Covers

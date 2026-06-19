@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { type Db, regDistTags, regPackages, regScopes, regVersions } from "@brika/store-db";
+import type { Db } from "../client";
+import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
 import { makeDb } from "../test-harness";
 import { D1MetadataReader } from "./d1-metadata";
 

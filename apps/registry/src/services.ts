@@ -6,20 +6,22 @@ import {
   ScopeService,
 } from "@brika/registry-core";
 import type { Db } from "@brika/store-db";
-import { D1AuditLog } from "./adapters/d1-audit";
-import { D1CatalogReader } from "./adapters/d1-catalog";
-import { D1DeviceStore } from "./adapters/d1-device";
-import { D1DownloadStore } from "./adapters/d1-downloads";
-import { D1MetadataReader } from "./adapters/d1-metadata";
-import { D1MetadataWriter } from "./adapters/d1-metadata-writer";
-import { D1OwnershipPolicy } from "./adapters/d1-ownership";
-import { D1ScopeMembers } from "./adapters/d1-scope-members";
-import { D1ScopeStore } from "./adapters/d1-scope-store";
+import {
+  D1AuditLog,
+  D1CatalogReader,
+  D1DeviceStore,
+  D1DownloadStore,
+  D1MetadataReader,
+  D1MetadataWriter,
+  D1OwnershipPolicy,
+  D1ScopeMembers,
+  D1ScopeStore,
+  D1TokenStore,
+} from "@brika/store-db/adapters";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
 import { NoopTarballScanner } from "./adapters/noop-tarball-scanner";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { R2TarballWriter } from "./adapters/r2-tarball-writer";
-import { D1TokenStore } from "./adapters/token";
 
 /**
  * The registry's composition root: the one place that reads the Cloudflare

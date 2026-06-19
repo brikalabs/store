@@ -1,6 +1,7 @@
 import type { DeviceGrant, DeviceStore } from "@brika/registry-core";
-import { type Db, regDeviceAuth } from "@brika/store-db";
 import { eq } from "drizzle-orm";
+import type { Db } from "../client";
+import { regDeviceAuth } from "../schema";
 
 /** D1-backed {@link DeviceStore}: pending RFC 8628 grants in `reg_device_auth`. */
 export class D1DeviceStore implements DeviceStore {
