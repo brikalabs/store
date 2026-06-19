@@ -2,13 +2,12 @@
  * A tiny ArchUnit-style architecture-rule engine. Declare layering rules fluently, by
  * package/folder glob, so they scale as packages/controllers/adapters are added:
  *
- *   archRules()
- *     .rule("the domain core imports no database")
- *     .filesMatching("packages/*-core/src/**\/*.ts")
- *     .mayNotImport(modules("drizzle-orm", "@brika/store-db"));
+ *   test("the domain core imports no database", () => {
+ *     rule().filesMatching("packages/*-core/src").mayNotImport(modules("drizzle-orm")).assert();
+ *   });
  *
- * Run them as a lint CLI (`check()` -> violation lines) or as test cases
- * (`toTestCases()` -> one assertion per rule). Import-aware: comments are stripped, so an
+ * `assert()` throws on violation (call it inside your own `test()` - any runner); `check()`
+ * returns the violation lines for other uses. Import-aware: comments are stripped, so an
  * `import` inside a JSDoc example is not counted. Bun runtime (uses `Bun.Glob`).
  */
 
@@ -73,12 +72,6 @@ export interface RuleResult {
   readonly violations: string[];
 }
 
-/** A rule turned into a test case: a name and an `assert` that throws on violation. */
-export interface ArchTestCase {
-  readonly name: string;
-  readonly assert: () => void;
-}
-
 const TEST_GLOBS = ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/test-harness.ts"];
 
 /**
@@ -109,10 +102,11 @@ export interface RuleBuilder {
   mayNotImport(...categories: Category[]): RuleBuilder;
   /** Start the next rule. */
   rule(description: string): RuleBuilder;
+  /** Every violation across all rules, prefixed by rule (a flat list). */
   check(): string[];
+  /** Each rule with the violations it found. */
   checkEach(): RuleResult[];
-  toTestCases(): ArchTestCase[];
-  /** Throw if any rule is violated - for asserting inline in a test. */
+  /** Throw if any rule is violated - call inside a `test()` to make it an arch test. */
   assert(): void;
 }
 
@@ -138,31 +132,6 @@ export function archRules(options: ArchRulesOptions = {}): ArchRules {
  */
 export function rule(description = ""): RuleBuilder {
   return new ArchRules().rule(description);
-}
-
-/** A test runner's `test`/`it` function (bun:test, vitest, jest all match this shape). */
-export type TestRunner = (name: string, body: () => void | Promise<void>) => void;
-
-/**
- * Bind a test runner so each rule registers as a test case in one line - runner-agnostic,
- * pass your own `test` (`bun:test`, `vitest`, or jest's global):
- *
- *   import { test } from "bun:test"; // or "vitest"
- *   const archTest = bindArchTest(test);
- *   archTest("the domain core has no database",
- *     rule().filesMatching("packages/*-core/src").mayNotImport(ORM));
- *
- * The rule's `assert()` is the test body, so a violation fails the test naming the file +
- * import. (Equivalent to `test(name, () => rule.assert())` - this just keeps it terse.)
- */
-export function bindArchTest(
-  test: TestRunner,
-): (name: string, rule: { assert: () => void }) => void {
-  return (name, rule) => {
-    test(name, () => {
-      rule.assert();
-    });
-  };
 }
 
 export class ArchRules {
@@ -197,7 +166,6 @@ export class ArchRules {
       rule: (next) => this.rule(next),
       check: () => this.check(),
       checkEach: () => this.checkEach(),
-      toTestCases: () => this.toTestCases(),
       assert: () => this.assert(),
     };
     return builder;
@@ -216,24 +184,19 @@ export class ArchRules {
     return this.checkEach().flatMap((r) => r.violations.map((v) => `[${r.description}]\n  ${v}`));
   }
 
-  /** Throw if any rule is violated (listing them) - for asserting inline in a test. */
+  /**
+   * Throw if any rule is violated (listing the offending file + import). Call it inside a
+   * `test()` so the rule becomes an architecture test - works with any runner:
+   *
+   *   test("the domain core has no database", () => {
+   *     rule().filesMatching("packages/*-core/src").mayNotImport(ORM).assert();
+   *   });
+   */
   assert(): void {
     const violations = this.check();
     if (violations.length > 0) {
       throw new Error(`architecture: ${violations.length} violation(s):\n${violations.join("\n")}`);
     }
-  }
-
-  /** One test case per rule; `assert` throws (listing the offending imports) on violation. */
-  toTestCases(): ArchTestCase[] {
-    return this.checkEach().map((r) => ({
-      name: r.description,
-      assert: () => {
-        if (r.violations.length > 0) {
-          throw new Error(`${r.violations.length} violation(s):\n  ${r.violations.join("\n  ")}`);
-        }
-      },
-    }));
   }
 
   #violationsFor(spec: RuleSpec): string[] {

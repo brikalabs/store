@@ -1,14 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import {
-  archRules,
-  bindArchTest,
-  category,
-  modules,
-  rule,
-  specifiers,
-  stripComments,
-} from "./index";
+import { archRules, category, modules, rule, specifiers, stripComments } from "./index";
 
 // The package's own directory, used as a real root to exercise file scanning without
 // fixtures: src/index.ts genuinely imports "bun" and "node:fs"/"node:path".
@@ -109,19 +101,6 @@ describe("ArchRules engine", () => {
     expect(results[1]?.violations).toEqual([]);
   });
 
-  test("toTestCases: assert throws on violation, passes when clean", () => {
-    const [bad, ok] = archRules({ root: ROOT })
-      .rule("bad")
-      .filesMatching("src/index.ts")
-      .mayNotImport(modules("node:fs"))
-      .rule("ok")
-      .filesMatching("src/index.ts")
-      .mayNotImport(modules("lodash"))
-      .toTestCases();
-    expect(() => bad?.assert()).toThrow(/violation/);
-    expect(() => ok?.assert()).not.toThrow();
-  });
-
   test("category is the raw escape hatch", () => {
     const odd = category("an odd-length specifier", (s) => s.length % 2 === 1);
     expect(odd.test("bun")).toBe(true);
@@ -143,28 +122,6 @@ describe("ArchRules engine", () => {
         .mayNotImport(modules("lodash"))
         .assert(),
     ).not.toThrow();
-  });
-
-  test("bindArchTest registers each rule via the injected runner (no bun:test dependency)", () => {
-    const calls: { name: string; body: () => void }[] = [];
-    const archTest = bindArchTest((name, body) => calls.push({ name, body: body as () => void }));
-    archTest(
-      "clean",
-      archRules({ root: ROOT })
-        .rule("a")
-        .filesMatching("src/index.ts")
-        .mayNotImport(modules("lodash")),
-    );
-    archTest(
-      "dirty",
-      archRules({ root: ROOT })
-        .rule("b")
-        .filesMatching("src/index.ts")
-        .mayNotImport(modules("node:fs")),
-    );
-    expect(calls.map((c) => c.name)).toEqual(["clean", "dirty"]);
-    expect(() => calls[0]?.body()).not.toThrow();
-    expect(() => calls[1]?.body()).toThrow(/violation/);
   });
 
   test("top-level rule() builds a single rule against the cwd", () => {
