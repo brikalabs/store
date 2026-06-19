@@ -40,7 +40,7 @@ export class Publisher {
   }
 
   /** Audit in its own transaction, so it survives an outer rollback. */
-  @transactional(requiresNew)
+  @transactional({ propagation: requiresNew })
   async audit(name: string): Promise<void> {
     await this.#files.put(`${name}.audit`, "logged");
   }

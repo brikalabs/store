@@ -147,6 +147,12 @@ buys us.
 - **Publish is the canonical unit**: stage the tarball (compensable) -> defer the
   metadata batch -> at commit the batch lands atomically; if it fails, the tarball is
   compensated. Order-independent, because the D1 write is deferred to the end.
+- **Read-only units** (`readOnlyTransaction(fn)`, or `{ readOnly: true }` /
+  `@transactional(required, { readOnly: true })`) mirror Spring's
+  `@Transactional(readOnly = true)`, but **enforced, not a hint**: staging any write
+  inside one (`onRollback`/`onCommit`/`deferBatch`) throws, while completion hooks
+  still run. Wrapping a read path this way proves it is side-effect-free. (It does not
+  route to D1 read replicas - that would be a separate Sessions-API concern.)
 
 **Is it ACID?** Within D1, yes: a `batch()` is one atomic, isolated, durable D1
 transaction (and unique constraints keep it consistent). **Across R2 + D1, no** - it
@@ -166,7 +172,9 @@ true atomicity is needed, keep it inside a single D1 `batch`.
    atomically at the commit point.
 3. Put post-commit side effects (notifications, cache busts, metrics) in
    `afterCommit(…)` so they fire only if the unit actually committed.
-4. Make compensations idempotent and cheap; a compensation that throws is logged, not
+4. Wrap a flow that must only read in `readOnlyTransaction(…)` to assert it stages no
+   writes; the unit throws if it tries.
+5. Make compensations idempotent and cheap; a compensation that throws is logged, not
    retried, so it must not be load-bearing for correctness.
 
 ## Security properties

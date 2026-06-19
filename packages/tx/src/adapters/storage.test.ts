@@ -55,9 +55,12 @@ describe("transactionalStorage", () => {
     await expect(
       transaction(async () => {
         await tx.put("outer.tgz", "x");
-        await transaction(async () => {
-          await tx.put("inner.tgz", "y");
-        }, requiresNew);
+        await transaction(
+          async () => {
+            await tx.put("inner.tgz", "y");
+          },
+          { propagation: requiresNew },
+        );
         throw new Error("outer fails");
       }),
     ).rejects.toThrow("outer fails");

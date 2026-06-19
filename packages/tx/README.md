@@ -36,12 +36,13 @@ are no-ops, so the same code runs un-wrapped.
 
 | Export | What it does |
 | --- | --- |
-| `transaction(fn, propagation?, config?)` | Run `fn` as a unit of work and return its result. |
-| `transactional(propagation?, config?)` | TC39 decorator: wrap a method as a unit of work. |
+| `transaction(fn, options?)` | Run `fn` as a unit of work and return its result. |
+| `readOnlyTransaction(fn, options?)` | Run `fn` as a read-only unit (staging any write throws). |
+| `transactional(options?)` | TC39 decorator: wrap a method as a unit of work. |
 | `onRollback(undo)` | Enlist a compensation, run LIFO if the unit fails. |
 | `onCommit(action)` | Defer work to just before the unit succeeds (e.g. a flush). |
 | `onComplete(action)` / `afterCommit(cb)` | Run after the unit settles (`afterCommit` only on success). |
-| `inTransaction()` | Whether the caller is inside a unit of work. |
+| `inTransaction()` / `isReadOnly()` | Whether the caller is inside a unit of work / a read-only one. |
 | `transactionalStorage(store)` / `transactionalDb(db)` | Proxy wrappers that auto-enlist a store's `put` / defer a DB `batch`, preserving every other method. |
 | `required` / `requiresNew` / `mandatory` / `never` / `supports` / `notSupported` | Spring-style propagation strategies. |
 | `transactions` / `TransactionManager` | The default manager instance and its class, for isolated managers. |
@@ -58,17 +59,30 @@ running:
 - `supports`: join if present, otherwise run with no unit.
 - `notSupported`: run with no unit even if one is active.
 
+### Options
+
+`transaction`, `readOnlyTransaction`, and `@transactional` all take a single
+`TxOptions` object - `{ propagation?, readOnly?, rollbackOn? }` - mirroring Spring's
+`@Transactional(...)` attributes:
+
+- `propagation`: how this relates to an active unit (default `required`).
+- `readOnly`: enforce no writes - staging `onRollback`/`onCommit`/`deferBatch` throws.
+- `rollbackOn`: roll back only when the predicate returns true (default: any error).
+
 ### Decorator
 
 ```ts
 import { transactional, requiresNew } from "@brika/tx";
 
 class PublishService {
-  @transactional()              // every call is a unit of work
+  @transactional()                              // every call is a unit of work
   async publish(input: Input) { ... }
 
-  @transactional(requiresNew)   // its own independent unit
+  @transactional({ propagation: requiresNew })  // its own independent unit
   async audit(event: Event) { ... }
+
+  @transactional({ readOnly: true })            // proven side-effect-free
+  async resolve(name: string) { ... }
 }
 ```
 

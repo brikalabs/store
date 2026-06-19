@@ -15,9 +15,12 @@ export type { Scope } from "./core/scope";
 export {
   afterCommit,
   inTransaction,
+  isReadOnly,
   onCommit,
   onComplete,
   onRollback,
+  readOnlyTransaction,
+  type TxOptions,
   transaction,
   transactional,
   transactions,

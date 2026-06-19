@@ -1,11 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { TransactionError } from "./errors";
 import { TransactionManager } from "./manager";
 import {
   afterCommit,
   inTransaction,
+  isReadOnly,
   onCommit,
   onComplete,
   onRollback,
+  readOnlyTransaction,
   transaction,
 } from "./transaction";
 
@@ -194,7 +197,6 @@ describe("rollbackOn", () => {
           onRollback(() => log.push("undo"));
           throw new Expected("expected");
         },
-        undefined,
         { rollbackOn: (error) => !(error instanceof Expected) },
       ),
     ).rejects.toBeInstanceOf(Expected);
@@ -243,5 +245,69 @@ describe("concurrency", () => {
     );
     // Exactly the even indices rolled back, each once: no context crossed into another.
     expect(rolledBack.toSorted((x, y) => x - y)).toEqual([0, 2, 4, 6, 8, 10, 12, 14, 16, 18]);
+  });
+});
+
+describe("read-only transactions", () => {
+  test("isReadOnly reflects the unit, and a pure read commits with its value", async () => {
+    expect(isReadOnly()).toBe(false);
+    const result = await readOnlyTransaction(async () => {
+      expect(inTransaction()).toBe(true);
+      expect(isReadOnly()).toBe(true);
+      return "value";
+    });
+    expect(result).toBe("value");
+    expect(isReadOnly()).toBe(false); // cleared afterward
+  });
+
+  test("staging a write (onCommit / onRollback) inside a read-only unit throws", async () => {
+    await expect(
+      readOnlyTransaction(async () => {
+        onCommit(() => {});
+      }),
+    ).rejects.toBeInstanceOf(TransactionError);
+
+    await expect(
+      readOnlyTransaction(async () => {
+        onRollback(() => {});
+      }),
+    ).rejects.toBeInstanceOf(TransactionError);
+  });
+
+  test("completion hooks still run in a read-only unit (logging/metrics are not writes)", async () => {
+    let completed = false;
+    let after = false;
+    await readOnlyTransaction(async () => {
+      onComplete(() => {
+        completed = true;
+      });
+      afterCommit(() => {
+        after = true;
+      });
+    });
+    expect(completed).toBe(true);
+    expect(after).toBe(true);
+  });
+
+  test("the readOnly config flag enforces the same way as the helper", async () => {
+    await expect(
+      transaction(
+        async () => {
+          onCommit(() => {});
+        },
+        { readOnly: true },
+      ),
+    ).rejects.toBeInstanceOf(TransactionError);
+  });
+
+  test("read-only does not leak: a later read-write unit can stage writes", async () => {
+    await readOnlyTransaction(async () => "read");
+    let committed = false;
+    await transaction(async () => {
+      onCommit(() => {
+        committed = true;
+      });
+    });
+    expect(committed).toBe(true);
   });
 });

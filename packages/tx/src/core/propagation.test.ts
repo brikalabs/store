@@ -8,11 +8,14 @@ describe("required", () => {
     const undone: string[] = [];
     expect(inTransaction()).toBe(false);
     await expect(
-      transaction(async () => {
-        expect(inTransaction()).toBe(true);
-        onRollback(() => undone.push("x"));
-        throw new Error("fail");
-      }, required),
+      transaction(
+        async () => {
+          expect(inTransaction()).toBe(true);
+          onRollback(() => undone.push("x"));
+          throw new Error("fail");
+        },
+        { propagation: required },
+      ),
     ).rejects.toThrow("fail");
     expect(undone).toEqual(["x"]);
   });
@@ -22,10 +25,13 @@ describe("required", () => {
     await expect(
       transaction(async () => {
         onRollback(() => undone.push("outer"));
-        await transaction(async () => {
-          onRollback(() => undone.push("inner"));
-          throw new Error("fail");
-        }, required);
+        await transaction(
+          async () => {
+            onRollback(() => undone.push("inner"));
+            throw new Error("fail");
+          },
+          { propagation: required },
+        );
       }),
     ).rejects.toThrow("fail");
     expect(undone).toEqual(["inner", "outer"]); // single scope, reverse order
@@ -38,9 +44,12 @@ describe("requiresNew", () => {
     await expect(
       transaction(async () => {
         onRollback(() => events.push("outer-undo"));
-        await transaction(async () => {
-          onRollback(() => events.push("inner-undo")); // inner succeeds -> not run
-        }, requiresNew);
+        await transaction(
+          async () => {
+            onRollback(() => events.push("inner-undo")); // inner succeeds -> not run
+          },
+          { propagation: requiresNew },
+        );
         throw new Error("outer fails");
       }),
     ).rejects.toThrow("outer fails");
@@ -51,10 +60,13 @@ describe("requiresNew", () => {
     const events: string[] = [];
     await transaction(async () => {
       onRollback(() => events.push("outer-undo")); // outer commits -> not run
-      await transaction(async () => {
-        onRollback(() => events.push("inner-undo"));
-        throw new Error("inner fails");
-      }, requiresNew).catch(() => events.push("caught"));
+      await transaction(
+        async () => {
+          onRollback(() => events.push("inner-undo"));
+          throw new Error("inner fails");
+        },
+        { propagation: requiresNew },
+      ).catch(() => events.push("caught"));
     });
     expect(events).toEqual(["inner-undo", "caught"]); // inner rolled back; outer committed
   });
@@ -62,9 +74,12 @@ describe("requiresNew", () => {
   test("is active inside (a fresh transaction)", async () => {
     let active = false;
     await transaction(async () => {
-      await transaction(async () => {
-        active = inTransaction();
-      }, requiresNew);
+      await transaction(
+        async () => {
+          active = inTransaction();
+        },
+        { propagation: requiresNew },
+      );
     });
     expect(active).toBe(true);
   });
@@ -72,15 +87,20 @@ describe("requiresNew", () => {
 
 describe("mandatory", () => {
   test("throws outside a transaction", async () => {
-    await expect(transaction(async () => {}, mandatory)).rejects.toBeInstanceOf(TransactionError);
+    await expect(transaction(async () => {}, { propagation: mandatory })).rejects.toBeInstanceOf(
+      TransactionError,
+    );
   });
 
   test("runs inside a transaction", async () => {
     let ran = false;
     await transaction(async () => {
-      await transaction(async () => {
-        ran = true;
-      }, mandatory);
+      await transaction(
+        async () => {
+          ran = true;
+        },
+        { propagation: mandatory },
+      );
     });
     expect(ran).toBe(true);
   });
@@ -89,16 +109,19 @@ describe("mandatory", () => {
 describe("never", () => {
   test("runs outside a transaction", async () => {
     let ran = false;
-    await transaction(async () => {
-      ran = true;
-    }, never);
+    await transaction(
+      async () => {
+        ran = true;
+      },
+      { propagation: never },
+    );
     expect(ran).toBe(true);
   });
 
   test("throws inside a transaction", async () => {
     await expect(
       transaction(async () => {
-        await transaction(async () => {}, never);
+        await transaction(async () => {}, { propagation: never });
       }),
     ).rejects.toBeInstanceOf(TransactionError);
   });
@@ -107,18 +130,24 @@ describe("never", () => {
 describe("supports", () => {
   test("runs without a transaction outside one", async () => {
     let active = true;
-    await transaction(async () => {
-      active = inTransaction();
-    }, supports);
+    await transaction(
+      async () => {
+        active = inTransaction();
+      },
+      { propagation: supports },
+    );
     expect(active).toBe(false);
   });
 
   test("joins an active transaction", async () => {
     let active = false;
     await transaction(async () => {
-      await transaction(async () => {
-        active = inTransaction();
-      }, supports);
+      await transaction(
+        async () => {
+          active = inTransaction();
+        },
+        { propagation: supports },
+      );
     });
     expect(active).toBe(true);
   });
@@ -130,10 +159,13 @@ describe("notSupported", () => {
     let suspendedActive = true;
     await transaction(async () => {
       onRollback(() => events.push("outer-undo")); // outer commits -> not run
-      await transaction(async () => {
-        suspendedActive = inTransaction();
-        onRollback(() => events.push("suspended-undo")); // no active tx -> no-op
-      }, notSupported);
+      await transaction(
+        async () => {
+          suspendedActive = inTransaction();
+          onRollback(() => events.push("suspended-undo")); // no active tx -> no-op
+        },
+        { propagation: notSupported },
+      );
     });
     expect(suspendedActive).toBe(false);
     expect(events).toEqual([]);
