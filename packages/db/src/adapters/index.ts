@@ -13,4 +13,11 @@ export { D1MetadataWriter } from "./d1-metadata-writer";
 export { D1OwnershipPolicy } from "./d1-ownership";
 export { D1ScopeMembers } from "./d1-scope-members";
 export { D1ScopeStore } from "./d1-scope-store";
+export {
+  listScopesForMember,
+  listSubjectTokens,
+  type MemberScope,
+  revokeTokenByHash,
+  type SubjectToken,
+} from "./queries";
 export { D1TokenStore, issueToken, revokeToken, verifyToken } from "./token";

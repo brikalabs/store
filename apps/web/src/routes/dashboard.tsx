@@ -11,11 +11,11 @@ import { type SyntheticEvent, useEffect, useState } from "react";
 import { AdminShell } from "../components/admin-shell";
 import { GithubIcon } from "../components/clay/icons";
 import { GradientAvatar, PluginIcon } from "../components/clay/plugin-icon";
-import { LoginCard } from "../components/login-card";
 import { formatCount } from "../lib/format";
-import { useCurrentUser } from "../lib/use-current-user";
+import { requireUser } from "../lib/require-user";
 
 export const Route = createFileRoute("/dashboard")({
+  beforeLoad: async ({ location }) => ({ user: await requireUser(location.href) }),
   component: DashboardPage,
 });
 
@@ -37,16 +37,7 @@ jobs:
       - run: npm publish --provenance --access public`;
 
 function DashboardPage() {
-  const { user, loading } = useCurrentUser();
-
-  if (loading) {
-    return (
-      <main className="mx-auto max-w-6xl px-6 py-16">
-        <div className="h-40 animate-pulse rounded-2xl bg-muted" />
-      </main>
-    );
-  }
-  if (user === null) return <LoginCard />;
+  const { user } = Route.useRouteContext();
   return <AdminConsole login={user.login} avatarUrl={user.avatarUrl ?? undefined} />;
 }
 
