@@ -84,10 +84,21 @@ npm-compatible. The hub points `@brika:registry` at it; `bun add` is unchanged.
    the SHA-512 `dist.integrity`);
 3. tarballs stream from R2 with a 1-year `immutable` cache.
 
-**Publish** (`POST /-/publish`, in progress): verify GitHub OIDC (or a session
-token) -> build a `PublishIdentity` -> `PublishService` runs the ownership gate,
-the `@brika/schema` data gate, the immutability check, computes integrity, and
-writes the tarball then the version. A rejected publish never writes.
+**Publish** (`POST /-/publish`): verify a credential -> build a `PublishIdentity`
+-> `PublishService` runs the ownership gate, the `@brika/schema` data gate, the
+immutability check, computes integrity, and writes the tarball then the version. A
+rejected publish never writes.
+
+**Identity is provider-qualified.** A `PublishIdentity` is `{ provider, owner, … }`
+and scope ownership stores `(ownerProvider, ownerId)`, so the registry is not
+GitHub-locked: OIDC verification is split into a provider-neutral `verifyOidc`
+(signature + issuer + audience + time) plus a per-provider claim mapping, and a
+publish token records its provider. Only GitHub is wired today (its OIDC issuer +
+the device-flow OAuth); adding GitLab/Google is a new claim mapper + OAuth app, no
+domain or schema change. The displayed **publisher** is the scope's verified owner
+(`ownerProvider`/`ownerId`) plus an owner-set `displayName` (e.g. "Brika Labs"),
+surfaced in the packument/catalog so the storefront trusts it over a manifest's
+free-text `author`.
 
 ## store.brika.dev
 

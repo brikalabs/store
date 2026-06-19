@@ -12,7 +12,7 @@ import { D1MetadataReader } from "./d1-metadata";
 let db: Db;
 beforeEach(async () => {
   db = makeDb();
-  await db.insert(regScopes).values({ scope: "@brika", githubOwner: "octocat" });
+  await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" });
 });
 
 describe("D1MetadataReader.getPackage", () => {

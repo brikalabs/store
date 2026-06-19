@@ -2,8 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { ManagementService, type VersionManager } from "./manage";
 import type { OwnershipPolicy, PublishIdentity } from "./publish";
 
-const OWNER: PublishIdentity = { owner: "brikalabs", repository: "brikalabs/store" };
-const STRANGER: PublishIdentity = { owner: "someone-else", repository: null };
+const OWNER: PublishIdentity = {
+  provider: "github",
+  owner: "brikalabs",
+  repository: "brikalabs/store",
+};
+const STRANGER: PublishIdentity = { provider: "github", owner: "someone-else", repository: null };
 
 function allowOwner(): OwnershipPolicy {
   return {

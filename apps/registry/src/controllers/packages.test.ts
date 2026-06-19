@@ -48,7 +48,7 @@ function noopWaitUntil(): void {}
 let db: Db;
 beforeEach(async () => {
   db = makeDb();
-  await db.insert(regScopes).values({ scope: "@brika", githubOwner: "octocat" });
+  await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" });
   await db.insert(regPackages).values({ name: "@brika/x", scope: "@brika" });
   await db.insert(regVersions).values({
     name: "@brika/x",

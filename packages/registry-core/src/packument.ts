@@ -40,6 +40,12 @@ export interface Packument {
    * version is gone; the versions themselves are absent from `versions` above.
    */
   readonly takedowns?: Record<string, string>;
+  /**
+   * The verified publisher (the scope owner + its chosen display name). Non-standard
+   * field the storefront renders as the trusted "published by", overriding the
+   * free-text manifest `author`. Absent for unclaimed/unscoped packages.
+   */
+  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: true };
 }
 
 /**
@@ -87,6 +93,9 @@ export function buildPackument(record: PackageRecord, baseUrl: string): Packumen
     versions,
     time: { ...time, modified },
     ...(Object.keys(takedowns).length > 0 ? { takedowns } : {}),
+    ...(record.publisher
+      ? { publisher: { id: record.publisher.id, name: record.publisher.name, verified: true } }
+      : {}),
   };
 }
 

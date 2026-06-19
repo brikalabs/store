@@ -5,7 +5,9 @@ import type { PackageVersion, Provenance } from "./types";
 
 /** Who is publishing, derived from a verified OIDC token or a session token. */
 export interface PublishIdentity {
-  /** GitHub owner (org/user) that is publishing. */
+  /** Identity provider this principal belongs to (e.g. `"github"`). */
+  readonly provider: string;
+  /** Owner id within the provider (org/user that is publishing). */
   readonly owner: string;
   /** `owner/repo` the publish ran from (OIDC), or null for a local token publish. */
   readonly repository: string | null;

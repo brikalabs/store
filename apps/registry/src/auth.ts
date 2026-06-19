@@ -35,6 +35,7 @@ export async function authenticateWrite(request: Request, db: Db): Promise<Publi
   const claims = await verifyGithubOidc(token, jwks, { audience: AUDIENCE });
   if (claims !== null) {
     return {
+      provider: "github",
       owner: claims.repository_owner,
       repository: claims.repository,
       provenance: provenanceFrom(claims),
@@ -42,7 +43,9 @@ export async function authenticateWrite(request: Request, db: Db): Promise<Publi
   }
 
   const tokenUser = await verifyToken(db, token);
-  if (tokenUser !== null) return { owner: tokenUser.githubLogin, repository: null };
+  if (tokenUser !== null) {
+    return { provider: tokenUser.provider, owner: tokenUser.subject, repository: null };
+  }
 
   return null;
 }

@@ -7,6 +7,7 @@ import { deviceController } from "./controllers/device";
 import { manageController } from "./controllers/manage";
 import { packagesController } from "./controllers/packages";
 import { publishController } from "./controllers/publish";
+import { scopeController } from "./controllers/scope";
 import { statsController } from "./controllers/stats";
 import { vars } from "./env";
 import { logRoutes, mount, type RegistryEnv } from "./http/router";
@@ -48,6 +49,7 @@ const controllers = [
   publishController,
   deviceController,
   manageController,
+  scopeController,
   packagesController,
 ];
 

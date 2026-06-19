@@ -54,10 +54,24 @@ export const regDistTags = sqliteTable(
   (t) => [primaryKey({ columns: [t.name, t.tag] })],
 );
 
-/** Scope ownership: a scope (e.g. `@brika`) is owned by one GitHub owner. */
+/**
+ * Scope ownership: a scope (e.g. `@brika`) is owned by one identity. The owner is
+ * provider-qualified (`ownerProvider` + `ownerId`) so the registry is not
+ * GitHub-locked; only GitHub is wired today. (`ownerId` keeps the legacy
+ * `github_owner` column name; it is the owner id for whatever provider.)
+ */
 export const regScopes = sqliteTable("reg_scopes", {
   scope: text("scope").primaryKey(),
-  githubOwner: text("github_owner").notNull(),
+  /** Identity provider of the owner (e.g. `github`). */
+  ownerProvider: text("owner_provider").notNull().default("github"),
+  /** Owner id within the provider (e.g. `brikalabs`). */
+  ownerId: text("github_owner").notNull(),
+  /**
+   * Display name shown as the verified publisher (e.g. "Brika Labs" for `@brika`),
+   * settable only by the scope owner. Null falls back to the owner id. This is the
+   * trusted attribution: a manifest's free-text `author` cannot override it.
+   */
+  displayName: text("display_name"),
   createdAt: integer("created_at").notNull().default(epoch),
 });
 
@@ -104,7 +118,10 @@ export const regDeviceAuth = sqliteTable("reg_device_auth", {
 /** Issued publish tokens (only the SHA-256 hash is stored). */
 export const regTokens = sqliteTable("reg_tokens", {
   tokenHash: text("token_hash").primaryKey(),
-  githubLogin: text("github_login").notNull(),
+  /** Identity provider of the token's principal (e.g. `github`). */
+  provider: text("provider").notNull().default("github"),
+  /** Principal id within the provider (keeps the legacy `github_login` column name). */
+  subject: text("github_login").notNull(),
   createdAt: integer("created_at").notNull().default(epoch),
   expiresAt: integer("expires_at").notNull(),
   lastUsedAt: integer("last_used_at"),

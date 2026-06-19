@@ -33,6 +33,7 @@ mock.module("cloudflare:workers", () => ({
 
 const { publish } = await import("./publish");
 const { deprecate, yank, takedown, restore } = await import("./manage");
+const { setDisplayName } = await import("./scope");
 
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../../packages/db/drizzle");
 
@@ -91,7 +92,7 @@ function post(body: unknown, token?: string): Request {
 
 /** Seed a package + its latest version + scope ownership, and an owner token. */
 async function seedPackage(db: Db, owner: string): Promise<{ token: string }> {
-  await db.insert(regScopes).values({ scope: "@brika", githubOwner: owner });
+  await db.insert(regScopes).values({ scope: "@brika", ownerId: owner });
   await db.insert(regPackages).values({ name: "@brika/x", scope: "@brika" });
   await db.insert(regVersions).values({
     name: "@brika/x",
@@ -134,7 +135,7 @@ describe("publish (auth + invariant + ownership gates)", () => {
   test("403 when the scope is owned by someone else", async () => {
     // An unclaimed scope is claimable on first publish; ownership only forbids when
     // the scope already belongs to a different owner.
-    await db.insert(regScopes).values({ scope: "@brika", githubOwner: "octocat" });
+    await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" });
     const token = await issueToken(db, "stranger");
     expect(
       await statusOf(
@@ -394,5 +395,59 @@ describe("publish atomicity (commitVersion + transaction)", () => {
     } as unknown as R2Bucket;
     await new R2TarballWriter(r2).put("k", new Uint8Array([1]));
     expect(store.size).toBe(1);
+  });
+});
+
+describe("scope publisher (verified attribution)", () => {
+  test("packument + catalog expose the scope owner as the verified publisher", async () => {
+    await seedPackage(db, "brikalabs");
+    const ctx = services(db);
+
+    const packument = (await ctx.resolve.packument("@brika/x")) as {
+      publisher?: { id: string; name: string; verified: boolean };
+    };
+    // No display name yet -> falls back to the owner id.
+    expect(packument.publisher).toEqual({ id: "brikalabs", name: "brikalabs", verified: true });
+
+    const catalog = await (
+      await handleCatalog(new Request("http://localhost/-/v1/packages"), ctx)
+    ).json();
+    expect(catalog.packages[0].publisher).toEqual({
+      id: "brikalabs",
+      name: "brikalabs",
+      verified: true,
+    });
+  });
+
+  test("the scope owner sets the display name; it becomes the verified publisher name", async () => {
+    const { token } = await seedPackage(db, "brikalabs");
+    const ctx = services(db);
+
+    const res = await setDisplayName({
+      params: { scope: "@brika" },
+      body: { displayName: "Brika Labs" },
+      req: post(undefined, token),
+      ctx,
+    });
+    expect(res.status).toBe(200);
+
+    const packument = (await ctx.resolve.packument("@brika/x")) as {
+      publisher?: { id: string; name: string; verified: boolean };
+    };
+    expect(packument.publisher).toEqual({ id: "brikalabs", name: "Brika Labs", verified: true });
+  });
+
+  test("a non-owner cannot set the display name (403)", async () => {
+    await seedPackage(db, "brikalabs");
+    const stranger = await issueToken(db, "intruder");
+    const res = statusOf(
+      setDisplayName({
+        params: { scope: "@brika" },
+        body: { displayName: "Pwned" },
+        req: post(undefined, stranger),
+        ctx: services(db),
+      }),
+    );
+    expect(await res).toBe(403);
   });
 });

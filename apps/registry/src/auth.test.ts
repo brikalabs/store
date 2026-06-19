@@ -89,7 +89,7 @@ describe("authenticateWrite (registry publish token)", () => {
   test("resolves a registry token to its owner identity (no repository)", async () => {
     const token = await issueToken(db, "octocat");
     const identity = await authenticateWrite(bearer(token), db);
-    expect(identity).toEqual({ owner: "octocat", repository: null });
+    expect(identity).toEqual({ provider: "github", owner: "octocat", repository: null });
   });
 
   test("returns null for a brika_-prefixed token that does not exist", async () => {
@@ -119,6 +119,7 @@ describe("authenticateWrite (GitHub OIDC)", () => {
 
     const identity = await authenticateWrite(bearer(token), db);
     expect(identity).toEqual({
+      provider: "github",
       owner: "brika",
       repository: "brika/store",
       provenance: {
@@ -135,7 +136,11 @@ describe("authenticateWrite (GitHub OIDC)", () => {
 describe("requireWrite", () => {
   test("returns the identity when a credential validates", async () => {
     const token = await issueToken(db, "octocat");
-    expect(await requireWrite(bearer(token), db)).toEqual({ owner: "octocat", repository: null });
+    expect(await requireWrite(bearer(token), db)).toEqual({
+      provider: "github",
+      owner: "octocat",
+      repository: null,
+    });
   });
 
   test("throws 401 Unauthorized when no credential validates", async () => {
@@ -174,6 +179,7 @@ describe("requireAdmin", () => {
   test("returns the identity when the owner is in the admin allowlist", async () => {
     const token = await issueToken(db, "octocat");
     expect(await requireAdmin(bearer(token), db, new Set(["octocat"]))).toEqual({
+      provider: "github",
       owner: "octocat",
       repository: null,
     });
