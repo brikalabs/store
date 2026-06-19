@@ -1,19 +1,16 @@
-import { Database } from "bun:sqlite";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { PublishService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
-import { type Db, regDistTags, regPackages, regScopes, regVersions, schema } from "@brika/store-db";
+import { type Db, regDistTags, regPackages, regScopes, regVersions } from "@brika/store-db";
 import { transaction } from "@brika/tx";
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/bun-sqlite";
 import { D1MetadataWriter } from "../adapters/d1-metadata-writer";
 import { D1OwnershipPolicy } from "../adapters/d1-ownership";
 import { SchemaManifestValidator } from "../adapters/manifest-validator";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
 import { issueToken } from "../adapters/token";
 import { buildServices, type Services } from "../services";
+import { fakeR2, makeDb, seedExamplePackage } from "../test-harness";
 import { handleCatalog } from "./catalog";
 import { handleDownloads } from "./stats";
 
@@ -36,8 +33,6 @@ const { publish } = await import("./publish");
 const { deprecate, yank, takedown, restore } = await import("./manage");
 const { createScope, setDisplayName } = await import("./scope");
 
-const MIGRATIONS_DIR = join(import.meta.dir, "../../../../packages/db/drizzle");
-
 /** The status a handler yields, whether it returns a Response or throws an HttpError. */
 async function statusOf(run: Promise<Response>): Promise<number> {
   try {
@@ -46,39 +41,6 @@ async function statusOf(run: Promise<Response>): Promise<number> {
     if (error instanceof HttpError) return error.status;
     throw error;
   }
-}
-
-function makeDb(): Db {
-  const sqlite = new Database(":memory:");
-  for (const file of readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith(".sql"))
-    .sort()) {
-    const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
-    for (const statement of sql.split("--> statement-breakpoint")) {
-      const trimmed = statement.trim();
-      if (trimmed.length > 0) sqlite.run(trimmed);
-    }
-  }
-  return drizzle(sqlite, { schema }) as unknown as Db;
-}
-
-/** Minimal in-memory R2 bucket: only the get/put the tarball adapters use. */
-function fakeR2(): R2Bucket {
-  const store = new Map<string, Uint8Array>();
-  const bucket = {
-    get: async (key: string) => {
-      const bytes = store.get(key);
-      return bytes === undefined ? null : { body: new Response(bytes).body };
-    },
-    put: async (key: string, value: Uint8Array) => {
-      store.set(key, value);
-      return {};
-    },
-    delete: async (key: string) => {
-      store.delete(key);
-    },
-  };
-  return bucket as unknown as R2Bucket;
 }
 
 // "operator" is the lone admin for the takedown/restore tests; passed explicitly
@@ -94,19 +56,9 @@ function post(body: unknown, token?: string): Request {
   return new Request("http://localhost/", { method: "POST", headers, body: JSON.stringify(body) });
 }
 
-/** Seed a package + its latest version + scope ownership, and an owner token. */
+/** Seed the example package (shared harness) plus an owner token for the auth tests. */
 async function seedPackage(db: Db, owner: string): Promise<{ token: string }> {
-  await db.insert(regScopes).values({ scope: "@brika", ownerId: owner });
-  await db.insert(regPackages).values({ name: "@brika/x", scope: "@brika" });
-  await db.insert(regVersions).values({
-    name: "@brika/x",
-    version: "1.0.0",
-    manifest: { name: "@brika/x", version: "1.0.0" },
-    integrity: "sha512-test",
-    shasum: "deadbeef",
-    size: 1,
-  });
-  await db.insert(regDistTags).values({ name: "@brika/x", tag: "latest", version: "1.0.0" });
+  await seedExamplePackage(db, owner);
   return { token: await issueToken(db, owner) };
 }
 
@@ -425,7 +377,9 @@ describe("publish atomicity (commitVersion + transaction)", () => {
     expect(tags.find((r) => r.name === "@brika/y")?.version).toBe("1.0.0"); // tag moved in the same unit
   });
 
-  test("a tarball put is rolled back (deleted) when the surrounding transaction fails", async () => {
+  // An R2 bucket whose backing store is exposed so a test can assert what is staged
+  // vs. compensated. (fakeR2 hides its store; these tests need to see it.)
+  const trackingR2 = (): { r2: R2Bucket; store: Map<string, Uint8Array> } => {
     const store = new Map<string, Uint8Array>();
     const r2 = {
       put: async (key: string, value: Uint8Array) => {
@@ -435,6 +389,11 @@ describe("publish atomicity (commitVersion + transaction)", () => {
         store.delete(key);
       },
     } as unknown as R2Bucket;
+    return { r2, store };
+  };
+
+  test("a tarball put is rolled back (deleted) when the surrounding transaction fails", async () => {
+    const { r2, store } = trackingR2();
     const tarballs = new R2TarballWriter(r2);
 
     await expect(
@@ -449,15 +408,7 @@ describe("publish atomicity (commitVersion + transaction)", () => {
   });
 
   test("a tarball put outside a transaction is a plain write (no rollback)", async () => {
-    const store = new Map<string, Uint8Array>();
-    const r2 = {
-      put: async (key: string, value: Uint8Array) => {
-        store.set(key, value);
-      },
-      delete: async (key: string) => {
-        store.delete(key);
-      },
-    } as unknown as R2Bucket;
+    const { r2, store } = trackingR2();
     await new R2TarballWriter(r2).put("k", new Uint8Array([1]));
     expect(store.size).toBe(1);
   });

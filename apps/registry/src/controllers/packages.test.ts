@@ -1,16 +1,9 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { HttpError } from "@brika/router";
-import {
-  type Db,
-  regDistTags,
-  regDownloads,
-  regPackages,
-  regScopes,
-  regVersions,
-} from "@brika/store-db";
+import { type Db, regDownloads } from "@brika/store-db";
 import { eq } from "drizzle-orm";
 import { buildServices, type Services } from "../services";
-import { makeDb } from "../test-harness";
+import { makeDb, seedExamplePackage } from "../test-harness";
 import { packagesController } from "./packages";
 
 /**
@@ -48,17 +41,7 @@ function noopWaitUntil(): void {}
 let db: Db;
 beforeEach(async () => {
   db = makeDb();
-  await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" });
-  await db.insert(regPackages).values({ name: "@brika/x", scope: "@brika" });
-  await db.insert(regVersions).values({
-    name: "@brika/x",
-    version: "1.0.0",
-    manifest: { name: "@brika/x", version: "1.0.0" },
-    integrity: "sha512-test",
-    shasum: "deadbeef",
-    size: 1,
-  });
-  await db.insert(regDistTags).values({ name: "@brika/x", tag: "latest", version: "1.0.0" });
+  await seedExamplePackage(db, "octocat");
 });
 
 function services(bucket: R2Bucket): Services {

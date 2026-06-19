@@ -41,29 +41,43 @@ interface ManageContext {
   readonly ctx: Services;
 }
 
-/** Authenticate, run the mutation, and audit the outcome. */
+/**
+ * Audit the outcome and turn it into the HTTP response, shared by the owner- and
+ * admin-gated runners: a rejection is audited as `${action}_rejected` and thrown as its
+ * mapped status; success is audited and returned. The auth + which service call to run
+ * is all that differs between the two runners.
+ */
+async function auditAndRespond(
+  ctx: ManageContext["ctx"],
+  action: string,
+  name: string,
+  version: string,
+  identity: PublishIdentity,
+  result: ManageResult,
+  detail: Record<string, unknown>,
+): Promise<Response> {
+  await ctx.audit.record({
+    action: result.ok ? action : `${action}_rejected`,
+    packageName: name,
+    version,
+    actor: identity,
+    detail: result.ok ? detail : { ...detail, code: result.code, message: result.message },
+  });
+  if (!result.ok) throw httpError(statusForManageError(result.code), result.message, result.code);
+  return reply({ ok: true, name, version, ...detail }, 200);
+}
+
+/** Authenticate the scope owner, run the mutation, and audit the outcome. */
 async function runManaged(
   { params, req, ctx }: ManageContext,
   action: string,
   run: (svc: ManagementService, actor: PublishIdentity, name: string) => Promise<ManageResult>,
   detail: Record<string, unknown>,
 ): Promise<Response> {
-  const { db, management, audit } = ctx;
   const name = packageName(params);
-  const identity = await requireWrite(req, db);
-
-  const result = await run(management, identity, name);
-
-  await audit.record({
-    action: result.ok ? action : `${action}_rejected`,
-    packageName: name,
-    version: params.version,
-    actor: identity,
-    detail: result.ok ? detail : { ...detail, code: result.code, message: result.message },
-  });
-
-  if (!result.ok) throw httpError(statusForManageError(result.code), result.message, result.code);
-  return reply({ ok: true, name, version: params.version, ...detail }, 200);
+  const identity = await requireWrite(req, ctx.db);
+  const result = await run(ctx.management, identity, name);
+  return auditAndRespond(ctx, action, name, params.version, identity, result, detail);
 }
 
 export function deprecate(
@@ -101,22 +115,10 @@ async function runAdmin(
   run: (svc: ManagementService, name: string) => Promise<ManageResult>,
   detail: Record<string, unknown>,
 ): Promise<Response> {
-  const { db, management, audit, admins } = ctx;
   const name = packageName(params);
-  const identity = await requireAdmin(req, db, admins);
-
-  const result = await run(management, name);
-
-  await audit.record({
-    action: result.ok ? action : `${action}_rejected`,
-    packageName: name,
-    version: params.version,
-    actor: identity,
-    detail: result.ok ? detail : { ...detail, code: result.code, message: result.message },
-  });
-
-  if (!result.ok) throw httpError(statusForManageError(result.code), result.message, result.code);
-  return reply({ ok: true, name, version: params.version, ...detail }, 200);
+  const identity = await requireAdmin(req, ctx.db, ctx.admins);
+  const result = await run(ctx.management, name);
+  return auditAndRespond(ctx, action, name, params.version, identity, result, detail);
 }
 
 export function takedown(
