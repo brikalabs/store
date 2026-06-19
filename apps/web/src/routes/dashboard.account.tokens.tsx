@@ -36,7 +36,10 @@ function TokensPage() {
 
   const load = useCallback(async () => {
     const res = await fetch("/api/account/tokens");
-    if (res.ok) setTokens(((await res.json()) as { tokens: Token[] }).tokens);
+    if (res.ok) {
+      const data: { tokens: Token[] } = await res.json();
+      setTokens(data.tokens);
+    }
   }, []);
   useEffect(() => {
     void load();
@@ -47,7 +50,8 @@ function TokensPage() {
     const res = await fetch("/api/account/tokens", { method: "POST" });
     setBusy(false);
     if (res.ok) {
-      setFresh(((await res.json()) as { token: string }).token);
+      const data: { token: string } = await res.json();
+      setFresh(data.token);
       await load();
     }
   }
@@ -69,7 +73,7 @@ function TokensPage() {
         </p>
       </header>
 
-      {fresh !== null ? (
+      {fresh !== null && (
         <div className="flex flex-col gap-2 rounded-2xl border border-brand/40 bg-brand/5 p-5">
           <span className="font-semibold text-foreground text-sm">
             Your new token (copy it now, it won't be shown again):
@@ -81,7 +85,7 @@ function TokensPage() {
             <CopyButton value={fresh} label="Copy token" />
           </div>
         </div>
-      ) : null}
+      )}
 
       <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6">
         <div className="flex items-center justify-between">
@@ -91,36 +95,7 @@ function TokensPage() {
             {busy ? "Creating…" : "New token"}
           </Button>
         </div>
-        {tokens === null ? (
-          <div className="h-16 animate-pulse rounded-xl bg-muted" />
-        ) : tokens.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No tokens yet.</p>
-        ) : (
-          <ul className="flex flex-col divide-y divide-border">
-            {tokens.map((t) => (
-              <li key={t.tokenHash} className="flex items-center gap-3 py-3">
-                <KeyRound className="size-4 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <div className="font-mono text-foreground text-sm">
-                    token …{t.tokenHash.slice(-8)}
-                  </div>
-                  <div className="text-muted-foreground text-xs">
-                    Created {fmt(t.createdAt)} · Expires {fmt(t.expiresAt)} · Last used{" "}
-                    {fmt(t.lastUsedAt)}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Revoke token"
-                  onClick={() => revoke(t.tokenHash)}
-                  className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <TokenList tokens={tokens} onRevoke={revoke} />
       </div>
 
       <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-6">
@@ -137,5 +112,41 @@ function TokensPage() {
         </a>
       </div>
     </AdminShell>
+  );
+}
+
+function TokenList({
+  tokens,
+  onRevoke,
+}: Readonly<{ tokens: Token[] | null; onRevoke: (hash: string) => void }>) {
+  if (tokens === null) {
+    return <div className="h-16 animate-pulse rounded-xl bg-muted" />;
+  }
+  if (tokens.length === 0) {
+    return <p className="text-muted-foreground text-sm">No tokens yet.</p>;
+  }
+  return (
+    <ul className="flex flex-col divide-y divide-border">
+      {tokens.map((t) => (
+        <li key={t.tokenHash} className="flex items-center gap-3 py-3">
+          <KeyRound className="size-4 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <div className="font-mono text-foreground text-sm">token …{t.tokenHash.slice(-8)}</div>
+            <div className="text-muted-foreground text-xs">
+              Created {fmt(t.createdAt)} · Expires {fmt(t.expiresAt)} · Last used{" "}
+              {fmt(t.lastUsedAt)}
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Revoke token"
+            onClick={() => onRevoke(t.tokenHash)}
+            className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

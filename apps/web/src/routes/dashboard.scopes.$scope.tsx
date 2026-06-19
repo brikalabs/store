@@ -18,7 +18,8 @@ interface Member {
 }
 
 async function readError(res: Response): Promise<string> {
-  return ((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Request failed";
+  const data = (await res.json().catch(() => ({}))) as { error?: string };
+  return data.error ?? "Request failed";
 }
 
 const ROLE_SELECT =
@@ -33,7 +34,8 @@ function ScopeDetailPage() {
   const load = useCallback(async () => {
     const res = await fetch(`/api/scopes/${encodeURIComponent(scope)}/members`);
     if (res.ok) {
-      setMembers(((await res.json()) as { members: Member[] }).members);
+      const data: { members: Member[] } = await res.json();
+      setMembers(data.members);
       setError(null);
     } else {
       setError(await readError(res));
@@ -78,13 +80,13 @@ function ScopeDetailPage() {
         <h1 className="mt-2 font-mono font-bold text-2xl tracking-tight">{scope}</h1>
       </div>
 
-      {error !== null ? (
+      {error !== null && (
         <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive text-sm">
           {error}
         </p>
-      ) : null}
+      )}
 
-      {isAdmin ? <DisplayNameCard scope={scope} onError={setError} /> : null}
+      {isAdmin && <DisplayNameCard scope={scope} onError={setError} />}
 
       <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6">
         <h2 className="font-bold font-heading text-lg tracking-tight">Members</h2>
@@ -127,7 +129,7 @@ function ScopeDetailPage() {
             ))}
           </ul>
         )}
-        {isAdmin ? <AddMember scope={scope} onAdded={load} onError={setError} /> : null}
+        {isAdmin && <AddMember scope={scope} onAdded={load} onError={setError} />}
       </section>
     </AdminShell>
   );
@@ -208,6 +210,10 @@ function DisplayNameCard({
     else onError(await readError(res));
   }
 
+  let saveLabel = "Save";
+  if (busy) saveLabel = "Saving…";
+  else if (saved) saveLabel = "Saved";
+
   return (
     <form
       onSubmit={submit}
@@ -232,7 +238,7 @@ function DisplayNameCard({
           aria-label="Verified publisher display name"
         />
         <Button type="submit" disabled={busy}>
-          {busy ? "Saving…" : saved ? "Saved" : "Save"}
+          {saveLabel}
         </Button>
       </div>
     </form>

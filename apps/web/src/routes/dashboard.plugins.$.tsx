@@ -419,7 +419,10 @@ function VersionsCard({ name }: Readonly<{ name: string }>) {
       setNotRegistry(true);
       return;
     }
-    if (res.ok) setState((await res.json()) as VersionsState);
+    if (res.ok) {
+      const data: VersionsState = await res.json();
+      setState(data);
+    }
   }, [name]);
   useEffect(() => {
     void load();
@@ -437,9 +440,8 @@ function VersionsCard({ name }: Readonly<{ name: string }>) {
     if (res.ok) {
       await load();
     } else {
-      setError(
-        ((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Action failed",
-      );
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error ?? "Action failed");
     }
   }
 
@@ -458,11 +460,11 @@ function VersionsCard({ name }: Readonly<{ name: string }>) {
   return (
     <Card>
       <CardTitle icon={<Archive className="size-4 text-brand-ink" />}>Versions</CardTitle>
-      {error !== null ? (
+      {error !== null && (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-xs">
           {error}
         </p>
-      ) : null}
+      )}
       {state === null ? (
         <div className="h-16 animate-pulse rounded-xl bg-muted" />
       ) : (
@@ -480,11 +482,11 @@ function VersionsCard({ name }: Readonly<{ name: string }>) {
           ))}
         </ul>
       )}
-      {state !== null && !state.canManage ? (
+      {state !== null && !state.canManage && (
         <p className="text-muted-foreground text-xs">
           You can manage versions only for scopes you belong to.
         </p>
-      ) : null}
+      )}
     </Card>
   );
 }
