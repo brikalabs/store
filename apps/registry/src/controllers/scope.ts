@@ -1,9 +1,9 @@
-import type { ScopeErrorCode } from "@brika/registry-core";
+import { isCanonicalScope, type ScopeErrorCode } from "@brika/registry-core";
 import { badRequest, httpError, reply } from "@brika/router";
 import { z } from "zod";
 import { requireWrite } from "../auth";
 import { controller, route } from "../http/router";
-import { isCanonicalScope } from "../names";
+
 import type { Services } from "../services";
 
 /**

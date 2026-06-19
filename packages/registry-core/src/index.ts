@@ -36,6 +36,7 @@ export {
   type VersionManager,
 } from "./manage";
 export type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
+export { isCanonicalName, isCanonicalScope, scopeOf } from "./names";
 export {
   BaseClaims,
   type Jwk,

@@ -1,9 +1,9 @@
 /**
- * Scope + package-name rules for the registry, in one place so the publish gate, the
- * ownership policy, and the scope-management endpoints all agree on what a valid name
- * is. Restricting to a lowercase ASCII shape (and rejecting everything else at the
- * door) is what stops scope-confusion impersonation: a case variant (`@Brika`) or a
- * homoglyph (`@brіka` with a Cyrillic letter) can neither be created nor published to.
+ * Scope + package-name rules: the single source of truth for what a valid name is, so
+ * the publish gate, the ownership policy, and the scope-management endpoints all agree.
+ * Restricting to a lowercase ASCII shape (and rejecting everything else at the door) is
+ * what stops scope-confusion impersonation: a case variant (`@Brika`) or a homoglyph
+ * (`@brіka` with a Cyrillic letter) can neither be created nor published to.
  */
 
 /** The `@scope` segment of a package name, or null when the name is unscoped. */
