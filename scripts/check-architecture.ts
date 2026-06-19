@@ -1,108 +1,65 @@
 /**
- * Architecture rules, enforced. Clean/hexagonal layering is only real if it cannot
- * silently regress, so this guards the Dependency Rule with a few import checks (run in
- * `bun run lint`, like check-no-em-dash). The rules, in one line each:
+ * Architecture rules, enforced (ArchUnit-style). Declares the clean/hexagonal layering
+ * as fluent, package/folder-scoped rules over the `ArchRules` engine, and fails the
+ * build on a violation. Runs in `bun run lint` (and CI), like check-no-em-dash.
  *
- *   A. The domain core (@brika/registry-core) depends on NOTHING platform-specific:
- *      no Cloudflare, no database/ORM, no HTTP framework. It speaks only ports.
- *   B. The router (@brika/router) is platform-free too (Hono is allowed - it wraps it).
- *   C. Inside the registry app, the DATABASE is reached only through adapters + the
- *      composition root - controllers/auth/etc. go through ports on `ctx`, never `db`.
- *
- * Tests are exempt (they legitimately seed the database with in-memory fakes).
+ * The rules read top to bottom; add a package/app by writing another `arch.rule(...)`,
+ * not by editing an engine. Tests are exempt (they seed in-memory databases directly).
  */
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { ArchRules, category } from "./archunit";
 
-const ROOT = join(import.meta.dir, "..");
+const ROOT = `${import.meta.dir}/..`;
 
-/** Every import/export specifier in a source file. */
-function specifiers(source: string): string[] {
-  const out: string[] = [];
-  const re = /\b(?:from|import)\b\s*\(?\s*["']([^"']+)["']/g;
-  let match: RegExpExecArray | null = re.exec(source);
-  while (match !== null) {
-    if (match[1] !== undefined) out.push(match[1]);
-    match = re.exec(source);
-  }
-  return out;
-}
+// Import categories: named classes of module specifier.
+const PLATFORM = category(
+  "a Cloudflare/platform module",
+  (s) => s.startsWith("cloudflare:") || s.startsWith("@cloudflare/") || s === "wrangler",
+);
+const ORM = category(
+  "the database/ORM",
+  (s) => s === "drizzle-orm" || s.startsWith("drizzle-orm/") || s === "@brika/store-db",
+);
+const HTTP = category(
+  "an HTTP framework/router",
+  (s) => s === "hono" || s.startsWith("hono/") || s === "@brika/router" || s.startsWith("@brika/router/"),
+);
 
-const isPlatform = (s: string): boolean =>
-  s.startsWith("cloudflare:") || s.startsWith("@cloudflare/") || s === "wrangler";
-const isOrm = (s: string): boolean =>
-  s === "drizzle-orm" || s.startsWith("drizzle-orm/") || s === "@brika/store-db";
-const isHttp = (s: string): boolean =>
-  s === "hono" || s.startsWith("hono/") || s === "@brika/router" || s.startsWith("@brika/router/");
+const arch = new ArchRules(ROOT);
 
-const isTest = (rel: string): boolean => /\.(test|spec)\.tsx?$/.test(rel) || rel.includes("test-harness");
+// Shared packages are Cloudflare-free - only apps wire the platform. (db is the driver
+// package and may import the ORM; no package imports Cloudflare.)
+arch
+  .rule("shared packages are Cloudflare-free (only apps use Cloudflare)")
+  .filesMatching("packages/*/src/**/*.ts", "packages/*/src/**/*.tsx")
+  .mayNotImport(PLATFORM);
 
-interface Rule {
-  readonly name: string;
-  readonly dir: string;
-  /** Files (relative to ROOT) this rule applies to. */
-  readonly applies: (rel: string) => boolean;
-  /** Returns a reason when `spec` is banned for this file, else null. */
-  readonly banned: (spec: string) => string | null;
-}
+// The domain core (any *-core package) speaks only ports: no database, no HTTP framework.
+arch
+  .rule("the domain core (*-core) depends on no database/ORM or HTTP framework")
+  .filesMatching("packages/*-core/src/**/*.ts")
+  .mayNotImport(ORM, HTTP);
 
-const RULES: Rule[] = [
-  {
-    name: "A. domain core is platform-free (@brika/registry-core)",
-    dir: "packages/registry-core/src",
-    applies: () => true,
-    banned: (s) => {
-      if (isPlatform(s)) return "a Cloudflare/platform module";
-      if (isOrm(s)) return "the database/ORM";
-      if (isHttp(s)) return "an HTTP framework/router";
-      return null;
-    },
-  },
-  {
-    name: "B. router is platform-free (@brika/router)",
-    dir: "packages/router/src",
-    applies: () => true,
-    banned: (s) => {
-      if (isPlatform(s)) return "a Cloudflare/platform module";
-      if (isOrm(s)) return "the database/ORM";
-      return null;
-    },
-  },
-  {
-    name: "C. the database is reached only through adapters + the composition root",
-    dir: "apps/registry/src",
-    // Allowed to touch the DB: the adapters, the composition root (services.ts/index.ts),
-    // the shared test harness, and tests.
-    applies: (rel) =>
-      !isTest(rel) &&
-      !rel.includes("/adapters/") &&
-      !rel.endsWith("/services.ts") &&
-      !rel.endsWith("/index.ts"),
-    banned: (s) => (isOrm(s) ? "the database/ORM (use a port on `ctx`)" : null),
-  },
-];
+// The router is a platform-free HTTP layer (Hono is allowed; the database is not).
+arch
+  .rule("the router is database-free")
+  .filesMatching("packages/router/src/**/*.ts")
+  .mayNotImport(ORM);
 
-function tsFiles(dir: string): string[] {
-  const abs = join(ROOT, dir);
-  return readdirSync(abs, { recursive: true })
-    .map((entry) => join(dir, entry.toString()))
-    .filter((rel) => /\.tsx?$/.test(rel));
-}
+// Controllers go through ports on `ctx`, never the database, in any app.
+arch
+  .rule("controllers never import the database/ORM (use a port on ctx)")
+  .filesMatching("apps/*/src/controllers/**/*.ts")
+  .mayNotImport(ORM);
 
-const violations: string[] = [];
-for (const rule of RULES) {
-  for (const rel of tsFiles(rule.dir)) {
-    if (!rule.applies(rel)) continue;
-    const source = readFileSync(join(ROOT, rel), "utf8");
-    for (const spec of specifiers(source)) {
-      const reason = rule.banned(spec);
-      if (reason !== null) {
-        violations.push(`  [${rule.name}]\n    ${relative(ROOT, join(ROOT, rel))} imports "${spec}" (${reason})`);
-      }
-    }
-  }
-}
+// In the registry app, the database is reached only through adapters + the composition
+// root (services.ts / index.ts). (apps/web is not yet hexagonal; add it here once it is.)
+arch
+  .rule("the database is reached only through adapters + the composition root")
+  .filesMatching("apps/registry/src/**/*.ts")
+  .except("apps/registry/src/adapters/**", "apps/registry/src/services.ts", "apps/registry/src/index.ts")
+  .mayNotImport(ORM);
 
+const violations = arch.check();
 if (violations.length > 0) {
   console.error(`check-architecture: ${violations.length} rule violation(s):\n${violations.join("\n")}`);
   process.exit(1);
