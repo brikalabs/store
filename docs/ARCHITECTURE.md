@@ -76,8 +76,8 @@ depend on ports, not on Cloudflare. The blast radius is, by construction, the
 
 The layering above is not a convention you have to remember — the key parts are
 enforced (ArchUnit-style) by the **`@brika/archunit`** package and written as ordinary
-tests in `scripts/architecture.test.ts`. Each rule is one `bun test` case: declare what a
-layer may not import, then assert it, e.g.
+tests under `architecture/` (split by concern: `packages`, `apps`, `naming`). Each rule is
+one `bun test` case: declare what a layer may not import, then assert it, e.g.
 
 ```ts
 test("the domain core depends on no database/ORM or HTTP framework", () => {
@@ -104,6 +104,14 @@ Every adapter under `apps/registry/src/adapters` implements a `registry-core` po
 (`D1MetadataReader` → `MetadataReader`, `D1ScopeStore` → `ScopeStore`, `D1TokenStore` →
 `TokenStore`, …), so the adapter layer is uniformly swappable and the dependency arrows
 all point inward.
+
+Beyond layering, the same engine enforces naming so the adapter layer stays legible
+(`architecture/naming.test.ts`):
+
+- **D. Adapter files are kebab-case** (`mustBeNamed`), so a file name reads as one thing.
+- **E. A vendor-backed adapter's class carries the vendor prefix** (`classesMustBePrefixed`):
+  `d1-*.ts` declares `D1*` classes, `r2-*.ts` declares `R2*` classes — the file name and the
+  class agree on which infra they bind to.
 
 ## registry.brika.dev
 
