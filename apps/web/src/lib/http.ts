@@ -29,6 +29,11 @@ export function jsonPrivate(data: unknown, status = 200): Response {
   return Response.json(data, { status, headers: { "cache-control": "no-store" } });
 }
 
+/** JSON error at an arbitrary status (e.g. from a `scopeStatus`/`manageStatus` mapping). */
+export function jsonError(status: number, message: string): Response {
+  return Response.json({ error: message }, { status });
+}
+
 /** Map a registry-core `ScopeResult` error code to its HTTP status. */
 export function scopeStatus(code: "forbidden" | "not_found" | "conflict"): number {
   if (code === "not_found") return 404;

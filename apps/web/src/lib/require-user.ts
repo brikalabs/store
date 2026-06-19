@@ -10,12 +10,10 @@ import { serverContext } from "./server-context";
  * `beforeLoad` executes on the client during a client-side navigation - the Start plugin
  * splits this handler out of the client bundle and calls it over RPC.
  */
-export const fetchSessionUser = createServerFn().handler(
-  async (): Promise<SessionUser | null> => {
-    const { db } = serverContext();
-    return getCurrentUser(getRequest(), db);
-  },
-);
+export const fetchSessionUser = createServerFn().handler(async (): Promise<SessionUser | null> => {
+  const { db } = serverContext();
+  return getCurrentUser(getRequest(), db);
+});
 
 /**
  * `beforeLoad` guard for console routes: returns the signed-in user, or throws a redirect
