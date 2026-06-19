@@ -76,8 +76,11 @@ Largely built. Remaining:
   `rateLimit` middleware) with a Cloudflare-binding adapter in the registry, and
   **operator takedown/restore** (`REGISTRY_ADMINS` + `requireAdmin`; hides a version
   from installs like a yank but admin-gated with a public reason surfaced in the
-  packument). Remaining: malware-scan hook, R2 + D1 backups.
-  Plan: [`m6-hardening-plan.md`](./m6-hardening-plan.md).
+  packument), and a **malware-scan hook**: a `TarballScanner` port slotted into the
+  publish pipeline (after immutability, before integrity/write) so a real scanner
+  drops in without touching the orchestration; allow-all today (`NoopTarballScanner`),
+  a refused scan surfaces as a `rejected` code (422) and is audited. Remaining:
+  R2 + D1 backups. Plan: [`m6-hardening-plan.md`](./m6-hardening-plan.md).
 
 ## Brika repo (separate)
 
@@ -112,12 +115,19 @@ See [`DEPLOYMENT.md`](../DEPLOYMENT.md) for the store; registry deploy mirrors i
 
 ## Recommended next steps (in order)
 
-1. **Registry `POST /-/publish`** + the `reg_scopes`/tokens tables + a D1
-   `OwnershipPolicy`. This makes the registry able to accept a publish (the
-   domain logic is already done and tested).
-2. **`@brika/schema` metadata format** + the `ManifestValidator` adapter, so the
-   data gate is real.
-3. **brika CLI** `auth login` / `publish` / `install`, then a full
-   publish -> resolve -> `bun add` round-trip against a deployed registry.
-4. **Pick the store design direction** and finish the marketplace redesign.
-5. **M4 store integration** and **M6 hardening**.
+The publish/resolve/store-integration core is shipped (registry M1, M2, M4 and the
+`@brika/schema` data gate are all done and proven). What remains, in order:
+
+1. **brika CLI** `auth login` / `publish` / `install` (separate brika repo), then a
+   full publish -> resolve -> `bun add` round-trip against a deployed registry. This
+   is the missing piece that exercises the whole pipeline end to end.
+2. **Registry M3 hub install**: ship the `@brika:registry` scoped-registry config and
+   verify an `@brika` plugin installs into a hub from the registry. Closes the loop.
+3. **M6 hardening remainder**: malware-scan hook on publish + R2/D1 backups (origin
+   pinning, path-traversal guard, CORS, ownership gates, audit log, rate limits, and
+   operator takedown/restore are already done).
+4. **Pick the store design direction** (Spotlight vs Console), finish the redesign
+   across browse/detail/profile/dashboard, then build the console slices (review
+   responses, comment moderation, per-package settings, scope claiming).
+5. **npm sync cron + verified-list signing**: scheduled refresh and the Ed25519
+   `/v1/verified` signing key (today the verified list is empty).

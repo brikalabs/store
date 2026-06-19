@@ -62,6 +62,9 @@ function statusForPublishError(code: PublishErrorCode): number {
       return 409;
     case "too_large":
       return 413;
+    case "rejected":
+      // Well-formed bytes refused by the malware/abuse scan: unprocessable, not malformed.
+      return 422;
     default:
       return 400;
   }

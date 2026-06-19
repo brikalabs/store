@@ -34,7 +34,7 @@ export type PublishResult =
     }
   | { readonly ok: false; readonly code: PublishErrorCode; readonly message: string };
 
-export type PublishErrorCode = "forbidden" | "invalid" | "exists" | "too_large";
+export type PublishErrorCode = "forbidden" | "invalid" | "exists" | "too_large" | "rejected";
 
 /**
  * Manifest/data gate. Validates the published manifest AND any localized store
@@ -47,6 +47,17 @@ export interface ManifestValidator {
     manifest: Record<string, unknown>,
     tarball: Uint8Array,
   ): Promise<{ ok: true } | { ok: false; message: string }>;
+}
+
+/**
+ * Malware/abuse gate over the raw tarball bytes, run before any bytes are stored.
+ * Injected as a seam so a real scanner (ClamAV, an external service, or a heuristic
+ * pass over `readTarGzEntries`) can be dropped in without touching the publish
+ * orchestration. Defaults to allow-all, so behavior is unchanged until one exists.
+ */
+export interface TarballScanner {
+  /** Inspect raw tarball bytes; reject (`ok: false`) to block the publish. */
+  scan(tarball: Uint8Array): Promise<{ ok: true } | { ok: false; message: string }>;
 }
 
 /** Ownership gate: may this identity publish this package? */
@@ -87,7 +98,12 @@ export interface PublishOptions {
   readonly clock?: () => string;
   /** Max accepted tarball size in bytes (defaults to `REGISTRY_LIMITS.maxTarballBytes`). */
   readonly maxTarballBytes?: number;
+  /** Malware/abuse gate over the tarball bytes (defaults to allow-all). */
+  readonly scanner?: TarballScanner;
 }
+
+/** Allow-all scanner: the default until a real {@link TarballScanner} is wired in. */
+const allowAllScanner: TarballScanner = { scan: () => Promise.resolve({ ok: true }) };
 
 /**
  * Orchestrates a publish through name validation, the two gates, and the immutability +
@@ -99,6 +115,7 @@ export class PublishService {
   readonly #tarballs: TarballWriter;
   readonly #validator: ManifestValidator;
   readonly #ownership: OwnershipPolicy;
+  readonly #scanner: TarballScanner;
   readonly #clock: () => string;
   readonly #maxTarballBytes: number;
 
@@ -113,6 +130,7 @@ export class PublishService {
     this.#tarballs = tarballs;
     this.#validator = validator;
     this.#ownership = ownership;
+    this.#scanner = options.scanner ?? allowAllScanner;
     this.#clock = options.clock ?? (() => new Date().toISOString());
     this.#maxTarballBytes = options.maxTarballBytes ?? REGISTRY_LIMITS.maxTarballBytes;
   }
@@ -161,6 +179,13 @@ export class PublishService {
         message: `${input.name}@${input.version} already exists`,
       };
     }
+
+    // 4.5. Malware/abuse scan of the bytes. Last gate before storage, and after
+    //      immutability so we never scan a version that already exists. A rejection
+    //      means the tarball was well-formed but unacceptable (distinct from an
+    //      `invalid` manifest), so it surfaces as a `rejected` code.
+    const scanned = await this.#scanner.scan(input.tarball);
+    if (!scanned.ok) return { ok: false, code: "rejected", message: scanned.message };
 
     // 5. Integrity computed from the actual bytes we are about to store.
     const integrity = await sha512Integrity(input.tarball);

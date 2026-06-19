@@ -155,12 +155,27 @@ Exact limits to confirm during implementation; start conservative
 
 ---
 
-## 2. Malware-scan hook
+## 2. Malware-scan hook ✅ DONE
 
 **Goal:** a defined extension point in the publish pipeline where tarball bytes
 are scanned before they are committed, so a real scanner can be dropped in later
 without touching the orchestration. Ship it with a no-op (allow-all) default so
 behavior is unchanged until a scanner exists.
+
+**Shipped as:** a `TarballScanner` port in `@brika/registry-core/src/publish.ts`
+(`scan(tarball) -> { ok } | { ok:false, message }`), injected via `PublishOptions.scanner`
+and defaulting to an inline allow-all so the existing `new PublishService(...)` call
+sites keep compiling. Slotted as **step 4.5** — after immutability (so an existing
+version is rejected before we bother scanning), before integrity/write (so refused
+bytes never reach storage). A refusal returns the new `"rejected"` `PublishErrorCode`,
+mapped to **422** in `controllers/publish.ts` (distinct from `invalid`/400 for a
+malformed manifest) and audited as `publish_rejected` with the scan message via the
+existing controller path. `buildServices` wires `NoopTarballScanner`
+(`apps/registry/src/adapters/noop-tarball-scanner.ts`) as the visible seam to swap for
+a ClamAV/external/heuristic adapter. Tested in `publish.test.ts` (refusal writes
+nothing; scan runs only after immutability; explicit passing scanner publishes).
+
+Original design, kept for context:
 
 ### Design (port in the existing pipeline)
 
