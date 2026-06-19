@@ -69,8 +69,13 @@ Largely built. Remaining:
 - ⬜ **M5 community scopes** (later): let community claim scopes and publish to
   the registry; until then community stays on npm.
 - 🟡 **M6 hardening**: done so far - tarball-origin pinning, asset path-traversal
-  guard, scoped read-only CORS, ownership-gated management, audit log. Remaining:
-  malware-scan hook, abuse/takedown surfacing, R2 + D1 backups, rate limits.
+  guard, scoped read-only CORS, ownership-gated management, audit log, and
+  **rate limits** on the abuse-prone mutating endpoints (`POST /-/publish` by
+  principal, `POST /-/device/code` by IP) via a generic `@brika/router`
+  rate-limiting system (`RateLimiter` port + pure `FixedWindowRateLimiter` +
+  `rateLimit` middleware) with a Cloudflare-binding adapter in the registry.
+  Remaining: malware-scan hook, abuse/takedown surfacing, R2 + D1 backups.
+  Plan: [`m6-hardening-plan.md`](./m6-hardening-plan.md).
 
 ## Brika repo (separate)
 

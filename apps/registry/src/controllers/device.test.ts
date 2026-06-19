@@ -2,19 +2,39 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { HttpError } from "@brika/router";
 import { type Db, regDeviceAuth, regTokens } from "@brika/store-db";
 import { eq } from "drizzle-orm";
+import { Hono } from "hono";
+import { mount } from "../http/router";
 import { buildServices, type Services } from "../services";
 import { fakeR2, makeDb } from "../test-harness";
 
 /**
  * Integration tests for the device-authorization HTTP handlers against the real
  * in-memory DB. `cloudflare:workers` is stubbed so `vars().STORE_URL` (read by
- * `handleDeviceCode` to build the verification URL) resolves without the Worker
- * runtime.
+ * `handleDeviceCode`) resolves, and a fake limit-1 `DEVICE_LIMITER` binding stands
+ * in for the Workers rate-limit binding the `rateLimit` middleware reads.
  */
 
-mock.module("cloudflare:workers", () => ({ env: { STORE_URL: "http://localhost:3000/" } }));
+mock.module("cloudflare:workers", () => {
+  // A per-key limit-1 fake of the Workers rate-limit binding: the second request
+  // for a given key is denied. State persists across the file (tests use distinct IPs).
+  const counts = new Map<string, number>();
+  return {
+    env: {
+      STORE_URL: "http://localhost:3000/",
+      DEVICE_LIMITER: {
+        limit: async ({ key }: { key: string }) => {
+          const next = (counts.get(key) ?? 0) + 1;
+          counts.set(key, next);
+          return { success: next <= 1 };
+        },
+      },
+    },
+  };
+});
 
-const { handleDeviceCode, handleDeviceToken, handleRevoke } = await import("./device");
+const { handleDeviceCode, handleDeviceToken, handleRevoke, deviceController } = await import(
+  "./device"
+);
 
 function services(db: Db): Services {
   return buildServices(db, fakeR2(), "http://localhost:8787");
@@ -61,6 +81,40 @@ describe("handleDeviceCode", () => {
     const rows = await db.select().from(regDeviceAuth);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.deviceCode).toBe(body.device_code);
+  });
+});
+
+describe("device-code rate limiting (declared via route middleware)", () => {
+  /** Mount the real device controller; the limiter comes from the mocked binding. */
+  function mountedApp(): Hono {
+    const app = new Hono();
+    mount(app, [deviceController], { context: () => services(db) });
+    return app;
+  }
+
+  const execCtx = { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext;
+  const post = (app: Hono, ip: string) =>
+    app.request(
+      "/-/device/code",
+      { method: "POST", headers: { "cf-connecting-ip": ip } },
+      {},
+      execCtx,
+    );
+
+  test("the route's rateLimit middleware returns 429 once the window is exhausted", async () => {
+    const app = mountedApp();
+    expect((await post(app, "1.2.3.4")).status).toBe(200);
+
+    const limited = await post(app, "1.2.3.4");
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).toBe("60");
+    expect(await limited.json()).toMatchObject({ code: "rate_limited" });
+  });
+
+  test("a different IP keeps its own budget", async () => {
+    const app = mountedApp();
+    expect((await post(app, "1.1.1.1")).status).toBe(200);
+    expect((await post(app, "2.2.2.2")).status).toBe(200);
   });
 });
 

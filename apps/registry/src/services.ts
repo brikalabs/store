@@ -26,6 +26,10 @@ import { R2TarballWriter } from "./adapters/r2-tarball-writer";
  * interface to keep in sync. Swapping a backend means editing only this file and
  * the adapters it names; a test stands one in by passing an object of the same
  * shape (the inferred `Services`).
+ *
+ * Note: rate limiting is intentionally NOT here. It is a cross-cutting edge concern
+ * declared inline on the routes that opt in (`rateLimit(...)` in the controllers,
+ * backed by `adapters/cf-rate-limiter.ts`), so it never threads through this graph.
  */
 export function buildServices(db: Db, tarballs: R2Bucket, baseUrl: string) {
   return {

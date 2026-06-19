@@ -12,6 +12,8 @@ export class HttpError extends Error {
     readonly status: number,
     message: string,
     readonly code?: string,
+    /** Extra response headers to serialize with the error (e.g. `Retry-After`). */
+    readonly headers?: Record<string, string>,
   ) {
     super(message);
     this.name = "HttpError";
@@ -28,6 +30,20 @@ export class HttpError extends Error {
 /** Throwable with an arbitrary status, e.g. when mapping a domain result code. */
 export function httpError(status: number, message: string, code?: string): HttpError {
   return new HttpError(status, message, code);
+}
+
+/**
+ * 429: too many requests. Sets `Retry-After` (seconds) when a reset hint is known,
+ * and defaults the machine-readable `code` to `rate_limited`.
+ */
+export function tooManyRequests(
+  message = "Too many requests",
+  retryAfterSeconds?: number,
+  code = "rate_limited",
+): HttpError {
+  const headers =
+    retryAfterSeconds === undefined ? undefined : { "retry-after": String(retryAfterSeconds) };
+  return new HttpError(429, message, code, headers);
 }
 
 /** 400: the request was malformed or failed an invariant. */

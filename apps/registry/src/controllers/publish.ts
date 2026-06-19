@@ -4,10 +4,11 @@ import {
   sha512Integrity,
   TransparencyEntry,
 } from "@brika/registry-core";
-import { badRequest, httpError, reply } from "@brika/router";
+import { badRequest, httpError, rateLimit, reply } from "@brika/router";
 import { transaction } from "@brika/tx";
 import { z } from "zod";
-import { requireWrite } from "../auth";
+import { cf } from "../adapters/cf-rate-limiter";
+import { principal, requireWrite } from "../auth";
 import { controller, route } from "../http/router";
 import type { Services } from "../services";
 
@@ -113,5 +114,16 @@ export async function publish({
 
 export const publishController = controller({
   name: "publish",
-  routes: [route.post({ path: "/-/publish", body: PublishBody, handler: publish })],
+  routes: [
+    // Keyed by authenticated principal (not IP): CI shares GitHub Actions egress
+    // IPs, so a per-IP cap would throttle unrelated repos on the same runner.
+    route.post({
+      path: "/-/publish",
+      body: PublishBody,
+      middleware: [
+        rateLimit({ max: 100, window: "1m", key: principal, store: cf("PUBLISH_LIMITER") }),
+      ],
+      handler: publish,
+    }),
+  ],
 });

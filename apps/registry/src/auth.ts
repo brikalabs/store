@@ -1,8 +1,9 @@
 import { type OidcClaims, type PublishIdentity, verifyGithubOidc } from "@brika/registry-core";
-import { unauthorized } from "@brika/router";
+import { type RateLimitKey, unauthorized } from "@brika/router";
 import type { Db } from "@brika/store-db";
 import { GithubJwksProvider } from "./adapters/github-jwks";
 import { verifyToken } from "./adapters/token";
+import type { Services } from "./services";
 
 /**
  * Shared write-authentication for the registry's mutating endpoints (publish,
@@ -50,9 +51,31 @@ export async function authenticateWrite(request: Request, db: Db): Promise<Publi
  * Like {@link authenticateWrite}, but throws `401 Unauthorized` instead of
  * returning `null`, so a handler reads the identity in one line:
  * `const identity = await requireWrite(req, db)`.
+ *
+ * Memoized per request (keyed by the `Request`): the rate-limit middleware and the
+ * handler both call it, but the OIDC/JWKS verification runs only once. The cache
+ * is a `WeakMap`, so entries are collected with their request.
  */
-export async function requireWrite(request: Request, db: Db): Promise<PublishIdentity> {
-  const identity = await authenticateWrite(request, db);
-  if (identity === null) throw unauthorized();
-  return identity;
+const identityByRequest = new WeakMap<Request, Promise<PublishIdentity>>();
+
+export function requireWrite(request: Request, db: Db): Promise<PublishIdentity> {
+  const cached = identityByRequest.get(request);
+  if (cached !== undefined) return cached;
+  const resolved = authenticateWrite(request, db).then((identity) => {
+    if (identity === null) throw unauthorized();
+    return identity;
+  });
+  identityByRequest.set(request, resolved);
+  return resolved;
 }
+
+/**
+ * A `rateLimit` key strategy that keys by the authenticated principal: the OIDC
+ * repository, else the token owner. For publish-style endpoints, where CI shares
+ * GitHub Actions egress IPs so a per-IP key would throttle unrelated repos. Reuses
+ * the memoized {@link requireWrite}, so it adds no extra verification.
+ */
+export const principal: RateLimitKey<Services> = async ({ req, ctx }) => {
+  const identity = await requireWrite(req, ctx.db);
+  return identity.repository ?? identity.owner;
+};
