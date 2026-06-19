@@ -101,6 +101,8 @@ export interface RuleBuilder {
   check(): string[];
   checkEach(): RuleResult[];
   toTestCases(): ArchTestCase[];
+  /** Throw if any rule is violated - for asserting inline in a test. */
+  assert(): void;
 }
 
 export interface ArchRulesOptions {
@@ -113,6 +115,18 @@ export interface ArchRulesOptions {
 /** Start a rule set. */
 export function archRules(options: ArchRulesOptions = {}): ArchRules {
   return new ArchRules(options);
+}
+
+/**
+ * Start a single rule against the current working directory - the inline form for a
+ * `*.test.ts`, where the test name is the description and `.assert()` is the assertion:
+ *
+ *   test("the domain core has no database", () => {
+ *     rule().filesMatching("packages/*-core/src/**\/*.ts").mayNotImport(ORM).assert();
+ *   });
+ */
+export function rule(description = ""): RuleBuilder {
+  return new ArchRules().rule(description);
 }
 
 export class ArchRules {
@@ -148,6 +162,7 @@ export class ArchRules {
       check: () => this.check(),
       checkEach: () => this.checkEach(),
       toTestCases: () => this.toTestCases(),
+      assert: () => this.assert(),
     };
     return builder;
   }
@@ -163,6 +178,14 @@ export class ArchRules {
   /** Every violation across all rules, prefixed by rule (a flat list, for a CLI). */
   check(): string[] {
     return this.checkEach().flatMap((r) => r.violations.map((v) => `[${r.description}]\n  ${v}`));
+  }
+
+  /** Throw if any rule is violated (listing them) - for asserting inline in a test. */
+  assert(): void {
+    const violations = this.check();
+    if (violations.length > 0) {
+      throw new Error(`architecture: ${violations.length} violation(s):\n${violations.join("\n")}`);
+    }
   }
 
   /** One test case per rule; `assert` throws (listing the offending imports) on violation. */

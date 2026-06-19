@@ -75,13 +75,18 @@ depend on ports, not on Cloudflare. The blast radius is, by construction, the
 ## Architecture rules (enforced)
 
 The layering above is not a convention you have to remember — the key parts are
-enforced (ArchUnit-style) by the **`@brika/archunit`** package (a tiny rule engine:
-`archRules().rule(...).filesMatching(...).mayNotImport(modules(...))`), with the repo's
-rules declared fluently in `scripts/architecture-rules.ts` (by package/folder glob, so
-they scale as packages and apps are added). They run **two ways** off the same
-definitions: as `bun test` cases (`scripts/architecture.test.ts`, one test per rule) and
-as a standalone lint CLI (`bun run check:architecture`, in `bun run lint`). Either fails
-the build, naming the offending file + import. The rules:
+enforced (ArchUnit-style) by the **`@brika/archunit`** package and written as ordinary
+tests in `scripts/architecture.test.ts`. Each rule is one `bun test` case: declare what a
+layer may not import, then assert it, e.g.
+
+```ts
+test("the domain core depends on no database/ORM or HTTP framework", () => {
+  rule().filesMatching("packages/*-core/src/**/*.ts").mayNotImport(ORM, HTTP).assert();
+});
+```
+
+Rules are scoped by package/folder glob (so they scale as packages and apps are added),
+and a violation fails the test naming the offending file + import. The rules:
 
 - **A. The domain core (`@brika/registry-core`) is platform-free.** It may not import
   any Cloudflare module (`cloudflare:*`, `@cloudflare/*`, `wrangler`), the database/ORM

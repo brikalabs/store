@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { archRules, category, modules, specifiers, stripComments } from "./index";
+import { archRules, category, modules, rule, specifiers, stripComments } from "./index";
 
 // The package's own directory, used as a real root to exercise file scanning without
 // fixtures: src/index.ts genuinely imports "bun" and "node:fs"/"node:path".
@@ -107,5 +107,32 @@ describe("ArchRules engine", () => {
     const odd = category("an odd-length specifier", (s) => s.length % 2 === 1);
     expect(odd.test("bun")).toBe(true);
     expect(odd.test("node:fs")).toBe(true);
+  });
+
+  test("assert throws on violation and passes when clean", () => {
+    expect(() =>
+      archRules({ root: ROOT })
+        .rule("no node built-ins")
+        .filesMatching("src/index.ts")
+        .mayNotImport(modules("node:fs"))
+        .assert(),
+    ).toThrow(/violation/);
+    expect(() =>
+      archRules({ root: ROOT })
+        .rule("no lodash")
+        .filesMatching("src/index.ts")
+        .mayNotImport(modules("lodash"))
+        .assert(),
+    ).not.toThrow();
+  });
+
+  test("top-level rule() builds a single rule against the cwd", () => {
+    // Run from the repo root (where bun test runs); a clean rule must not throw.
+    expect(() =>
+      rule()
+        .filesMatching("packages/archunit/src/index.ts")
+        .mayNotImport(modules("lodash"))
+        .assert(),
+    ).not.toThrow();
   });
 });
