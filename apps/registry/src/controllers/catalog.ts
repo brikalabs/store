@@ -1,5 +1,5 @@
 import type { DownloadStats } from "@brika/registry-core";
-import { type Db, regDistTags, regPackages, regVersions } from "@brika/store-db";
+import { type Db, regDistTags, regPackages, regScopes, regVersions } from "@brika/store-db";
 import { and, eq } from "drizzle-orm";
 import { controller, route } from "../http/router";
 import type { Services } from "../services";
@@ -24,6 +24,8 @@ export interface CatalogEntry {
   readonly createdAt: string;
   readonly size: number;
   readonly integrity: string;
+  /** The scope's verified publisher (owner + display name), absent if unscoped. */
+  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: true };
   readonly downloads?: DownloadStats;
 }
 
@@ -59,6 +61,9 @@ async function readCatalog(db: Db): Promise<CatalogEntry[]> {
       size: regVersions.size,
       integrity: regVersions.integrity,
       yanked: regVersions.yanked,
+      takedown: regVersions.takedown,
+      ownerLogin: regScopes.ownerId,
+      ownerDisplayName: regScopes.displayName,
     })
     .from(regDistTags)
     .innerJoin(
@@ -66,10 +71,11 @@ async function readCatalog(db: Db): Promise<CatalogEntry[]> {
       and(eq(regVersions.name, regDistTags.name), eq(regVersions.version, regDistTags.version)),
     )
     .innerJoin(regPackages, eq(regPackages.name, regDistTags.name))
+    .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
     .where(eq(regDistTags.tag, "latest"));
 
   return rows
-    .filter((row) => !row.yanked)
+    .filter((row) => !row.yanked && row.takedown === null)
     .map((row) => ({
       name: row.name,
       version: row.version,
@@ -78,6 +84,14 @@ async function readCatalog(db: Db): Promise<CatalogEntry[]> {
       createdAt: new Date(row.createdAt * 1000).toISOString(),
       size: row.size,
       integrity: row.integrity,
+      publisher:
+        row.ownerLogin === null
+          ? undefined
+          : {
+              id: row.ownerLogin,
+              name: row.ownerDisplayName ?? row.ownerLogin,
+              verified: true as const,
+            },
     }))
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }

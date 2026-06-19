@@ -1,21 +1,25 @@
-import { Database } from "bun:sqlite";
-import { beforeEach, describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { PublishService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
-import { type Db, regDistTags, regPackages, regScopes, regVersions, schema } from "@brika/store-db";
+import {
+  type Db,
+  regDistTags,
+  regPackages,
+  regScopeMembers,
+  regScopes,
+  regVersions,
+} from "@brika/store-db";
 import { transaction } from "@brika/tx";
-import { drizzle } from "drizzle-orm/bun-sqlite";
+import { eq } from "drizzle-orm";
 import { D1MetadataWriter } from "../adapters/d1-metadata-writer";
 import { D1OwnershipPolicy } from "../adapters/d1-ownership";
+import { D1ScopeMembers } from "../adapters/d1-scope-members";
 import { SchemaManifestValidator } from "../adapters/manifest-validator";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
 import { issueToken } from "../adapters/token";
 import { buildServices, type Services } from "../services";
+import { fakeR2, makeDb, seedExamplePackage } from "../test-harness";
 import { handleCatalog } from "./catalog";
-import { deprecate, yank } from "./manage";
-import { publish } from "./publish";
 import { handleDownloads } from "./stats";
 
 /**
@@ -23,11 +27,21 @@ import { handleDownloads } from "./stats";
  * SQLite (the same drizzle migrations the registry ships) and a fake R2 bucket,
  * so the handlers, adapters, and domain services run end to end without the
  * Cloudflare runtime. Auth uses a seeded registry token (a non-JWT bearer skips
- * the OIDC path with no network). The device handlers read `vars()` (env) so are
- * covered by the `DeviceService` unit test instead.
+ * the OIDC path with no network).
+ *
+ * `cloudflare:workers` is stubbed (the publish + manage controllers transitively
+ * import it) with `REGISTRY_ADMINS` set, so the admin-gated takedown path is
+ * exercised. The controllers are imported dynamically AFTER the stub so it applies.
  */
+mock.module("cloudflare:workers", () => ({
+  env: { STORE_URL: "http://localhost:3000/", REGISTRY_ADMINS: "operator" },
+}));
 
-const MIGRATIONS_DIR = join(import.meta.dir, "../../../../packages/db/drizzle");
+const { publish } = await import("./publish");
+const { deprecate, yank, takedown, restore } = await import("./manage");
+const { createScope, deleteMember, listMembers, putMember, setDisplayName } = await import(
+  "./scope"
+);
 
 /** The status a handler yields, whether it returns a Response or throws an HttpError. */
 async function statusOf(run: Promise<Response>): Promise<number> {
@@ -39,41 +53,11 @@ async function statusOf(run: Promise<Response>): Promise<number> {
   }
 }
 
-function makeDb(): Db {
-  const sqlite = new Database(":memory:");
-  for (const file of readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith(".sql"))
-    .sort()) {
-    const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
-    for (const statement of sql.split("--> statement-breakpoint")) {
-      const trimmed = statement.trim();
-      if (trimmed.length > 0) sqlite.run(trimmed);
-    }
-  }
-  return drizzle(sqlite, { schema }) as unknown as Db;
-}
-
-/** Minimal in-memory R2 bucket: only the get/put the tarball adapters use. */
-function fakeR2(): R2Bucket {
-  const store = new Map<string, Uint8Array>();
-  const bucket = {
-    get: async (key: string) => {
-      const bytes = store.get(key);
-      return bytes === undefined ? null : { body: new Response(bytes).body };
-    },
-    put: async (key: string, value: Uint8Array) => {
-      store.set(key, value);
-      return {};
-    },
-    delete: async (key: string) => {
-      store.delete(key);
-    },
-  };
-  return bucket as unknown as R2Bucket;
-}
-
+// "operator" is the lone admin for the takedown/restore tests; passed explicitly
+// (provider-qualified) rather than via the env, so these tests do not depend on the
+// process-global `cloudflare:workers` mock surviving cross-file test ordering.
 function services(db: Db): Services {
-  return buildServices(db, fakeR2(), "http://localhost:8787");
+  return buildServices(db, fakeR2(), "http://localhost:8787", new Set(["github:operator"]));
 }
 
 function post(body: unknown, token?: string): Request {
@@ -82,19 +66,9 @@ function post(body: unknown, token?: string): Request {
   return new Request("http://localhost/", { method: "POST", headers, body: JSON.stringify(body) });
 }
 
-/** Seed a package + its latest version + scope ownership, and an owner token. */
+/** Seed the example package (shared harness) plus an owner token for the auth tests. */
 async function seedPackage(db: Db, owner: string): Promise<{ token: string }> {
-  await db.insert(regScopes).values({ scope: "@brika", githubOwner: owner });
-  await db.insert(regPackages).values({ name: "@brika/x", scope: "@brika" });
-  await db.insert(regVersions).values({
-    name: "@brika/x",
-    version: "1.0.0",
-    manifest: { name: "@brika/x", version: "1.0.0" },
-    integrity: "sha512-test",
-    shasum: "deadbeef",
-    size: 1,
-  });
-  await db.insert(regDistTags).values({ name: "@brika/x", tag: "latest", version: "1.0.0" });
+  await seedExamplePackage(db, owner);
   return { token: await issueToken(db, owner) };
 }
 
@@ -124,10 +98,17 @@ describe("publish (auth + invariant + ownership gates)", () => {
     expect(await statusOf(publish({ body, req: post(body, token), ctx: services(db) }))).toBe(400);
   });
 
+  test("400 for a non-canonical name (uppercase scope) before the ownership gate runs", async () => {
+    const token = await issueToken(db, "octocat");
+    const name = "@Brika/x"; // case variant of a real scope: must be refused at the door
+    const body = { ...validPublish, name, manifest: { name, version: "1.0.0" } };
+    expect(await statusOf(publish({ body, req: post(body, token), ctx: services(db) }))).toBe(400);
+  });
+
   test("403 when the scope is owned by someone else", async () => {
-    // An unclaimed scope is claimable on first publish; ownership only forbids when
-    // the scope already belongs to a different owner.
-    await db.insert(regScopes).values({ scope: "@brika", githubOwner: "octocat" });
+    // Scopes are claimed by explicit creation, never on publish; publishing to a scope
+    // owned by a different identity is forbidden.
+    await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" });
     const token = await issueToken(db, "stranger");
     expect(
       await statusOf(
@@ -152,6 +133,11 @@ describe("publish (auth + invariant + ownership gates)", () => {
   });
 
   test("413 when the tarball is over the size limit", async () => {
+    // The scope must exist and the publisher must be a member to reach the size check.
+    await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" });
+    await db
+      .insert(regScopeMembers)
+      .values({ scope: "@brika", memberId: "octocat", role: "admin" });
     const token = await issueToken(db, "octocat");
     // A 1-byte cap rejects even the tiny 3-byte "AAAA" tarball.
     const ctx = {
@@ -160,13 +146,222 @@ describe("publish (auth + invariant + ownership gates)", () => {
         new D1MetadataWriter(db),
         new R2TarballWriter(fakeR2()),
         new SchemaManifestValidator(),
-        new D1OwnershipPolicy(db),
+        new D1OwnershipPolicy(db, new D1ScopeMembers(db)),
         { maxTarballBytes: 1 },
       ),
     };
     expect(
       await statusOf(publish({ body: validPublish, req: post(validPublish, token), ctx })),
     ).toBe(413);
+  });
+});
+
+describe("createScope (explicit scope claim)", () => {
+  const params = { scope: "@team" };
+
+  test("401 without a token", async () => {
+    expect(await statusOf(createScope({ params, req: post(undefined), ctx: services(db) }))).toBe(
+      401,
+    );
+  });
+
+  test("400 for a non-canonical scope name", async () => {
+    const token = await issueToken(db, "alice");
+    const bad = { scope: "@Team" }; // uppercase: rejected by the JSR-style rule
+    expect(
+      await statusOf(createScope({ params: bad, req: post(undefined, token), ctx: services(db) })),
+    ).toBe(400);
+  });
+
+  test("201 creates the scope and seeds the caller as its admin member", async () => {
+    const token = await issueToken(db, "alice");
+    const res = await createScope({ params, req: post(undefined, token), ctx: services(db) });
+    expect(res.status).toBe(201);
+    const rows = await db.select().from(regScopes).where(eq(regScopes.scope, "@team"));
+    expect(rows[0]).toMatchObject({ ownerProvider: "github", ownerId: "alice" });
+    const members = await db
+      .select()
+      .from(regScopeMembers)
+      .where(eq(regScopeMembers.scope, "@team"));
+    expect(members).toEqual([
+      expect.objectContaining({ provider: "github", memberId: "alice", role: "admin" }),
+    ]);
+  });
+
+  test("200 (idempotent) when the caller already owns the scope", async () => {
+    const token = await issueToken(db, "alice");
+    await createScope({ params, req: post(undefined, token), ctx: services(db) });
+    const res = await createScope({ params, req: post(undefined, token), ctx: services(db) });
+    expect(res.status).toBe(200);
+  });
+
+  test("409 when the scope is owned by someone else", async () => {
+    await db.insert(regScopes).values({ scope: "@team", ownerId: "alice" });
+    const token = await issueToken(db, "mallory");
+    expect(
+      await statusOf(createScope({ params, req: post(undefined, token), ctx: services(db) })),
+    ).toBe(409);
+  });
+
+  test("concurrent creates resolve to one owner; the loser gets 409", async () => {
+    const alice = await issueToken(db, "alice");
+    const mallory = await issueToken(db, "mallory");
+    const [a, b] = await Promise.all([
+      statusOf(createScope({ params, req: post(undefined, alice), ctx: services(db) })),
+      statusOf(createScope({ params, req: post(undefined, mallory), ctx: services(db) })),
+    ]);
+    expect([a, b].filter((s) => s === 201)).toHaveLength(1);
+    expect([a, b].filter((s) => s === 409)).toHaveLength(1);
+    expect(await db.select().from(regScopes).where(eq(regScopes.scope, "@team"))).toHaveLength(1);
+  });
+});
+
+describe("scope members (roles + invariants)", () => {
+  const scope = "@team";
+  const memberParams = (id: string) => ({ scope, provider: "github", id });
+  const membersOf = () => db.select().from(regScopeMembers).where(eq(regScopeMembers.scope, scope));
+
+  /** Create `@team` with `adminLogin` as its admin; return that admin's token. */
+  async function seedScopeAdmin(adminLogin: string): Promise<string> {
+    const token = await issueToken(db, adminLogin);
+    await createScope({ params: { scope }, req: post(undefined, token), ctx: services(db) });
+    return token;
+  }
+
+  test("an admin adds a member; a non-admin cannot", async () => {
+    const alice = await seedScopeAdmin("alice");
+    const res = await putMember({
+      params: memberParams("bob"),
+      body: { role: "member" },
+      req: post(undefined, alice),
+      ctx: services(db),
+    });
+    expect(res.status).toBe(200);
+    expect((await membersOf()).map((m) => m.memberId).sort((a, b) => a.localeCompare(b))).toEqual([
+      "alice",
+      "bob",
+    ]);
+
+    const bob = await issueToken(db, "bob"); // a plain member, not an admin
+    expect(
+      await statusOf(
+        putMember({
+          params: memberParams("carol"),
+          body: { role: "member" },
+          req: post(undefined, bob),
+          ctx: services(db),
+        }),
+      ),
+    ).toBe(403);
+  });
+
+  test("a newly added member can publish under the scope", async () => {
+    const alice = await seedScopeAdmin("alice");
+    await putMember({
+      params: memberParams("bob"),
+      body: { role: "member" },
+      req: post(undefined, alice),
+      ctx: services(db),
+    });
+    const bob = await issueToken(db, "bob");
+    const body = {
+      name: "@team/x",
+      version: "1.0.0",
+      manifest: { name: "@team/x", version: "1.0.0" },
+      tarball: "AAAA",
+    };
+    // Reaches the size/validation gate (not 403), i.e. membership authorized the publish.
+    expect(await statusOf(publish({ body, req: post(body, bob), ctx: services(db) }))).not.toBe(
+      403,
+    );
+  });
+
+  test("listMembers requires membership", async () => {
+    const alice = await seedScopeAdmin("alice");
+    expect(
+      (await listMembers({ params: { scope }, req: post(undefined, alice), ctx: services(db) }))
+        .status,
+    ).toBe(200);
+    const stranger = await issueToken(db, "bob");
+    expect(
+      await statusOf(
+        listMembers({ params: { scope }, req: post(undefined, stranger), ctx: services(db) }),
+      ),
+    ).toBe(403);
+  });
+
+  test("the last admin cannot be demoted or removed (409)", async () => {
+    const alice = await seedScopeAdmin("alice");
+    expect(
+      await statusOf(
+        putMember({
+          params: memberParams("alice"),
+          body: { role: "member" },
+          req: post(undefined, alice),
+          ctx: services(db),
+        }),
+      ),
+    ).toBe(409);
+    expect(
+      await statusOf(
+        deleteMember({
+          params: memberParams("alice"),
+          req: post(undefined, alice),
+          ctx: services(db),
+        }),
+      ),
+    ).toBe(409);
+  });
+
+  test("concurrent demotions of two admins cannot leave the scope with zero admins", async () => {
+    const alice = await seedScopeAdmin("alice");
+    await putMember({
+      params: memberParams("bob"),
+      body: { role: "admin" },
+      req: post(undefined, alice),
+      ctx: services(db),
+    });
+    const bob = await issueToken(db, "bob");
+
+    // Both admins try to demote the other at once. The atomic SQL guard lets at most one
+    // succeed, so the "at least one admin" invariant holds (no read-then-write TOCTOU).
+    await Promise.allSettled([
+      statusOf(
+        putMember({
+          params: memberParams("bob"),
+          body: { role: "member" },
+          req: post(undefined, alice),
+          ctx: services(db),
+        }),
+      ),
+      statusOf(
+        putMember({
+          params: memberParams("alice"),
+          body: { role: "member" },
+          req: post(undefined, bob),
+          ctx: services(db),
+        }),
+      ),
+    ]);
+    const admins = (await membersOf()).filter((m) => m.role === "admin");
+    expect(admins.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("with a second admin, one admin can be removed", async () => {
+    const alice = await seedScopeAdmin("alice");
+    await putMember({
+      params: memberParams("bob"),
+      body: { role: "admin" },
+      req: post(undefined, alice),
+      ctx: services(db),
+    });
+    const res = await deleteMember({
+      params: memberParams("alice"),
+      req: post(undefined, alice),
+      ctx: services(db),
+    });
+    expect(res.status).toBe(200);
+    expect((await membersOf()).map((m) => m.memberId)).toEqual(["bob"]);
   });
 });
 
@@ -220,6 +415,71 @@ describe("deprecate / yank (ownership-gated mutations)", () => {
   });
 });
 
+describe("takedown / restore (operator-gated)", () => {
+  const params = { pkg: "@brika/x", version: "1.0.0" };
+  // REGISTRY_ADMINS is "operator" (see the cloudflare:workers stub above).
+  const asAdmin = (db: Db) => issueToken(db, "operator");
+
+  test("403 for a valid credential that is not a registry admin", async () => {
+    const { token } = await seedPackage(db, "octocat"); // owner, but not an admin
+    const res = statusOf(
+      takedown({
+        params,
+        body: { reason: "malware" },
+        req: post(undefined, token),
+        ctx: services(db),
+      }),
+    );
+    expect(await res).toBe(403);
+  });
+
+  test("an admin takedown hides the version from packument + catalog (reason surfaced), keeps bytes", async () => {
+    await seedPackage(db, "octocat");
+    const ctx = services(db);
+    const token = await asAdmin(db);
+
+    const res = await takedown({
+      params,
+      body: { reason: "malware: exfiltrates env" },
+      req: post(undefined, token),
+      ctx,
+    });
+    expect(res.status).toBe(200);
+
+    const packument = (await ctx.resolve.packument("@brika/x")) as {
+      versions: Record<string, unknown>;
+      takedowns?: Record<string, string>;
+    };
+    expect(Object.keys(packument.versions)).toEqual([]); // hidden from new installs
+    expect(packument.takedowns).toEqual({ "1.0.0": "malware: exfiltrates env" }); // reason surfaced
+
+    const catalog = await (
+      await handleCatalog(new Request("http://localhost/-/v1/packages"), ctx)
+    ).json();
+    expect(catalog.packages).toHaveLength(0);
+
+    // Bytes/metadata retained: only the takedown flag changed.
+    const rows = await db.select().from(regVersions);
+    expect(rows[0]?.integrity).toBe("sha512-test");
+    expect(rows[0]?.takedown).toBe("malware: exfiltrates env");
+  });
+
+  test("restore re-exposes a taken-down version", async () => {
+    await seedPackage(db, "octocat");
+    const ctx = services(db);
+    const token = await asAdmin(db);
+
+    await takedown({ params, body: { reason: "policy" }, req: post(undefined, token), ctx });
+    const res = await restore({ params, req: post(undefined, token), ctx });
+    expect(res.status).toBe(200);
+
+    const packument = (await ctx.resolve.packument("@brika/x")) as {
+      versions: Record<string, unknown>;
+    };
+    expect(Object.keys(packument.versions)).toEqual(["1.0.0"]);
+  });
+});
+
 describe("handleCatalog", () => {
   test("lists the latest non-yanked version with totals", async () => {
     await seedPackage(db, "octocat");
@@ -261,9 +521,8 @@ describe("handleDownloads", () => {
 });
 
 describe("publish atomicity (commitVersion + transaction)", () => {
-  test("commitVersion writes the package, version, and dist-tag together", async () => {
-    const meta = new D1MetadataWriter(db);
-    await meta.commitVersion({
+  const commit = (meta: D1MetadataWriter) =>
+    meta.commitVersion({
       scope: "@brika",
       tag: "latest",
       version: {
@@ -280,6 +539,9 @@ describe("publish atomicity (commitVersion + transaction)", () => {
       },
     });
 
+  test("commitVersion writes the package, version, and dist-tag together", async () => {
+    await commit(new D1MetadataWriter(db));
+
     expect((await db.select().from(regPackages)).map((r) => r.name)).toContain("@brika/y");
     const versions = await db.select().from(regVersions);
     expect(versions.find((r) => r.name === "@brika/y")?.version).toBe("1.0.0");
@@ -287,7 +549,32 @@ describe("publish atomicity (commitVersion + transaction)", () => {
     expect(tags.find((r) => r.name === "@brika/y")?.version).toBe("1.0.0"); // tag moved in the same unit
   });
 
-  test("a tarball put is rolled back (deleted) when the surrounding transaction fails", async () => {
+  test("commitVersion defers its write to the commit point, and a later failure rolls it back", async () => {
+    const meta = new D1MetadataWriter(db);
+    let writtenMidBody = -1;
+    await expect(
+      transaction(async () => {
+        await commit(meta);
+        // Deferred: nothing is written yet, so the write is order-independent and a
+        // later step that throws takes the D1 write down with the staged tarball.
+        writtenMidBody = (await db.select().from(regVersions)).length;
+        throw new Error("a later step failed");
+      }),
+    ).rejects.toThrow("a later step failed");
+
+    expect(writtenMidBody).toBe(0); // not written during the body
+    expect(await db.select().from(regVersions)).toHaveLength(0); // and rolled back, not committed
+  });
+
+  test("commitVersion inside a successful transaction writes at the commit point", async () => {
+    const meta = new D1MetadataWriter(db);
+    await transaction(() => commit(meta));
+    expect((await db.select().from(regVersions)).map((r) => r.name)).toContain("@brika/y");
+  });
+
+  // An R2 bucket whose backing store is exposed so a test can assert what is staged
+  // vs. compensated. (fakeR2 hides its store; these tests need to see it.)
+  const trackingR2 = (): { r2: R2Bucket; store: Map<string, Uint8Array> } => {
     const store = new Map<string, Uint8Array>();
     const r2 = {
       put: async (key: string, value: Uint8Array) => {
@@ -297,6 +584,11 @@ describe("publish atomicity (commitVersion + transaction)", () => {
         store.delete(key);
       },
     } as unknown as R2Bucket;
+    return { r2, store };
+  };
+
+  test("a tarball put is rolled back (deleted) when the surrounding transaction fails", async () => {
+    const { r2, store } = trackingR2();
     const tarballs = new R2TarballWriter(r2);
 
     await expect(
@@ -311,16 +603,62 @@ describe("publish atomicity (commitVersion + transaction)", () => {
   });
 
   test("a tarball put outside a transaction is a plain write (no rollback)", async () => {
-    const store = new Map<string, Uint8Array>();
-    const r2 = {
-      put: async (key: string, value: Uint8Array) => {
-        store.set(key, value);
-      },
-      delete: async (key: string) => {
-        store.delete(key);
-      },
-    } as unknown as R2Bucket;
+    const { r2, store } = trackingR2();
     await new R2TarballWriter(r2).put("k", new Uint8Array([1]));
     expect(store.size).toBe(1);
+  });
+});
+
+describe("scope publisher (verified attribution)", () => {
+  test("packument + catalog expose the scope owner as the verified publisher", async () => {
+    await seedPackage(db, "brikalabs");
+    const ctx = services(db);
+
+    const packument = (await ctx.resolve.packument("@brika/x")) as {
+      publisher?: { id: string; name: string; verified: boolean };
+    };
+    // No display name yet -> falls back to the owner id.
+    expect(packument.publisher).toEqual({ id: "brikalabs", name: "brikalabs", verified: true });
+
+    const catalog = await (
+      await handleCatalog(new Request("http://localhost/-/v1/packages"), ctx)
+    ).json();
+    expect(catalog.packages[0].publisher).toEqual({
+      id: "brikalabs",
+      name: "brikalabs",
+      verified: true,
+    });
+  });
+
+  test("the scope owner sets the display name; it becomes the verified publisher name", async () => {
+    const { token } = await seedPackage(db, "brikalabs");
+    const ctx = services(db);
+
+    const res = await setDisplayName({
+      params: { scope: "@brika" },
+      body: { displayName: "Brika Labs" },
+      req: post(undefined, token),
+      ctx,
+    });
+    expect(res.status).toBe(200);
+
+    const packument = (await ctx.resolve.packument("@brika/x")) as {
+      publisher?: { id: string; name: string; verified: boolean };
+    };
+    expect(packument.publisher).toEqual({ id: "brikalabs", name: "Brika Labs", verified: true });
+  });
+
+  test("a non-owner cannot set the display name (403)", async () => {
+    await seedPackage(db, "brikalabs");
+    const stranger = await issueToken(db, "intruder");
+    const res = statusOf(
+      setDisplayName({
+        params: { scope: "@brika" },
+        body: { displayName: "Pwned" },
+        req: post(undefined, stranger),
+        ctx: services(db),
+      }),
+    );
+    expect(await res).toBe(403);
   });
 });

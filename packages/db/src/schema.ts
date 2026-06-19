@@ -31,6 +31,11 @@ export const regVersions = sqliteTable(
     publishedAt: integer("published_at").notNull().default(epoch),
     deprecated: text("deprecated"),
     yanked: integer("yanked", { mode: "boolean" }).notNull().default(false),
+    /**
+     * Operator takedown reason (abuse/policy). Null = active; non-null = removed by
+     * an admin, hidden from new installs like a yank but with this public reason.
+     */
+    takedown: text("takedown"),
     /** CI build provenance from the GitHub OIDC token; null for local publishes. */
     provenance: text("provenance", { mode: "json" }).$type<Record<string, unknown>>(),
   },
@@ -49,12 +54,50 @@ export const regDistTags = sqliteTable(
   (t) => [primaryKey({ columns: [t.name, t.tag] })],
 );
 
-/** Scope ownership: a scope (e.g. `@brika`) is owned by one GitHub owner. */
+/**
+ * Scope ownership: a scope (e.g. `@brika`) is owned by one identity. The owner is
+ * provider-qualified (`ownerProvider` + `ownerId`) so the registry is not
+ * GitHub-locked; only GitHub is wired today. (`ownerId` keeps the legacy
+ * `github_owner` column name; it is the owner id for whatever provider.)
+ */
 export const regScopes = sqliteTable("reg_scopes", {
   scope: text("scope").primaryKey(),
-  githubOwner: text("github_owner").notNull(),
+  /** Identity provider of the owner (e.g. `github`). */
+  ownerProvider: text("owner_provider").notNull().default("github"),
+  /** Owner id within the provider (e.g. `brikalabs`). */
+  ownerId: text("github_owner").notNull(),
+  /**
+   * Display name shown as the verified publisher (e.g. "Brika Labs" for `@brika`),
+   * settable only by the scope owner. Null falls back to the owner id. This is the
+   * trusted attribution: a manifest's free-text `author` cannot override it.
+   */
+  displayName: text("display_name"),
   createdAt: integer("created_at").notNull().default(epoch),
 });
+
+/**
+ * Scope membership and roles (JSR-style). A scope can have several members; each is a
+ * provider-qualified identity with a role: `admin` (manage members + everything a
+ * member can) or `member` (publish under the scope). The scope creator is seeded as the
+ * first admin. Publishing is gated on membership, not the single `reg_scopes` owner; the
+ * `reg_scopes` owner/displayName remains the public verified-publisher attribution.
+ */
+export const regScopeMembers = sqliteTable(
+  "reg_scope_members",
+  {
+    scope: text("scope")
+      .notNull()
+      .references(() => regScopes.scope, { onDelete: "cascade" }),
+    /** Identity provider of the member (e.g. `github`). */
+    provider: text("provider").notNull().default("github"),
+    /** Member id within the provider (e.g. a GitHub login or org). */
+    memberId: text("member_id").notNull(),
+    /** `admin` or `member`. */
+    role: text("role").notNull().default("member"),
+    createdAt: integer("created_at").notNull().default(epoch),
+  },
+  (t) => [primaryKey({ columns: [t.scope, t.provider, t.memberId] })],
+);
 
 /**
  * Per-day tarball download counts: the install signal. One row per (package,
@@ -99,7 +142,10 @@ export const regDeviceAuth = sqliteTable("reg_device_auth", {
 /** Issued publish tokens (only the SHA-256 hash is stored). */
 export const regTokens = sqliteTable("reg_tokens", {
   tokenHash: text("token_hash").primaryKey(),
-  githubLogin: text("github_login").notNull(),
+  /** Identity provider of the token's principal (e.g. `github`). */
+  provider: text("provider").notNull().default("github"),
+  /** Principal id within the provider (keeps the legacy `github_login` column name). */
+  subject: text("github_login").notNull(),
   createdAt: integer("created_at").notNull().default(epoch),
   expiresAt: integer("expires_at").notNull(),
   lastUsedAt: integer("last_used_at"),

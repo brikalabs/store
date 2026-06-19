@@ -44,10 +44,29 @@ export const PackageVersion = z.object({
   deprecated: z.string().nullable().default(null),
   /** Yanked versions are hidden from new installs but kept for existing locks. */
   yanked: z.boolean().default(false),
+  /**
+   * Operator takedown reason (abuse/policy). Null = active; non-null = removed by an
+   * admin: hidden from new installs like a yank, with this reason surfaced publicly.
+   */
+  takedownReason: z.string().nullable().default(null),
   /** CI build provenance (GitHub OIDC), or null for local token publishes. */
   provenance: Provenance.nullable().default(null),
 });
 export type PackageVersion = z.infer<typeof PackageVersion>;
+
+/**
+ * The verified publisher of a scope: the owner that controls it, plus the display
+ * name it chose. Derived from scope ownership (not the free-text manifest `author`),
+ * so it is trustworthy: only the scope owner can set it.
+ */
+export interface ScopePublisher {
+  /** Identity provider of the owner (e.g. `"github"`). */
+  readonly provider: string;
+  /** Owner id within the provider (the provable identity, e.g. `brikalabs`). */
+  readonly id: string;
+  /** Display name shown to users (owner-set; falls back to `id`). */
+  readonly name: string;
+}
 
 /**
  * A package and all of its versions, as read from the metadata store. The
@@ -57,6 +76,8 @@ export interface PackageRecord {
   readonly name: string;
   readonly distTags: Readonly<Record<string, string>>;
   readonly versions: readonly PackageVersion[];
+  /** The scope's verified publisher, or null for an unclaimed/unscoped package. */
+  readonly publisher: ScopePublisher | null;
   /** ISO-8601 timestamp of the first publish. */
   readonly createdAt: string;
 }

@@ -137,6 +137,29 @@ test("rejects a bundled file over the per-file size limit", async () => {
   if (!result.ok) expect(result.message).toContain("file limit");
 });
 
+test("accepts a tarball whose package.json matches the published manifest", async () => {
+  const tarball = gzipTar([
+    { path: "package.json", text: JSON.stringify({ name: valid.name, version: valid.version }) },
+  ]);
+  expect(await validator.validate(valid, tarball)).toEqual({ ok: true });
+});
+
+test("rejects a tarball whose package.json name/version diverges from the manifest", async () => {
+  const tarball = gzipTar([
+    { path: "package.json", text: JSON.stringify({ name: "@evil/x", version: valid.version }) },
+  ]);
+  const result = await validator.validate(valid, tarball);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.message).toContain("does not match");
+});
+
+test("rejects a tarball whose package.json is not valid JSON", async () => {
+  const tarball = gzipTar([{ path: "package.json", text: "{not json" }]);
+  const result = await validator.validate(valid, tarball);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.message).toContain("not valid JSON");
+});
+
 test("rejects a package over the unpacked-size limit", async () => {
   const small = new SchemaManifestValidator({ maxFileBytes: 1024, maxUnpackedBytes: 32 });
   const tarball = gzipTar([

@@ -11,6 +11,7 @@ import { D1DownloadStore } from "./adapters/d1-downloads";
 import { D1MetadataReader } from "./adapters/d1-metadata";
 import { D1MetadataWriter } from "./adapters/d1-metadata-writer";
 import { D1OwnershipPolicy } from "./adapters/d1-ownership";
+import { D1ScopeMembers } from "./adapters/d1-scope-members";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { R2TarballWriter } from "./adapters/r2-tarball-writer";
@@ -31,10 +32,27 @@ import { R2TarballWriter } from "./adapters/r2-tarball-writer";
  * declared inline on the routes that opt in (`rateLimit(...)` in the controllers,
  * backed by `adapters/cf-rate-limiter.ts`), so it never threads through this graph.
  */
-export function buildServices(db: Db, tarballs: R2Bucket, baseUrl: string) {
+export function buildServices(
+  db: Db,
+  tarballs: R2Bucket,
+  baseUrl: string,
+  admins: ReadonlySet<string> = new Set(),
+) {
+  // The D1 implementation of the ScopeMembers port, built once and injected into the
+  // authorization policy (which depends on the port, not this concrete adapter) and
+  // shared with the scope controller for member management.
+  const scopeMembers = new D1ScopeMembers(db);
+  const ownership = new D1OwnershipPolicy(db, scopeMembers);
   return {
     /** Drizzle client over the registry's D1 database (`reg_*` tables). */
     db,
+    /**
+     * Operator admins (provider-qualified `provider:owner` keys) for takedown/restore,
+     * resolved once here from `REGISTRY_ADMINS` rather than re-read from the ambient env
+     * per request. Defaults to empty (no admins) so a test or a missing config fails
+     * closed.
+     */
+    admins,
     /** npm-protocol read surface: packuments + tarball streams. */
     resolve: new ResolveService(new D1MetadataReader(db), new R2TarballReader(tarballs), {
       baseUrl,
@@ -44,10 +62,12 @@ export function buildServices(db: Db, tarballs: R2Bucket, baseUrl: string) {
       new D1MetadataWriter(db),
       new R2TarballWriter(tarballs),
       new SchemaManifestValidator(),
-      new D1OwnershipPolicy(db),
+      ownership,
     ),
     /** Post-publish management: deprecate, yank. */
-    management: new ManagementService(new D1MetadataWriter(db), new D1OwnershipPolicy(db)),
+    management: new ManagementService(new D1MetadataWriter(db), ownership),
+    /** Scope membership + roles (the `ScopeMembers` port; publish gating + member mgmt). */
+    scopeMembers,
     /** Per-day install-count store: record + stats. */
     downloads: new D1DownloadStore(db),
     /** Device-authorization flow (RFC 8628). */

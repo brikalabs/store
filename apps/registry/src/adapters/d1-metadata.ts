@@ -3,8 +3,9 @@ import {
   type PackageRecord,
   type PackageVersion,
   Provenance,
+  type ScopePublisher,
 } from "@brika/registry-core";
-import { type Db, regDistTags, regPackages, regVersions } from "@brika/store-db";
+import { type Db, regDistTags, regPackages, regScopes, regVersions } from "@brika/store-db";
 import { eq } from "drizzle-orm";
 
 /** Reads package metadata from D1 and assembles the domain `PackageRecord`. */
@@ -24,13 +25,26 @@ export class D1MetadataReader implements MetadataReader {
     const pkg = packageRows[0];
     if (pkg === undefined) return null;
 
-    const [versionRows, tagRows] = await Promise.all([
+    const [versionRows, tagRows, scopeRows] = await Promise.all([
       this.#db.select().from(regVersions).where(eq(regVersions.name, name)),
       this.#db.select().from(regDistTags).where(eq(regDistTags.name, name)),
+      pkg.scope === null
+        ? Promise.resolve([])
+        : this.#db.select().from(regScopes).where(eq(regScopes.scope, pkg.scope)).limit(1),
     ]);
 
     const distTags: Record<string, string> = {};
     for (const row of tagRows) distTags[row.tag] = row.version;
+
+    const scope = scopeRows[0];
+    const publisher: ScopePublisher | null =
+      scope === undefined
+        ? null
+        : {
+            provider: scope.ownerProvider,
+            id: scope.ownerId,
+            name: scope.displayName ?? scope.ownerId,
+          };
 
     const versions: PackageVersion[] = versionRows.map((row) => ({
       name: row.name,
@@ -42,6 +56,7 @@ export class D1MetadataReader implements MetadataReader {
       publishedAt: new Date(row.publishedAt * 1000).toISOString(),
       deprecated: row.deprecated,
       yanked: row.yanked,
+      takedownReason: row.takedown,
       provenance: Provenance.nullable()
         .catch(null)
         .parse(row.provenance ?? null),
@@ -51,6 +66,7 @@ export class D1MetadataReader implements MetadataReader {
       name: pkg.name,
       distTags,
       versions,
+      publisher,
       createdAt: new Date(pkg.createdAt * 1000).toISOString(),
     };
   }

@@ -128,4 +128,74 @@ describe("RegistryClient", () => {
       CliError,
     );
   });
+
+  test("createScope PUTs to the encoded scope endpoint and reports created", async () => {
+    const calls: { url: string; method?: string }[] = [];
+    const client = new RegistryClient("https://r.test", {
+      fetch: async (input, init) => {
+        calls.push({ url: String(input), method: init?.method });
+        return json({ ok: true, scope: "@brika", created: true });
+      },
+    });
+    const claim = await client.createScope("t", "@brika");
+    expect(claim).toEqual({ scope: "@brika", created: true });
+    expect(calls[0]?.url).toBe("https://r.test/-/scope/%40brika");
+    expect(calls[0]?.method).toBe("PUT");
+  });
+
+  test("createScope throws a CliError when the scope is owned by someone else", async () => {
+    const denied = new RegistryClient("https://r.test", {
+      fetch: async () => json({ error: "scope @brika is owned by alice", code: "conflict" }, 409),
+    });
+    await expect(denied.createScope("t", "@brika")).rejects.toBeInstanceOf(CliError);
+  });
+
+  test("listScopeMembers GETs the members endpoint and returns the roster", async () => {
+    const calls: { url: string; method?: string }[] = [];
+    const client = new RegistryClient("https://r.test", {
+      fetch: async (input, init) => {
+        calls.push({ url: String(input), method: init?.method });
+        return json({ ok: true, members: [{ provider: "github", id: "alice", role: "admin" }] });
+      },
+    });
+    const members = await client.listScopeMembers("t", "@brika");
+    expect(members).toEqual([{ provider: "github", id: "alice", role: "admin" }]);
+    expect(calls[0]?.url).toBe("https://r.test/-/scope/%40brika/members");
+    expect(calls[0]?.method).toBe("GET");
+  });
+
+  test("setScopeMember PUTs the role to the encoded member path", async () => {
+    let sent: unknown;
+    const calls: { url: string; method?: string }[] = [];
+    const client = new RegistryClient("https://r.test", {
+      fetch: async (input, init) => {
+        calls.push({ url: String(input), method: init?.method });
+        sent = JSON.parse(String(init?.body));
+        return json({ ok: true });
+      },
+    });
+    await client.setScopeMember("t", "@brika", { provider: "github", id: "alice" }, "admin");
+    expect(calls[0]?.url).toBe("https://r.test/-/scope/%40brika/member/github/alice");
+    expect(calls[0]?.method).toBe("PUT");
+    expect(sent).toEqual({ role: "admin" });
+  });
+
+  test("removeScopeMember DELETEs and surfaces the last-admin conflict as a CliError", async () => {
+    const calls: { url: string; method?: string }[] = [];
+    const ok = new RegistryClient("https://r.test", {
+      fetch: async (input, init) => {
+        calls.push({ url: String(input), method: init?.method });
+        return json({ ok: true });
+      },
+    });
+    await ok.removeScopeMember("t", "@brika", { provider: "github", id: "alice" });
+    expect(calls[0]?.method).toBe("DELETE");
+
+    const denied = new RegistryClient("https://r.test", {
+      fetch: async () => json({ error: "must keep at least one admin", code: "conflict" }, 409),
+    });
+    await expect(
+      denied.removeScopeMember("t", "@brika", { provider: "github", id: "alice" }),
+    ).rejects.toBeInstanceOf(CliError);
+  });
 });

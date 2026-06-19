@@ -5,7 +5,8 @@ import { type Db, regAudit } from "@brika/store-db";
 export interface AuditEntry {
   readonly action: string;
   readonly packageName: string;
-  readonly version: string;
+  /** The version acted on, or null for scope-level actions (the column is nullable). */
+  readonly version: string | null;
   readonly actor: PublishIdentity;
   readonly detail?: Record<string, unknown> | null;
 }

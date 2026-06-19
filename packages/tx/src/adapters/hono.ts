@@ -1,6 +1,5 @@
 import type { Context } from "hono";
-import { type Propagation, required } from "../core/propagation";
-import { transaction } from "../core/transaction";
+import { type TxOptions, transaction } from "../core/transaction";
 
 type Handler = (c: Context, next: () => Promise<void>) => Response | Promise<Response>;
 
@@ -20,6 +19,6 @@ type Handler = (c: Context, next: () => Promise<void>) => Response | Promise<Res
  * request gets its own transaction (verified in the test). It is supported on
  * Cloudflare Workers, Bun, and Node.
  */
-export function transactional(handler: Handler, propagation: Propagation = required): Handler {
-  return (c, next) => transaction(() => Promise.resolve(handler(c, next)), propagation);
+export function transactional(handler: Handler, options: TxOptions = {}): Handler {
+  return (c, next) => transaction(() => Promise.resolve(handler(c, next)), options);
 }

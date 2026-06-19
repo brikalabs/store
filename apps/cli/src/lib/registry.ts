@@ -46,6 +46,36 @@ const ManageResponseSchema = z.object({
   code: z.string().optional(),
 });
 
+const ScopeResponseSchema = z.object({
+  ok: z.boolean().optional(),
+  scope: z.string().optional(),
+  created: z.boolean().optional(),
+  error: z.string().optional(),
+  code: z.string().optional(),
+});
+
+const ScopeRole = z.enum(["admin", "member"]);
+export type ScopeRole = z.infer<typeof ScopeRole>;
+
+const MembersResponseSchema = z.object({
+  ok: z.boolean().optional(),
+  members: z.array(z.object({ provider: z.string(), id: z.string(), role: ScopeRole })).optional(),
+  error: z.string().optional(),
+  code: z.string().optional(),
+});
+
+export interface ScopeMember {
+  readonly provider: string;
+  readonly id: string;
+  readonly role: ScopeRole;
+}
+
+export interface ScopeClaim {
+  readonly scope: string;
+  /** True when this call created the scope; false when the caller already owned it. */
+  readonly created: boolean;
+}
+
 export type DeviceCode = z.infer<typeof DeviceCodeSchema>;
 
 export interface DeviceLogin {
@@ -130,6 +160,81 @@ export class RegistryClient {
     if (res.ok && body.integrity !== undefined) return { integrity: body.integrity };
     const code = body.code === undefined ? "" : ` ${body.code}`;
     throw new CliError(`publish rejected (${res.status}${code}): ${body.error ?? "unknown error"}`);
+  }
+
+  /**
+   * Create/claim a scope for the authenticated identity (`PUT /-/scope/:scope`).
+   * Idempotent: a scope the caller already owns succeeds with `created: false`. Throws
+   * a `CliError` when the scope is owned by someone else or the name is invalid.
+   */
+  async createScope(token: string, scope: string): Promise<ScopeClaim> {
+    const res = await this.#send(`/-/scope/${encodeURIComponent(scope)}`, {
+      method: "PUT",
+      headers: bearer(token),
+    });
+    const body = await this.#parse(res, ScopeResponseSchema);
+    if (res.ok && body.ok === true) return { scope, created: body.created ?? false };
+    const code = body.code === undefined ? "" : ` ${body.code}`;
+    throw new CliError(
+      `could not create scope ${scope} (${res.status}${code}): ${body.error ?? "unknown error"}`,
+    );
+  }
+
+  /** List a scope's members (`GET /-/scope/:scope/members`). */
+  async listScopeMembers(token: string, scope: string): Promise<ScopeMember[]> {
+    const res = await this.#send(`/-/scope/${encodeURIComponent(scope)}/members`, {
+      method: "GET",
+      headers: bearer(token),
+    });
+    const body = await this.#parse(res, MembersResponseSchema);
+    if (res.ok && body.members !== undefined) return body.members;
+    throw new CliError(this.#scopeError("list members of", scope, res.status, body));
+  }
+
+  /** Add a member or change their role (`PUT /-/scope/:scope/member/:provider/:id`). */
+  async setScopeMember(
+    token: string,
+    scope: string,
+    member: { provider: string; id: string },
+    role: ScopeRole,
+  ): Promise<void> {
+    const res = await this.#send(this.#memberPath(scope, member), {
+      method: "PUT",
+      headers: { ...JSON_HEADERS, ...bearer(token) },
+      body: JSON.stringify({ role }),
+    });
+    const body = await this.#parse(res, ManageResponseSchema);
+    if (res.ok && body.ok === true) return;
+    throw new CliError(this.#scopeError("update a member of", scope, res.status, body));
+  }
+
+  /** Remove a member (`DELETE /-/scope/:scope/member/:provider/:id`). */
+  async removeScopeMember(
+    token: string,
+    scope: string,
+    member: { provider: string; id: string },
+  ): Promise<void> {
+    const res = await this.#send(this.#memberPath(scope, member), {
+      method: "DELETE",
+      headers: bearer(token),
+    });
+    const body = await this.#parse(res, ManageResponseSchema);
+    if (res.ok && body.ok === true) return;
+    throw new CliError(this.#scopeError("remove a member of", scope, res.status, body));
+  }
+
+  #memberPath(scope: string, member: { provider: string; id: string }): string {
+    return `/-/scope/${encodeURIComponent(scope)}/member/${encodeURIComponent(member.provider)}/${encodeURIComponent(member.id)}`;
+  }
+
+  #scopeError(
+    verb: string,
+    scope: string,
+    status: number,
+    body: { error?: string; code?: string },
+  ): string {
+    const code = body.code === undefined ? "" : ` ${body.code}`;
+    return `could not ${verb} ${scope} (${status}${code}): ${body.error ?? "unknown error"}`;
   }
 
   /** Deprecate (or, with `message: null`, un-deprecate) a published version. */

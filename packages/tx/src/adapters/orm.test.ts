@@ -1,9 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { transaction } from "../core/transaction";
+import { TransactionError } from "../core/errors";
+import { readOnlyTransaction, transaction } from "../core/transaction";
 import { FakeDb } from "../testing/fake-db";
 import { InMemoryFiles } from "../testing/in-memory-files";
 import { type Batchable, transactionalDb } from "./orm";
 import { transactionalStorage } from "./storage";
+
+/** A client with a raw mutating builder, to test read-only enforcement on the overlay. */
+interface WritableDb extends Batchable<string> {
+  insert(table: string): { values(): Promise<void> };
+}
 
 describe("transactionalDb", () => {
   test("deferBatch defers the batch and flushes it at the commit point", async () => {
@@ -52,6 +58,40 @@ describe("transactionalDb", () => {
     const tx = transactionalDb(db);
     await tx.batch(["direct"]); // the original `batch` still works (immediate)
     expect(tx.has("direct")).toBe(true); // a non-batch method, delegated through
+  });
+
+  test("a read-only unit blocks deferBatch AND a raw insert on the overlay", async () => {
+    const inserted: string[] = [];
+    const client: WritableDb = {
+      batch: async () => {},
+      insert: (table) => ({
+        values: async () => {
+          inserted.push(table);
+        },
+      }),
+    };
+    const tx = transactionalDb<WritableDb, string>(client);
+
+    // The tx-aware write path is blocked.
+    await expect(
+      readOnlyTransaction(async () => {
+        await tx.deferBatch(["x"]);
+      }),
+    ).rejects.toBeInstanceOf(TransactionError);
+
+    // And so is a raw insert that bypasses deferBatch (rejected when called).
+    await expect(
+      readOnlyTransaction(async () => {
+        tx.insert("pkg");
+      }),
+    ).rejects.toBeInstanceOf(TransactionError);
+    expect(inserted).toEqual([]);
+
+    // Outside a read-only unit, the same insert runs normally.
+    await transaction(async () => {
+      await tx.insert("pkg").values();
+    });
+    expect(inserted).toEqual(["pkg"]);
   });
 
   test("a failing commit batch rolls back the staged files (cross-adapter)", async () => {

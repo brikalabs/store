@@ -84,10 +84,37 @@ npm-compatible. The hub points `@brika:registry` at it; `bun add` is unchanged.
    the SHA-512 `dist.integrity`);
 3. tarballs stream from R2 with a 1-year `immutable` cache.
 
-**Publish** (`POST /-/publish`, in progress): verify GitHub OIDC (or a session
-token) -> build a `PublishIdentity` -> `PublishService` runs the ownership gate,
-the `@brika/schema` data gate, the immutability check, computes integrity, and
-writes the tarball then the version. A rejected publish never writes.
+**Publish** (`POST /-/publish`): verify a credential -> build a `PublishIdentity`
+-> `PublishService` runs the ownership gate, the `@brika/schema` data gate, the
+immutability check, computes integrity, and writes the tarball then the version. A
+rejected publish never writes.
+
+**Scopes are created explicitly** (`PUT /-/scope/:scope`, or `brika scope create`),
+JSR-style: a name is `@` + 2-20 lowercase letters/digits/hyphens (no leading hyphen),
+globally unique, and owned by whoever creates it. Publishing never claims a scope
+implicitly: the ownership gate rejects an unknown scope ("create it first") and
+requires an exact `(provider, ownerId)` match otherwise, so there is no
+first-publish claim to race and no way to land a package under a scope you do not
+own. Creation is idempotent and race-safe (insert-then-reread).
+
+**Scopes have members and roles** (JSR-style). `reg_scope_members` holds each scope's
+members as provider-qualified identities with a role: `member` (may publish) or `admin`
+(also manages members + the display name). The creator is seeded as the first admin, a
+scope always keeps at least one admin, and **publish authorization is membership** (not
+the single `reg_scopes` owner, which remains the public verified-publisher attribution).
+Member management lives under `PUT`/`DELETE /-/scope/:scope/member/:provider/:id` and
+`GET /-/scope/:scope/members`, all admin-gated except the member-only listing.
+
+**Identity is provider-qualified.** A `PublishIdentity` is `{ provider, owner, … }`
+and scope ownership stores `(ownerProvider, ownerId)`, so the registry is not
+GitHub-locked: OIDC verification is split into a provider-neutral `verifyOidc`
+(signature + issuer + audience + time) plus a per-provider claim mapping, and a
+publish token records its provider. Only GitHub is wired today (its OIDC issuer +
+the device-flow OAuth); adding GitLab/Google is a new claim mapper + OAuth app, no
+domain or schema change. The displayed **publisher** is the scope's verified owner
+(`ownerProvider`/`ownerId`) plus an owner-set `displayName` (e.g. "Brika Labs"),
+surfaced in the packument/catalog so the storefront trusts it over a manifest's
+free-text `author`.
 
 ## store.brika.dev
 
@@ -104,6 +131,58 @@ from npm (cache-aside), unified behind the `RegistrySource` abstraction.
   tables (one database, two domains).
 - **R2**: immutable tarballs (registry) and mirrored icons/readmes (store).
 - **KV**: hot npm-metadata cache for the store.
+
+## Transactions (`@brika/tx`)
+
+A publish touches two stores - R2 (the tarball) and D1 (the metadata). `@brika/tx`
+coordinates them as one **unit of work**. It is a Spring-style synchronization
+manager over `AsyncLocalStorage`, **not** a distributed (XA/2PC) transaction monitor:
+there is no such thing across a blob store and a database. Be precise about what that
+buys us.
+
+- **`transaction(fn)`** opens a unit. On success it runs the registered commit
+  actions, then the completion hooks; on a throw it runs the rollback compensations
+  in reverse order, then the completion hooks, then rethrows. The active unit lives in
+  async context, so nested calls and helpers find it without threading a handle.
+- **Resources self-enlist** - the call site stays clean:
+  - the **R2 tarball writer**'s `put` registers `onRollback(() => delete(key))`, so a
+    staged object is removed if the unit fails;
+  - the **D1 metadata writer** is overlaid with `transactionalDb`, and `commitVersion`
+    hands its statements to `deferBatch`, which runs them as **one atomic D1 batch at
+    the commit point** (after the reversible work is staged), or immediately when no
+    unit is open.
+- **Publish is the canonical unit**: stage the tarball (compensable) -> defer the
+  metadata batch -> at commit the batch lands atomically; if it fails, the tarball is
+  compensated. Order-independent, because the D1 write is deferred to the end.
+- **Read-only units** (`readOnlyTransaction(fn)`, or `{ readOnly: true }` /
+  `@transactional(required, { readOnly: true })`) mirror Spring's
+  `@Transactional(readOnly = true)`, but **enforced, not a hint**: staging any write
+  inside one (`onRollback`/`onCommit`/`deferBatch`) throws, while completion hooks
+  still run. Wrapping a read path this way proves it is side-effect-free. (It does not
+  route to D1 read replicas - that would be a separate Sessions-API concern.)
+
+**Is it ACID?** Within D1, yes: a `batch()` is one atomic, isolated, durable D1
+transaction (and unique constraints keep it consistent). **Across R2 + D1, no** - it
+is a **saga**: all-or-nothing in the happy path and on body failures via compensation,
+but not isolated (a reader can see an intermediate state) and not atomic if a
+compensation itself fails (a failed R2 delete leaves an orphan tarball, logged). When
+true atomicity is needed, keep it inside a single D1 `batch`.
+
+**Guidelines.**
+
+1. Wrap a flow that mutates **more than one resource** (or stages an external write
+   before a DB write) in `transaction(() => …)`. A single-statement write is already
+   atomic in D1 - it needs no unit.
+2. Don't pass a transaction object around. Side-effecting adapters **self-enlist**
+   via the ambient unit: a reversible external write registers `onRollback(undo)`; a
+   multi-statement DB write goes through `transactionalDb`'s `deferBatch` so it lands
+   atomically at the commit point.
+3. Put post-commit side effects (notifications, cache busts, metrics) in
+   `afterCommit(…)` so they fire only if the unit actually committed.
+4. Wrap a flow that must only read in `readOnlyTransaction(…)` to assert it stages no
+   writes; the unit throws if it tries.
+5. Make compensations idempotent and cheap; a compensation that throws is logged, not
+   retried, so it must not be load-bearing for correctness.
 
 ## Security properties
 

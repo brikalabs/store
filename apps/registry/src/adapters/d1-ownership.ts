@@ -1,21 +1,23 @@
-import type { OwnershipPolicy, PublishIdentity } from "@brika/registry-core";
+import type { OwnershipPolicy, PublishIdentity, ScopeMembers } from "@brika/registry-core";
 import { type Db, regScopes } from "@brika/store-db";
 import { eq } from "drizzle-orm";
-
-function scopeOf(name: string): string | null {
-  return name.startsWith("@") ? (name.split("/")[0] ?? null) : null;
-}
+import { scopeOf } from "../names";
 
 /**
- * Scope-based ownership: a scope is owned by one GitHub owner, claimed on first
- * publish. Subsequent publishes must come from that same owner. Anchored on the
- * verified OIDC `repository_owner`, so it cannot be spoofed.
+ * Membership-based publish authorization: a scope must be explicitly CREATED (see the
+ * scope controller), and only its MEMBERS may publish under it (any role; admins also
+ * manage the scope). Publishing never claims a scope implicitly. Anchored on the
+ * verified credential (OIDC `repository_owner` or a publish token), so it cannot be
+ * spoofed. Reads membership through the {@link ScopeMembers} port (injected), and the
+ * `reg_scopes` table only to tell "unknown scope" apart from "not a member".
  */
 export class D1OwnershipPolicy implements OwnershipPolicy {
   readonly #db: Db;
+  readonly #members: ScopeMembers;
 
-  constructor(db: Db) {
+  constructor(db: Db, members: ScopeMembers) {
     this.#db = db;
+    this.#members = members;
   }
 
   async canPublish(
@@ -27,20 +29,18 @@ export class D1OwnershipPolicy implements OwnershipPolicy {
       return { ok: false, message: "only scoped packages (@scope/name) can be published" };
     }
 
-    const rows = await this.#db.select().from(regScopes).where(eq(regScopes.scope, scope)).limit(1);
-    const owner = rows[0];
+    const member = { provider: identity.provider, id: identity.owner };
+    if ((await this.#members.roleOf(scope, member)) !== null) return { ok: true };
 
-    if (owner === undefined) {
-      // First publish under an unclaimed scope claims it for this GitHub owner.
-      await this.#db
-        .insert(regScopes)
-        .values({ scope, githubOwner: identity.owner })
-        .onConflictDoNothing();
-      return { ok: true };
-    }
-    if (owner.githubOwner !== identity.owner) {
-      return { ok: false, message: `scope ${scope} is owned by ${owner.githubOwner}` };
-    }
-    return { ok: true };
+    // Not a member: distinguish an unknown scope (create it first) from a real scope the
+    // caller has no membership in.
+    const rows = await this.#db
+      .select({ scope: regScopes.scope })
+      .from(regScopes)
+      .where(eq(regScopes.scope, scope))
+      .limit(1);
+    return rows[0] === undefined
+      ? { ok: false, message: `scope ${scope} does not exist; create it first` }
+      : { ok: false, message: `you are not a member of ${scope}` };
   }
 }

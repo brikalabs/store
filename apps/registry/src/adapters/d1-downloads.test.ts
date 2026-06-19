@@ -18,7 +18,7 @@ const fixedNow = () => TODAY * MS_PER_DAY;
 let db: Db;
 beforeEach(async () => {
   db = makeDb();
-  await db.insert(regScopes).values({ scope: "@brika", githubOwner: "octocat" });
+  await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" });
   await db.insert(regPackages).values([
     { name: "@brika/a", scope: "@brika" },
     { name: "@brika/b", scope: "@brika" },

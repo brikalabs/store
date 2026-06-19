@@ -1,14 +1,27 @@
 import { z } from "zod";
 
 /**
- * GitHub Actions OIDC verification, the tokenless-publish trust anchor. A
- * `brika-publish` workflow requests an OIDC token (`id-token: write`) bound to a
- * specific audience; the registry verifies the RS256 signature against GitHub's
- * JWKS and the claims, then trusts the `repository` / `repository_owner` it
- * carries to authorize the publish. Pure Web Crypto, JWKS injected for testing.
+ * OIDC verification for tokenless ("trusted") publishing. The signature + time +
+ * issuer + audience checks are provider-neutral ({@link verifyOidc}); each provider
+ * (GitHub today, GitLab/Google later) only differs in its claim shape and how those
+ * map to a publish identity. {@link verifyGithubOidc} is the GitHub-configured
+ * wrapper. Pure Web Crypto, JWKS injected for testing.
  */
 
 const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
+
+/** Claims every OIDC issuer carries; provider-specific claims ride alongside (loose). */
+export const BaseClaims = z
+  .object({
+    iss: z.string(),
+    aud: z.string(),
+    sub: z.string(),
+    exp: z.number(),
+    nbf: z.number().optional(),
+    iat: z.number().optional(),
+  })
+  .loose();
+export type BaseClaims = z.infer<typeof BaseClaims>;
 
 export const OidcClaims = z.object({
   iss: z.string(),
@@ -83,14 +96,16 @@ function parseJson<T>(schema: z.ZodType<T>, raw: string): T | null {
 }
 
 /**
- * Verify a GitHub Actions OIDC token. Returns the claims when the signature,
- * issuer, audience and time window all check out; otherwise null.
+ * Provider-neutral OIDC verification: checks the RS256 signature against the JWKS,
+ * then the issuer, audience and time window. Returns the raw claims bag (a provider
+ * then narrows it to its own schema), or null on any failure. The trust anchor that
+ * every provider's verifier builds on.
  */
-export async function verifyGithubOidc(
+export async function verifyOidc(
   token: string,
   jwks: JwksProvider,
-  options: VerifyOidcOptions,
-): Promise<OidcClaims | null> {
+  options: Required<Pick<VerifyOidcOptions, "issuer" | "audience">> & { now?: number },
+): Promise<BaseClaims | null> {
   const [headerPart, payloadPart, signaturePart] = token.split(".");
   if (headerPart === undefined || payloadPart === undefined || signaturePart === undefined) {
     return null;
@@ -115,14 +130,34 @@ export async function verifyGithubOidc(
   const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, signature, signed);
   if (!valid) return null;
 
-  const claims = parseJson(OidcClaims, new TextDecoder().decode(base64UrlToBytes(payloadPart)));
+  const claims = parseJson(BaseClaims, new TextDecoder().decode(base64UrlToBytes(payloadPart)));
   if (claims === null) return null;
 
   const now = options.now ?? Math.floor(Date.now() / 1000);
-  if (claims.iss !== (options.issuer ?? GITHUB_ISSUER)) return null;
+  if (claims.iss !== options.issuer) return null;
   if (claims.aud !== options.audience) return null;
   if (claims.exp <= now) return null;
   if (claims.nbf !== undefined && claims.nbf > now) return null;
 
   return claims;
+}
+
+/**
+ * Verify a GitHub Actions OIDC token: the generic {@link verifyOidc} checks, then
+ * the GitHub claim shape (`repository` / `repository_owner`). Returns the GitHub
+ * claims when everything checks out; otherwise null.
+ */
+export async function verifyGithubOidc(
+  token: string,
+  jwks: JwksProvider,
+  options: VerifyOidcOptions,
+): Promise<OidcClaims | null> {
+  const claims = await verifyOidc(token, jwks, {
+    issuer: options.issuer ?? GITHUB_ISSUER,
+    audience: options.audience,
+    now: options.now,
+  });
+  if (claims === null) return null;
+  const github = OidcClaims.safeParse(claims);
+  return github.success ? github.data : null;
 }

@@ -1,6 +1,38 @@
 import { type ManifestValidator, REGISTRY_LIMITS, readTarGzEntries } from "@brika/registry-core";
 import { RegistryPublishSchema, storeLocaleOf, validateStoreLocales } from "@brika/schema/store";
 
+type TarEntry = Awaited<ReturnType<typeof readTarGzEntries>>[number];
+
+/**
+ * If the tarball ships its own package.json, its name/version must match the published
+ * manifest. The registry indexes the request manifest, so a divergent embedded manifest
+ * cannot change ownership, but it would let a consumer who reads the unpacked
+ * package.json see a different identity than the registry's record. Reject that spoof.
+ * Absent is allowed (only a present, divergent one fails).
+ */
+function checkEmbeddedManifest(
+  entries: readonly TarEntry[],
+  manifest: Record<string, unknown>,
+): { ok: true } | { ok: false; message: string } {
+  const embedded = entries.find((entry) => entry.path === "package.json");
+  if (embedded === undefined) return { ok: true };
+
+  let pkg: unknown;
+  try {
+    pkg = JSON.parse(new TextDecoder().decode(embedded.data));
+  } catch {
+    return { ok: false, message: "tarball package.json is not valid JSON" };
+  }
+  const record = typeof pkg === "object" && pkg !== null ? (pkg as Record<string, unknown>) : {};
+  if (record.name !== manifest.name || record.version !== manifest.version) {
+    return {
+      ok: false,
+      message: "tarball package.json name/version does not match the published manifest",
+    };
+  }
+  return { ok: true };
+}
+
 /**
  * Publish-time data gate. A package is publishable only when its manifest is a
  * valid Brika plugin manifest carrying the store metadata the registry needs to
@@ -55,6 +87,9 @@ export class SchemaManifestValidator implements ManifestValidator {
         message: `unpacked size ${unpacked} bytes is over the ${this.#maxUnpackedBytes}-byte limit`,
       };
     }
+
+    const embedded = checkEmbeddedManifest(entries, manifest);
+    if (!embedded.ok) return embedded;
 
     const decoder = new TextDecoder();
     const localeFiles = entries

@@ -10,6 +10,7 @@ import { z } from "zod";
 import { cf } from "../adapters/cf-rate-limiter";
 import { principal, requireWrite } from "../auth";
 import { controller, route } from "../http/router";
+import { isCanonicalName } from "../names";
 import type { Services } from "../services";
 
 /**
@@ -80,6 +81,11 @@ export async function publish({
   const identity = await requireWrite(req, db);
 
   const { name, version, manifest, tarball, transparencyLog } = body;
+  if (!isCanonicalName(name)) {
+    throw badRequest(
+      "Package name must be a lowercase scoped name (@scope/name) using only a-z, 0-9 and '-'",
+    );
+  }
   if (manifest.name !== name || manifest.version !== version) {
     throw badRequest("Manifest name/version must match the published name/version");
   }

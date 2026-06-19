@@ -17,4 +17,13 @@ export type CompletionAction = (outcome: TxOutcome) => Promise<void> | void;
 export interface TxConfig {
   /** Roll back only when this returns true (default: roll back on any error). */
   readonly rollbackOn?: (error: unknown) => boolean;
+  /**
+   * Mark the unit of work read-only (Spring's `@Transactional(readOnly = true)`).
+   * Enforced, not just a hint: registering any write step inside it - a rollback
+   * compensation (`onRollback`), a commit action (`onCommit`), or a deferred DB batch
+   * (`deferBatch`) - throws. Completion hooks (`onComplete`/`afterCommit`) still run,
+   * since logging/metrics are not mutations. A read path wrapped this way is proven
+   * side-effect-free.
+   */
+  readonly readOnly?: boolean;
 }

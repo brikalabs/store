@@ -33,12 +33,15 @@ export {
   type ManageResult,
   type VersionManager,
 } from "./manage";
+export type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
 export {
+  BaseClaims,
   type Jwk,
   type JwksProvider,
   OidcClaims,
   type VerifyOidcOptions,
   verifyGithubOidc,
+  verifyOidc,
 } from "./oidc";
 export {
   type AbbreviatedPackument,
@@ -66,4 +69,4 @@ export {
 } from "./publish";
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
 export { readTarGzEntries, type TarEntry } from "./tar";
-export { type PackageRecord, PackageVersion, Provenance } from "./types";
+export { type PackageRecord, PackageVersion, Provenance, type ScopePublisher } from "./types";

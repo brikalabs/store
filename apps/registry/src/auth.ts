@@ -1,5 +1,5 @@
 import { type OidcClaims, type PublishIdentity, verifyGithubOidc } from "@brika/registry-core";
-import { type RateLimitKey, unauthorized } from "@brika/router";
+import { forbidden, type RateLimitKey, unauthorized } from "@brika/router";
 import type { Db } from "@brika/store-db";
 import { GithubJwksProvider } from "./adapters/github-jwks";
 import { verifyToken } from "./adapters/token";
@@ -35,6 +35,7 @@ export async function authenticateWrite(request: Request, db: Db): Promise<Publi
   const claims = await verifyGithubOidc(token, jwks, { audience: AUDIENCE });
   if (claims !== null) {
     return {
+      provider: "github",
       owner: claims.repository_owner,
       repository: claims.repository,
       provenance: provenanceFrom(claims),
@@ -42,7 +43,9 @@ export async function authenticateWrite(request: Request, db: Db): Promise<Publi
   }
 
   const tokenUser = await verifyToken(db, token);
-  if (tokenUser !== null) return { owner: tokenUser.githubLogin, repository: null };
+  if (tokenUser !== null) {
+    return { provider: tokenUser.provider, owner: tokenUser.subject, repository: null };
+  }
 
   return null;
 }
@@ -79,3 +82,24 @@ export const principal: RateLimitKey<Services> = async ({ req, ctx }) => {
   const identity = await requireWrite(req, ctx.db);
   return identity.repository ?? identity.owner;
 };
+
+/**
+ * Authenticate an operator admin for takedown/restore: a valid write credential
+ * (OIDC or token) whose provider-qualified identity is in the `admins` allowlist (the
+ * controller passes it from `REGISTRY_ADMINS`, as `provider:owner` keys). Throws `401`
+ * when no credential validates, `403` when it validates but is not an admin. Matching
+ * the full `provider:owner` (not the bare owner) keeps the check correct once a second
+ * identity provider exists, so a `gitlab` user cannot inherit a `github` admin's slot.
+ * Admin is a registry-operator role, deliberately separate from (and overriding) scope
+ * ownership. The allowlist is a parameter so this stays free of the env import.
+ */
+export async function requireAdmin(
+  request: Request,
+  db: Db,
+  admins: ReadonlySet<string>,
+): Promise<PublishIdentity> {
+  const identity = await requireWrite(request, db);
+  if (!admins.has(`${identity.provider}:${identity.owner}`))
+    throw forbidden("Not a registry admin");
+  return identity;
+}

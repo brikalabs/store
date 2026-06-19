@@ -72,6 +72,19 @@ describe("manifestToDetail", () => {
     expect(detail?.author?.name).toBe("Brika Labs");
   });
 
+  test("the registry's verified publisher overrides the free-text manifest author", () => {
+    // i18nManifest.author is "Brika Labs <hi@brika.dev>" (verified:false by default).
+    const detail = manifestToDetail(i18nManifest, {
+      publisher: { id: "brikalabs", name: "Brika Labs", verified: true },
+    });
+    expect(detail?.author).toEqual({ id: "brikalabs", name: "Brika Labs", verified: true });
+  });
+
+  test("falls back to the manifest author (unverified) when no publisher is given", () => {
+    const detail = manifestToDetail(i18nManifest);
+    expect(detail?.author?.verified).toBe(false);
+  });
+
   test("returns null when engines.brika is absent (not a Brika plugin)", () => {
     const { engines: _engines, ...notAPlugin } = i18nManifest;
     expect(manifestToDetail(notAPlugin as Manifest)).toBeNull();

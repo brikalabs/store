@@ -123,12 +123,16 @@ export type Manifest = z.infer<typeof Manifest>;
 
 const DownloadStats = z.object({ total: z.number(), weekly: z.number() });
 
+/** The registry's verified publisher (scope owner + display name), if present. */
+const Publisher = z.object({ id: z.string(), name: z.string(), verified: z.boolean() });
+
 const CatalogEntry = z.object({
   name: z.string(),
   version: z.string(),
   manifest: Manifest,
   publishedAt: z.string().optional(),
   createdAt: z.string().optional(),
+  publisher: Publisher.optional(),
   downloads: DownloadStats.optional(),
 });
 
@@ -146,6 +150,7 @@ const Packument = z.object({
   "dist-tags": z.object({ latest: z.string().optional() }).optional(),
   versions: z.record(z.string(), Manifest).optional(),
   time: z.record(z.string(), z.string()).optional(),
+  publisher: Publisher.optional(),
 });
 export type Packument = z.infer<typeof Packument>;
 
@@ -179,6 +184,11 @@ export interface MapOptions {
   /** SRI of the latest tarball (`sha512-...`). */
   readonly integrity?: string;
   readonly shasum?: string;
+  /**
+   * The registry's verified publisher (scope owner + display name). When present it
+   * is the trusted "published by", overriding the free-text manifest `author`.
+   */
+  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: boolean };
 }
 
 /**
@@ -199,8 +209,13 @@ export function manifestToDetail(
     displayName: manifest.displayName,
     description: manifest.description,
     version,
+    // Prefer the registry's verified publisher (the scope owner's chosen name) over
+    // the free-text manifest `author`; fall back to the manifest when unscoped.
     author:
-      authorName === undefined ? undefined : { id: authorName, name: authorName, verified: false },
+      options.publisher ??
+      (authorName === undefined
+        ? undefined
+        : { id: authorName, name: authorName, verified: false }),
     keywords: manifest.keywords ?? [],
     iconUrl: manifest.icon ? assetUrl(name, version, manifest.icon) : undefined,
     screenshots: mapScreenshots(manifest.screenshots, (path) => assetUrl(name, version, path)),
@@ -407,6 +422,7 @@ export async function getRegistryPluginPage(
     updatedAt: pkg.time?.[latest],
     installs: downloads.total,
     downloadsWeekly: downloads.weekly,
+    publisher: pkg.publisher,
   });
   if (detail === null) return null;
 
@@ -462,6 +478,7 @@ export async function listRegistryPlugins(
       updatedAt: entry.publishedAt,
       installs: entry.downloads?.total,
       downloadsWeekly: entry.downloads?.weekly,
+      publisher: entry.publisher,
     });
     return summary === null ? [] : [summary];
   });

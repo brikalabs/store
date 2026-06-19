@@ -1,15 +1,18 @@
 import type { OwnershipPolicy, PublishIdentity } from "./publish";
 
 /**
- * Post-publish package management: deprecate and yank. Both are mutations of an
- * already-published version's metadata (never its bytes, which stay immutable),
- * gated by the same scope ownership as publishing.
+ * Post-publish package management: deprecate, yank, and operator takedown. All
+ * mutate an already-published version's metadata (never its bytes, which stay
+ * immutable).
  *
  * - **deprecate**: attach (or clear) a message. The version still installs; bun
- *   surfaces the warning. Reversible.
+ *   surfaces the warning. Owner-gated. Reversible.
  * - **yank**: hide a version from new installs (the packument omits it) without
  *   deleting the bytes, so existing lockfiles that pin its integrity still
- *   resolve. Reversible.
+ *   resolve. Owner-gated. Reversible.
+ * - **takedown**: like yank, but operator-initiated (against the owner, so NOT
+ *   ownership-gated; the caller authorizes an admin at the HTTP edge) and carrying
+ *   a public reason that is surfaced in the packument. Reversible via `restore`.
  */
 
 /** Write access to a published version's mutable management flags. */
@@ -18,6 +21,8 @@ export interface VersionManager {
   /** Set the deprecation message, or null to un-deprecate. */
   setDeprecated(name: string, version: string, message: string | null): Promise<void>;
   setYanked(name: string, version: string, yanked: boolean): Promise<void>;
+  /** Set the operator takedown reason, or null to restore. */
+  setTakedown(name: string, version: string, reason: string | null): Promise<void>;
 }
 
 export type ManageErrorCode = "forbidden" | "not_found";
@@ -26,8 +31,8 @@ export type ManageResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly code: ManageErrorCode; readonly message: string };
 
-/** Maximum length of a deprecation message, matching npm's practical limit. */
-const MAX_DEPRECATION_MESSAGE = 1024;
+/** Maximum length of a deprecation message / takedown reason. */
+const MAX_MESSAGE = 1024;
 
 export class ManagementService {
   readonly #meta: VersionManager;
@@ -60,7 +65,7 @@ export class ManagementService {
   ): Promise<ManageResult> {
     const gate = await this.#authorize(identity, name, version);
     if (!gate.ok) return gate;
-    const trimmed = message === null ? null : message.slice(0, MAX_DEPRECATION_MESSAGE);
+    const trimmed = message === null ? null : message.slice(0, MAX_MESSAGE);
     await this.#meta.setDeprecated(name, version, trimmed);
     return { ok: true };
   }
@@ -74,6 +79,28 @@ export class ManagementService {
     const gate = await this.#authorize(identity, name, version);
     if (!gate.ok) return gate;
     await this.#meta.setYanked(name, version, yanked);
+    return { ok: true };
+  }
+
+  /**
+   * Operator takedown: remove a version from new installs with a public reason.
+   * NOT ownership-gated (an admin acts against the owner); the caller must have
+   * authorized an admin already. Only checks the version exists.
+   */
+  async takedown(name: string, version: string, reason: string): Promise<ManageResult> {
+    if (!(await this.#meta.versionExists(name, version))) {
+      return { ok: false, code: "not_found", message: `${name}@${version} does not exist` };
+    }
+    await this.#meta.setTakedown(name, version, reason.slice(0, MAX_MESSAGE));
+    return { ok: true };
+  }
+
+  /** Reverse a takedown, restoring the version to new installs. */
+  async restore(name: string, version: string): Promise<ManageResult> {
+    if (!(await this.#meta.versionExists(name, version))) {
+      return { ok: false, code: "not_found", message: `${name}@${version} does not exist` };
+    }
+    await this.#meta.setTakedown(name, version, null);
     return { ok: true };
   }
 }
