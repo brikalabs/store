@@ -75,8 +75,12 @@ depend on ports, not on Cloudflare. The blast radius is, by construction, the
 ## Architecture rules (enforced)
 
 The layering above is not a convention you have to remember — the key parts are
-enforced by `scripts/check-architecture.ts`, which runs in `bun run lint` (and CI)
-and fails the build on a violation. The rules:
+enforced (ArchUnit-style) by a small rule engine in `scripts/archunit.ts`, with the
+rules declared fluently in `scripts/architecture-rules.ts` (by package/folder glob, so
+they scale as packages and apps are added). They run **two ways** off the same
+definitions: as `bun test` cases (`scripts/architecture.test.ts`, one test per rule) and
+as a standalone lint CLI (`bun run check:architecture`, in `bun run lint`). Either fails
+the build, naming the offending file + import. The rules:
 
 - **A. The domain core (`@brika/registry-core`) is platform-free.** It may not import
   any Cloudflare module (`cloudflare:*`, `@cloudflare/*`, `wrangler`), the database/ORM

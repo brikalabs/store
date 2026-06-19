@@ -85,20 +85,30 @@ export class ArchRules {
     return builder;
   }
 
-  /** Run every rule; returns a violation line per banned import (empty when all hold). */
+  /** Each rule with the violations it found - one entry per rule (so each can be a test). */
+  checkEach(): { description: string; violations: string[] }[] {
+    return this.#rules.map((spec) => ({
+      description: spec.description,
+      violations: this.#violationsFor(spec),
+    }));
+  }
+
+  /** Every violation across all rules (a flat list, for the CLI). */
   check(): string[] {
+    return this.checkEach().flatMap((result) =>
+      result.violations.map((v) => `[${result.description}]\n  ${v}`),
+    );
+  }
+
+  #violationsFor(spec: RuleSpec): string[] {
     const violations: string[] = [];
-    for (const spec of this.#rules) {
-      const excluded = spec.exclude.map((g) => new Glob(g));
-      for (const rel of this.#filesFor(spec.include)) {
-        if (excluded.some((g) => g.match(rel))) continue;
-        const source = stripComments(readFileSync(join(this.#root, rel), "utf8"));
-        for (const specifier of specifiers(source)) {
-          const hit = spec.forbidden.find((c) => c.test(specifier));
-          if (hit !== undefined) {
-            violations.push(`[${spec.description}]\n  ${rel} imports "${specifier}" (${hit.label})`);
-          }
-        }
+    const excluded = spec.exclude.map((g) => new Glob(g));
+    for (const rel of this.#filesFor(spec.include)) {
+      if (excluded.some((g) => g.match(rel))) continue;
+      const source = stripComments(readFileSync(join(this.#root, rel), "utf8"));
+      for (const specifier of specifiers(source)) {
+        const hit = spec.forbidden.find((c) => c.test(specifier));
+        if (hit !== undefined) violations.push(`${rel} imports "${specifier}" (${hit.label})`);
       }
     }
     return violations;
