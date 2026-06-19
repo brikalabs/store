@@ -1,11 +1,14 @@
-import { archTest, modules, rule } from "@brika/archunit/test";
+import { test } from "bun:test";
+import { bindArchTest, modules, rule } from "@brika/archunit";
 
 /**
- * The repo's architecture rules (ArchUnit-style): each `archTest` is a `bun test` case
- * that fails - naming the offending file + import - if a layer imports something it may
- * not. Globs resolve from the repo root (the cwd `bun test` runs in). Add a layer by
- * adding an `archTest`.
+ * The repo's architecture rules (ArchUnit-style): each `archTest` is a test case that
+ * fails - naming the offending file + import - if a layer imports something it may not.
+ * `bindArchTest(test)` is runner-agnostic (here bun:test; vitest/jest would work the
+ * same). Globs resolve from the repo root (the cwd tests run in). Add a layer by adding
+ * an `archTest`.
  */
+const archTest = bindArchTest(test);
 
 // Import categories: named sets of module specifiers.
 const PLATFORM = modules("cloudflare:", "@cloudflare/", "wrangler");

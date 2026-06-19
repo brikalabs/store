@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { archRules, category, modules, rule, specifiers, stripComments } from "./index";
+import {
+  archRules,
+  bindArchTest,
+  category,
+  modules,
+  rule,
+  specifiers,
+  stripComments,
+} from "./index";
 
 // The package's own directory, used as a real root to exercise file scanning without
 // fixtures: src/index.ts genuinely imports "bun" and "node:fs"/"node:path".
@@ -135,6 +143,28 @@ describe("ArchRules engine", () => {
         .mayNotImport(modules("lodash"))
         .assert(),
     ).not.toThrow();
+  });
+
+  test("bindArchTest registers each rule via the injected runner (no bun:test dependency)", () => {
+    const calls: { name: string; body: () => void }[] = [];
+    const archTest = bindArchTest((name, body) => calls.push({ name, body: body as () => void }));
+    archTest(
+      "clean",
+      archRules({ root: ROOT })
+        .rule("a")
+        .filesMatching("src/index.ts")
+        .mayNotImport(modules("lodash")),
+    );
+    archTest(
+      "dirty",
+      archRules({ root: ROOT })
+        .rule("b")
+        .filesMatching("src/index.ts")
+        .mayNotImport(modules("node:fs")),
+    );
+    expect(calls.map((c) => c.name)).toEqual(["clean", "dirty"]);
+    expect(() => calls[0]?.body()).not.toThrow();
+    expect(() => calls[1]?.body()).toThrow(/violation/);
   });
 
   test("top-level rule() builds a single rule against the cwd", () => {

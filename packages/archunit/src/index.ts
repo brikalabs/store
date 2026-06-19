@@ -140,6 +140,31 @@ export function rule(description = ""): RuleBuilder {
   return new ArchRules().rule(description);
 }
 
+/** A test runner's `test`/`it` function (bun:test, vitest, jest all match this shape). */
+export type TestRunner = (name: string, body: () => void | Promise<void>) => void;
+
+/**
+ * Bind a test runner so each rule registers as a test case in one line - runner-agnostic,
+ * pass your own `test` (`bun:test`, `vitest`, or jest's global):
+ *
+ *   import { test } from "bun:test"; // or "vitest"
+ *   const archTest = bindArchTest(test);
+ *   archTest("the domain core has no database",
+ *     rule().filesMatching("packages/*-core/src").mayNotImport(ORM));
+ *
+ * The rule's `assert()` is the test body, so a violation fails the test naming the file +
+ * import. (Equivalent to `test(name, () => rule.assert())` - this just keeps it terse.)
+ */
+export function bindArchTest(
+  test: TestRunner,
+): (name: string, rule: { assert: () => void }) => void {
+  return (name, rule) => {
+    test(name, () => {
+      rule.assert();
+    });
+  };
+}
+
 export class ArchRules {
   readonly #root: string;
   readonly #ignore: string[];
