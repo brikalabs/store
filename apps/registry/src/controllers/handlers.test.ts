@@ -351,9 +351,8 @@ describe("handleDownloads", () => {
 });
 
 describe("publish atomicity (commitVersion + transaction)", () => {
-  test("commitVersion writes the package, version, and dist-tag together", async () => {
-    const meta = new D1MetadataWriter(db);
-    await meta.commitVersion({
+  const commit = (meta: D1MetadataWriter) =>
+    meta.commitVersion({
       scope: "@brika",
       tag: "latest",
       version: {
@@ -370,11 +369,37 @@ describe("publish atomicity (commitVersion + transaction)", () => {
       },
     });
 
+  test("commitVersion writes the package, version, and dist-tag together", async () => {
+    await commit(new D1MetadataWriter(db));
+
     expect((await db.select().from(regPackages)).map((r) => r.name)).toContain("@brika/y");
     const versions = await db.select().from(regVersions);
     expect(versions.find((r) => r.name === "@brika/y")?.version).toBe("1.0.0");
     const tags = await db.select().from(regDistTags);
     expect(tags.find((r) => r.name === "@brika/y")?.version).toBe("1.0.0"); // tag moved in the same unit
+  });
+
+  test("commitVersion defers its write to the commit point, and a later failure rolls it back", async () => {
+    const meta = new D1MetadataWriter(db);
+    let writtenMidBody = -1;
+    await expect(
+      transaction(async () => {
+        await commit(meta);
+        // Deferred: nothing is written yet, so the write is order-independent and a
+        // later step that throws takes the D1 write down with the staged tarball.
+        writtenMidBody = (await db.select().from(regVersions)).length;
+        throw new Error("a later step failed");
+      }),
+    ).rejects.toThrow("a later step failed");
+
+    expect(writtenMidBody).toBe(0); // not written during the body
+    expect(await db.select().from(regVersions)).toHaveLength(0); // and rolled back, not committed
+  });
+
+  test("commitVersion inside a successful transaction writes at the commit point", async () => {
+    const meta = new D1MetadataWriter(db);
+    await transaction(() => commit(meta));
+    expect((await db.select().from(regVersions)).map((r) => r.name)).toContain("@brika/y");
   });
 
   // An R2 bucket whose backing store is exposed so a test can assert what is staged

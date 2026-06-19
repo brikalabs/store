@@ -125,6 +125,50 @@ from npm (cache-aside), unified behind the `RegistrySource` abstraction.
 - **R2**: immutable tarballs (registry) and mirrored icons/readmes (store).
 - **KV**: hot npm-metadata cache for the store.
 
+## Transactions (`@brika/tx`)
+
+A publish touches two stores - R2 (the tarball) and D1 (the metadata). `@brika/tx`
+coordinates them as one **unit of work**. It is a Spring-style synchronization
+manager over `AsyncLocalStorage`, **not** a distributed (XA/2PC) transaction monitor:
+there is no such thing across a blob store and a database. Be precise about what that
+buys us.
+
+- **`transaction(fn)`** opens a unit. On success it runs the registered commit
+  actions, then the completion hooks; on a throw it runs the rollback compensations
+  in reverse order, then the completion hooks, then rethrows. The active unit lives in
+  async context, so nested calls and helpers find it without threading a handle.
+- **Resources self-enlist** - the call site stays clean:
+  - the **R2 tarball writer**'s `put` registers `onRollback(() => delete(key))`, so a
+    staged object is removed if the unit fails;
+  - the **D1 metadata writer** is overlaid with `transactionalDb`, and `commitVersion`
+    hands its statements to `deferBatch`, which runs them as **one atomic D1 batch at
+    the commit point** (after the reversible work is staged), or immediately when no
+    unit is open.
+- **Publish is the canonical unit**: stage the tarball (compensable) -> defer the
+  metadata batch -> at commit the batch lands atomically; if it fails, the tarball is
+  compensated. Order-independent, because the D1 write is deferred to the end.
+
+**Is it ACID?** Within D1, yes: a `batch()` is one atomic, isolated, durable D1
+transaction (and unique constraints keep it consistent). **Across R2 + D1, no** - it
+is a **saga**: all-or-nothing in the happy path and on body failures via compensation,
+but not isolated (a reader can see an intermediate state) and not atomic if a
+compensation itself fails (a failed R2 delete leaves an orphan tarball, logged). When
+true atomicity is needed, keep it inside a single D1 `batch`.
+
+**Guidelines.**
+
+1. Wrap a flow that mutates **more than one resource** (or stages an external write
+   before a DB write) in `transaction(() => …)`. A single-statement write is already
+   atomic in D1 - it needs no unit.
+2. Don't pass a transaction object around. Side-effecting adapters **self-enlist**
+   via the ambient unit: a reversible external write registers `onRollback(undo)`; a
+   multi-statement DB write goes through `transactionalDb`'s `deferBatch` so it lands
+   atomically at the commit point.
+3. Put post-commit side effects (notifications, cache busts, metrics) in
+   `afterCommit(…)` so they fire only if the unit actually committed.
+4. Make compensations idempotent and cheap; a compensation that throws is logged, not
+   retried, so it must not be load-bearing for correctness.
+
 ## Security properties
 
 - **Integrity pinned**: SHA-512 in every packument, verified + locked by bun, so

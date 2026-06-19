@@ -1,17 +1,24 @@
 import type { CommitVersionInput, MetadataWriter, VersionManager } from "@brika/registry-core";
 import { type Db, regDistTags, regPackages, regVersions } from "@brika/store-db";
+import { type TransactionalDb, transactionalDb } from "@brika/tx";
 import { and, eq } from "drizzle-orm";
+import type { BatchItem } from "drizzle-orm/batch";
 
 /**
  * Persists a published version to D1 and mutates its management flags. Covers
  * both the publish writer (`MetadataWriter`) and the post-publish manager
  * (`VersionManager`) since they share the same `reg_versions` table.
+ *
+ * The client is overlaid with `@brika/tx`'s `transactionalDb`, so the writer is
+ * transaction-aware for free: `commitVersion` just hands its statements to
+ * `deferBatch` and the unit of work decides when they land (at the tx commit point
+ * when one is open, immediately otherwise) - no batch/timing logic here.
  */
 export class D1MetadataWriter implements MetadataWriter, VersionManager {
-  readonly #db: Db;
+  readonly #db: Db & TransactionalDb<BatchItem<"sqlite">>;
 
   constructor(db: Db) {
-    this.#db = db;
+    this.#db = transactionalDb<Db, BatchItem<"sqlite">>(db);
   }
 
   async versionExists(name: string, version: string): Promise<boolean> {
@@ -26,9 +33,6 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
   async commitVersion({ scope, version, tag }: CommitVersionInput): Promise<void> {
     const statements = [
       this.#db.insert(regPackages).values({ name: version.name, scope }).onConflictDoNothing(),
-      // A duplicate version is a unique-constraint violation here, so a TOCTOU race
-      // past `versionExists` fails the whole batch (and the caller rolls the tarball
-      // back) rather than corrupting an existing version.
       this.#db.insert(regVersions).values({
         name: version.name,
         version: version.version,
@@ -48,16 +52,13 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
           target: [regDistTags.name, regDistTags.tag],
           set: { version: version.version },
         }),
-    ] as const;
+    ];
 
-    // D1 runs a batch atomically; the bun:sqlite client used in tests has no
-    // `batch`, so fall back to sequential execution there (real atomicity is
-    // verified against D1).
-    if (typeof this.#db.batch === "function") {
-      await this.#db.batch(statements);
-    } else {
-      for (const statement of statements) await statement;
-    }
+    // One transaction-aware unit: lands atomically at the publish's commit point (so a
+    // later failure still rolls the staged tarball back), or immediately when there is
+    // no open transaction. A duplicate version trips the unique constraint and fails the
+    // whole unit, so a TOCTOU race past `versionExists` cannot corrupt an existing one.
+    await this.#db.deferBatch(statements);
   }
 
   async setDeprecated(name: string, version: string, message: string | null): Promise<void> {
