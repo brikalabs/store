@@ -26,6 +26,52 @@ This is what makes the core runtime-agnostic (it runs identically under Bun for
 tests and workerd in production) and the security-critical logic verifiable in
 isolation.
 
+## Swapping the platform (the portability rule)
+
+We run on Cloudflare today, but the codebase is written so that is a
+**replaceable detail, not a foundation**. The rule, in one line:
+
+> **No Cloudflare type, import, or assumption may leak past an adapter.**
+
+Concretely:
+
+- **`@brika/registry-core` (domain) and `@brika/router` (HTTP) stay platform-free.**
+  They import nothing from `cloudflare:*`, `@cloudflare/*`, `wrangler`, D1, R2, or
+  KV. They speak only in **ports**: the domain core's `MetadataReader` /
+  `TarballWriter` / …, and the router's generic `RateLimiter` (rate limiting is an
+  HTTP-edge concern, so its port + middleware live in the router, not the domain).
+  If a feature needs a new capability, add a port at the right layer, then
+  implement it at the edge.
+- **Adapters are the only Cloudflare-aware code**, and they live in the apps
+  (`apps/*/src/adapters`). A D1 adapter implements a metadata port; an R2 adapter
+  implements a tarball port; a Workers-binding adapter implements the router's
+  `RateLimiter`. Each adapter is small and does one thing: translate between a port
+  and one vendor API.
+- **Every port ships a platform-free default** used by unit tests and local dev
+  (an in-memory metadata fake, the router's pure `FixedWindowRateLimiter`, …).
+  So the **domain core** is provably runnable with *zero* Cloudflare adapters
+  present — which is exactly the property that lets us move.
+- **Data-plane bindings are read in one place**: D1 and R2 flow through the
+  `buildServices` composition root, fed by the single `context` factory in each
+  app's `index.ts`. No controller, no domain service, ever touches them via the
+  ambient `env`. Edge-config bindings that are not part of the domain graph (the
+  typed env vars, and the rate-limit binding) are read through the typed
+  `cloudflare:workers` `env` module instead, next to the edge code that uses them
+  (e.g. the rate-limit binding in `adapters/cf-rate-limiter.ts`) — a deliberate
+  exception so a cross-cutting concern stays self-contained rather than threading
+  through every service. Both kinds of binding are Cloudflare-typed and both are
+  what a platform move rewrites.
+
+**What moving off Cloudflare would (and would not) take.** It would take:
+reimplementing the handful of adapters against the new platform (e.g. Postgres
+for D1, S3 for R2, a Redis token-bucket for `RateLimiter`), and rewriting each
+app's thin entrypoint — `index.ts`, `wrangler.jsonc`, the `buildServices`
+signature, the `Env` types, and the wiring tests that construct the service
+graph. It would **not** touch the domain core, the services, the gates, the
+integrity/packument logic, the controllers, or the core's unit tests — those
+depend on ports, not on Cloudflare. The blast radius is, by construction, the
+`adapters/` directories and the per-app composition root, not the business logic.
+
 ## registry.brika.dev
 
 npm-compatible. The hub points `@brika:registry` at it; `bun add` is unchanged.

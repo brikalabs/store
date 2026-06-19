@@ -104,3 +104,56 @@ describe("controller prefix + validation", () => {
     expect(await (await app.request("/api/q?sort=asc")).json()).toEqual({ sort: "asc" });
   });
 });
+
+describe("typed middleware", () => {
+  const { route, controller, mount } = createRouter<{ tag: string }>();
+
+  /** An app whose route records the order of middleware + handler, and one that throws. */
+  function makeApp(order: string[]): Hono {
+    const app = new Hono();
+    mount(
+      app,
+      [
+        controller([
+          route.get({
+            path: "/m/ok",
+            middleware: [
+              ({ ctx }) => {
+                order.push(`mw:${ctx.tag}`);
+              },
+            ],
+            handler: () => {
+              order.push("handler");
+              return { ok: true };
+            },
+          }),
+          route.get({
+            path: "/m/throws",
+            middleware: [
+              () => {
+                throw notFound("blocked by middleware");
+              },
+            ],
+            handler: () => ({ ok: true }),
+          }),
+        ]),
+      ],
+      { context: () => ({ tag: "ctx" }) },
+    );
+    return app;
+  }
+
+  test("runs route middleware (with ctx) before the handler", async () => {
+    const order: string[] = [];
+    const res = await makeApp(order).request("/m/ok");
+    expect(res.status).toBe(200);
+    expect(order).toEqual(["mw:ctx", "handler"]);
+  });
+
+  test("a middleware throw aborts with its HttpError status, handler never runs", async () => {
+    const order: string[] = [];
+    const res = await makeApp(order).request("/m/throws");
+    expect(res.status).toBe(404);
+    expect(order).not.toContain("handler");
+  });
+});

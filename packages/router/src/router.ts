@@ -56,20 +56,12 @@ export type RouteHandler<P extends string, Body, Query, Ctx> = (
   input: RouteInput<P, Body, Query, Ctx>,
 ) => RouteResult | Promise<RouteResult>;
 
-/** A registered route, type-erased over its body/query so a controller holds a mixed list. */
-export interface RouteDef<Ctx> {
-  readonly method: Method;
-  readonly pattern: string;
-  readonly bodySchema?: z.ZodType;
-  readonly querySchema?: z.ZodType;
-  /** The handler function's name, captured for logging (empty for anonymous handlers). */
-  readonly handlerName?: string;
-  /** Best-effort `file:line:col` where this route was defined, for debugging. */
-  readonly source?: string;
-  readonly run: (raw: RawInput<Ctx>) => RouteResult | Promise<RouteResult>;
-}
-
-interface RawInput<Ctx> {
+/**
+ * Inputs handed to a {@link Middleware}: the raw (untyped) params/query/body plus
+ * the per-request `ctx` and request. Middleware is route-shape-agnostic, so unlike
+ * a handler it does not get the params/body narrowed to a route's schemas.
+ */
+export interface MiddlewareInput<Ctx> {
   readonly params: Record<string, string>;
   readonly query: unknown;
   readonly body: unknown;
@@ -78,7 +70,29 @@ interface RawInput<Ctx> {
   readonly waitUntil: (promise: Promise<unknown>) => void;
 }
 
-/** A group of routes, optionally sharing a name, path prefix, and middleware. */
+/**
+ * A typed pre-handler middleware for a route. Unlike a Hono `MiddlewareHandler` it
+ * runs AFTER the per-request context is built, so it can read the typed `ctx`; it
+ * runs side effects and throws an {@link HttpError} to abort (e.g. a rate limiter).
+ */
+export type Middleware<Ctx> = (input: MiddlewareInput<Ctx>) => void | Promise<void>;
+
+/** A registered route, type-erased over its body/query so a controller holds a mixed list. */
+export interface RouteDef<Ctx> {
+  readonly method: Method;
+  readonly pattern: string;
+  readonly bodySchema?: z.ZodType;
+  readonly querySchema?: z.ZodType;
+  /** Typed pre-handler middleware for this route, run before the handler. */
+  readonly middleware?: readonly Middleware<Ctx>[];
+  /** The handler function's name, captured for logging (empty for anonymous handlers). */
+  readonly handlerName?: string;
+  /** Best-effort `file:line:col` where this route was defined, for debugging. */
+  readonly source?: string;
+  readonly run: (raw: MiddlewareInput<Ctx>) => RouteResult | Promise<RouteResult>;
+}
+
+/** A group of routes, optionally sharing a name, path prefix, and Hono middleware. */
 export interface Controller<Ctx, E extends Env> {
   readonly name?: string;
   readonly prefix: string;
@@ -92,7 +106,11 @@ export interface ControllerConfig<Ctx, E extends Env> {
   readonly name?: string;
   /** Prepended to every route's pattern, e.g. `"/-/package"`. Keep it param-free. */
   readonly prefix?: string;
-  /** Middleware applied to this controller's routes (scoped by `prefix`). */
+  /**
+   * Hono middleware applied to this controller's routes (scoped by `prefix`). Runs
+   * BEFORE the per-request context is built, so it sees `c.env` but not `ctx`; use
+   * it for env-level concerns like CORS. For `ctx`-aware logic, use a route `middleware`.
+   */
   readonly use?: readonly MiddlewareHandler<E>[];
   readonly routes: readonly RouteDef<Ctx>[];
 }
@@ -169,6 +187,8 @@ export interface RouteConfig<
   readonly path: P;
   readonly body?: B;
   readonly query?: Q;
+  /** Typed pre-handler middleware for this route (sees `ctx`); run after the controller's. */
+  readonly middleware?: readonly Middleware<Ctx>[];
   readonly handler: RouteHandler<NoInfer<P>, SchemaOutput<B>, SchemaOutput<Q>, Ctx>;
 }
 
@@ -184,6 +204,7 @@ function defineRoute<
     pattern: config.path,
     bodySchema: config.body,
     querySchema: config.query,
+    middleware: config.middleware,
     handlerName: handler.name === "" ? undefined : handler.name,
     source: callerSource(),
     // The single typed boundary of the router: `params` is built from the matched
@@ -245,7 +266,7 @@ function expandOptional(pattern: string): string[] {
 }
 
 /** The client IP, from Cloudflare's `CF-Connecting-IP` or the first `X-Forwarded-For` hop. */
-function clientIpOf(req: Request): string | undefined {
+function clientIp(req: Request): string | undefined {
   const direct = req.headers.get("cf-connecting-ip");
   if (direct !== null) return direct;
   const forwarded = req.headers.get("x-forwarded-for");
@@ -257,6 +278,19 @@ function toResponse(result: RouteResult): Response {
   if (result instanceof Response) return result;
   if (result === undefined) return noContent();
   return reply(result, 200);
+}
+
+/**
+ * Resolve a matched request: run the route's typed middleware in order (any throw
+ * aborts, handled by the caller's catch), then run the handler.
+ */
+async function dispatch<Ctx>(
+  middleware: readonly Middleware<Ctx>[],
+  run: (input: MiddlewareInput<Ctx>) => RouteResult | Promise<RouteResult>,
+  input: MiddlewareInput<Ctx>,
+): Promise<Response> {
+  for (const mw of middleware) await mw(input);
+  return toResponse(await run(input));
 }
 
 /** Strip `{regex}` constraints from a pattern for display: `:pkg{[^-]+}?` -> `:pkg?`. */
@@ -352,6 +386,7 @@ export function createRouter<Ctx, E extends Env = Env>() {
       for (const middleware of ctrl.use) app.use(`${ctrl.prefix}/*`, middleware);
       for (const def of ctrl.routes) {
         const pattern = `${ctrl.prefix}${def.pattern}`;
+        const middleware = def.middleware ?? [];
         for (const honoPattern of expandOptional(pattern)) {
           app.on(def.method, honoPattern, async (c) => {
             const start = performance.now();
@@ -361,22 +396,23 @@ export function createRouter<Ctx, E extends Env = Env>() {
               const ctx = await options.context(c);
               const body = await parseBody(c, def.bodySchema);
               const query = parseQuery(c, def.querySchema);
-              const response = toResponse(
-                await def.run({
-                  params: c.req.param(),
-                  query,
-                  body,
-                  ctx,
-                  req: c.req.raw,
-                  waitUntil: (promise) => c.executionCtx.waitUntil(promise),
-                }),
-              );
+              const input = {
+                params: c.req.param(),
+                query,
+                body,
+                ctx,
+                req: c.req.raw,
+                waitUntil: (promise: Promise<unknown>) => c.executionCtx.waitUntil(promise),
+              };
+              // Route middleware runs first (a throw aborts via the catch below),
+              // then the handler.
+              const response = await dispatch(middleware, def.run, input);
               status = response.status;
               return response;
             } catch (error) {
               if (error instanceof HttpError) {
                 status = error.status;
-                return reply(error.body, error.status);
+                return reply(error.body, error.status, error.headers);
               }
               unexpected = error;
               throw error;
@@ -391,7 +427,7 @@ export function createRouter<Ctx, E extends Env = Env>() {
                   controller: ctrl.name,
                   handler: def.handlerName,
                   source: def.source,
-                  clientIp: clientIpOf(c.req.raw),
+                  clientIp: clientIp(c.req.raw),
                   error: unexpected,
                 });
               }

@@ -5,6 +5,7 @@ export {
   HttpError,
   httpError,
   notFound,
+  tooManyRequests,
   unauthorized,
 } from "./errors";
 export {
@@ -18,12 +19,24 @@ export {
   type RouterLogger,
   toJsonRecord,
 } from "./logger";
+export {
+  type Duration,
+  FixedWindowRateLimiter,
+  parseDuration,
+  type RateLimiter,
+  type RateLimitKey,
+  type RateLimitResult,
+  type RateLimitWindow,
+  rateLimit,
+} from "./rate-limit";
 export { created, json, noContent, type ResponseInit, reply, text } from "./response";
 export {
   type Controller,
   type ControllerConfig,
   createRouter,
   formatRoutes,
+  type Middleware,
+  type MiddlewareInput,
   type MountOptions,
   type RouteConfig,
   type RouteDef,

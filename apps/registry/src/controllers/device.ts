@@ -1,5 +1,6 @@
-import { badRequest, reply, unauthorized } from "@brika/router";
+import { badRequest, rateLimit, reply, unauthorized } from "@brika/router";
 import { z } from "zod";
+import { cf, clientKey } from "../adapters/cf-rate-limiter";
 import { issueToken, revokeToken } from "../adapters/token";
 import { vars } from "../env";
 import { controller, route } from "../http/router";
@@ -59,7 +60,15 @@ export async function handleRevoke(req: Request, services: Services): Promise<Re
 export const deviceController = controller({
   name: "device",
   routes: [
-    route.post({ path: "/-/device/code", handler: ({ ctx }) => handleDeviceCode(ctx) }),
+    // Grant creation is the abuse-prone step; rate-limit it by client IP. Token
+    // polling below is intentionally not limited: the CLI polls it every few seconds.
+    route.post({
+      path: "/-/device/code",
+      middleware: [
+        rateLimit({ max: 10, window: "1m", key: clientKey, store: cf("DEVICE_LIMITER") }),
+      ],
+      handler: ({ ctx }) => handleDeviceCode(ctx),
+    }),
     route.post({ path: "/-/device/token", handler: ({ req, ctx }) => handleDeviceToken(req, ctx) }),
     route.post({ path: "/-/token/revoke", handler: ({ req, ctx }) => handleRevoke(req, ctx) }),
   ],

@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { defineEnv } from "@brika/env";
 import { z } from "zod";
+import type { CfRateLimitBinding } from "./adapters/cf-rate-limiter";
 
 /**
  * The registry's environment, in one place.
@@ -34,6 +35,10 @@ declare global {
     interface Env {
       DB: D1Database;
       TARBALLS: R2Bucket;
+      // Workers rate-limit bindings. Optional: absent in tests and local dev, where
+      // `bindingRateLimiter` (cf-rate-limiter.ts) falls back to its in-memory limiter.
+      PUBLISH_LIMITER?: CfRateLimitBinding;
+      DEVICE_LIMITER?: CfRateLimitBinding;
     }
   }
 }

@@ -1,0 +1,147 @@
+import { z } from "zod";
+import { tooManyRequests } from "./errors";
+import type { Middleware, MiddlewareInput } from "./router";
+
+/**
+ * Generic, transport-agnostic rate limiting for the router: a {@link RateLimiter}
+ * port, a pure in-memory default ({@link FixedWindowRateLimiter}), and the
+ * {@link rateLimit} middleware that enforces a limiter on a route. Concrete
+ * limiters (a distributed store, a platform binding) implement the port; an app
+ * wires one per route with its own key strategy. Nothing here is app-specific.
+ */
+
+/** The outcome of a rate-limit check for one key. */
+export interface RateLimitResult {
+  /** Whether this request may proceed now. */
+  readonly allowed: boolean;
+  /** When denied, a hint (seconds) until the window resets, for `Retry-After`. */
+  readonly retryAfterSeconds?: number;
+}
+
+/** A rate limiter keyed by an opaque string (an IP, a token hash, `owner/repo`, …). */
+export interface RateLimiter {
+  /** Account for one request against `key` and report whether it is allowed. */
+  limit(key: string): Promise<RateLimitResult>;
+}
+
+/** A fixed-window quota: at most `limit` requests per `windowSeconds`. */
+export interface RateLimitWindow {
+  readonly limit: number;
+  readonly windowSeconds: number;
+}
+
+interface WindowState {
+  /** Epoch ms the current window started at. */
+  windowStart: number;
+  /** Requests counted in the current window. */
+  count: number;
+}
+
+/**
+ * A pure, in-memory fixed-window rate limiter. Holds per-key counters keyed to a
+ * window that resets once `windowSeconds` elapse. The clock is injected so tests
+ * are deterministic; it defaults to wall-clock time. In-process state means it
+ * limits per isolate, not globally, which is right for tests and local dev; a
+ * distributed deployment supplies its own {@link RateLimiter} behind the same port.
+ *
+ * A key's counter is reset lazily on its next request, so entries for keys that are
+ * never seen again persist for the isolate's lifetime. That is fine for the intended
+ * use (bounded key spaces: a /64 IP prefix, a principal) but means this is not a
+ * fit for an adversarial unbounded-key workload as a standalone production limiter.
+ */
+export class FixedWindowRateLimiter implements RateLimiter {
+  readonly #limit: number;
+  readonly #windowMs: number;
+  readonly #now: () => number;
+  readonly #counters = new Map<string, WindowState>();
+
+  constructor(window: RateLimitWindow, now: () => number = Date.now) {
+    this.#limit = window.limit;
+    this.#windowMs = window.windowSeconds * 1000;
+    this.#now = now;
+  }
+
+  limit(key: string): Promise<RateLimitResult> {
+    const now = this.#now();
+    const state = this.#counters.get(key);
+
+    // First request for this key, or its window has fully elapsed: open a fresh one.
+    if (state === undefined || now - state.windowStart >= this.#windowMs) {
+      this.#counters.set(key, { windowStart: now, count: 1 });
+      return Promise.resolve({ allowed: true });
+    }
+
+    if (state.count < this.#limit) {
+      state.count += 1;
+      return Promise.resolve({ allowed: true });
+    }
+
+    const retryAfterSeconds = Math.ceil((state.windowStart + this.#windowMs - now) / 1000);
+    return Promise.resolve({ allowed: false, retryAfterSeconds });
+  }
+}
+
+/** A duration string for a rate-limit window: `"30s"`, `"5m"`, `"1h"`. */
+export type Duration = `${number}${"s" | "m" | "h"}`;
+
+const UNIT_SECONDS = { s: 1, m: 60, h: 3600 } as const;
+/** Cap windows at a day: anything larger is a typo, and guards against overflow. */
+const MAX_WINDOW_SECONDS = 86_400;
+
+/**
+ * Zod schema for a {@link Duration}: validates the `<int><unit>` shape and converts
+ * to seconds, rejecting non-positive or absurdly large windows. Used by
+ * {@link parseDuration}; consistent with the rest of the codebase's zod validation.
+ */
+const durationSchema = z.string().transform((value, ctx) => {
+  const match = /^(\d+)([smh])$/.exec(value);
+  const seconds = match
+    ? Number(match[1]) * UNIT_SECONDS[match[2] as keyof typeof UNIT_SECONDS]
+    : 0;
+  if (seconds <= 0 || seconds > MAX_WINDOW_SECONDS) {
+    ctx.addIssue({ code: "custom", message: `use a duration like "30s", "5m", "1h"` });
+    return z.NEVER;
+  }
+  return seconds;
+});
+
+/** Parse a {@link Duration} into seconds. Throws (at load time) on a malformed string. */
+export function parseDuration(duration: Duration): number {
+  return durationSchema.parse(duration);
+}
+
+/** Derive a rate-limit key from the request inputs (an IP, a principal, …). */
+export type RateLimitKey<Ctx> = (input: MiddlewareInput<Ctx>) => string | Promise<string>;
+
+/** How a route declares its rate limit. */
+export interface RateLimitConfig<Ctx> {
+  /** Max requests allowed per window. */
+  readonly max: number;
+  /** Window as a duration string (`"30s"`, `"5m"`, `"1h"`). */
+  readonly window: Duration;
+  /** Derive the rate-limit key from the request (an IP, a principal, …). */
+  readonly key: RateLimitKey<Ctx>;
+  /**
+   * Optional backend, built from the window. Defaults to a per-isolate
+   * {@link FixedWindowRateLimiter}; pass e.g. a Cloudflare-binding factory for a
+   * distributed limiter, or `() => yourLimiter` to supply your own.
+   */
+  readonly store?: (window: RateLimitWindow) => RateLimiter;
+  /** Optional 429 message (defaults to "Too many requests"). */
+  readonly message?: string;
+}
+
+/**
+ * Middleware that rate-limits a route, throwing `429` (with `Retry-After`) when the
+ * key's window is exhausted: `rateLimit({ max: 10, window: "1m", key: clientKey })`.
+ * The limiter is built ONCE here (route-definition time), so its window persists
+ * across requests.
+ */
+export function rateLimit<Ctx>(config: RateLimitConfig<Ctx>): Middleware<Ctx> {
+  const window = { limit: config.max, windowSeconds: parseDuration(config.window) };
+  const limiter = config.store?.(window) ?? new FixedWindowRateLimiter(window);
+  return async (input) => {
+    const { allowed, retryAfterSeconds } = await limiter.limit(await config.key(input));
+    if (!allowed) throw tooManyRequests(config.message ?? "Too many requests", retryAfterSeconds);
+  };
+}

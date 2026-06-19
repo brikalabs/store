@@ -17,9 +17,10 @@ export function json(data: unknown, init: ResponseInit = {}): Response {
 /**
  * A JSON response marked `cache-control: no-store`, the safe default for mutations
  * and error replies (and what the router uses to serialize a thrown `HttpError`).
+ * Extra `headers` are merged in (used to carry e.g. `Retry-After` on a 429).
  */
-export function reply(data: unknown, status = 200): Response {
-  return Response.json(data, { status, headers: { "cache-control": "no-store" } });
+export function reply(data: unknown, status = 200, headers?: Record<string, string>): Response {
+  return Response.json(data, { status, headers: { "cache-control": "no-store", ...headers } });
 }
 
 /** A 201 Created JSON response (`cache-control: no-store`). */
