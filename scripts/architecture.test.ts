@@ -8,14 +8,11 @@ import { modules, rule } from "@brika/archunit";
  * the repo root. Add a layer by adding a `test`.
  */
 
-// Import categories: named sets of module specifiers.
 const PLATFORM = modules("cloudflare:", "@cloudflare/", "wrangler");
 const ORM = modules("drizzle-orm", "@brika/store-db");
 const HTTP = modules("hono", "@brika/router");
 
 describe("packages", () => {
-  // Shared packages are Cloudflare-free - only apps wire the platform. (db is the driver
-  // package and may import the ORM; no package imports Cloudflare.)
   test("are Cloudflare-free (only apps use Cloudflare)", () => {
     rule()
       .filesMatching("packages/*/src")
@@ -23,7 +20,6 @@ describe("packages", () => {
       .assert();
   });
 
-  // The domain core (any *-core package) speaks only ports.
   test("the domain core (*-core) depends on no database/ORM or HTTP framework", () => {
     rule()
       .filesMatching("packages/*-core/src")
@@ -31,8 +27,6 @@ describe("packages", () => {
       .assert();
   });
 
-  // The domain core stays runtime-agnostic: no Node built-ins, so it runs identically
-  // under Bun (tests) and workerd (prod).
   test("the domain core (*-core) is runtime-agnostic (no Node built-ins)", () => {
     rule()
       .filesMatching("packages/*-core/src")
@@ -40,7 +34,6 @@ describe("packages", () => {
       .assert();
   });
 
-  // Persistence lives in the db package; every other shared package is database-free.
   test("shared packages are database-free (only the db package touches the ORM)", () => {
     rule()
       .filesMatching("packages/*/src")
@@ -49,7 +42,6 @@ describe("packages", () => {
       .assert();
   });
 
-  // The router is a platform-free HTTP layer (Hono is allowed; the database is not).
   test("the router is database-free", () => {
     rule()
       .filesMatching("packages/router/src")
@@ -57,7 +49,6 @@ describe("packages", () => {
       .assert();
   });
 
-  // The router is generic HTTP plumbing - it must not depend on the registry domain.
   test("the router does not depend on the domain core", () => {
     rule()
       .filesMatching("packages/router/src")
@@ -67,7 +58,6 @@ describe("packages", () => {
 });
 
 describe("apps", () => {
-  // Apps are leaves: they share code through packages, never by importing each other.
   test("do not import each other", () => {
     rule()
       .filesMatching("apps/*/src")
@@ -77,7 +67,6 @@ describe("apps", () => {
 });
 
 describe("apps/registry", () => {
-  // Controllers go through ports on `ctx`, never the database.
   test("controllers never import the database/ORM (use a port on ctx)", () => {
     rule()
       .filesMatching("apps/*/src/controllers")
@@ -85,8 +74,7 @@ describe("apps/registry", () => {
       .assert();
   });
 
-  // The database is reached only through adapters + the composition root (services.ts /
-  // index.ts). (apps/web is not yet hexagonal; add it once it is.)
+  // Scoped to apps/registry (not apps/*) because apps/web is not yet hexagonal.
   test("the database is reached only through adapters + the composition root", () => {
     rule()
       .filesMatching("apps/registry/src")
