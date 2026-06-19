@@ -1,7 +1,7 @@
 import { CliError, defineCommand } from "@brika/cli-kit";
 import * as p from "@brika/cli-kit/prompts";
 import { loadConfig } from "../lib/config";
-import { RegistryClient, type ScopeRole } from "../lib/registry";
+import { RegistryClient } from "../lib/registry";
 
 /** Parse a member reference: `provider:id` (e.g. `github:alice`), or a bare id (github). */
 function parseMember(ref: string): { provider: string; id: string } {
@@ -39,10 +39,12 @@ async function runAdd(
   role: string,
 ): Promise<void> {
   if (member === undefined) throw new CliError("usage: brika scope add <@scope> <provider:id>");
-  if (role !== "admin" && role !== "member")
+  if (role !== "admin" && role !== "member") {
     throw new CliError("--role must be 'admin' or 'member'");
+  }
+  // `role` is narrowed to ScopeRole by the guard above - no cast needed.
   await withSpinner(`Adding ${member} to ${scope}`, async () => {
-    await client.setScopeMember(token, scope, parseMember(member), role as ScopeRole);
+    await client.setScopeMember(token, scope, parseMember(member), role);
     return `Set ${member} as ${role} on ${scope}`;
   });
 }
