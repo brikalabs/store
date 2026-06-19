@@ -1,5 +1,6 @@
 import { sha1Hex, sha512Integrity } from "./integrity";
 import { REGISTRY_LIMITS } from "./limits";
+import { isCanonicalName, scopeOf } from "./names";
 import { tarballPath } from "./packument";
 import type { PackageVersion, Provenance } from "./types";
 
@@ -88,14 +89,10 @@ export interface PublishOptions {
   readonly maxTarballBytes?: number;
 }
 
-function scopeOf(name: string): string | null {
-  return name.startsWith("@") ? (name.split("/")[0] ?? null) : null;
-}
-
 /**
- * Orchestrates a publish through the two gates and the immutability + integrity
- * invariants. Ownership is verified BEFORE validation, and immutability BEFORE
- * any write, so a rejected publish never touches storage.
+ * Orchestrates a publish through name validation, the two gates, and the immutability +
+ * integrity invariants. The name is checked first, then ownership, then validation, and
+ * immutability BEFORE any write, so a rejected publish never touches storage.
  */
 export class PublishService {
   readonly #meta: MetadataWriter;
@@ -121,7 +118,25 @@ export class PublishService {
   }
 
   async publish(input: PublishInput): Promise<PublishResult> {
-    // 1. Ownership (identity gate) before anything else.
+    // 0. Name: a canonical scoped name, and a manifest that matches the published
+    //    name/version. Rejecting here means a bad name never reaches the ownership gate.
+    if (!isCanonicalName(input.name)) {
+      return {
+        ok: false,
+        code: "invalid",
+        message:
+          "Package name must be a lowercase scoped name (@scope/name) using only a-z, 0-9 and '-'",
+      };
+    }
+    if (input.manifest.name !== input.name || input.manifest.version !== input.version) {
+      return {
+        ok: false,
+        code: "invalid",
+        message: "Manifest name/version must match the published name/version",
+      };
+    }
+
+    // 1. Ownership (identity gate).
     const owns = await this.#ownership.canPublish(input.identity, input.name);
     if (!owns.ok) return { ok: false, code: "forbidden", message: owns.message };
 

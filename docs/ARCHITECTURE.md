@@ -72,6 +72,52 @@ integrity/packument logic, the controllers, or the core's unit tests — those
 depend on ports, not on Cloudflare. The blast radius is, by construction, the
 `adapters/` directories and the per-app composition root, not the business logic.
 
+## Architecture rules (enforced)
+
+The layering above is not a convention you have to remember — the key parts are
+enforced (ArchUnit-style) by the **`@brika/archunit`** package and written as ordinary
+tests under `architecture/` (split by concern: `packages`, `apps`, `naming`). Each rule is
+one `bun test` case: declare what a layer may not import, then assert it, e.g.
+
+```ts
+test("the domain core depends on no database/ORM or HTTP framework", () => {
+  rule().filesMatching("packages/*-core/src/**/*.ts").mayNotImport(ORM, HTTP).assert();
+});
+```
+
+Rules are scoped by package/folder glob (so they scale as packages and apps are added),
+and a violation fails the test naming the offending file + import. The rules:
+
+- **A. The domain core (`@brika/registry-core`) is platform-free.** It may not import
+  any Cloudflare module (`cloudflare:*`, `@cloudflare/*`, `wrangler`), the database/ORM
+  (`drizzle-orm`, `@brika/store-db`), or an HTTP framework (`hono`, `@brika/router`). It
+  speaks only ports, so it stays runnable with zero adapters.
+- **B. The router (`@brika/router`) is platform-free.** No Cloudflare, no database/ORM.
+  (Hono is allowed — the router is a thin typed layer over it.)
+- **C. The database is reached only through adapters and the composition root.** Inside
+  `apps/registry/src`, only `adapters/**` and the composition root (`services.ts`,
+  `index.ts`) may import `drizzle-orm`/`@brika/store-db`. Controllers, auth, and the rest
+  go through a port on `ctx` — they cannot touch `db`. (Tests are exempt; they seed the
+  in-memory database directly.)
+
+Every adapter under `apps/registry/src/adapters` implements a `registry-core` port
+(`D1MetadataReader` → `MetadataReader`, `D1ScopeStore` → `ScopeStore`, `D1TokenStore` →
+`TokenStore`, …), so the adapter layer is uniformly swappable and the dependency arrows
+all point inward.
+
+Beyond layering, the same engine enforces naming so the layers stay legible
+(`architecture/naming.test.ts`). Filenames are checked with `mustBeNamed`, class names with
+the `classesMust{Be,NotBe}Named` / `classesMustBe{Prefixed,Suffixed}` family:
+
+- **D. Source files are kebab-case** — the domain core, the registry controllers, and the
+  registry adapters all use `name-like-this.ts`, so a file name reads as one thing.
+- **E. Domain services are suffixed `Service`** and **carry no infra prefix** — every class
+  in `registry-core` ends in `Service` (`PublishService`, `ScopeService`, …) and none is named
+  `D1*`/`R2*`/`Cf*`, so an adapter type can never quietly leak into the domain core.
+- **F. A vendor-backed adapter's class carries the vendor prefix** — adapter classes are
+  PascalCase, and `d1-*.ts` declares `D1*` classes while `r2-*.ts` declares `R2*` classes, so
+  the file name and the class agree on which infra they bind to.
+
 ## registry.brika.dev
 
 npm-compatible. The hub points `@brika:registry` at it; `bun add` is unchanged.

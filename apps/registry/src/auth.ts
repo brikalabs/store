@@ -1,8 +1,11 @@
-import { type OidcClaims, type PublishIdentity, verifyGithubOidc } from "@brika/registry-core";
+import {
+  type OidcClaims,
+  type PublishIdentity,
+  type TokenStore,
+  verifyGithubOidc,
+} from "@brika/registry-core";
 import { forbidden, type RateLimitKey, unauthorized } from "@brika/router";
-import type { Db } from "@brika/store-db";
 import { GithubJwksProvider } from "./adapters/github-jwks";
-import { verifyToken } from "./adapters/token";
 import type { Services } from "./services";
 
 /**
@@ -27,7 +30,10 @@ function provenanceFrom(claims: OidcClaims) {
   };
 }
 
-export async function authenticateWrite(request: Request, db: Db): Promise<PublishIdentity | null> {
+export async function authenticateWrite(
+  request: Request,
+  tokens: TokenStore,
+): Promise<PublishIdentity | null> {
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) return null;
   const token = authorization.slice("Bearer ".length);
@@ -42,7 +48,7 @@ export async function authenticateWrite(request: Request, db: Db): Promise<Publi
     };
   }
 
-  const tokenUser = await verifyToken(db, token);
+  const tokenUser = await tokens.verify(token);
   if (tokenUser !== null) {
     return { provider: tokenUser.provider, owner: tokenUser.subject, repository: null };
   }
@@ -53,7 +59,7 @@ export async function authenticateWrite(request: Request, db: Db): Promise<Publi
 /**
  * Like {@link authenticateWrite}, but throws `401 Unauthorized` instead of
  * returning `null`, so a handler reads the identity in one line:
- * `const identity = await requireWrite(req, db)`.
+ * `const identity = await requireWrite(req, ctx.tokens)`.
  *
  * Memoized per request (keyed by the `Request`): the rate-limit middleware and the
  * handler both call it, but the OIDC/JWKS verification runs only once. The cache
@@ -61,10 +67,10 @@ export async function authenticateWrite(request: Request, db: Db): Promise<Publi
  */
 const identityByRequest = new WeakMap<Request, Promise<PublishIdentity>>();
 
-export function requireWrite(request: Request, db: Db): Promise<PublishIdentity> {
+export function requireWrite(request: Request, tokens: TokenStore): Promise<PublishIdentity> {
   const cached = identityByRequest.get(request);
   if (cached !== undefined) return cached;
-  const resolved = authenticateWrite(request, db).then((identity) => {
+  const resolved = authenticateWrite(request, tokens).then((identity) => {
     if (identity === null) throw unauthorized();
     return identity;
   });
@@ -79,7 +85,7 @@ export function requireWrite(request: Request, db: Db): Promise<PublishIdentity>
  * the memoized {@link requireWrite}, so it adds no extra verification.
  */
 export const principal: RateLimitKey<Services> = async ({ req, ctx }) => {
-  const identity = await requireWrite(req, ctx.db);
+  const identity = await requireWrite(req, ctx.tokens);
   return identity.repository ?? identity.owner;
 };
 
@@ -95,10 +101,10 @@ export const principal: RateLimitKey<Services> = async ({ req, ctx }) => {
  */
 export async function requireAdmin(
   request: Request,
-  db: Db,
+  tokens: TokenStore,
   admins: ReadonlySet<string>,
 ): Promise<PublishIdentity> {
-  const identity = await requireWrite(request, db);
+  const identity = await requireWrite(request, tokens);
   if (!admins.has(`${identity.provider}:${identity.owner}`))
     throw forbidden("Not a registry admin");
   return identity;

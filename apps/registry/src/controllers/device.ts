@@ -1,7 +1,6 @@
 import { badRequest, rateLimit, reply, unauthorized } from "@brika/router";
 import { z } from "zod";
 import { cf, clientKey } from "../adapters/cf-rate-limiter";
-import { issueToken, revokeToken } from "../adapters/token";
 import { vars } from "../env";
 import { controller, route } from "../http/router";
 import type { Services } from "../services";
@@ -42,7 +41,7 @@ export async function handleDeviceToken(req: Request, services: Services): Promi
   const result = await services.devices.redeem(parsed.data.device_code);
   if (!result.ok) throw badRequest(result.error);
 
-  const token = await issueToken(services.db, result.githubLogin);
+  const token = await services.tokens.issue(result.githubLogin);
   return reply(
     { access_token: token, token_type: "bearer", github_login: result.githubLogin },
     200,
@@ -53,7 +52,7 @@ export async function handleDeviceToken(req: Request, services: Services): Promi
 export async function handleRevoke(req: Request, services: Services): Promise<Response> {
   const authorization = req.headers.get("authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) throw unauthorized();
-  await revokeToken(services.db, authorization.slice("Bearer ".length));
+  await services.tokens.revoke(authorization.slice("Bearer ".length));
   return reply({ ok: true }, 200);
 }
 

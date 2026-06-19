@@ -3,18 +3,22 @@ import {
   ManagementService,
   PublishService,
   ResolveService,
+  ScopeService,
 } from "@brika/registry-core";
 import type { Db } from "@brika/store-db";
 import { D1AuditLog } from "./adapters/d1-audit";
+import { D1CatalogReader } from "./adapters/d1-catalog";
 import { D1DeviceStore } from "./adapters/d1-device";
 import { D1DownloadStore } from "./adapters/d1-downloads";
 import { D1MetadataReader } from "./adapters/d1-metadata";
 import { D1MetadataWriter } from "./adapters/d1-metadata-writer";
 import { D1OwnershipPolicy } from "./adapters/d1-ownership";
 import { D1ScopeMembers } from "./adapters/d1-scope-members";
+import { D1ScopeStore } from "./adapters/d1-scope-store";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { R2TarballWriter } from "./adapters/r2-tarball-writer";
+import { D1TokenStore } from "./adapters/token";
 
 /**
  * The registry's composition root: the one place that reads the Cloudflare
@@ -43,9 +47,10 @@ export function buildServices(
   // shared with the scope controller for member management.
   const scopeMembers = new D1ScopeMembers(db);
   const ownership = new D1OwnershipPolicy(db, scopeMembers);
+  // The raw drizzle client (`db`) is deliberately NOT exposed on the returned graph:
+  // every persistence + auth concern goes through a port below, so a controller cannot
+  // reach the database directly. Adapters capture `db` here at construction.
   return {
-    /** Drizzle client over the registry's D1 database (`reg_*` tables). */
-    db,
     /**
      * Operator admins (provider-qualified `provider:owner` keys) for takedown/restore,
      * resolved once here from `REGISTRY_ADMINS` rather than re-read from the ambient env
@@ -66,8 +71,12 @@ export function buildServices(
     ),
     /** Post-publish management: deprecate, yank. */
     management: new ManagementService(new D1MetadataWriter(db), ownership),
-    /** Scope membership + roles (the `ScopeMembers` port; publish gating + member mgmt). */
-    scopeMembers,
+    /** Scope use cases: create/claim, members + roles, display name (over the stores). */
+    scopes: new ScopeService(new D1ScopeStore(db), scopeMembers),
+    /** Package catalog read surface (`GET /-/v1/packages`). */
+    catalog: new D1CatalogReader(db),
+    /** Publish-token store (issue/verify/revoke) for auth + the device flow. */
+    tokens: new D1TokenStore(db),
     /** Per-day install-count store: record + stats. */
     downloads: new D1DownloadStore(db),
     /** Device-authorization flow (RFC 8628). */

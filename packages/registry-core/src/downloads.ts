@@ -17,6 +17,22 @@ export interface DownloadStats {
   readonly weekly: number;
 }
 
+/**
+ * Persistence port for install counts: record a download, and read aggregated stats for
+ * one or many packages. The per-day storage + aggregation timing is the implementation's
+ * concern; the domain only defines the shape callers depend on.
+ */
+export interface DownloadStore {
+  /** Increment today's count for a package. */
+  record(name: string): Promise<void>;
+  /** All-time + trailing-week installs for one package. */
+  stats(name: string): Promise<DownloadStats>;
+  /** Stats plus the per-day series for a trailing `days`-day sparkline window. */
+  statsWithSeries(name: string, days: number): Promise<DownloadStats & { series: number[] }>;
+  /** Install stats for a set of packages, keyed by name (absent -> zero). */
+  statsFor(names: readonly string[]): Promise<Map<string, DownloadStats>>;
+}
+
 /** Trailing window, in days, the `weekly` figure covers. */
 export const DOWNLOAD_WINDOW_DAYS = 7;
 

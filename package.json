@@ -18,7 +18,7 @@
     "cli": "BRIKA_REGISTRY=http://localhost:8787 bun apps/cli/src/index.ts",
     "build": "bun run --filter @brika/store-web build",
     "deploy": "bun run --filter @brika/store-web deploy",
-    "test": "bun test packages apps/registry apps/cli apps/web/src",
+    "test": "bun test packages apps/registry apps/cli apps/web/src architecture",
     "test:e2e": "bun run --filter @brika/store-web e2e",
     "typecheck": "bun run --filter '*' typecheck",
     "check:no-em-dash": "bun run scripts/check-no-em-dash.ts",
@@ -32,6 +32,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
+    "@brika/archunit": "workspace:*",
     "@types/bun": "^1.3.5",
     "@typescript/native-preview": "^7.0.0-dev.20260615.1",
     "typescript": "^6.0.3"

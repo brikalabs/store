@@ -8,6 +8,8 @@ export {
   registerAttestationProvider,
   TransparencyEntry,
 } from "./attestation";
+export type { AuditEntry, AuditLog } from "./audit";
+export type { CatalogEntry, CatalogReader } from "./catalog";
 export {
   type DeviceGrant,
   type DeviceRedeemResult,
@@ -20,6 +22,7 @@ export {
   type DailyDownloads,
   DOWNLOAD_WINDOW_DAYS,
   type DownloadStats,
+  type DownloadStore,
   downloadSeries,
   epochDay,
   summarizeDownloads,
@@ -34,6 +37,7 @@ export {
   type VersionManager,
 } from "./manage";
 export type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
+export { isCanonicalName, isCanonicalScope, scopeOf } from "./names";
 export {
   BaseClaims,
   type Jwk,
@@ -68,5 +72,13 @@ export {
   type TarballWriter,
 } from "./publish";
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
+export {
+  type ScopeErrorCode,
+  type ScopeRecord,
+  type ScopeResult,
+  ScopeService,
+  type ScopeStore,
+} from "./scope";
 export { readTarGzEntries, type TarEntry } from "./tar";
+export type { TokenPrincipal, TokenStore } from "./tokens";
 export { type PackageRecord, PackageVersion, Provenance, type ScopePublisher } from "./types";

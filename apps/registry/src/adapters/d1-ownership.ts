@@ -1,7 +1,11 @@
-import type { OwnershipPolicy, PublishIdentity, ScopeMembers } from "@brika/registry-core";
+import {
+  type OwnershipPolicy,
+  type PublishIdentity,
+  type ScopeMembers,
+  scopeOf,
+} from "@brika/registry-core";
 import { type Db, regScopes } from "@brika/store-db";
 import { eq } from "drizzle-orm";
-import { scopeOf } from "../names";
 
 /**
  * Membership-based publish authorization: a scope must be explicitly CREATED (see the

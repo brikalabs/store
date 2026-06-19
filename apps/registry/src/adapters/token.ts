@@ -1,3 +1,4 @@
+import type { TokenPrincipal, TokenStore } from "@brika/registry-core";
 import { type Db, regTokens } from "@brika/store-db";
 import { eq } from "drizzle-orm";
 
@@ -57,4 +58,29 @@ export async function verifyToken(
   const row = rows[0];
   if (row === undefined || row.expiresAt <= Math.floor(Date.now() / 1000)) return null;
   return { provider: row.provider, subject: row.subject };
+}
+
+/**
+ * D1 implementation of the {@link TokenStore} port over `reg_tokens`. Thin adapter over the
+ * issue/verify/revoke functions above (which own the crypto + hashing); auth and the
+ * device flow depend on this port, not on the database.
+ */
+export class D1TokenStore implements TokenStore {
+  readonly #db: Db;
+
+  constructor(db: Db) {
+    this.#db = db;
+  }
+
+  issue(subject: string, provider = "github"): Promise<string> {
+    return issueToken(this.#db, subject, provider);
+  }
+
+  verify(token: string): Promise<TokenPrincipal | null> {
+    return verifyToken(this.#db, token);
+  }
+
+  revoke(token: string): Promise<void> {
+    return revokeToken(this.#db, token);
+  }
 }
