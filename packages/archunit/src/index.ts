@@ -37,8 +37,8 @@ export function category(label: string, test: (specifier: string) => boolean): C
  * name ending in `:` or `/` is a prefix match.
  */
 export function modules(...names: string[]): Category {
-  const label =
-    names.length === 1 ? `"${names[0]}"` : `one of ${names.map((n) => `"${n}"`).join(", ")}`;
+  const quoted = names.map((n) => `"${n}"`).join(", ");
+  const label = names.length === 1 ? quoted : `one of ${quoted}`;
   return {
     label,
     test: (s) =>

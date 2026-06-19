@@ -12,7 +12,8 @@
   "license": "MIT",
   "author": "Brika Labs",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./test": "./src/test.ts"
   },
   "types": "./src/index.ts",
   "files": [
