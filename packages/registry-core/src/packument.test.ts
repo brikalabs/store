@@ -110,3 +110,46 @@ test("buildAbbreviatedPackument keeps install fields and drops the rest", () => 
   expect(version?.scripts).toBeUndefined();
   expect(version?.description).toBeUndefined();
 });
+
+test("hides a taken-down version and surfaces its reason under takedowns", () => {
+  const withTakedown: PackageRecord = {
+    name: "@brika/plugin-x",
+    distTags: { latest: "1.1.0" },
+    createdAt: "2026-01-01T00:00:00.000Z",
+    versions: [
+      {
+        name: "@brika/plugin-x",
+        version: "1.0.0",
+        manifest: {},
+        integrity: "sha512-aaa",
+        shasum: "abc",
+        size: 10,
+        publishedAt: "2026-01-01T00:00:00.000Z",
+        deprecated: null,
+        yanked: false,
+        takedownReason: "malware: exfiltrates env",
+      },
+      {
+        name: "@brika/plugin-x",
+        version: "1.1.0",
+        manifest: {},
+        integrity: "sha512-bbb",
+        shasum: "def",
+        size: 20,
+        publishedAt: "2026-02-01T00:00:00.000Z",
+        deprecated: null,
+        yanked: false,
+        takedownReason: null,
+      },
+    ],
+  };
+
+  const full = buildPackument(withTakedown, "https://registry.brika.dev");
+  expect(Object.keys(full.versions)).toEqual(["1.1.0"]); // taken-down version hidden
+  expect(full.takedowns).toEqual({ "1.0.0": "malware: exfiltrates env" });
+
+  // The abbreviated (install) packument hides it too, with no takedowns surface.
+  const abbreviated = buildAbbreviatedPackument(withTakedown, "https://registry.brika.dev");
+  expect(Object.keys(abbreviated.versions)).toEqual(["1.1.0"]);
+  expect("takedowns" in abbreviated).toBe(false);
+});

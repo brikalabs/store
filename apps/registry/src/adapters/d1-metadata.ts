@@ -42,6 +42,7 @@ export class D1MetadataReader implements MetadataReader {
       publishedAt: new Date(row.publishedAt * 1000).toISOString(),
       deprecated: row.deprecated,
       yanked: row.yanked,
+      takedownReason: row.takedown,
       provenance: Provenance.nullable()
         .catch(null)
         .parse(row.provenance ?? null),

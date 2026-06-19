@@ -44,6 +44,11 @@ export const PackageVersion = z.object({
   deprecated: z.string().nullable().default(null),
   /** Yanked versions are hidden from new installs but kept for existing locks. */
   yanked: z.boolean().default(false),
+  /**
+   * Operator takedown reason (abuse/policy). Null = active; non-null = removed by an
+   * admin: hidden from new installs like a yank, with this reason surfaced publicly.
+   */
+  takedownReason: z.string().nullable().default(null),
   /** CI build provenance (GitHub OIDC), or null for local token publishes. */
   provenance: Provenance.nullable().default(null),
 });

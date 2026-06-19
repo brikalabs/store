@@ -34,19 +34,31 @@ export interface Packument {
   readonly "dist-tags": Record<string, string>;
   readonly versions: Record<string, Record<string, unknown>>;
   readonly time: Record<string, string>;
+  /**
+   * Versions removed by an operator takedown, mapped to their public reason. A
+   * non-standard field (npm clients ignore it) the storefront reads to show why a
+   * version is gone; the versions themselves are absent from `versions` above.
+   */
+  readonly takedowns?: Record<string, string>;
 }
 
 /**
- * Build an npm-compatible packument from stored versions. Yanked versions are
- * omitted (hidden from new installs); deprecated versions are included with a
- * `deprecated` field so bun surfaces the warning but still installs them.
+ * Build an npm-compatible packument from stored versions. Yanked AND taken-down
+ * versions are omitted (hidden from new installs); a taken-down version's reason is
+ * surfaced under `takedowns`. Deprecated versions are included with a `deprecated`
+ * field so bun surfaces the warning but still installs them.
  */
 export function buildPackument(record: PackageRecord, baseUrl: string): Packument {
   const versions: Record<string, Record<string, unknown>> = {};
+  const takedowns: Record<string, string> = {};
   const time: Record<string, string> = { created: record.createdAt };
   let modified = record.createdAt;
 
   for (const version of record.versions) {
+    if (version.takedownReason) {
+      takedowns[version.version] = version.takedownReason;
+      continue;
+    }
     if (version.yanked) continue;
 
     const dist: PackumentDist = {
@@ -74,6 +86,7 @@ export function buildPackument(record: PackageRecord, baseUrl: string): Packumen
     "dist-tags": { ...record.distTags },
     versions,
     time: { ...time, modified },
+    ...(Object.keys(takedowns).length > 0 ? { takedowns } : {}),
   };
 }
 
@@ -123,7 +136,7 @@ export function buildAbbreviatedPackument(
   let modified = record.createdAt;
 
   for (const version of record.versions) {
-    if (version.yanked) continue;
+    if (version.yanked || version.takedownReason) continue;
 
     const entry: Record<string, unknown> = {
       name: record.name,

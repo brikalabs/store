@@ -168,6 +168,7 @@ export class PublishService {
         publishedAt: this.#clock(),
         deprecated: null,
         yanked: false,
+        takedownReason: null,
         provenance: input.identity.provenance ?? null,
       },
     });

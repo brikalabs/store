@@ -36,6 +36,13 @@
       "when": 1781594607082,
       "tag": "0004_odd_magneto",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1781866149902,
+      "tag": "0005_cloudy_big_bertha",
+      "breakpoints": true
     }
   ]
 }

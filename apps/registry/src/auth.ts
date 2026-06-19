@@ -1,5 +1,5 @@
 import { type OidcClaims, type PublishIdentity, verifyGithubOidc } from "@brika/registry-core";
-import { type RateLimitKey, unauthorized } from "@brika/router";
+import { forbidden, type RateLimitKey, unauthorized } from "@brika/router";
 import type { Db } from "@brika/store-db";
 import { GithubJwksProvider } from "./adapters/github-jwks";
 import { verifyToken } from "./adapters/token";
@@ -79,3 +79,21 @@ export const principal: RateLimitKey<Services> = async ({ req, ctx }) => {
   const identity = await requireWrite(req, ctx.db);
   return identity.repository ?? identity.owner;
 };
+
+/**
+ * Authenticate an operator admin for takedown/restore: a valid write credential
+ * (OIDC or token) whose GitHub owner is in the `admins` allowlist (the controller
+ * passes it from `REGISTRY_ADMINS`). Throws `401` when no credential validates,
+ * `403` when it validates but is not an admin. Admin is a registry-operator role,
+ * deliberately separate from (and overriding) scope ownership. The allowlist is a
+ * parameter so this stays free of the env/`cloudflare:workers` import.
+ */
+export async function requireAdmin(
+  request: Request,
+  db: Db,
+  admins: ReadonlySet<string>,
+): Promise<PublishIdentity> {
+  const identity = await requireWrite(request, db);
+  if (!admins.has(identity.owner)) throw forbidden("Not a registry admin");
+  return identity;
+}

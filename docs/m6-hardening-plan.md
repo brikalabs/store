@@ -207,12 +207,26 @@ Adapters in `apps/registry/src/adapters`:
 
 ---
 
-## 3. Abuse/takedown surfacing
+## 3. Abuse/takedown surfacing ✅ DONE
 
 **Goal:** an **operator-initiated** removal (distinct from a publisher's yank)
 that hides a version from installs *and* surfaces a public policy reason, plus an
 audit trail. Yank is publisher-owned and reason-less; takedown is admin-owned and
 explains itself.
+
+**Shipped as:** a nullable `takedown` (reason) column on `reg_versions`
+(migration `0005`); `PackageVersion.takedownReason` + `VersionManager.setTakedown`
++ `ManagementService.takedown`/`restore` (existence-gated, NOT ownership-gated) in
+`@brika/registry-core`. The packument and `/-/v1/packages` catalog hide taken-down
+versions like a yank (bytes retained, reversible), and the full packument surfaces
+a non-standard `takedowns: { version: reason }` map the storefront can read. Admin
+auth: `REGISTRY_ADMINS` (comma-separated logins) + `requireAdmin(req, db, admins)`
+in `auth.ts` (allowlist passed in, so auth stays free of the env import), wired at
+`POST /-/package/:name/:version/{takedown,restore}` (admin-gated, audited). Operator
+step: set `REGISTRY_ADMINS` via `wrangler secret`. **Deferred:** hard-blocking the
+tarball bytes for a malware takedown (today bytes are retained like a yank, so
+pinned lockfiles still resolve); a takedown that must also stop serving bytes is a
+follow-up.
 
 ### New concept needed: operator-admin identity
 

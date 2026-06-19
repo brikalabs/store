@@ -59,6 +59,7 @@ async function readCatalog(db: Db): Promise<CatalogEntry[]> {
       size: regVersions.size,
       integrity: regVersions.integrity,
       yanked: regVersions.yanked,
+      takedown: regVersions.takedown,
     })
     .from(regDistTags)
     .innerJoin(
@@ -69,7 +70,7 @@ async function readCatalog(db: Db): Promise<CatalogEntry[]> {
     .where(eq(regDistTags.tag, "latest"));
 
   return rows
-    .filter((row) => !row.yanked)
+    .filter((row) => !row.yanked && row.takedown === null)
     .map((row) => ({
       name: row.name,
       version: row.version,

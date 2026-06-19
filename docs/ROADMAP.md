@@ -73,8 +73,10 @@ Largely built. Remaining:
   **rate limits** on the abuse-prone mutating endpoints (`POST /-/publish` by
   principal, `POST /-/device/code` by IP) via a generic `@brika/router`
   rate-limiting system (`RateLimiter` port + pure `FixedWindowRateLimiter` +
-  `rateLimit` middleware) with a Cloudflare-binding adapter in the registry.
-  Remaining: malware-scan hook, abuse/takedown surfacing, R2 + D1 backups.
+  `rateLimit` middleware) with a Cloudflare-binding adapter in the registry, and
+  **operator takedown/restore** (`REGISTRY_ADMINS` + `requireAdmin`; hides a version
+  from installs like a yank but admin-gated with a public reason surfaced in the
+  packument). Remaining: malware-scan hook, R2 + D1 backups.
   Plan: [`m6-hardening-plan.md`](./m6-hardening-plan.md).
 
 ## Brika repo (separate)

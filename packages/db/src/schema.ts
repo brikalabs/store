@@ -31,6 +31,11 @@ export const regVersions = sqliteTable(
     publishedAt: integer("published_at").notNull().default(epoch),
     deprecated: text("deprecated"),
     yanked: integer("yanked", { mode: "boolean" }).notNull().default(false),
+    /**
+     * Operator takedown reason (abuse/policy). Null = active; non-null = removed by
+     * an admin, hidden from new installs like a yank but with this public reason.
+     */
+    takedown: text("takedown"),
     /** CI build provenance from the GitHub OIDC token; null for local publishes. */
     provenance: text("provenance", { mode: "json" }).$type<Record<string, unknown>>(),
   },

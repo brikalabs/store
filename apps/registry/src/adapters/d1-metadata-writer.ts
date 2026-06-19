@@ -73,4 +73,11 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
       .set({ yanked })
       .where(and(eq(regVersions.name, name), eq(regVersions.version, version)));
   }
+
+  async setTakedown(name: string, version: string, reason: string | null): Promise<void> {
+    await this.#db
+      .update(regVersions)
+      .set({ takedown: reason })
+      .where(and(eq(regVersions.name, name), eq(regVersions.version, version)));
+  }
 }

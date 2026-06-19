@@ -23,11 +23,25 @@ export const vars = defineEnv(
     // REGISTRY_URL=http://localhost:8787 in .dev.vars). Empty -> fall back to the
     // request origin, which is correct once a single custom domain is attached.
     REGISTRY_URL: z.union([z.url(), z.literal("")]).default(""),
+    // Comma-separated GitHub logins allowed to take down / restore versions
+    // (operator action, distinct from scope ownership). Empty -> no admins, so the
+    // takedown endpoints reject everyone until set via `wrangler secret`/`.dev.vars`.
+    REGISTRY_ADMINS: z.string().default(""),
   },
   () => env,
 );
 
 export type Vars = ReturnType<typeof vars>;
+
+/** The GitHub logins allowed to perform operator actions, parsed from `REGISTRY_ADMINS`. */
+export function registryAdmins(): ReadonlySet<string> {
+  return new Set(
+    vars()
+      .REGISTRY_ADMINS.split(",")
+      .map((login) => login.trim())
+      .filter((login) => login.length > 0),
+  );
+}
 
 // Binding types for `env` from "cloudflare:workers" (sourced from wrangler.jsonc).
 declare global {

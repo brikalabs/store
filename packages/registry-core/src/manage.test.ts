@@ -19,6 +19,7 @@ function allowOwner(): OwnershipPolicy {
 class FakeVersions implements VersionManager {
   readonly deprecated = new Map<string, string | null>();
   readonly yanked = new Map<string, boolean>();
+  readonly takedown = new Map<string, string | null>();
   constructor(private readonly existing: Set<string>) {}
   versionExists(name: string, version: string): Promise<boolean> {
     return Promise.resolve(this.existing.has(`${name}@${version}`));
@@ -29,6 +30,10 @@ class FakeVersions implements VersionManager {
   }
   setYanked(name: string, version: string, yanked: boolean): Promise<void> {
     this.yanked.set(`${name}@${version}`, yanked);
+    return Promise.resolve();
+  }
+  setTakedown(name: string, version: string, reason: string | null): Promise<void> {
+    this.takedown.set(`${name}@${version}`, reason);
     return Promise.resolve();
   }
 }
@@ -102,5 +107,33 @@ describe("setYanked", () => {
       code: "not_found",
       message: `${NAME}@${VERSION} does not exist`,
     });
+  });
+});
+
+describe("takedown / restore (operator, not ownership-gated)", () => {
+  test("takedown sets the reason for any existing version, no ownership check", async () => {
+    const { meta, svc } = service();
+    expect(await svc.takedown(NAME, VERSION, "malware: exfiltrates env")).toEqual({ ok: true });
+    expect(meta.takedown.get(`${NAME}@${VERSION}`)).toBe("malware: exfiltrates env");
+  });
+
+  test("restore clears the takedown", async () => {
+    const { meta, svc } = service();
+    await svc.takedown(NAME, VERSION, "malware");
+    expect(await svc.restore(NAME, VERSION)).toEqual({ ok: true });
+    expect(meta.takedown.get(`${NAME}@${VERSION}`)).toBeNull();
+  });
+
+  test("truncates an over-long reason", async () => {
+    const { meta, svc } = service();
+    await svc.takedown(NAME, VERSION, "x".repeat(5000));
+    expect(meta.takedown.get(`${NAME}@${VERSION}`)?.length).toBe(1024);
+  });
+
+  test("an unknown version is not_found for both takedown and restore", async () => {
+    const { meta, svc } = service([]);
+    expect((await svc.takedown(NAME, "9.9.9", "x")).ok).toBe(false);
+    expect((await svc.restore(NAME, "9.9.9")).ok).toBe(false);
+    expect(meta.takedown.size).toBe(0);
   });
 });

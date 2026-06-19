@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PublishService } from "@brika/registry-core";
@@ -14,8 +14,6 @@ import { R2TarballWriter } from "../adapters/r2-tarball-writer";
 import { issueToken } from "../adapters/token";
 import { buildServices, type Services } from "../services";
 import { handleCatalog } from "./catalog";
-import { deprecate, yank } from "./manage";
-import { publish } from "./publish";
 import { handleDownloads } from "./stats";
 
 /**
@@ -23,9 +21,18 @@ import { handleDownloads } from "./stats";
  * SQLite (the same drizzle migrations the registry ships) and a fake R2 bucket,
  * so the handlers, adapters, and domain services run end to end without the
  * Cloudflare runtime. Auth uses a seeded registry token (a non-JWT bearer skips
- * the OIDC path with no network). The device handlers read `vars()` (env) so are
- * covered by the `DeviceService` unit test instead.
+ * the OIDC path with no network).
+ *
+ * `cloudflare:workers` is stubbed (the publish + manage controllers transitively
+ * import it) with `REGISTRY_ADMINS` set, so the admin-gated takedown path is
+ * exercised. The controllers are imported dynamically AFTER the stub so it applies.
  */
+mock.module("cloudflare:workers", () => ({
+  env: { STORE_URL: "http://localhost:3000/", REGISTRY_ADMINS: "operator" },
+}));
+
+const { publish } = await import("./publish");
+const { deprecate, yank, takedown, restore } = await import("./manage");
 
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../../packages/db/drizzle");
 
@@ -217,6 +224,71 @@ describe("deprecate / yank (ownership-gated mutations)", () => {
       }),
     );
     expect(await forbidden).toBe(403);
+  });
+});
+
+describe("takedown / restore (operator-gated)", () => {
+  const params = { pkg: "@brika/x", version: "1.0.0" };
+  // REGISTRY_ADMINS is "operator" (see the cloudflare:workers stub above).
+  const asAdmin = (db: Db) => issueToken(db, "operator");
+
+  test("403 for a valid credential that is not a registry admin", async () => {
+    const { token } = await seedPackage(db, "octocat"); // owner, but not an admin
+    const res = statusOf(
+      takedown({
+        params,
+        body: { reason: "malware" },
+        req: post(undefined, token),
+        ctx: services(db),
+      }),
+    );
+    expect(await res).toBe(403);
+  });
+
+  test("an admin takedown hides the version from packument + catalog (reason surfaced), keeps bytes", async () => {
+    await seedPackage(db, "octocat");
+    const ctx = services(db);
+    const token = await asAdmin(db);
+
+    const res = await takedown({
+      params,
+      body: { reason: "malware: exfiltrates env" },
+      req: post(undefined, token),
+      ctx,
+    });
+    expect(res.status).toBe(200);
+
+    const packument = (await ctx.resolve.packument("@brika/x")) as {
+      versions: Record<string, unknown>;
+      takedowns?: Record<string, string>;
+    };
+    expect(Object.keys(packument.versions)).toEqual([]); // hidden from new installs
+    expect(packument.takedowns).toEqual({ "1.0.0": "malware: exfiltrates env" }); // reason surfaced
+
+    const catalog = await (
+      await handleCatalog(new Request("http://localhost/-/v1/packages"), ctx)
+    ).json();
+    expect(catalog.packages).toHaveLength(0);
+
+    // Bytes/metadata retained: only the takedown flag changed.
+    const rows = await db.select().from(regVersions);
+    expect(rows[0]?.integrity).toBe("sha512-test");
+    expect(rows[0]?.takedown).toBe("malware: exfiltrates env");
+  });
+
+  test("restore re-exposes a taken-down version", async () => {
+    await seedPackage(db, "octocat");
+    const ctx = services(db);
+    const token = await asAdmin(db);
+
+    await takedown({ params, body: { reason: "policy" }, req: post(undefined, token), ctx });
+    const res = await restore({ params, req: post(undefined, token), ctx });
+    expect(res.status).toBe(200);
+
+    const packument = (await ctx.resolve.packument("@brika/x")) as {
+      versions: Record<string, unknown>;
+    };
+    expect(Object.keys(packument.versions)).toEqual(["1.0.0"]);
   });
 });
 
