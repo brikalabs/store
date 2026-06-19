@@ -3,6 +3,7 @@ import {
   ManagementService,
   PublishService,
   ResolveService,
+  ScopeService,
 } from "@brika/registry-core";
 import type { Db } from "@brika/store-db";
 import { D1AuditLog } from "./adapters/d1-audit";
@@ -12,6 +13,7 @@ import { D1MetadataReader } from "./adapters/d1-metadata";
 import { D1MetadataWriter } from "./adapters/d1-metadata-writer";
 import { D1OwnershipPolicy } from "./adapters/d1-ownership";
 import { D1ScopeMembers } from "./adapters/d1-scope-members";
+import { D1ScopeStore } from "./adapters/d1-scope-store";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { R2TarballWriter } from "./adapters/r2-tarball-writer";
@@ -66,8 +68,8 @@ export function buildServices(
     ),
     /** Post-publish management: deprecate, yank. */
     management: new ManagementService(new D1MetadataWriter(db), ownership),
-    /** Scope membership + roles (the `ScopeMembers` port; publish gating + member mgmt). */
-    scopeMembers,
+    /** Scope use cases: create/claim, members + roles, display name (over the stores). */
+    scopes: new ScopeService(new D1ScopeStore(db), scopeMembers),
     /** Per-day install-count store: record + stats. */
     downloads: new D1DownloadStore(db),
     /** Device-authorization flow (RFC 8628). */

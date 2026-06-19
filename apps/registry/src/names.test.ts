@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isCanonicalName, isCanonicalScope, ownedBy, scopeOf } from "./names";
+import { isCanonicalName, isCanonicalScope, scopeOf } from "./names";
 
 describe("scopeOf", () => {
   test("returns the @scope segment, or null when unscoped", () => {
@@ -45,14 +45,5 @@ describe("isCanonicalName", () => {
     expect(isCanonicalName("@Brika/x")).toBe(false); // uppercase scope
     expect(isCanonicalName("@-team/x")).toBe(false); // leading-hyphen scope
     expect(isCanonicalName(`@brika/${"a".repeat(210)}`)).toBe(false); // > 214 total
-  });
-});
-
-describe("ownedBy", () => {
-  const identity = { provider: "github", owner: "alice", repository: null };
-  test("matches only when both provider and owner id agree", () => {
-    expect(ownedBy({ ownerProvider: "github", ownerId: "alice" }, identity)).toBe(true);
-    expect(ownedBy({ ownerProvider: "github", ownerId: "bob" }, identity)).toBe(false);
-    expect(ownedBy({ ownerProvider: "gitlab", ownerId: "alice" }, identity)).toBe(false);
   });
 });

@@ -1,5 +1,3 @@
-import type { PublishIdentity } from "@brika/registry-core";
-
 /**
  * Scope + package-name rules for the registry, in one place so the publish gate, the
  * ownership policy, and the scope-management endpoints all agree on what a valid name
@@ -32,12 +30,4 @@ const CANONICAL_NAME = /^@[a-z0-9][a-z0-9-]{1,19}\/[a-z0-9][a-z0-9-]*$/;
 /** Is this a canonical scoped package name (the only kind the registry publishes)? */
 export function isCanonicalName(name: string): boolean {
   return name.length <= 214 && CANONICAL_NAME.test(name);
-}
-
-/** Does a scope row belong to the given provider-qualified identity? */
-export function ownedBy(
-  row: { ownerProvider: string; ownerId: string },
-  identity: PublishIdentity,
-): boolean {
-  return row.ownerProvider === identity.provider && row.ownerId === identity.owner;
 }

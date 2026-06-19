@@ -8,6 +8,7 @@ export {
   registerAttestationProvider,
   TransparencyEntry,
 } from "./attestation";
+export type { AuditEntry, AuditLog } from "./audit";
 export {
   type DeviceGrant,
   type DeviceRedeemResult,
@@ -68,5 +69,12 @@ export {
   type TarballWriter,
 } from "./publish";
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
+export {
+  type ScopeErrorCode,
+  type ScopeRecord,
+  type ScopeResult,
+  ScopeService,
+  type ScopeStore,
+} from "./scope";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export { type PackageRecord, PackageVersion, Provenance, type ScopePublisher } from "./types";

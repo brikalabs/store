@@ -1,22 +1,12 @@
-import type { PublishIdentity } from "@brika/registry-core";
+import type { AuditEntry, AuditLog } from "@brika/registry-core";
 import { type Db, regAudit } from "@brika/store-db";
 
-/** One entry for the append-only audit log (publishes + management actions). */
-export interface AuditEntry {
-  readonly action: string;
-  readonly packageName: string;
-  /** The version acted on, or null for scope-level actions (the column is nullable). */
-  readonly version: string | null;
-  readonly actor: PublishIdentity;
-  readonly detail?: Record<string, unknown> | null;
-}
-
 /**
- * Append-only audit log in `reg_audit`. Centralises the actor-resolution rule
- * (CI publishes attributed to the repo, local ones to the owner) and the row
- * shape, which were previously duplicated across the publish and manage handlers.
+ * D1 implementation of the {@link AuditLog} port: the append-only `reg_audit` table.
+ * Centralises the actor-resolution rule (CI publishes attributed to the repo, local
+ * ones to the owner) and the row shape.
  */
-export class D1AuditLog {
+export class D1AuditLog implements AuditLog {
   readonly #db: Db;
 
   constructor(db: Db) {
