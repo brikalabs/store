@@ -33,8 +33,13 @@ Largely built. Remaining:
 - 🟡 **Finish the redesign**: a marketplace direction (Spotlight vs Console) is
   pending a pick, then carry the chosen layout across browse / detail / profile /
   dashboard and remove the dev toggle.
-- ⬜ **Console slices not yet built**: review responses + comment moderation,
-  per-package settings (repo link, featured), scope claiming.
+- ✅ **Console management**: a server-side auth guard plus scope claiming, scope
+  member/role management (JSR-style, last-admin guarded), the verified-publisher
+  display name, per-version deprecate/yank, and publish-token issue/revoke - all by
+  reusing the registry domain (`ScopeService`/`ManagementService`/`TokenStore`) against
+  the shared D1 (the registry's pure D1 adapters now live in `@brika/store-db/adapters`).
+- ⬜ **Console slices still to build**: review responses + comment moderation,
+  per-package listing settings (repo link, featured).
 - ⬜ **npm sync cron + verified-list signing**: a scheduled refresh and the
   Ed25519 `/v1/verified` signing key (today the cache fills lazily; the verified
   list is empty).
