@@ -75,7 +75,7 @@ async function runManaged(
   detail: Record<string, unknown>,
 ): Promise<Response> {
   const name = packageName(params);
-  const identity = await requireWrite(req, ctx.db);
+  const identity = await requireWrite(req, ctx.tokens);
   const result = await run(ctx.management, identity, name);
   return auditAndRespond(ctx, action, name, params.version, identity, result, detail);
 }
@@ -116,7 +116,7 @@ async function runAdmin(
   detail: Record<string, unknown>,
 ): Promise<Response> {
   const name = packageName(params);
-  const identity = await requireAdmin(req, ctx.db, ctx.admins);
+  const identity = await requireAdmin(req, ctx.tokens, ctx.admins);
   const result = await run(ctx.management, name);
   return auditAndRespond(ctx, action, name, params.version, identity, result, detail);
 }

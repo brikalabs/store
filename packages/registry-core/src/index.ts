@@ -9,6 +9,7 @@ export {
   TransparencyEntry,
 } from "./attestation";
 export type { AuditEntry, AuditLog } from "./audit";
+export type { CatalogEntry, CatalogReader } from "./catalog";
 export {
   type DeviceGrant,
   type DeviceRedeemResult,
@@ -77,4 +78,5 @@ export {
   type ScopeStore,
 } from "./scope";
 export { readTarGzEntries, type TarEntry } from "./tar";
+export type { TokenPrincipal, TokenStore } from "./tokens";
 export { type PackageRecord, PackageVersion, Provenance, type ScopePublisher } from "./types";

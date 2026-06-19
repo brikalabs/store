@@ -77,8 +77,8 @@ export async function publish({
   readonly req: Request;
   readonly ctx: Services;
 }): Promise<Response> {
-  const { db, publish: publishService, audit } = ctx;
-  const identity = await requireWrite(req, db);
+  const { publish: publishService, audit } = ctx;
+  const identity = await requireWrite(req, ctx.tokens);
 
   const { name, version, manifest, tarball, transparencyLog } = body;
   if (!isCanonicalName(name)) {

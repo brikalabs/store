@@ -1,33 +1,14 @@
-import type { DownloadStats } from "@brika/registry-core";
-import { type Db, regDistTags, regPackages, regScopes, regVersions } from "@brika/store-db";
-import { and, eq } from "drizzle-orm";
+import type { CatalogEntry } from "@brika/registry-core";
 import { controller, route } from "../http/router";
 import type { Services } from "../services";
 
 /**
  * `GET /-/v1/packages` - a small catalog of every published package's latest
  * (non-yanked) version, so the storefront can enumerate `@brika/*` plugins. The
- * npm protocol has no list endpoint; this is our minimal addition. The hosted
- * `@brika` scope is bounded (see REGISTRY_LIMITS.maxPackagesPerScope), so reading
- * every latest row and filtering/paginating in memory is cheap and exact. Each
- * entry carries its install stats so a listing renders counts without N reads.
+ * npm protocol has no list endpoint; this is our minimal addition. The catalog read
+ * is the `CatalogReader` port (`ctx.catalog`); this handler filters, paginates, and
+ * attaches install stats for just the page.
  */
-
-export interface CatalogEntry {
-  readonly name: string;
-  readonly version: string;
-  /** The published package.json for the latest version. */
-  readonly manifest: Record<string, unknown>;
-  /** ISO-8601 publish time of the latest version. */
-  readonly publishedAt: string;
-  /** ISO-8601 time the package was first created. */
-  readonly createdAt: string;
-  readonly size: number;
-  readonly integrity: string;
-  /** The scope's verified publisher (owner + display name), absent if unscoped. */
-  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: true };
-  readonly downloads?: DownloadStats;
-}
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 250;
@@ -49,60 +30,13 @@ function matchesQuery(entry: CatalogEntry, query: string): boolean {
   return haystack.includes(query.toLowerCase());
 }
 
-/** Every package's latest non-yanked version, newest first. */
-async function readCatalog(db: Db): Promise<CatalogEntry[]> {
-  const rows = await db
-    .select({
-      name: regDistTags.name,
-      version: regDistTags.version,
-      manifest: regVersions.manifest,
-      publishedAt: regVersions.publishedAt,
-      createdAt: regPackages.createdAt,
-      size: regVersions.size,
-      integrity: regVersions.integrity,
-      yanked: regVersions.yanked,
-      takedown: regVersions.takedown,
-      ownerLogin: regScopes.ownerId,
-      ownerDisplayName: regScopes.displayName,
-    })
-    .from(regDistTags)
-    .innerJoin(
-      regVersions,
-      and(eq(regVersions.name, regDistTags.name), eq(regVersions.version, regDistTags.version)),
-    )
-    .innerJoin(regPackages, eq(regPackages.name, regDistTags.name))
-    .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
-    .where(eq(regDistTags.tag, "latest"));
-
-  return rows
-    .filter((row) => !row.yanked && row.takedown === null)
-    .map((row) => ({
-      name: row.name,
-      version: row.version,
-      manifest: row.manifest,
-      publishedAt: new Date(row.publishedAt * 1000).toISOString(),
-      createdAt: new Date(row.createdAt * 1000).toISOString(),
-      size: row.size,
-      integrity: row.integrity,
-      publisher:
-        row.ownerLogin === null
-          ? undefined
-          : {
-              id: row.ownerLogin,
-              name: row.ownerDisplayName ?? row.ownerLogin,
-              verified: true as const,
-            },
-    }))
-    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
-}
-
 export async function handleCatalog(request: Request, services: Services): Promise<Response> {
   const url = new URL(request.url);
   const limit = clampInt(url.searchParams.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, Number.MAX_SAFE_INTEGER);
   const text = url.searchParams.get("text")?.trim();
 
-  const all = await readCatalog(services.db);
+  const all = await services.catalog.list();
   const filtered = text ? all.filter((entry) => matchesQuery(entry, text)) : all;
   const page = filtered.slice(offset, offset + limit);
 

@@ -44,7 +44,7 @@ export async function createScope({
       "scope must be '@' + 2-20 lowercase letters, digits or hyphens, not starting with a hyphen",
     );
   }
-  const identity = await requireWrite(req, ctx.db);
+  const identity = await requireWrite(req, ctx.tokens);
   const result = await ctx.scopes.claim(identity, scope);
   if (!result.ok) throw httpError(scopeStatus(result.code), result.message, result.code);
   if (result.created) {
@@ -73,7 +73,7 @@ export async function listMembers({
   readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, ctx.db);
+  const identity = await requireWrite(req, ctx.tokens);
   const result = await ctx.scopes.listMembers(identity, scope);
   if (!result.ok) throw httpError(scopeStatus(result.code), result.message, result.code);
   return reply({ ok: true, scope, members: result.members }, 200);
@@ -94,7 +94,7 @@ export async function putMember({
   readonly ctx: Services;
 }): Promise<Response> {
   const { scope, provider, id } = params;
-  const identity = await requireWrite(req, ctx.db);
+  const identity = await requireWrite(req, ctx.tokens);
   const result = await ctx.scopes.setMember(identity, scope, { provider, id }, body.role);
   if (!result.ok) throw httpError(scopeStatus(result.code), result.message, result.code);
   await ctx.audit.record({
@@ -118,7 +118,7 @@ export async function deleteMember({
   readonly ctx: Services;
 }): Promise<Response> {
   const { scope, provider, id } = params;
-  const identity = await requireWrite(req, ctx.db);
+  const identity = await requireWrite(req, ctx.tokens);
   const result = await ctx.scopes.removeMember(identity, scope, { provider, id });
   if (!result.ok) throw httpError(scopeStatus(result.code), result.message, result.code);
   await ctx.audit.record({
@@ -172,7 +172,7 @@ export async function setDisplayName({
   readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, ctx.db);
+  const identity = await requireWrite(req, ctx.tokens);
   const result = await ctx.scopes.setDisplayName(identity, scope, body.displayName);
   if (!result.ok) throw httpError(scopeStatus(result.code), result.message, result.code);
   await ctx.audit.record({

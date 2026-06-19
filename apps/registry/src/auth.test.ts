@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { HttpError } from "@brika/router";
 import type { Db } from "@brika/store-db";
-import { issueToken } from "./adapters/token";
+import { D1TokenStore, issueToken } from "./adapters/token";
 import { AUDIENCE, authenticateWrite, requireAdmin, requireWrite } from "./auth";
 import { makeDb } from "./test-harness";
 
@@ -60,8 +60,10 @@ function bearer(token: string): Request {
 }
 
 let db: Db;
+let tokens: D1TokenStore;
 beforeEach(() => {
   db = makeDb();
+  tokens = new D1TokenStore(db);
 });
 
 const realFetch = globalThis.fetch;
@@ -71,29 +73,29 @@ afterEach(() => {
 
 describe("authenticateWrite (no credential)", () => {
   test("returns null when there is no authorization header", async () => {
-    expect(await authenticateWrite(new Request("http://localhost/"), db)).toBeNull();
+    expect(await authenticateWrite(new Request("http://localhost/"), tokens)).toBeNull();
   });
 
   test("returns null for a non-Bearer authorization scheme", async () => {
     const req = new Request("http://localhost/", { headers: { authorization: "Basic abc" } });
-    expect(await authenticateWrite(req, db)).toBeNull();
+    expect(await authenticateWrite(req, tokens)).toBeNull();
   });
 
   test("returns null for an opaque (non-JWT) token that is not a registry token", async () => {
     // No dots => OIDC verify short-circuits to null with no network call.
-    expect(await authenticateWrite(bearer("not-a-jwt"), db)).toBeNull();
+    expect(await authenticateWrite(bearer("not-a-jwt"), tokens)).toBeNull();
   });
 });
 
 describe("authenticateWrite (registry publish token)", () => {
   test("resolves a registry token to its owner identity (no repository)", async () => {
     const token = await issueToken(db, "octocat");
-    const identity = await authenticateWrite(bearer(token), db);
+    const identity = await authenticateWrite(bearer(token), tokens);
     expect(identity).toEqual({ provider: "github", owner: "octocat", repository: null });
   });
 
   test("returns null for a brika_-prefixed token that does not exist", async () => {
-    expect(await authenticateWrite(bearer("brika_unknown"), db)).toBeNull();
+    expect(await authenticateWrite(bearer("brika_unknown"), tokens)).toBeNull();
   });
 });
 
@@ -117,7 +119,7 @@ describe("authenticateWrite (GitHub OIDC)", () => {
         headers: { "content-type": "application/json" },
       })) as typeof fetch;
 
-    const identity = await authenticateWrite(bearer(token), db);
+    const identity = await authenticateWrite(bearer(token), tokens);
     expect(identity).toEqual({
       provider: "github",
       owner: "brika",
@@ -136,7 +138,7 @@ describe("authenticateWrite (GitHub OIDC)", () => {
 describe("requireWrite", () => {
   test("returns the identity when a credential validates", async () => {
     const token = await issueToken(db, "octocat");
-    expect(await requireWrite(bearer(token), db)).toEqual({
+    expect(await requireWrite(bearer(token), tokens)).toEqual({
       provider: "github",
       owner: "octocat",
       repository: null,
@@ -145,7 +147,7 @@ describe("requireWrite", () => {
 
   test("throws 401 Unauthorized when no credential validates", async () => {
     try {
-      await requireWrite(new Request("http://localhost/"), db);
+      await requireWrite(new Request("http://localhost/"), tokens);
       throw new Error("expected requireWrite to throw");
     } catch (error) {
       expect(error).toBeInstanceOf(HttpError);
@@ -167,18 +169,22 @@ describe("requireAdmin", () => {
 
   test("401 when no credential is presented", async () => {
     expect(
-      await status(requireAdmin(new Request("http://localhost/"), db, new Set(["github:octocat"]))),
+      await status(
+        requireAdmin(new Request("http://localhost/"), tokens, new Set(["github:octocat"])),
+      ),
     ).toBe(401);
   });
 
   test("403 when the credential is valid but the owner is not an admin", async () => {
     const token = await issueToken(db, "stranger");
-    expect(await status(requireAdmin(bearer(token), db, new Set(["github:octocat"])))).toBe(403);
+    expect(await status(requireAdmin(bearer(token), tokens, new Set(["github:octocat"])))).toBe(
+      403,
+    );
   });
 
   test("returns the identity when the owner is in the admin allowlist", async () => {
     const token = await issueToken(db, "octocat");
-    expect(await requireAdmin(bearer(token), db, new Set(["github:octocat"]))).toEqual({
+    expect(await requireAdmin(bearer(token), tokens, new Set(["github:octocat"]))).toEqual({
       provider: "github",
       owner: "octocat",
       repository: null,
