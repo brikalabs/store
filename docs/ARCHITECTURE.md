@@ -75,7 +75,8 @@ depend on ports, not on Cloudflare. The blast radius is, by construction, the
 ## Architecture rules (enforced)
 
 The layering above is not a convention you have to remember — the key parts are
-enforced (ArchUnit-style) by a small rule engine in `scripts/archunit.ts`, with the
+enforced (ArchUnit-style) by the **`@brika/archunit`** package (a tiny rule engine:
+`archRules().rule(...).filesMatching(...).mayNotImport(modules(...))`), with the repo's
 rules declared fluently in `scripts/architecture-rules.ts` (by package/folder glob, so
 they scale as packages and apps are added). They run **two ways** off the same
 definitions: as `bun test` cases (`scripts/architecture.test.ts`, one test per rule) and
