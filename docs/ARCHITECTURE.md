@@ -72,6 +72,29 @@ integrity/packument logic, the controllers, or the core's unit tests — those
 depend on ports, not on Cloudflare. The blast radius is, by construction, the
 `adapters/` directories and the per-app composition root, not the business logic.
 
+## Architecture rules (enforced)
+
+The layering above is not a convention you have to remember — the key parts are
+enforced by `scripts/check-architecture.ts`, which runs in `bun run lint` (and CI)
+and fails the build on a violation. The rules:
+
+- **A. The domain core (`@brika/registry-core`) is platform-free.** It may not import
+  any Cloudflare module (`cloudflare:*`, `@cloudflare/*`, `wrangler`), the database/ORM
+  (`drizzle-orm`, `@brika/store-db`), or an HTTP framework (`hono`, `@brika/router`). It
+  speaks only ports, so it stays runnable with zero adapters.
+- **B. The router (`@brika/router`) is platform-free.** No Cloudflare, no database/ORM.
+  (Hono is allowed — the router is a thin typed layer over it.)
+- **C. The database is reached only through adapters and the composition root.** Inside
+  `apps/registry/src`, only `adapters/**` and the composition root (`services.ts`,
+  `index.ts`) may import `drizzle-orm`/`@brika/store-db`. Controllers, auth, and the rest
+  go through a port on `ctx` — they cannot touch `db`. (Tests are exempt; they seed the
+  in-memory database directly.)
+
+Every adapter under `apps/registry/src/adapters` implements a `registry-core` port
+(`D1MetadataReader` → `MetadataReader`, `D1ScopeStore` → `ScopeStore`, `D1TokenStore` →
+`TokenStore`, …), so the adapter layer is uniformly swappable and the dependency arrows
+all point inward.
+
 ## registry.brika.dev
 
 npm-compatible. The hub points `@brika:registry` at it; `bun add` is unchanged.
