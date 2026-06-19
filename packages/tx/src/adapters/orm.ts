@@ -1,4 +1,11 @@
-import { inTransaction, onCommit } from "../core/transaction";
+import { TransactionError } from "../core/errors";
+import { inTransaction, isReadOnly, onCommit } from "../core/transaction";
+
+// Drizzle's mutating query builders. In a read-only unit, even a raw `db.insert(...)`
+// (one that bypasses `deferBatch`) is a write, so the overlay rejects these the moment
+// they are called - making read-only airtight for any code using the tx-aware client,
+// not just the deferBatch path.
+const MUTATORS: ReadonlySet<string> = new Set(["insert", "update", "delete"]);
 
 /**
  * The batch shape the wrapper needs: drizzle's `db.batch([...])`, which runs a set
@@ -52,7 +59,16 @@ export function transactionalDb<Db, Statement>(
     get(target, property, receiver) {
       if (property === "deferBatch") return deferBatch;
       const member = Reflect.get(target, property, receiver);
-      return typeof member === "function" ? member.bind(target) : member;
+      if (typeof member !== "function") return member;
+      if (typeof property === "string" && MUTATORS.has(property)) {
+        return (...args: unknown[]) => {
+          if (isReadOnly()) {
+            throw new TransactionError(`cannot call '${property}' in a read-only transaction`);
+          }
+          return Reflect.apply(member, target, args);
+        };
+      }
+      return member.bind(target);
     },
   });
   // The proxy adds `deferBatch`; assert the augmented type (it cannot be expressed

@@ -123,13 +123,21 @@ marks a unit as read-only. It is Spring's `@Transactional(readOnly = true)`, but
 `TransactionError` -
 
 - `onRollback(...)` - there is nothing to undo in a read path;
-- `onCommit(...)` - and therefore `deferBatch(...)`, which schedules a commit action.
+- `onCommit(...)` - and therefore `deferBatch(...)`, which schedules a commit action;
+- a raw `insert(...)` / `update(...)` / `delete(...)` on a `transactionalDb` client -
+  even one that bypasses `deferBatch` - is rejected the moment it is called, so a stray
+  write cannot slip through behind the hooks.
 
 Completion hooks (`onComplete` / `afterCommit`) are still allowed - logging, metrics and
 cache reads are not mutations. `isReadOnly()` reports the current unit's flag. Wrapping a
 read path this way turns "this method only reads" from a comment into a guarantee: if it
 ever tries to write, it fails loudly in tests. (It does **not** route to D1 read
 replicas - that is a separate Sessions-API concern.)
+
+The guard covers writes through the tx-aware client (the `transactionalDb` overlay) and
+the hooks. A write issued through a *different*, un-overlaid client is invisible to it -
+`@brika/tx` is an ambient coordinator, not a database driver intercepting every
+statement - so route DB access through the overlay if you want this guarantee.
 
 The flag belongs to the unit that is *opened*: a `required` call that joins an existing
 read-write unit does not retroactively make it read-only (config applies when a scope
