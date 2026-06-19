@@ -312,6 +312,40 @@ describe("scope members (roles + invariants)", () => {
     ).toBe(409);
   });
 
+  test("concurrent demotions of two admins cannot leave the scope with zero admins", async () => {
+    const alice = await seedScopeAdmin("alice");
+    await putMember({
+      params: memberParams("bob"),
+      body: { role: "admin" },
+      req: post(undefined, alice),
+      ctx: services(db),
+    });
+    const bob = await issueToken(db, "bob");
+
+    // Both admins try to demote the other at once. The atomic SQL guard lets at most one
+    // succeed, so the "at least one admin" invariant holds (no read-then-write TOCTOU).
+    await Promise.allSettled([
+      statusOf(
+        putMember({
+          params: memberParams("bob"),
+          body: { role: "member" },
+          req: post(undefined, alice),
+          ctx: services(db),
+        }),
+      ),
+      statusOf(
+        putMember({
+          params: memberParams("alice"),
+          body: { role: "member" },
+          req: post(undefined, bob),
+          ctx: services(db),
+        }),
+      ),
+    ]);
+    const admins = (await membersOf()).filter((m) => m.role === "admin");
+    expect(admins.length).toBeGreaterThanOrEqual(1);
+  });
+
   test("with a second admin, one admin can be removed", async () => {
     const alice = await seedScopeAdmin("alice");
     await putMember({

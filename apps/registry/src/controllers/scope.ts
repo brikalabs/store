@@ -153,16 +153,16 @@ export async function putMember({
   const identity = await requireScopeAdmin(ctx, scope, req);
   const target: MemberRef = { provider, id };
 
+  // Demoting an admin is guarded atomically so the scope keeps at least one admin even
+  // under concurrent demotions; adding or promoting needs no guard.
   const current = await ctx.scopeMembers.roleOf(scope, target);
-  if (
-    current === "admin" &&
-    body.role === "member" &&
-    (await ctx.scopeMembers.adminCount(scope)) <= 1
-  ) {
-    throw httpError(409, `scope ${scope} must keep at least one admin`, "conflict");
+  if (current === "admin" && body.role === "member") {
+    if (!(await ctx.scopeMembers.demoteFromAdmin(scope, target))) {
+      throw httpError(409, `scope ${scope} must keep at least one admin`, "conflict");
+    }
+  } else {
+    await ctx.scopeMembers.upsert(scope, target, body.role);
   }
-
-  await ctx.scopeMembers.upsert(scope, target, body.role);
   await ctx.audit.record({
     action: "scope_member_set",
     packageName: scope,
@@ -193,11 +193,10 @@ export async function deleteMember({
   const role = await ctx.scopeMembers.roleOf(scope, target);
   if (role === null)
     throw httpError(404, `${provider}:${id} is not a member of ${scope}`, "not_found");
-  if (role === "admin" && (await ctx.scopeMembers.adminCount(scope)) <= 1) {
+  // Removal is guarded atomically: the last admin cannot be removed (keeps >=1 admin).
+  if (!(await ctx.scopeMembers.remove(scope, target))) {
     throw httpError(409, `scope ${scope} must keep at least one admin`, "conflict");
   }
-
-  await ctx.scopeMembers.remove(scope, target);
   await ctx.audit.record({
     action: "scope_member_remove",
     packageName: scope,
