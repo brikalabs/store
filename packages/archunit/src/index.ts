@@ -12,6 +12,10 @@
  *   // class-name convention: D1-backed adapters are prefixed "D1"
  *   rule().filesMatching("apps/registry/src/adapters/d1-*.ts").classesMustBePrefixed("D1").assert();
  *
+ * Class-name checks come as `classesMustBePrefixed` / `classesMustBeSuffixed` and the general
+ * `classesMustBeNamed(regexp)` / `classesMustNotBeNamed(regexp)` (e.g. forbid an infra prefix
+ * leaking into the domain core).
+ *
  * `assert()` throws on violation (call it inside your own `test()` - any runner); `check()`
  * returns the violation lines for other uses. Import-aware: comments are stripped, so an
  * `import` inside a JSDoc example is not counted. Bun runtime (uses `Bun.Glob`).

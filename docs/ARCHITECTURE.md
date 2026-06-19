@@ -105,13 +105,18 @@ Every adapter under `apps/registry/src/adapters` implements a `registry-core` po
 `TokenStore`, …), so the adapter layer is uniformly swappable and the dependency arrows
 all point inward.
 
-Beyond layering, the same engine enforces naming so the adapter layer stays legible
-(`architecture/naming.test.ts`):
+Beyond layering, the same engine enforces naming so the layers stay legible
+(`architecture/naming.test.ts`). Filenames are checked with `mustBeNamed`, class names with
+the `classesMust{Be,NotBe}Named` / `classesMustBe{Prefixed,Suffixed}` family:
 
-- **D. Adapter files are kebab-case** (`mustBeNamed`), so a file name reads as one thing.
-- **E. A vendor-backed adapter's class carries the vendor prefix** (`classesMustBePrefixed`):
-  `d1-*.ts` declares `D1*` classes, `r2-*.ts` declares `R2*` classes — the file name and the
-  class agree on which infra they bind to.
+- **D. Source files are kebab-case** — the domain core, the registry controllers, and the
+  registry adapters all use `name-like-this.ts`, so a file name reads as one thing.
+- **E. Domain services are suffixed `Service`** and **carry no infra prefix** — every class
+  in `registry-core` ends in `Service` (`PublishService`, `ScopeService`, …) and none is named
+  `D1*`/`R2*`/`Cf*`, so an adapter type can never quietly leak into the domain core.
+- **F. A vendor-backed adapter's class carries the vendor prefix** — adapter classes are
+  PascalCase, and `d1-*.ts` declares `D1*` classes while `r2-*.ts` declares `R2*` classes, so
+  the file name and the class agree on which infra they bind to.
 
 ## registry.brika.dev
 

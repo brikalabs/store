@@ -38,8 +38,14 @@ export interface RuleBuilder {
   mayNotImport(...categories: Category[]): RuleBuilder;
   /** Require every matched file's name to match `pattern` (a filename convention). */
   mustBeNamed(pattern: RegExp): RuleBuilder;
-  /** Require every class declared in a matched file to start with `prefix` (a naming convention). */
+  /** Require every class declared in a matched file to match `pattern`. */
+  classesMustBeNamed(pattern: RegExp): RuleBuilder;
+  /** Forbid any class declared in a matched file from matching `pattern` (e.g. an infra prefix). */
+  classesMustNotBeNamed(pattern: RegExp): RuleBuilder;
+  /** Require every class declared in a matched file to start with `prefix`. */
   classesMustBePrefixed(prefix: string): RuleBuilder;
+  /** Require every class declared in a matched file to end with `suffix`. */
+  classesMustBeSuffixed(suffix: string): RuleBuilder;
   /** Start the next rule. */
   rule(description: string): RuleBuilder;
   /** Every violation across all rules, prefixed by rule (a flat list). */
@@ -71,11 +77,9 @@ function requireFilename(pattern: RegExp): FileCheck {
   return (file) => (pattern.test(file.basename) ? [] : [`is not named like ${pattern}`]);
 }
 
-function requireClassPrefix(prefix: string): FileCheck {
-  return (file) =>
-    file.classes
-      .filter((name) => !name.startsWith(prefix))
-      .map((name) => `declares class ${name}, not prefixed "${prefix}"`);
+/** Flag every declared class for which `ok(name)` is false, with a per-class message. */
+function flagClasses(ok: (name: string) => boolean, message: (name: string) => string): FileCheck {
+  return (file) => file.classes.filter((name) => !ok(name)).map(message);
 }
 
 /** Start a rule set. */
@@ -128,8 +132,40 @@ export class ArchRules {
         spec.checks.push(requireFilename(pattern));
         return builder;
       },
+      classesMustBeNamed: (pattern) => {
+        spec.checks.push(
+          flagClasses(
+            (name) => pattern.test(name),
+            (name) => `declares class ${name}, which does not match ${pattern}`,
+          ),
+        );
+        return builder;
+      },
+      classesMustNotBeNamed: (pattern) => {
+        spec.checks.push(
+          flagClasses(
+            (name) => !pattern.test(name),
+            (name) => `declares class ${name}, which matches forbidden ${pattern}`,
+          ),
+        );
+        return builder;
+      },
       classesMustBePrefixed: (prefix) => {
-        spec.checks.push(requireClassPrefix(prefix));
+        spec.checks.push(
+          flagClasses(
+            (name) => name.startsWith(prefix),
+            (name) => `declares class ${name}, not prefixed "${prefix}"`,
+          ),
+        );
+        return builder;
+      },
+      classesMustBeSuffixed: (suffix) => {
+        spec.checks.push(
+          flagClasses(
+            (name) => name.endsWith(suffix),
+            (name) => `declares class ${name}, not suffixed "${suffix}"`,
+          ),
+        );
         return builder;
       },
       rule: (next) => this.rule(next),

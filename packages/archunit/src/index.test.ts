@@ -166,23 +166,41 @@ describe("ArchRules engine (filenames)", () => {
 });
 
 describe("ArchRules engine (class names)", () => {
-  test("holds when every declared class has the prefix", () => {
-    const violations = archRules({ root: ROOT })
-      .rule("engine classes are Arch*")
-      .filesMatching("src/rules.ts")
-      .classesMustBePrefixed("Arch")
-      .check();
-    expect(violations).toEqual([]);
+  // src/rules.ts declares exactly one class, `ArchRules`, so each verb has a clean subject.
+  const onRules = () =>
+    archRules({ root: ROOT }).rule("rules.ts classes").filesMatching("src/rules.ts");
+
+  test("prefix: holds and flags", () => {
+    expect(onRules().classesMustBePrefixed("Arch").check()).toEqual([]);
+    const bad = onRules().classesMustBePrefixed("D1").check();
+    expect(bad).toEqual([
+      '[rules.ts classes]\n  src/rules.ts declares class ArchRules, not prefixed "D1"',
+    ]);
   });
 
-  test("flags a class without the required prefix", () => {
-    const violations = archRules({ root: ROOT })
-      .rule("classes must be D1*")
-      .filesMatching("src/rules.ts")
-      .classesMustBePrefixed("D1")
-      .check();
-    expect(violations.length).toBe(1);
-    expect(violations[0]).toContain("declares class ArchRules");
-    expect(violations[0]).toContain('not prefixed "D1"');
+  test("suffix: holds and flags", () => {
+    expect(onRules().classesMustBeSuffixed("Rules").check()).toEqual([]);
+    const bad = onRules().classesMustBeSuffixed("Service").check();
+    expect(bad[0]).toContain('not suffixed "Service"');
+  });
+
+  test("named: holds and flags (PascalCase pattern)", () => {
+    expect(
+      onRules()
+        .classesMustBeNamed(/^[A-Z][A-Za-z0-9]*$/)
+        .check(),
+    ).toEqual([]);
+    const bad = onRules().classesMustBeNamed(/^Z/).check();
+    expect(bad[0]).toContain("does not match");
+  });
+
+  test("not-named: holds and flags (forbidden infra prefix)", () => {
+    expect(
+      onRules()
+        .classesMustNotBeNamed(/^(D1|R2)/)
+        .check(),
+    ).toEqual([]);
+    const bad = onRules().classesMustNotBeNamed(/^Arch/).check();
+    expect(bad[0]).toContain("matches forbidden");
   });
 });
