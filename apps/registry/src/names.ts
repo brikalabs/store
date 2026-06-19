@@ -22,10 +22,12 @@ export function isCanonicalScope(scope: string): boolean {
   return SCOPE.test(scope);
 }
 
-// A scoped package name: a canonical scope, then `/name`, where name starts
-// alphanumeric and is lowercase a-z0-9 plus `-`/`_`/`.` (npm's rule). npm caps the
-// full name at 214 chars.
-const CANONICAL_NAME = /^@[a-z0-9][a-z0-9-]{1,19}\/[a-z0-9][a-z0-9._-]*$/;
+// A scoped package name: a canonical scope, then `/name`. The name segment uses the
+// SAME lowercase `a-z0-9-` charset as `@brika/schema`'s manifest `name` rule, so the
+// registry's canonical check and the manifest data gate never disagree on a character;
+// the registry only adds the stricter scope shape (2-20, no leading hyphen) and the
+// requirement that the name be scoped. npm caps the full name at 214 chars.
+const CANONICAL_NAME = /^@[a-z0-9][a-z0-9-]{1,19}\/[a-z0-9][a-z0-9-]*$/;
 
 /** Is this a canonical scoped package name (the only kind the registry publishes)? */
 export function isCanonicalName(name: string): boolean {

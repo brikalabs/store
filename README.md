@@ -77,6 +77,7 @@ domains), secrets, and the GitHub OAuth app are documented in
 
 - [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) , the layered architecture and data flow
 - [`docs/registry-design.md`](./docs/registry-design.md) , the full registry design + decisions
+- [`docs/scopes.md`](./docs/scopes.md) , scope naming rules, creation, ownership, and publishing
 - [`docs/ROADMAP.md`](./docs/ROADMAP.md) , milestones, status, and remaining work
 - [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md) , code conventions enforced by biome + tsconfig
 - [`docs/quotas-and-limits.md`](./docs/quotas-and-limits.md) , registry quotas, size limits, and rate limits

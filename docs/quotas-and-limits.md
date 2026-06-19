@@ -63,12 +63,14 @@ projects under separate scopes, ask for an increase.
 
 ## Naming rules
 
-- A package name is `@scope/name` (scoped) or `name` (unscoped), matching the
-  `PluginPackageSchema` rule `^(@[a-z0-9-]+\/)?[a-z0-9-]+$`: lowercase ASCII
-  letters, digits, and hyphens only.
-- A scope name follows the same character rules and should represent a real
-  user, organization, or project. Overly generic scope names (for example a
-  single common word) may be declined or reclaimed under the
+- A package name uses lowercase ASCII letters, digits, and hyphens only, matching
+  the `PluginPackageSchema` rule `^(@[a-z0-9-]+\/)?[a-z0-9-]+$`. **Publishing to the
+  registry requires a scoped name** (`@scope/name`); the scope must already exist.
+- A scope name is `@` + 2-20 lowercase letters, digits, or hyphens, not starting
+  with a hyphen, and must be created explicitly before publishing (see
+  [`scopes.md`](./scopes.md)). It should represent a real user, organization, or
+  project; overly generic scope names (for example a single common word) may be
+  declined or reclaimed under the
   [Acceptable Use Policy](../apps/web/src/content/legal/acceptable-use.md).
 - Reserved scopes (`@brika` and other official namespaces) cannot be claimed.
 
