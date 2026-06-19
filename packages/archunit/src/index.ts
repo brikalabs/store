@@ -22,6 +22,7 @@
  */
 
 export { type Category, category, modules } from "./categories";
+export { camelCase, kebabCase, kebabFilename, pascalCase } from "./naming";
 export {
   ArchRules,
   type ArchRulesOptions,

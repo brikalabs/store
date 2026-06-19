@@ -1,6 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { archRules, category, classNames, modules, rule, specifiers, stripComments } from "./index";
+import {
+  archRules,
+  camelCase,
+  category,
+  classNames,
+  kebabCase,
+  kebabFilename,
+  modules,
+  pascalCase,
+  rule,
+  specifiers,
+  stripComments,
+} from "./index";
 
 // The package's own directory, used as a real root to exercise file scanning without
 // fixtures: src/index.ts genuinely imports "bun" and "node:fs"/"node:path", and src/rules.ts
@@ -49,6 +61,26 @@ describe("stripComments + specifiers + classNames", () => {
     expect(
       specifiers(stripComments(`// import x from "commented";\nimport y from "kept";`)),
     ).toEqual(["kept"]);
+  });
+});
+
+describe("naming patterns", () => {
+  test("case patterns match the right shapes", () => {
+    expect(pascalCase.test("D1ScopeStore")).toBe(true);
+    expect(pascalCase.test("scopeStore")).toBe(false);
+    expect(camelCase.test("scopeStore")).toBe(true);
+    expect(camelCase.test("ScopeStore")).toBe(false);
+    expect(kebabCase.test("d1-scope-store")).toBe(true);
+    expect(kebabCase.test("D1ScopeStore")).toBe(false);
+  });
+
+  test("kebabFilename defaults to ts/tsx and accepts custom extensions", () => {
+    const ts = kebabFilename();
+    expect(ts.test("d1-scope-store.ts")).toBe(true);
+    expect(ts.test("route.tsx")).toBe(true);
+    expect(ts.test("D1Store.ts")).toBe(false);
+    expect(ts.test("theme.css")).toBe(false);
+    expect(kebabFilename("css").test("theme.css")).toBe(true);
   });
 });
 
