@@ -131,11 +131,12 @@ describe("merging command groups", () => {
 
   test("defaultCommand is typed against the registered command names", () => {
     const group = [defineCommand({ name: "go", description: "go", handler() {} })];
-    createCli({ name: "t", commands: group, defaultCommand: "go" });
-    createCli({ name: "t", commands: group, defaultCommand: "help" });
     // @ts-expect-error "nope" is not one of the registered command names
     createCli({ name: "t", commands: group, defaultCommand: "nope" });
-    expect(true).toBe(true);
+    expect(() => {
+      createCli({ name: "t", commands: group, defaultCommand: "go" });
+      createCli({ name: "t", commands: group, defaultCommand: "help" });
+    }).not.toThrow();
   });
 
   test("addCommands with a spec mounts a namespace", async () => {

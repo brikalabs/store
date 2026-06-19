@@ -2,8 +2,10 @@ import {
   createContext,
   type ReactNode,
   type RefObject,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
 } from "react";
 
@@ -42,11 +44,11 @@ export function SearchProvider({ children }: { readonly children: ReactNode }) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  function focusSearch() {
+  const focusSearch = useCallback(() => {
     inputRef.current?.focus();
-  }
+  }, []);
 
-  return (
-    <SearchContext.Provider value={{ inputRef, focusSearch }}>{children}</SearchContext.Provider>
-  );
+  const api = useMemo<SearchApi>(() => ({ inputRef, focusSearch }), [focusSearch]);
+
+  return <SearchContext.Provider value={api}>{children}</SearchContext.Provider>;
 }

@@ -42,6 +42,15 @@ test("normalises a human-readable resource byte string to an integer", () => {
   }
 });
 
+test("rejects byte strings that are malformed, oversized, unknown-unit, or non-positive", () => {
+  const reject = (maxFileBytes: string) =>
+    PluginPackageSchema.safeParse({ ...base, resources: { fs: { maxFileBytes } } }).success;
+  expect(reject("1".repeat(40))).toBe(false); // exceeds the 32-char cap
+  expect(reject("not-a-size")).toBe(false); // no numeric match
+  expect(reject("5xb")).toBe(false); // unknown unit suffix
+  expect(reject("0mb")).toBe(false); // resolves to a non-positive byte count
+});
+
 test("validates a block category against the allowed set", () => {
   const ok = PluginPackageSchema.safeParse({
     ...base,

@@ -275,6 +275,16 @@ function ViewerLoading() {
   );
 }
 
+// Pinned line-number gutter for the source viewer. `sticky left-0` keeps line
+// numbers visible during horizontal scroll (they still scroll vertically with
+// the code). The background is an opaque rebuild of the same token layers the
+// code-block header paints (white card -> subtle tint -> header tint), so the
+// gutter matches the header bar exactly *and* hides code scrolling underneath
+// it (Clay's own gutter token is semi-transparent, which would let it show).
+const STICKY_GUTTER =
+  "[&>*:first-child]:sticky [&>*:first-child]:left-0 [&>*:first-child]:z-10 " +
+  "[&>*:first-child]:[background:linear-gradient(var(--code-block-header-bg),var(--code-block-header-bg)),linear-gradient(var(--code-block-subtle-bg),var(--code-block-subtle-bg)),var(--card)]";
+
 /**
  * The right pane: lazily fetches the selected file's bytes from the (immutable,
  * R2-cached) asset endpoint, capped by size, and renders source with line
@@ -334,14 +344,26 @@ function FileViewer({
     body = <ViewerLoading />;
   } else {
     body = (
-      <CodeBlockContent
-        language={shikiLang(file.path)}
-        filename={file.path}
-        showLineNumbers
-        className="min-h-0 flex-1"
-      >
-        {text}
-      </CodeBlockContent>
+      // Single scroll region for the source. `w-max min-w-full` lets the grid
+      // grow to its content so Clay's inner `overflow-x-auto` never adds a
+      // second scrollbar: short files fill the pane (vertical scroll only),
+      // wide files scroll both axes on this one container. The gutter (first
+      // child) is pinned with `sticky left-0` so line numbers stay visible
+      // during horizontal scroll, while still scrolling vertically with the code.
+      // Clay's gutter token is semi-transparent, so force an opaque `bg-muted`
+      // or the scrolling code would show through the pinned column. `min-h-full`
+      // makes the grid fill the pane for short files (grid stretches the row) so
+      // the gutter band runs full height instead of stopping at the last line.
+      <div className="min-h-0 flex-1 overflow-auto">
+        <CodeBlockContent
+          language={shikiLang(file.path)}
+          filename={file.path}
+          showLineNumbers
+          className={`min-h-full w-max min-w-full ${STICKY_GUTTER}`}
+        >
+          {text}
+        </CodeBlockContent>
+      </div>
     );
   }
 

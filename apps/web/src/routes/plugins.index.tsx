@@ -64,16 +64,15 @@ function BrowsePage() {
 
   const authors = matchingAuthors(plugins, q);
   const sorted = sortPlugins(plugins, sort);
+  const authorNoun = authors.length === 1 ? "author" : "authors";
+  const authorSummary = authors.length > 0 ? `, ${authors.length} ${authorNoun}` : "";
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-7 px-6 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
           Showing results for <span className="font-semibold text-foreground">"{q}"</span>
-          {authors.length > 0
-            ? `, ${authors.length} ${authors.length === 1 ? "author" : "authors"}`
-            : ""}{" "}
-          · {total} {total === 1 ? "plugin" : "plugins"}
+          {authorSummary} · {total} {total === 1 ? "plugin" : "plugins"}
         </p>
         <SortMenu value={sort} onChange={setSort} />
       </div>
@@ -113,7 +112,7 @@ function BrowsePage() {
                       <span className="font-semibold text-foreground">
                         {formatCount(author.weekly)}
                       </span>
-                      /wk
+                      <span>/wk</span>
                     </span>
                   ) : null}
                 </div>

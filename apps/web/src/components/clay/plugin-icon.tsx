@@ -1,6 +1,6 @@
 import { cn } from "@brika/clay";
 import { Box, Boxes, Code, FileText, Layers, type LucideIcon, Zap } from "lucide-react";
-import { type Gradient, gradientCss, gradientFor } from "./gradients";
+import { gradientCss, gradientFor } from "./gradients";
 
 export type CapabilityCounts = {
   tools: number;
@@ -117,4 +117,4 @@ export function GradientAvatar({
   );
 }
 
-export type { Gradient };
+export type { Gradient } from "./gradients";

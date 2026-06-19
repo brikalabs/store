@@ -19,7 +19,7 @@ async function importKey(secret: string): Promise<CryptoKey> {
 function toBase64Url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
+  for (const byte of bytes) binary += String.fromCodePoint(byte);
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
@@ -32,7 +32,7 @@ export async function signSession(userId: string, secret: string): Promise<strin
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let mismatch = 0;
-  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < a.length; i++) mismatch |= (a.codePointAt(i) ?? 0) ^ (b.codePointAt(i) ?? 0);
   return mismatch === 0;
 }
 

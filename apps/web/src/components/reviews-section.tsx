@@ -1,7 +1,7 @@
 import { Button, Input, Textarea } from "@brika/clay";
 import { Review } from "@brika/registry-contract";
 import { Heart, Star } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import { z } from "zod";
 import { formatDate } from "../lib/format";
 import { useCurrentUser } from "../lib/use-current-user";
@@ -51,7 +51,7 @@ export function ReviewsSection({ pluginName, fallback = [] }: Props) {
     if (parsed.success) setReviews(parsed.data);
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (body.trim().length === 0) return;
     setSubmitting(true);

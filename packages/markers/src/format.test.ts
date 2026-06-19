@@ -57,6 +57,24 @@ describe("format human", () => {
     expect(out).toContain("a.ts:5:1 (Jane Doe, ");
     expect(out).toMatch(/Jane Doe, .*2023/);
   });
+
+  test("shows the blame author without a date when the commit time is unknown", () => {
+    const blamed: ScanResult = {
+      markers: [
+        {
+          kind: "todo",
+          file: "b.ts",
+          line: 9,
+          column: 1,
+          reason: "later",
+          text: "// @todo: later",
+          blame: { author: "Anon", authorTime: 0, commit: "00000000" },
+        },
+      ],
+      counts: { todo: 1 },
+    };
+    expect(format(blamed, "human")).toContain("b.ts:9:1 (Anon)");
+  });
 });
 
 describe("format json", () => {

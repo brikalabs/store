@@ -60,7 +60,7 @@ function base64UrlToBytes(value: string): Uint8Array {
     .padEnd(Math.ceil(value.length / 4) * 4, "=");
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.codePointAt(i) ?? 0;
   return bytes;
 }
 
@@ -97,7 +97,7 @@ export async function verifyGithubOidc(
   }
 
   const header = parseJson(JwtHeader, new TextDecoder().decode(base64UrlToBytes(headerPart)));
-  if (header === null || header.alg !== "RS256") return null;
+  if (header?.alg !== "RS256") return null;
 
   const jwk = (await jwks.keys()).find((key) => key.kid === header.kid);
   if (jwk === undefined) return null;

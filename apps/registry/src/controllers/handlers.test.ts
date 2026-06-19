@@ -2,11 +2,14 @@ import { Database } from "bun:sqlite";
 import { beforeEach, describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { PublishService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
 import { type Db, regDistTags, regPackages, regScopes, regVersions, schema } from "@brika/store-db";
 import { transaction } from "@brika/tx";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { D1MetadataWriter } from "../adapters/d1-metadata-writer";
+import { D1OwnershipPolicy } from "../adapters/d1-ownership";
+import { SchemaManifestValidator } from "../adapters/manifest-validator";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
 import { issueToken } from "../adapters/token";
 import { buildServices, type Services } from "../services";
@@ -132,6 +135,39 @@ describe("publish (auth + invariant + ownership gates)", () => {
       ),
     ).toBe(403);
   });
+
+  test("409 when the publish service reports the version already exists", async () => {
+    const token = await issueToken(db, "octocat");
+    // Stub the domain so the controller's job under test - mapping the rejection
+    // code to an HTTP status - is exercised without crafting a real tarball.
+    const ctx: Services = {
+      ...services(db),
+      publish: {
+        publish: async () => ({ ok: false, code: "exists", message: "already exists" }),
+      } as unknown as Services["publish"],
+    };
+    expect(
+      await statusOf(publish({ body: validPublish, req: post(validPublish, token), ctx })),
+    ).toBe(409);
+  });
+
+  test("413 when the tarball is over the size limit", async () => {
+    const token = await issueToken(db, "octocat");
+    // A 1-byte cap rejects even the tiny 3-byte "AAAA" tarball.
+    const ctx = {
+      ...services(db),
+      publish: new PublishService(
+        new D1MetadataWriter(db),
+        new R2TarballWriter(fakeR2()),
+        new SchemaManifestValidator(),
+        new D1OwnershipPolicy(db),
+        { maxTarballBytes: 1 },
+      ),
+    };
+    expect(
+      await statusOf(publish({ body: validPublish, req: post(validPublish, token), ctx })),
+    ).toBe(413);
+  });
 });
 
 describe("deprecate / yank (ownership-gated mutations)", () => {
@@ -201,6 +237,16 @@ describe("handleCatalog", () => {
       services(db),
     );
     expect((await miss.json()).total).toBe(0);
+  });
+
+  test("clamps the limit query parameter into range", async () => {
+    await seedPackage(db, "octocat");
+    const res = await handleCatalog(
+      new Request("http://localhost/-/v1/packages?limit=5"),
+      services(db),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).total).toBe(1);
   });
 });
 

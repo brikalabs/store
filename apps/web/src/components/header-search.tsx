@@ -1,7 +1,7 @@
 import { Kbd, KbdGroup } from "@brika/clay";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Search } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import { usePluginSearch } from "../lib/use-plugin-search";
 import { GradientAvatar, PluginIcon } from "./clay/plugin-icon";
 import { useSearch } from "./search-context";
@@ -29,7 +29,7 @@ export function HeaderSearch() {
     setValue(urlQuery);
   }, [urlQuery]);
 
-  function submit(event: FormEvent) {
+  function submit(event: SyntheticEvent) {
     event.preventDefault();
     const next = value.trim();
     setOpen(false);
