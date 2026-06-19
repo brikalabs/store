@@ -16,6 +16,7 @@ import { D1OwnershipPolicy } from "./adapters/d1-ownership";
 import { D1ScopeMembers } from "./adapters/d1-scope-members";
 import { D1ScopeStore } from "./adapters/d1-scope-store";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
+import { NoopTarballScanner } from "./adapters/noop-tarball-scanner";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { R2TarballWriter } from "./adapters/r2-tarball-writer";
 import { D1TokenStore } from "./adapters/token";
@@ -68,6 +69,8 @@ export function buildServices(
       new R2TarballWriter(tarballs),
       new SchemaManifestValidator(),
       ownership,
+      // Allow-all today; the seam for a real malware/abuse scanner over the bytes.
+      { scanner: new NoopTarballScanner() },
     ),
     /** Post-publish management: deprecate, yank. */
     management: new ManagementService(new D1MetadataWriter(db), ownership),

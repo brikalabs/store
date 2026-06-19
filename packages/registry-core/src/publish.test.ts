@@ -5,6 +5,7 @@ import {
   type OwnershipPolicy,
   type PublishInput,
   PublishService,
+  type TarballScanner,
   type TarballWriter,
 } from "./publish";
 import type { PackageVersion } from "./types";
@@ -35,6 +36,9 @@ function fakes() {
 const allow: OwnershipPolicy = { canPublish: () => Promise.resolve({ ok: true }) };
 const deny: OwnershipPolicy = {
   canPublish: () => Promise.resolve({ ok: false, message: "not your scope" }),
+};
+const rejectingScanner: TarballScanner = {
+  scan: () => Promise.resolve({ ok: false, message: "matched signature EICAR-Test" }),
 };
 const validManifest: ManifestValidator = { validate: () => Promise.resolve({ ok: true }) };
 const invalidManifest: ManifestValidator = {
@@ -115,6 +119,61 @@ test("rejects an oversized tarball (413) before validating or writing", async ()
   if (!result.ok) expect(result.code).toBe("too_large");
   expect(f.puts).toEqual([]);
   expect(f.versions).toEqual([]);
+});
+
+test("rejects when the scanner refuses the bytes, without writing", async () => {
+  const f = fakes();
+  const service = new PublishService(f.meta, f.tarballs, validManifest, allow, {
+    scanner: rejectingScanner,
+  });
+  const result = await service.publish(input);
+  expect(result).toEqual({
+    ok: false,
+    code: "rejected",
+    message: "matched signature EICAR-Test",
+  });
+  expect(f.puts).toEqual([]);
+  expect(f.versions).toEqual([]);
+});
+
+test("scans only after immutability: an existing version is rejected before the scanner runs", async () => {
+  const f = fakes();
+  let scanned = false;
+  const spyScanner: TarballScanner = {
+    scan: () => {
+      scanned = true;
+      return Promise.resolve({ ok: true });
+    },
+  };
+  f.versions.push({
+    name: "@brika/plugin-x",
+    version: "1.0.0",
+    manifest: {},
+    integrity: "x",
+    shasum: "y",
+    size: 1,
+    publishedAt: "2026-01-01T00:00:00.000Z",
+    deprecated: null,
+    yanked: false,
+  });
+  const result = await new PublishService(f.meta, f.tarballs, validManifest, allow, {
+    scanner: spyScanner,
+  }).publish(input);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.code).toBe("exists");
+  expect(scanned).toBe(false);
+});
+
+test("publishes when the scanner passes (explicit scanner wired)", async () => {
+  const f = fakes();
+  const service = new PublishService(f.meta, f.tarballs, validManifest, allow, {
+    scanner: { scan: () => Promise.resolve({ ok: true }) },
+    clock: () => "2026-01-01T00:00:00.000Z",
+  });
+  const result = await service.publish(input);
+  expect(result.ok).toBe(true);
+  expect(f.puts).toEqual(["@brika/plugin-x/-/plugin-x-1.0.0.tgz"]);
+  expect(f.versions).toHaveLength(1);
 });
 
 test("rejects re-publishing an existing version (immutability), without writing", async () => {

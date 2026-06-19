@@ -69,6 +69,7 @@ export {
   type PublishOptions,
   type PublishResult,
   PublishService,
+  type TarballScanner,
   type TarballWriter,
 } from "./publish";
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
