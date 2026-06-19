@@ -25,5 +25,5 @@ export const kebabCase = /^[a-z0-9]+(-[a-z0-9]+)*$/;
  */
 export function kebabFilename(...extensions: string[]): RegExp {
   const exts = (extensions.length > 0 ? extensions : ["ts", "tsx"]).join("|");
-  return new RegExp(`^[a-z0-9]+(-[a-z0-9]+)*\\.(${exts})$`);
+  return new RegExp(String.raw`^[a-z0-9]+(-[a-z0-9]+)*\.(${exts})$`);
 }

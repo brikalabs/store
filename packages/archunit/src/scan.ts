@@ -71,5 +71,8 @@ export function classesOf(absolutePath: string): string[] {
  */
 export function toFileGlob(pattern: string): string {
   if (/\.(ts|tsx)$/.test(pattern) || /\*\.[a-z{]/.test(pattern)) return pattern;
-  return `${pattern.replace(/\/+$/, "")}/**/*.{ts,tsx}`;
+  // Trim trailing slashes without a regex (a `/+$/` strip is a super-linear backtracking risk).
+  let end = pattern.length;
+  while (end > 0 && pattern[end - 1] === "/") end--;
+  return `${pattern.slice(0, end)}/**/*.{ts,tsx}`;
 }

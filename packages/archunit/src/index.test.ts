@@ -107,6 +107,15 @@ describe("ArchRules engine (imports)", () => {
     expect(violations.some((v) => v.includes("src/scan.ts"))).toBe(true);
   });
 
+  test("a trailing slash on a directory is trimmed before expansion", () => {
+    const violations = archRules({ root: ROOT })
+      .rule("no node:fs")
+      .filesMatching("src/")
+      .mayNotImport(modules("node:fs"))
+      .check();
+    expect(violations.some((v) => v.includes("src/scan.ts"))).toBe(true);
+  });
+
   test("holds when nothing matches", () => {
     const violations = archRules({ root: ROOT })
       .rule("no lodash")

@@ -69,7 +69,7 @@ function forbidImports(categories: Category[]): FileCheck {
   return (file) =>
     file.imports.flatMap((specifier) => {
       const hit = categories.find((c) => c.test(specifier));
-      return hit !== undefined ? [`imports "${specifier}" (${hit.label})`] : [];
+      return hit === undefined ? [] : [`imports "${specifier}" (${hit.label})`];
     });
 }
 
