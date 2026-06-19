@@ -85,11 +85,13 @@ export const principal: RateLimitKey<Services> = async ({ req, ctx }) => {
 
 /**
  * Authenticate an operator admin for takedown/restore: a valid write credential
- * (OIDC or token) whose GitHub owner is in the `admins` allowlist (the controller
- * passes it from `REGISTRY_ADMINS`). Throws `401` when no credential validates,
- * `403` when it validates but is not an admin. Admin is a registry-operator role,
- * deliberately separate from (and overriding) scope ownership. The allowlist is a
- * parameter so this stays free of the env/`cloudflare:workers` import.
+ * (OIDC or token) whose provider-qualified identity is in the `admins` allowlist (the
+ * controller passes it from `REGISTRY_ADMINS`, as `provider:owner` keys). Throws `401`
+ * when no credential validates, `403` when it validates but is not an admin. Matching
+ * the full `provider:owner` (not the bare owner) keeps the check correct once a second
+ * identity provider exists, so a `gitlab` user cannot inherit a `github` admin's slot.
+ * Admin is a registry-operator role, deliberately separate from (and overriding) scope
+ * ownership. The allowlist is a parameter so this stays free of the env import.
  */
 export async function requireAdmin(
   request: Request,
@@ -97,6 +99,7 @@ export async function requireAdmin(
   admins: ReadonlySet<string>,
 ): Promise<PublishIdentity> {
   const identity = await requireWrite(request, db);
-  if (!admins.has(identity.owner)) throw forbidden("Not a registry admin");
+  if (!admins.has(`${identity.provider}:${identity.owner}`))
+    throw forbidden("Not a registry admin");
   return identity;
 }

@@ -167,18 +167,18 @@ describe("requireAdmin", () => {
 
   test("401 when no credential is presented", async () => {
     expect(
-      await status(requireAdmin(new Request("http://localhost/"), db, new Set(["octocat"]))),
+      await status(requireAdmin(new Request("http://localhost/"), db, new Set(["github:octocat"]))),
     ).toBe(401);
   });
 
   test("403 when the credential is valid but the owner is not an admin", async () => {
     const token = await issueToken(db, "stranger");
-    expect(await status(requireAdmin(bearer(token), db, new Set(["octocat"])))).toBe(403);
+    expect(await status(requireAdmin(bearer(token), db, new Set(["github:octocat"])))).toBe(403);
   });
 
   test("returns the identity when the owner is in the admin allowlist", async () => {
     const token = await issueToken(db, "octocat");
-    expect(await requireAdmin(bearer(token), db, new Set(["octocat"]))).toEqual({
+    expect(await requireAdmin(bearer(token), db, new Set(["github:octocat"]))).toEqual({
       provider: "github",
       owner: "octocat",
       repository: null,

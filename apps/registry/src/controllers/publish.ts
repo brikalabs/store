@@ -46,6 +46,20 @@ async function withAttestation(
   return { ...identity, provenance: { ...identity.provenance, transparencyLog: entry } };
 }
 
+/**
+ * A canonical, scoped package name: a lowercase `@scope/name` whose two segments are
+ * ASCII `a-z0-9` plus `-`/`_`/`.`, each starting alphanumeric (npm's rule), capped at
+ * npm's 214 chars. Enforcing this at the door is what stops scope-confusion attacks:
+ * a case variant (`@Brika`) or a homoglyph (`@brіka` with a Cyrillic letter) can
+ * neither claim a look-alike scope nor sit beside a real one to impersonate its owner,
+ * because anything outside this ASCII shape is rejected before the ownership gate runs.
+ */
+const CANONICAL_NAME = /^@[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/;
+
+function isCanonicalName(name: string): boolean {
+  return name.length <= 214 && CANONICAL_NAME.test(name);
+}
+
 function base64ToBytes(value: string): Uint8Array {
   const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
@@ -80,6 +94,11 @@ export async function publish({
   const identity = await requireWrite(req, db);
 
   const { name, version, manifest, tarball, transparencyLog } = body;
+  if (!isCanonicalName(name)) {
+    throw badRequest(
+      "Package name must be a lowercase scoped name (@scope/name) using only a-z, 0-9, '-', '_', '.'",
+    );
+  }
   if (manifest.name !== name || manifest.version !== version) {
     throw badRequest("Manifest name/version must match the published name/version");
   }

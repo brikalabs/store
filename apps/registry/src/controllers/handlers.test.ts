@@ -132,6 +132,13 @@ describe("publish (auth + invariant + ownership gates)", () => {
     expect(await statusOf(publish({ body, req: post(body, token), ctx: services(db) }))).toBe(400);
   });
 
+  test("400 for a non-canonical name (uppercase scope) before the ownership gate runs", async () => {
+    const token = await issueToken(db, "octocat");
+    const name = "@Brika/x"; // case variant of a real scope: must be refused at the door
+    const body = { ...validPublish, name, manifest: { name, version: "1.0.0" } };
+    expect(await statusOf(publish({ body, req: post(body, token), ctx: services(db) }))).toBe(400);
+  });
+
   test("403 when the scope is owned by someone else", async () => {
     // An unclaimed scope is claimable on first publish; ownership only forbids when
     // the scope already belongs to a different owner.

@@ -23,9 +23,11 @@ export const vars = defineEnv(
     // REGISTRY_URL=http://localhost:8787 in .dev.vars). Empty -> fall back to the
     // request origin, which is correct once a single custom domain is attached.
     REGISTRY_URL: z.union([z.url(), z.literal("")]).default(""),
-    // Comma-separated GitHub logins allowed to take down / restore versions
-    // (operator action, distinct from scope ownership). Empty -> no admins, so the
-    // takedown endpoints reject everyone until set via `wrangler secret`/`.dev.vars`.
+    // Comma-separated operator admins allowed to take down / restore versions
+    // (distinct from scope ownership). Each entry is `provider:owner` (e.g.
+    // `github:octocat`); a bare entry defaults to the `github` provider. Empty -> no
+    // admins, so the takedown endpoints reject everyone until set via
+    // `wrangler secret`/`.dev.vars`.
     REGISTRY_ADMINS: z.string().default(""),
   },
   () => env,
@@ -33,13 +35,20 @@ export const vars = defineEnv(
 
 export type Vars = ReturnType<typeof vars>;
 
-/** The GitHub logins allowed to perform operator actions, parsed from `REGISTRY_ADMINS`. */
+/**
+ * The operator admins allowed to perform takedown/restore, as provider-qualified
+ * `provider:owner` keys (matching how `requireAdmin` compares an identity). A bare
+ * `REGISTRY_ADMINS` entry without a provider defaults to `github`, so existing
+ * GitHub-login lists keep working while the check stays correct once a second
+ * identity provider is added.
+ */
 export function registryAdmins(): ReadonlySet<string> {
   return new Set(
     vars()
       .REGISTRY_ADMINS.split(",")
-      .map((login) => login.trim())
-      .filter((login) => login.length > 0),
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+      .map((entry) => (entry.includes(":") ? entry : `github:${entry}`)),
   );
 }
 
