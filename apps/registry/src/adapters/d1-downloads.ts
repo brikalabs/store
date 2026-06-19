@@ -1,5 +1,6 @@
 import {
   type DownloadStats,
+  type DownloadStore,
   downloadSeries,
   epochDay,
   summarizeDownloads,
@@ -8,11 +9,11 @@ import { type Db, regDownloads } from "@brika/store-db";
 import { eq, inArray, sql } from "drizzle-orm";
 
 /**
- * D1-backed install counts. Each tarball download increments today's
- * `reg_downloads` row for the package; reads aggregate the per-day rows into
+ * D1 implementation of the {@link DownloadStore} port. Each tarball download increments
+ * today's `reg_downloads` row for the package; reads aggregate the per-day rows into
  * all-time + trailing-week totals via the domain `summarizeDownloads`.
  */
-export class D1DownloadStore {
+export class D1DownloadStore implements DownloadStore {
   readonly #db: Db;
   readonly #now: () => number;
 

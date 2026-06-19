@@ -22,6 +22,7 @@ export {
   type DailyDownloads,
   DOWNLOAD_WINDOW_DAYS,
   type DownloadStats,
+  type DownloadStore,
   downloadSeries,
   epochDay,
   summarizeDownloads,
