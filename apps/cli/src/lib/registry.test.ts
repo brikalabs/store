@@ -128,4 +128,25 @@ describe("RegistryClient", () => {
       CliError,
     );
   });
+
+  test("createScope PUTs to the encoded scope endpoint and reports created", async () => {
+    const calls: { url: string; method?: string }[] = [];
+    const client = new RegistryClient("https://r.test", {
+      fetch: async (input, init) => {
+        calls.push({ url: String(input), method: init?.method });
+        return json({ ok: true, scope: "@brika", created: true });
+      },
+    });
+    const claim = await client.createScope("t", "@brika");
+    expect(claim).toEqual({ scope: "@brika", created: true });
+    expect(calls[0]?.url).toBe("https://r.test/-/scope/%40brika");
+    expect(calls[0]?.method).toBe("PUT");
+  });
+
+  test("createScope throws a CliError when the scope is owned by someone else", async () => {
+    const denied = new RegistryClient("https://r.test", {
+      fetch: async () => json({ error: "scope @brika is owned by alice", code: "conflict" }, 409),
+    });
+    await expect(denied.createScope("t", "@brika")).rejects.toBeInstanceOf(CliError);
+  });
 });

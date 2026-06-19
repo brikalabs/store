@@ -46,6 +46,20 @@ const ManageResponseSchema = z.object({
   code: z.string().optional(),
 });
 
+const ScopeResponseSchema = z.object({
+  ok: z.boolean().optional(),
+  scope: z.string().optional(),
+  created: z.boolean().optional(),
+  error: z.string().optional(),
+  code: z.string().optional(),
+});
+
+export interface ScopeClaim {
+  readonly scope: string;
+  /** True when this call created the scope; false when the caller already owned it. */
+  readonly created: boolean;
+}
+
 export type DeviceCode = z.infer<typeof DeviceCodeSchema>;
 
 export interface DeviceLogin {
@@ -130,6 +144,24 @@ export class RegistryClient {
     if (res.ok && body.integrity !== undefined) return { integrity: body.integrity };
     const code = body.code === undefined ? "" : ` ${body.code}`;
     throw new CliError(`publish rejected (${res.status}${code}): ${body.error ?? "unknown error"}`);
+  }
+
+  /**
+   * Create/claim a scope for the authenticated identity (`PUT /-/scope/:scope`).
+   * Idempotent: a scope the caller already owns succeeds with `created: false`. Throws
+   * a `CliError` when the scope is owned by someone else or the name is invalid.
+   */
+  async createScope(token: string, scope: string): Promise<ScopeClaim> {
+    const res = await this.#send(`/-/scope/${encodeURIComponent(scope)}`, {
+      method: "PUT",
+      headers: bearer(token),
+    });
+    const body = await this.#parse(res, ScopeResponseSchema);
+    if (res.ok && body.ok === true) return { scope, created: body.created ?? false };
+    const code = body.code === undefined ? "" : ` ${body.code}`;
+    throw new CliError(
+      `could not create scope ${scope} (${res.status}${code}): ${body.error ?? "unknown error"}`,
+    );
   }
 
   /** Deprecate (or, with `message: null`, un-deprecate) a published version. */

@@ -89,6 +89,15 @@ npm-compatible. The hub points `@brika:registry` at it; `bun add` is unchanged.
 immutability check, computes integrity, and writes the tarball then the version. A
 rejected publish never writes.
 
+**Scopes are created explicitly** (`PUT /-/scope/:scope`, or `brika scope create`),
+JSR-style: a name is `@` + 2-20 lowercase letters/digits/hyphens (no leading hyphen),
+globally unique, and owned by whoever creates it. Publishing never claims a scope
+implicitly: the ownership gate rejects an unknown scope ("create it first") and
+requires an exact `(provider, ownerId)` match otherwise, so there is no
+first-publish claim to race and no way to land a package under a scope you do not
+own. Creation is idempotent and race-safe (insert-then-reread). Multi-member scopes
+with roles (admin/member, invites) are the planned next step.
+
 **Identity is provider-qualified.** A `PublishIdentity` is `{ provider, owner, … }`
 and scope ownership stores `(ownerProvider, ownerId)`, so the registry is not
 GitHub-locked: OIDC verification is split into a provider-neutral `verifyOidc`

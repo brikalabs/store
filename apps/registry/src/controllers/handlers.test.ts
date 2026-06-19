@@ -6,6 +6,7 @@ import { PublishService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
 import { type Db, regDistTags, regPackages, regScopes, regVersions, schema } from "@brika/store-db";
 import { transaction } from "@brika/tx";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { D1MetadataWriter } from "../adapters/d1-metadata-writer";
 import { D1OwnershipPolicy } from "../adapters/d1-ownership";
@@ -33,7 +34,7 @@ mock.module("cloudflare:workers", () => ({
 
 const { publish } = await import("./publish");
 const { deprecate, yank, takedown, restore } = await import("./manage");
-const { setDisplayName } = await import("./scope");
+const { createScope, setDisplayName } = await import("./scope");
 
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../../packages/db/drizzle");
 
@@ -143,8 +144,8 @@ describe("publish (auth + invariant + ownership gates)", () => {
   });
 
   test("403 when the scope is owned by someone else", async () => {
-    // An unclaimed scope is claimable on first publish; ownership only forbids when
-    // the scope already belongs to a different owner.
+    // Scopes are claimed by explicit creation, never on publish; publishing to a scope
+    // owned by a different identity is forbidden.
     await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" });
     const token = await issueToken(db, "stranger");
     expect(
@@ -170,6 +171,7 @@ describe("publish (auth + invariant + ownership gates)", () => {
   });
 
   test("413 when the tarball is over the size limit", async () => {
+    await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" }); // scope must exist
     const token = await issueToken(db, "octocat");
     // A 1-byte cap rejects even the tiny 3-byte "AAAA" tarball.
     const ctx = {
@@ -185,6 +187,59 @@ describe("publish (auth + invariant + ownership gates)", () => {
     expect(
       await statusOf(publish({ body: validPublish, req: post(validPublish, token), ctx })),
     ).toBe(413);
+  });
+});
+
+describe("createScope (explicit scope claim)", () => {
+  const params = { scope: "@team" };
+
+  test("401 without a token", async () => {
+    expect(await statusOf(createScope({ params, req: post(undefined), ctx: services(db) }))).toBe(
+      401,
+    );
+  });
+
+  test("400 for a non-canonical scope name", async () => {
+    const token = await issueToken(db, "alice");
+    const bad = { scope: "@Team" }; // uppercase: rejected by the JSR-style rule
+    expect(
+      await statusOf(createScope({ params: bad, req: post(undefined, token), ctx: services(db) })),
+    ).toBe(400);
+  });
+
+  test("201 creates and claims the scope for the caller", async () => {
+    const token = await issueToken(db, "alice");
+    const res = await createScope({ params, req: post(undefined, token), ctx: services(db) });
+    expect(res.status).toBe(201);
+    const rows = await db.select().from(regScopes).where(eq(regScopes.scope, "@team"));
+    expect(rows[0]).toMatchObject({ ownerProvider: "github", ownerId: "alice" });
+  });
+
+  test("200 (idempotent) when the caller already owns the scope", async () => {
+    const token = await issueToken(db, "alice");
+    await createScope({ params, req: post(undefined, token), ctx: services(db) });
+    const res = await createScope({ params, req: post(undefined, token), ctx: services(db) });
+    expect(res.status).toBe(200);
+  });
+
+  test("409 when the scope is owned by someone else", async () => {
+    await db.insert(regScopes).values({ scope: "@team", ownerId: "alice" });
+    const token = await issueToken(db, "mallory");
+    expect(
+      await statusOf(createScope({ params, req: post(undefined, token), ctx: services(db) })),
+    ).toBe(409);
+  });
+
+  test("concurrent creates resolve to one owner; the loser gets 409", async () => {
+    const alice = await issueToken(db, "alice");
+    const mallory = await issueToken(db, "mallory");
+    const [a, b] = await Promise.all([
+      statusOf(createScope({ params, req: post(undefined, alice), ctx: services(db) })),
+      statusOf(createScope({ params, req: post(undefined, mallory), ctx: services(db) })),
+    ]);
+    expect([a, b].filter((s) => s === 201)).toHaveLength(1);
+    expect([a, b].filter((s) => s === 409)).toHaveLength(1);
+    expect(await db.select().from(regScopes).where(eq(regScopes.scope, "@team"))).toHaveLength(1);
   });
 });
 
