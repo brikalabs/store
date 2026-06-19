@@ -6,6 +6,14 @@ function scopeOf(name: string): string | null {
   return name.startsWith("@") ? (name.split("/")[0] ?? null) : null;
 }
 
+/** Does this scope row belong to the given provider-qualified identity? */
+function ownedBy(
+  row: { ownerProvider: string; ownerId: string },
+  identity: PublishIdentity,
+): boolean {
+  return row.ownerProvider === identity.provider && row.ownerId === identity.owner;
+}
+
 /**
  * Scope-based ownership: a scope is owned by one provider-qualified identity
  * (`provider` + owner id), claimed on first publish. Subsequent publishes must come
@@ -19,6 +27,11 @@ export class D1OwnershipPolicy implements OwnershipPolicy {
     this.#db = db;
   }
 
+  async #read(scope: string): Promise<{ ownerProvider: string; ownerId: string } | undefined> {
+    const rows = await this.#db.select().from(regScopes).where(eq(regScopes.scope, scope)).limit(1);
+    return rows[0];
+  }
+
   async canPublish(
     identity: PublishIdentity,
     name: string,
@@ -28,19 +41,28 @@ export class D1OwnershipPolicy implements OwnershipPolicy {
       return { ok: false, message: "only scoped packages (@scope/name) can be published" };
     }
 
-    const rows = await this.#db.select().from(regScopes).where(eq(regScopes.scope, scope)).limit(1);
-    const owner = rows[0];
-
-    if (owner === undefined) {
-      // First publish under an unclaimed scope claims it for this identity.
-      await this.#db
-        .insert(regScopes)
-        .values({ scope, ownerProvider: identity.provider, ownerId: identity.owner })
-        .onConflictDoNothing();
-      return { ok: true };
+    const existing = await this.#read(scope);
+    if (existing !== undefined) {
+      return ownedBy(existing, identity)
+        ? { ok: true }
+        : { ok: false, message: `scope ${scope} is owned by ${existing.ownerId}` };
     }
-    if (owner.ownerProvider !== identity.provider || owner.ownerId !== identity.owner) {
-      return { ok: false, message: `scope ${scope} is owned by ${owner.ownerId}` };
+
+    // Unclaimed: claim it, then RE-READ before trusting the claim. `onConflictDoNothing`
+    // keeps the first writer's row, so if two different identities race the first publish
+    // to the same scope, the loser reads back the winner's row and is rejected here rather
+    // than wrongly proceeding to publish under a scope it does not own. The insert is the
+    // serialization point (D1/SQLite has a single writer), so the re-read is authoritative.
+    await this.#db
+      .insert(regScopes)
+      .values({ scope, ownerProvider: identity.provider, ownerId: identity.owner })
+      .onConflictDoNothing();
+    const claimed = await this.#read(scope);
+    if (claimed === undefined || !ownedBy(claimed, identity)) {
+      return {
+        ok: false,
+        message: `scope ${scope} is owned by ${claimed?.ownerId ?? "another account"}`,
+      };
     }
     return { ok: true };
   }
