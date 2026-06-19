@@ -16,7 +16,38 @@ import type { Services } from "../services";
  * it. Only the scope owner can set it; null clears it (falls back to the owner id).
  */
 
-const DisplayNameBody = z.object({ displayName: z.string().min(1).max(120).nullable() });
+/**
+ * Reject invisible / bidi / control characters in the publisher label: it is the
+ * name users are told to trust over the manifest `author`, so zero-width chars,
+ * bidi overrides (RLO/LRO), and C0/C1 controls (which could spoof another
+ * publisher) are not allowed. Visible-homoglyph detection is a deeper follow-up.
+ */
+function hasUnsafeLabelChars(value: string): boolean {
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
+    if (
+      code <= 0x1f || // C0 controls
+      (code >= 0x7f && code <= 0x9f) || // DEL + C1 controls
+      (code >= 0x200b && code <= 0x200f) || // zero-width + LRM/RLM
+      (code >= 0x202a && code <= 0x202e) || // bidi embeddings/overrides
+      (code >= 0x2066 && code <= 0x2069) || // bidi isolates
+      code === 0xfeff // BOM / zero-width no-break space
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const DisplayNameBody = z.object({
+  displayName: z
+    .string()
+    .min(1)
+    .max(120)
+    .refine((value) => !hasUnsafeLabelChars(value), "display name has disallowed characters")
+    .transform((value) => value.normalize("NFC"))
+    .nullable(),
+});
 
 export async function setDisplayName({
   params,

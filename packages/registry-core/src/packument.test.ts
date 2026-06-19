@@ -6,6 +6,7 @@ const record: PackageRecord = {
   name: "@brika/plugin-x",
   distTags: { latest: "1.1.0" },
   createdAt: "2026-01-01T00:00:00.000Z",
+  publisher: null,
   versions: [
     {
       name: "@brika/plugin-x",
@@ -75,6 +76,7 @@ test("buildAbbreviatedPackument keeps install fields and drops the rest", () => 
     name: "@brika/plugin-y",
     distTags: { latest: "2.0.0" },
     createdAt: "2026-01-01T00:00:00.000Z",
+    publisher: null,
     versions: [
       {
         name: "@brika/plugin-y",
@@ -116,6 +118,7 @@ test("hides a taken-down version and surfaces its reason under takedowns", () =>
     name: "@brika/plugin-x",
     distTags: { latest: "1.1.0" },
     createdAt: "2026-01-01T00:00:00.000Z",
+    publisher: null,
     versions: [
       {
         name: "@brika/plugin-x",

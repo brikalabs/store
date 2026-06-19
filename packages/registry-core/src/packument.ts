@@ -44,6 +44,10 @@ export interface Packument {
    * The verified publisher (the scope owner + its chosen display name). Non-standard
    * field the storefront renders as the trusted "published by", overriding the
    * free-text manifest `author`. Absent for unclaimed/unscoped packages.
+   *
+   * `verified` here means "ownership-proven" (you cannot publish to a scope you do
+   * not own), NOT an editorial/team vetting; a separate team-validation badge is a
+   * later, admin-set concern, distinct from this.
    */
   readonly publisher?: { readonly id: string; readonly name: string; readonly verified: true };
 }
