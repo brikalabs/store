@@ -24,13 +24,16 @@ import { Route as LegalLicensesRouteImport } from './routes/legal.licenses'
 import { Route as LegalCookiesRouteImport } from './routes/legal.cookies'
 import { Route as LegalAcceptableUseRouteImport } from './routes/legal.acceptable-use'
 import { Route as DevelopersIdRouteImport } from './routes/developers.$id'
+import { Route as DashboardScopesRouteImport } from './routes/dashboard.scopes'
 import { Route as AuthMeRouteImport } from './routes/auth.me'
 import { Route as AuthLogoutRouteImport } from './routes/auth.logout'
 import { Route as AuthGithubRouteImport } from './routes/auth.github'
 import { Route as ApiScopesRouteImport } from './routes/api.scopes'
 import { Route as V1PluginsNameRouteImport } from './routes/v1.plugins.$name'
 import { Route as V1DevelopersIdRouteImport } from './routes/v1.developers.$id'
+import { Route as DashboardScopesScopeRouteImport } from './routes/dashboard.scopes.$scope'
 import { Route as DashboardPluginsSplatRouteImport } from './routes/dashboard.plugins.$'
+import { Route as DashboardAccountTokensRouteImport } from './routes/dashboard.account.tokens'
 import { Route as AuthGithubCallbackRouteImport } from './routes/auth.github.callback'
 import { Route as ApiScopesScopeRouteImport } from './routes/api.scopes.$scope'
 import { Route as ApiPluginsYankRouteImport } from './routes/api.plugins.yank'
@@ -127,6 +130,11 @@ const DevelopersIdRoute = DevelopersIdRouteImport.update({
   path: '/developers/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardScopesRoute = DashboardScopesRouteImport.update({
+  id: '/scopes',
+  path: '/scopes',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const AuthMeRoute = AuthMeRouteImport.update({
   id: '/auth/me',
   path: '/auth/me',
@@ -157,9 +165,19 @@ const V1DevelopersIdRoute = V1DevelopersIdRouteImport.update({
   path: '/v1/developers/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardScopesScopeRoute = DashboardScopesScopeRouteImport.update({
+  id: '/$scope',
+  path: '/$scope',
+  getParentRoute: () => DashboardScopesRoute,
+} as any)
 const DashboardPluginsSplatRoute = DashboardPluginsSplatRouteImport.update({
   id: '/plugins/$',
   path: '/plugins/$',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAccountTokensRoute = DashboardAccountTokensRouteImport.update({
+  id: '/account/tokens',
+  path: '/account/tokens',
   getParentRoute: () => DashboardRoute,
 } as any)
 const AuthGithubCallbackRoute = AuthGithubCallbackRouteImport.update({
@@ -277,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/auth/github': typeof AuthGithubRouteWithChildren
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/scopes': typeof DashboardScopesRouteWithChildren
   '/developers/$id': typeof DevelopersIdRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -297,7 +316,9 @@ export interface FileRoutesByFullPath {
   '/api/plugins/yank': typeof ApiPluginsYankRoute
   '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
   '/auth/github/callback': typeof AuthGithubCallbackRoute
+  '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
+  '/dashboard/scopes/$scope': typeof DashboardScopesScopeRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
@@ -321,6 +342,7 @@ export interface FileRoutesByTo {
   '/auth/github': typeof AuthGithubRouteWithChildren
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/scopes': typeof DashboardScopesRouteWithChildren
   '/developers/$id': typeof DevelopersIdRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -341,7 +363,9 @@ export interface FileRoutesByTo {
   '/api/plugins/yank': typeof ApiPluginsYankRoute
   '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
   '/auth/github/callback': typeof AuthGithubCallbackRoute
+  '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
+  '/dashboard/scopes/$scope': typeof DashboardScopesScopeRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
@@ -366,6 +390,7 @@ export interface FileRoutesById {
   '/auth/github': typeof AuthGithubRouteWithChildren
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/scopes': typeof DashboardScopesRouteWithChildren
   '/developers/$id': typeof DevelopersIdRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -386,7 +411,9 @@ export interface FileRoutesById {
   '/api/plugins/yank': typeof ApiPluginsYankRoute
   '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
   '/auth/github/callback': typeof AuthGithubCallbackRoute
+  '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
+  '/dashboard/scopes/$scope': typeof DashboardScopesScopeRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
@@ -412,6 +439,7 @@ export interface FileRouteTypes {
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/scopes'
     | '/developers/$id'
     | '/legal/acceptable-use'
     | '/legal/cookies'
@@ -432,7 +460,9 @@ export interface FileRouteTypes {
     | '/api/plugins/yank'
     | '/api/scopes/$scope'
     | '/auth/github/callback'
+    | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
+    | '/dashboard/scopes/$scope'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
     | '/api/account/tokens/$hash'
@@ -456,6 +486,7 @@ export interface FileRouteTypes {
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/scopes'
     | '/developers/$id'
     | '/legal/acceptable-use'
     | '/legal/cookies'
@@ -476,7 +507,9 @@ export interface FileRouteTypes {
     | '/api/plugins/yank'
     | '/api/scopes/$scope'
     | '/auth/github/callback'
+    | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
+    | '/dashboard/scopes/$scope'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
     | '/api/account/tokens/$hash'
@@ -500,6 +533,7 @@ export interface FileRouteTypes {
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/scopes'
     | '/developers/$id'
     | '/legal/acceptable-use'
     | '/legal/cookies'
@@ -520,7 +554,9 @@ export interface FileRouteTypes {
     | '/api/plugins/yank'
     | '/api/scopes/$scope'
     | '/auth/github/callback'
+    | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
+    | '/dashboard/scopes/$scope'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
     | '/api/account/tokens/$hash'
@@ -674,6 +710,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevelopersIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/scopes': {
+      id: '/dashboard/scopes'
+      path: '/scopes'
+      fullPath: '/dashboard/scopes'
+      preLoaderRoute: typeof DashboardScopesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/auth/me': {
       id: '/auth/me'
       path: '/auth/me'
@@ -716,11 +759,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1DevelopersIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/scopes/$scope': {
+      id: '/dashboard/scopes/$scope'
+      path: '/$scope'
+      fullPath: '/dashboard/scopes/$scope'
+      preLoaderRoute: typeof DashboardScopesScopeRouteImport
+      parentRoute: typeof DashboardScopesRoute
+    }
     '/dashboard/plugins/$': {
       id: '/dashboard/plugins/$'
       path: '/plugins/$'
       fullPath: '/dashboard/plugins/$'
       preLoaderRoute: typeof DashboardPluginsSplatRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/account/tokens': {
+      id: '/dashboard/account/tokens'
+      path: '/account/tokens'
+      fullPath: '/dashboard/account/tokens'
+      preLoaderRoute: typeof DashboardAccountTokensRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/auth/github/callback': {
@@ -866,11 +923,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface DashboardScopesRouteChildren {
+  DashboardScopesScopeRoute: typeof DashboardScopesScopeRoute
+}
+
+const DashboardScopesRouteChildren: DashboardScopesRouteChildren = {
+  DashboardScopesScopeRoute: DashboardScopesScopeRoute,
+}
+
+const DashboardScopesRouteWithChildren = DashboardScopesRoute._addFileChildren(
+  DashboardScopesRouteChildren,
+)
+
 interface DashboardRouteChildren {
+  DashboardScopesRoute: typeof DashboardScopesRouteWithChildren
+  DashboardAccountTokensRoute: typeof DashboardAccountTokensRoute
   DashboardPluginsSplatRoute: typeof DashboardPluginsSplatRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardScopesRoute: DashboardScopesRouteWithChildren,
+  DashboardAccountTokensRoute: DashboardAccountTokensRoute,
   DashboardPluginsSplatRoute: DashboardPluginsSplatRoute,
 }
 
