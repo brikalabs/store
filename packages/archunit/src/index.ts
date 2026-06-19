@@ -81,6 +81,17 @@ export interface ArchTestCase {
 
 const TEST_GLOBS = ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/test-harness.ts"];
 
+/**
+ * Expand a directory/package-shaped pattern to all the TS sources under it, so rules can
+ * be written by folder: `filesMatching("packages/*-core/src")` instead of
+ * `"packages/*-core/src/**\/*.ts"`. A pattern that already targets files (ends in
+ * `.ts`/`.tsx`, or contains an explicit `*.ext` / brace glob) is left as-is.
+ */
+function toFileGlob(pattern: string): string {
+  if (/\.(ts|tsx)$/.test(pattern) || /\*\.[a-z{]/.test(pattern)) return pattern;
+  return `${pattern.replace(/\/+$/, "")}/**/*.{ts,tsx}`;
+}
+
 interface RuleSpec {
   readonly description: string;
   readonly include: string[];
@@ -147,11 +158,11 @@ export class ArchRules {
     // private #rules - private fields do not traverse a prototype chain.
     const builder: RuleBuilder = {
       filesMatching: (...globs) => {
-        spec.include.push(...globs);
+        spec.include.push(...globs.map(toFileGlob));
         return builder;
       },
       except: (...globs) => {
-        spec.exclude.push(...globs);
+        spec.exclude.push(...globs.map(toFileGlob));
         return builder;
       },
       mayNotImport: (...categories) => {

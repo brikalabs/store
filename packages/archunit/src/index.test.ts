@@ -57,6 +57,17 @@ describe("ArchRules engine", () => {
     expect(violations[0]).toContain("no node built-ins");
   });
 
+  test("filesMatching expands a directory to its TS sources", () => {
+    // "src" is expanded to "src/**/*.{ts,tsx}"; index.ts imports node:fs, so it is flagged
+    // (and index.test.ts is excluded as a test file).
+    const violations = archRules({ root: ROOT })
+      .rule("no node:fs")
+      .filesMatching("src")
+      .mayNotImport(modules("node:fs"))
+      .check();
+    expect(violations.some((v) => v.includes("src/index.ts"))).toBe(true);
+  });
+
   test("holds when nothing matches", () => {
     const violations = archRules({ root: ROOT })
       .rule("no lodash")

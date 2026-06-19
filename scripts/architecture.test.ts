@@ -17,34 +17,30 @@ describe("architecture", () => {
   // Shared packages are Cloudflare-free - only apps wire the platform. (db is the driver
   // package and may import the ORM; no package imports Cloudflare.)
   test("shared packages are Cloudflare-free (only apps use Cloudflare)", () => {
-    rule().filesMatching("packages/*/src/**/*.ts", "packages/*/src/**/*.tsx").mayNotImport(PLATFORM).assert();
+    rule().filesMatching("packages/*/src").mayNotImport(PLATFORM).assert();
   });
 
   // The domain core (any *-core package) speaks only ports.
   test("the domain core (*-core) depends on no database/ORM or HTTP framework", () => {
-    rule().filesMatching("packages/*-core/src/**/*.ts").mayNotImport(ORM, HTTP).assert();
+    rule().filesMatching("packages/*-core/src").mayNotImport(ORM, HTTP).assert();
   });
 
   // The router is a platform-free HTTP layer (Hono is allowed; the database is not).
   test("the router is database-free", () => {
-    rule().filesMatching("packages/router/src/**/*.ts").mayNotImport(ORM).assert();
+    rule().filesMatching("packages/router/src").mayNotImport(ORM).assert();
   });
 
   // Controllers go through ports on `ctx`, never the database, in any app.
   test("controllers never import the database/ORM (use a port on ctx)", () => {
-    rule().filesMatching("apps/*/src/controllers/**/*.ts").mayNotImport(ORM).assert();
+    rule().filesMatching("apps/*/src/controllers").mayNotImport(ORM).assert();
   });
 
   // In the registry app, the database is reached only through adapters + the composition
   // root (services.ts / index.ts). (apps/web is not yet hexagonal; add it once it is.)
   test("the database is reached only through adapters + the composition root", () => {
     rule()
-      .filesMatching("apps/registry/src/**/*.ts")
-      .except(
-        "apps/registry/src/adapters/**",
-        "apps/registry/src/services.ts",
-        "apps/registry/src/index.ts",
-      )
+      .filesMatching("apps/registry/src")
+      .except("apps/registry/src/adapters", "apps/registry/src/services.ts", "apps/registry/src/index.ts")
       .mayNotImport(ORM)
       .assert();
   });
