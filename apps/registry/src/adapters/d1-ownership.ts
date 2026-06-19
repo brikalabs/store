@@ -1,23 +1,23 @@
-import type { OwnershipPolicy, PublishIdentity } from "@brika/registry-core";
+import type { OwnershipPolicy, PublishIdentity, ScopeMembers } from "@brika/registry-core";
 import { type Db, regScopes } from "@brika/store-db";
 import { eq } from "drizzle-orm";
 import { scopeOf } from "../names";
-import { D1ScopeMembers } from "./d1-scope-members";
 
 /**
  * Membership-based publish authorization: a scope must be explicitly CREATED (see the
  * scope controller), and only its MEMBERS may publish under it (any role; admins also
  * manage the scope). Publishing never claims a scope implicitly. Anchored on the
  * verified credential (OIDC `repository_owner` or a publish token), so it cannot be
- * spoofed.
+ * spoofed. Reads membership through the {@link ScopeMembers} port (injected), and the
+ * `reg_scopes` table only to tell "unknown scope" apart from "not a member".
  */
 export class D1OwnershipPolicy implements OwnershipPolicy {
   readonly #db: Db;
-  readonly #members: D1ScopeMembers;
+  readonly #members: ScopeMembers;
 
-  constructor(db: Db) {
+  constructor(db: Db, members: ScopeMembers) {
     this.#db = db;
-    this.#members = new D1ScopeMembers(db);
+    this.#members = members;
   }
 
   async canPublish(

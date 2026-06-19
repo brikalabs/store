@@ -1,8 +1,8 @@
+import type { MemberRef, ScopeRole } from "@brika/registry-core";
 import { badRequest, httpError, reply } from "@brika/router";
 import { regScopes } from "@brika/store-db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import type { MemberRef, ScopeRole } from "../adapters/d1-scope-members";
 import { requireWrite } from "../auth";
 import { controller, route } from "../http/router";
 import { isCanonicalScope, ownedBy } from "../names";

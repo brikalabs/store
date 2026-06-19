@@ -1,26 +1,20 @@
+import type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "@brika/registry-core";
 import { type Db, regScopeMembers } from "@brika/store-db";
 import { and, eq, sql } from "drizzle-orm";
 
-/** A scope role: `admin` manages the scope + members; `member` may publish under it. */
-export type ScopeRole = "admin" | "member";
-
-/** A provider-qualified reference to one identity (a scope member). */
-export interface MemberRef {
-  readonly provider: string;
-  readonly id: string;
-}
-
-/** One scope member: a provider-qualified identity with a role. */
-export interface ScopeMember extends MemberRef {
-  readonly role: ScopeRole;
+/** Narrow a stored role string to the `ScopeRole` union (the column only ever holds these). */
+function toRole(value: string): ScopeRole {
+  return value === "admin" ? "admin" : "member";
 }
 
 /**
- * Scope membership (JSR-style). Publishing is gated on being a member of the scope;
- * managing the scope (members, display name) requires the `admin` role. The scope
- * creator is seeded as the first admin (see the scope controller).
+ * Cloudflare D1 implementation of the {@link ScopeMembers} domain port (JSR-style scope
+ * membership). Publishing is gated on being a member; managing the scope (members,
+ * display name) requires the `admin` role. The scope creator is seeded as the first
+ * admin (see the scope controller). The "at least one admin" invariant is enforced here
+ * in SQL (see {@link demoteFromAdmin}/{@link remove}).
  */
-export class D1ScopeMembers {
+export class D1ScopeMembers implements ScopeMembers {
   readonly #db: Db;
 
   constructor(db: Db) {
@@ -40,7 +34,8 @@ export class D1ScopeMembers {
         ),
       )
       .limit(1);
-    return (rows[0]?.role as ScopeRole | undefined) ?? null;
+    const role = rows[0]?.role;
+    return role === undefined ? null : toRole(role);
   }
 
   /** All members of a scope. */
@@ -52,7 +47,7 @@ export class D1ScopeMembers {
     return rows.map((row) => ({
       provider: row.provider,
       id: row.memberId,
-      role: row.role as ScopeRole,
+      role: toRole(row.role),
     }));
   }
 

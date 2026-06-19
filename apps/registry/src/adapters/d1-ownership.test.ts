@@ -3,6 +3,7 @@ import type { PublishIdentity } from "@brika/registry-core";
 import { type Db, regScopeMembers, regScopes } from "@brika/store-db";
 import { makeDb } from "../test-harness";
 import { D1OwnershipPolicy } from "./d1-ownership";
+import { D1ScopeMembers } from "./d1-scope-members";
 
 /**
  * Publish authorization. Scopes are created explicitly (the scope controller) and only
@@ -33,7 +34,7 @@ let db: Db;
 let policy: D1OwnershipPolicy;
 beforeEach(() => {
   db = makeDb();
-  policy = new D1OwnershipPolicy(db);
+  policy = new D1OwnershipPolicy(db, new D1ScopeMembers(db));
 });
 
 describe("D1OwnershipPolicy.canPublish", () => {

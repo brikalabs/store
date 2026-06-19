@@ -38,6 +38,11 @@ export function buildServices(
   baseUrl: string,
   admins: ReadonlySet<string> = new Set(),
 ) {
+  // The D1 implementation of the ScopeMembers port, built once and injected into the
+  // authorization policy (which depends on the port, not this concrete adapter) and
+  // shared with the scope controller for member management.
+  const scopeMembers = new D1ScopeMembers(db);
+  const ownership = new D1OwnershipPolicy(db, scopeMembers);
   return {
     /** Drizzle client over the registry's D1 database (`reg_*` tables). */
     db,
@@ -57,12 +62,12 @@ export function buildServices(
       new D1MetadataWriter(db),
       new R2TarballWriter(tarballs),
       new SchemaManifestValidator(),
-      new D1OwnershipPolicy(db),
+      ownership,
     ),
     /** Post-publish management: deprecate, yank. */
-    management: new ManagementService(new D1MetadataWriter(db), new D1OwnershipPolicy(db)),
-    /** Scope membership + roles (publish gating and member management). */
-    scopeMembers: new D1ScopeMembers(db),
+    management: new ManagementService(new D1MetadataWriter(db), ownership),
+    /** Scope membership + roles (the `ScopeMembers` port; publish gating + member mgmt). */
+    scopeMembers,
     /** Per-day install-count store: record + stats. */
     downloads: new D1DownloadStore(db),
     /** Device-authorization flow (RFC 8628). */

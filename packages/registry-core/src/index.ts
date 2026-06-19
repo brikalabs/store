@@ -33,6 +33,7 @@ export {
   type ManageResult,
   type VersionManager,
 } from "./manage";
+export type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
 export {
   BaseClaims,
   type Jwk,

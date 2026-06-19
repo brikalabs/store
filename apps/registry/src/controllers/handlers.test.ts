@@ -13,6 +13,7 @@ import { transaction } from "@brika/tx";
 import { eq } from "drizzle-orm";
 import { D1MetadataWriter } from "../adapters/d1-metadata-writer";
 import { D1OwnershipPolicy } from "../adapters/d1-ownership";
+import { D1ScopeMembers } from "../adapters/d1-scope-members";
 import { SchemaManifestValidator } from "../adapters/manifest-validator";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
 import { issueToken } from "../adapters/token";
@@ -145,7 +146,7 @@ describe("publish (auth + invariant + ownership gates)", () => {
         new D1MetadataWriter(db),
         new R2TarballWriter(fakeR2()),
         new SchemaManifestValidator(),
-        new D1OwnershipPolicy(db),
+        new D1OwnershipPolicy(db, new D1ScopeMembers(db)),
         { maxTarballBytes: 1 },
       ),
     };
