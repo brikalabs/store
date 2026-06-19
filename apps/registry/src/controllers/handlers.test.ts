@@ -80,8 +80,11 @@ function fakeR2(): R2Bucket {
   return bucket as unknown as R2Bucket;
 }
 
+// "operator" is the lone admin for the takedown/restore tests; passed explicitly
+// (provider-qualified) rather than via the env, so these tests do not depend on the
+// process-global `cloudflare:workers` mock surviving cross-file test ordering.
 function services(db: Db): Services {
-  return buildServices(db, fakeR2(), "http://localhost:8787");
+  return buildServices(db, fakeR2(), "http://localhost:8787", new Set(["github:operator"]));
 }
 
 function post(body: unknown, token?: string): Request {

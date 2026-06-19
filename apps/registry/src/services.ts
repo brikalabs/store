@@ -31,10 +31,22 @@ import { R2TarballWriter } from "./adapters/r2-tarball-writer";
  * declared inline on the routes that opt in (`rateLimit(...)` in the controllers,
  * backed by `adapters/cf-rate-limiter.ts`), so it never threads through this graph.
  */
-export function buildServices(db: Db, tarballs: R2Bucket, baseUrl: string) {
+export function buildServices(
+  db: Db,
+  tarballs: R2Bucket,
+  baseUrl: string,
+  admins: ReadonlySet<string> = new Set(),
+) {
   return {
     /** Drizzle client over the registry's D1 database (`reg_*` tables). */
     db,
+    /**
+     * Operator admins (provider-qualified `provider:owner` keys) for takedown/restore,
+     * resolved once here from `REGISTRY_ADMINS` rather than re-read from the ambient env
+     * per request. Defaults to empty (no admins) so a test or a missing config fails
+     * closed.
+     */
+    admins,
     /** npm-protocol read surface: packuments + tarball streams. */
     resolve: new ResolveService(new D1MetadataReader(db), new R2TarballReader(tarballs), {
       baseUrl,

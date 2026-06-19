@@ -9,7 +9,7 @@ import { packagesController } from "./controllers/packages";
 import { publishController } from "./controllers/publish";
 import { scopeController } from "./controllers/scope";
 import { statsController } from "./controllers/stats";
-import { vars } from "./env";
+import { registryAdmins, vars } from "./env";
 import { logRoutes, mount, type RegistryEnv } from "./http/router";
 import { buildServices } from "./services";
 
@@ -60,7 +60,8 @@ const controllers = [
 // request is logged as a structured JSON line (method, route, status, timing,
 // controller/handler, client IP).
 mount(app, controllers, {
-  context: (c) => buildServices(getDb(c.env.DB), c.env.TARBALLS, baseUrlFor(c.req.url)),
+  context: (c) =>
+    buildServices(getDb(c.env.DB), c.env.TARBALLS, baseUrlFor(c.req.url), registryAdmins()),
   logger: jsonLogger("registry request"),
 });
 

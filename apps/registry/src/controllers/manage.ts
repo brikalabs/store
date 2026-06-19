@@ -8,7 +8,6 @@ import { httpError, reply } from "@brika/router";
 import { type PackageParams, PKG, packageName } from "@brika/router/npm";
 import { z } from "zod";
 import { requireAdmin, requireWrite } from "../auth";
-import { registryAdmins } from "../env";
 import { controller, route } from "../http/router";
 import type { Services } from "../services";
 
@@ -102,9 +101,9 @@ async function runAdmin(
   run: (svc: ManagementService, name: string) => Promise<ManageResult>,
   detail: Record<string, unknown>,
 ): Promise<Response> {
-  const { db, management, audit } = ctx;
+  const { db, management, audit, admins } = ctx;
   const name = packageName(params);
-  const identity = await requireAdmin(req, db, registryAdmins());
+  const identity = await requireAdmin(req, db, admins);
 
   const result = await run(management, name);
 
