@@ -293,6 +293,65 @@ async function dispatch<Ctx>(
   return toResponse(await run(input));
 }
 
+/**
+ * Run one matched request: build the per-request context, validate body/query, run
+ * the route middleware + handler, translate an {@link HttpError} into a response, and
+ * log the outcome (status + timing) exactly once in the `finally`. Any other throw
+ * propagates to Hono. Extracted from `mount`'s loop so its branches are scored at base
+ * nesting, not the loop's. `ctrl`/`pattern` ride along on the route def for the log.
+ */
+async function handleRequest<Ctx, E extends Env>(
+  c: Context<E>,
+  route: {
+    readonly def: RouteDef<Ctx>;
+    readonly ctrl: Controller<Ctx, E>;
+    readonly pattern: string;
+  },
+  middleware: readonly Middleware<Ctx>[],
+  options: MountOptions<Ctx, E>,
+): Promise<Response> {
+  const { def, ctrl, pattern } = route;
+  const start = performance.now();
+  let status = 500;
+  let unexpected: unknown;
+  try {
+    const ctx = await options.context(c);
+    const body = await parseBody(c, def.bodySchema);
+    const query = parseQuery(c, def.querySchema);
+    // Route middleware runs first (a throw aborts via the catch below), then the handler.
+    const response = await dispatch(middleware, def.run, {
+      params: c.req.param(),
+      query,
+      body,
+      ctx,
+      req: c.req.raw,
+      waitUntil: (promise: Promise<unknown>) => c.executionCtx.waitUntil(promise),
+    });
+    status = response.status;
+    return response;
+  } catch (error) {
+    if (error instanceof HttpError) {
+      status = error.status;
+      return reply(error.body, error.status, error.headers);
+    }
+    unexpected = error;
+    throw error;
+  } finally {
+    options.logger?.({
+      method: def.method,
+      pattern,
+      path: new URL(c.req.url).pathname,
+      status,
+      durationMs: performance.now() - start,
+      controller: ctrl.name,
+      handler: def.handlerName,
+      source: def.source,
+      clientIp: clientIp(c.req.raw),
+      error: unexpected,
+    });
+  }
+}
+
 /** Strip `{regex}` constraints from a pattern for display: `:pkg{[^-]+}?` -> `:pkg?`. */
 export function simplifyPattern(pattern: string): string {
   return pattern.replace(/\{[^}]*\}/g, "");
@@ -388,51 +447,9 @@ export function createRouter<Ctx, E extends Env = Env>() {
         const pattern = `${ctrl.prefix}${def.pattern}`;
         const middleware = def.middleware ?? [];
         for (const honoPattern of expandOptional(pattern)) {
-          app.on(def.method, honoPattern, async (c) => {
-            const start = performance.now();
-            let status = 500;
-            let unexpected: unknown;
-            try {
-              const ctx = await options.context(c);
-              const body = await parseBody(c, def.bodySchema);
-              const query = parseQuery(c, def.querySchema);
-              const input = {
-                params: c.req.param(),
-                query,
-                body,
-                ctx,
-                req: c.req.raw,
-                waitUntil: (promise: Promise<unknown>) => c.executionCtx.waitUntil(promise),
-              };
-              // Route middleware runs first (a throw aborts via the catch below),
-              // then the handler.
-              const response = await dispatch(middleware, def.run, input);
-              status = response.status;
-              return response;
-            } catch (error) {
-              if (error instanceof HttpError) {
-                status = error.status;
-                return reply(error.body, error.status, error.headers);
-              }
-              unexpected = error;
-              throw error;
-            } finally {
-              if (options.logger !== undefined) {
-                options.logger({
-                  method: def.method,
-                  pattern,
-                  path: new URL(c.req.url).pathname,
-                  status,
-                  durationMs: performance.now() - start,
-                  controller: ctrl.name,
-                  handler: def.handlerName,
-                  source: def.source,
-                  clientIp: clientIp(c.req.raw),
-                  error: unexpected,
-                });
-              }
-            }
-          });
+          app.on(def.method, honoPattern, (c) =>
+            handleRequest(c, { def, ctrl, pattern }, middleware, options),
+          );
         }
       }
     }
