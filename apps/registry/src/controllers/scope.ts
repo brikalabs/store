@@ -17,26 +17,21 @@ import type { Services } from "../services";
  */
 
 /**
- * Reject invisible / bidi / control characters in the publisher label: it is the
- * name users are told to trust over the manifest `author`, so zero-width chars,
- * bidi overrides (RLO/LRO), and C0/C1 controls (which could spoof another
- * publisher) are not allowed. Visible-homoglyph detection is a deeper follow-up.
+ * Reject invisible / control / format / spoofing characters in the publisher label,
+ * which is the name users are told to trust over the manifest `author`. Unicode
+ * property classes catch the dangerous code points in one pass: `Cc` (C0/C1
+ * controls), `Cf` (zero-width, bidi marks/overrides/isolates, ALM, soft hyphen, word
+ * joiner, BOM, the invisible Tags block), `Cs` (lone surrogates), `Co` (private use);
+ * plus the blank "filler" letters (U+115F/1160/3164/FFA0) that render invisible but
+ * are not `Cf`. Visible-homoglyph (confusable script) detection is a deeper follow-up.
+ *
+ * The pattern is escape-only (every code point is a `\u`/`\p` escape, never a literal
+ * glyph), so the source stays pure ASCII and no invisible character can hide in it.
  */
+const UNSAFE_LABEL = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\u115f\u1160\u3164\uffa0]/u;
+
 function hasUnsafeLabelChars(value: string): boolean {
-  for (const char of value) {
-    const code = char.codePointAt(0) ?? 0;
-    if (
-      code <= 0x1f || // C0 controls
-      (code >= 0x7f && code <= 0x9f) || // DEL + C1 controls
-      (code >= 0x200b && code <= 0x200f) || // zero-width + LRM/RLM
-      (code >= 0x202a && code <= 0x202e) || // bidi embeddings/overrides
-      (code >= 0x2066 && code <= 0x2069) || // bidi isolates
-      code === 0xfeff // BOM / zero-width no-break space
-    ) {
-      return true;
-    }
-  }
-  return false;
+  return UNSAFE_LABEL.test(value);
 }
 
 const DisplayNameBody = z.object({

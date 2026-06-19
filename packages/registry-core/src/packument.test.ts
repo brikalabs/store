@@ -156,3 +156,37 @@ test("hides a taken-down version and surfaces its reason under takedowns", () =>
   expect(Object.keys(abbreviated.versions)).toEqual(["1.1.0"]);
   expect("takedowns" in abbreviated).toBe(false);
 });
+
+test("emits the verified publisher (id+name+verified, no provider) on the full packument only", () => {
+  const withPublisher: PackageRecord = {
+    name: "@brika/plugin-x",
+    distTags: { latest: "1.0.0" },
+    createdAt: "2026-01-01T00:00:00.000Z",
+    publisher: { provider: "github", id: "brikalabs", name: "Brika Labs" },
+    versions: [
+      {
+        name: "@brika/plugin-x",
+        version: "1.0.0",
+        manifest: {},
+        integrity: "sha512-aaa",
+        shasum: "abc",
+        size: 10,
+        publishedAt: "2026-01-01T00:00:00.000Z",
+        deprecated: null,
+        yanked: false,
+        takedownReason: null,
+      },
+    ],
+  };
+
+  const full = buildPackument(withPublisher, "https://registry.brika.dev");
+  expect(full.publisher).toEqual({ id: "brikalabs", name: "Brika Labs", verified: true });
+
+  // No publisher -> the field is omitted entirely (not null/undefined noise).
+  expect("publisher" in buildPackument(record, "https://registry.brika.dev")).toBe(false);
+
+  // The abbreviated install document never carries publisher (bun ignores it anyway).
+  expect(
+    "publisher" in buildAbbreviatedPackument(withPublisher, "https://registry.brika.dev"),
+  ).toBe(false);
+});
