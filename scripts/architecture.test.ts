@@ -17,24 +17,36 @@ describe("packages", () => {
   // Shared packages are Cloudflare-free - only apps wire the platform. (db is the driver
   // package and may import the ORM; no package imports Cloudflare.)
   test("are Cloudflare-free (only apps use Cloudflare)", () => {
-    rule().filesMatching("packages/*/src").mayNotImport(PLATFORM).assert();
+    rule()
+      .filesMatching("packages/*/src")
+      .mayNotImport(PLATFORM)
+      .assert();
   });
 
   // The domain core (any *-core package) speaks only ports.
   test("the domain core (*-core) depends on no database/ORM or HTTP framework", () => {
-    rule().filesMatching("packages/*-core/src").mayNotImport(ORM, HTTP).assert();
+    rule()
+      .filesMatching("packages/*-core/src")
+      .mayNotImport(ORM, HTTP)
+      .assert();
   });
 
   // The router is a platform-free HTTP layer (Hono is allowed; the database is not).
   test("the router is database-free", () => {
-    rule().filesMatching("packages/router/src").mayNotImport(ORM).assert();
+    rule()
+      .filesMatching("packages/router/src")
+      .mayNotImport(ORM)
+      .assert();
   });
 });
 
 describe("apps/registry", () => {
   // Controllers go through ports on `ctx`, never the database.
   test("controllers never import the database/ORM (use a port on ctx)", () => {
-    rule().filesMatching("apps/*/src/controllers").mayNotImport(ORM).assert();
+    rule()
+      .filesMatching("apps/*/src/controllers")
+      .mayNotImport(ORM)
+      .assert();
   });
 
   // The database is reached only through adapters + the composition root (services.ts /
