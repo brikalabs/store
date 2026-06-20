@@ -381,6 +381,15 @@ describe("operator takedown (ORG-007)", () => {
     expect(await service.takedown("ghost", "spam")).toMatchObject({ code: "not_found" });
     expect(await service.restore("ghost")).toMatchObject({ code: "not_found" });
   });
+
+  test("listForOperator returns every org with its takedown state (no membership filter)", async () => {
+    await service.claim(gh("alice"), "acme");
+    await service.claim(gh("bob"), "beta");
+    await service.takedown("beta", "squatting");
+    const all = await service.listForOperator();
+    expect(all.map((o) => o.slug).sort()).toEqual(["acme", "beta"]);
+    expect(all.find((o) => o.slug === "beta")?.takedown).toBe("squatting");
+  });
 });
 
 describe("domains (ORG-010, badge-only, stateless HMAC challenge)", () => {
