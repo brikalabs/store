@@ -76,14 +76,21 @@ For local development these live in `apps/web/.dev.vars` (gitignored).
 ## 5. Deploy
 
 ```sh
-bun run deploy              # db:migrate (REMOTE) && vite build && wrangler deploy
+bun run build && bun run deploy   # store: vite build, then db:migrate (REMOTE) && wrangler deploy
+bun run deploy                    # registry: db:migrate (REMOTE) && wrangler deploy (wrangler bundles itself)
 ```
 
 `deploy` applies any pending D1 migrations BEFORE shipping the code, so the schema can
 never lag the worker (the cause of the earlier drift outage). It's idempotent - already-
 applied migrations are tracked in `d1_migrations` and skipped. If the migration step fails,
-the deploy aborts and the old (working) code keeps serving. Configure Cloudflare Workers
-Builds to run `bun run deploy` (not a bare `wrangler deploy`) so auto-deploys migrate too.
+the deploy aborts and the old (working) code keeps serving.
+
+`deploy` is migrate + `wrangler deploy` only - it does not build. On Cloudflare Workers
+Builds the **Build command** (`bun run build`) produces the bundle and the **Deploy command**
+(`bun run deploy`) ships it in the same workspace, so there's no double build. For the store
+worker locally, run `bun run build` first (the registry's `wrangler deploy` bundles itself, so
+it needs no separate build). Configure each worker's Deploy command as `bun run deploy` (not a
+bare `wrangler deploy`) so auto-deploys migrate too.
 
 Attach the custom domain `store.brika.dev` to this Worker (declared as a route in
 `apps/web/wrangler.jsonc`). The registry is a separate Worker (below).
