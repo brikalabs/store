@@ -16,14 +16,14 @@ test("an org admin adds and removes a trusted publisher for a scope", async ({ b
   const card = page.locator("section", { hasText: "Trusted publishers" });
   await expect(card.getByText("@brika").first()).toBeVisible();
 
-  await card.getByLabel("GitHub repository").fill("brikalabs/plugin-x");
+  await card.getByLabel("Repository").fill("brikalabs/plugin-x");
   await card.getByLabel("Workflow filename").fill("publish.yml");
   await card.getByRole("button", { name: "Add" }).click();
 
   await expect(card.getByText("brikalabs/plugin-x")).toBeVisible();
   await expect(card.getByText("publish.yml")).toBeVisible();
 
-  await card.getByRole("button", { name: /Remove brikalabs\/plugin-x/ }).click();
+  await card.getByRole("button", { name: /Remove .*brikalabs\/plugin-x/ }).click();
   await expect(card.getByText("brikalabs/plugin-x")).toHaveCount(0);
 
   await context.close();

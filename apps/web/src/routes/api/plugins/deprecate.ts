@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonBadRequest, jsonError, jsonPrivate, manageStatus } from "@/lib/http";
-import { authed } from "@/server/console-api";
+import { jsonPrivate, manageStatus } from "@/lib/http";
+import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const Body = z.object({
   name: z.string().min(1),
@@ -14,23 +14,24 @@ const Body = z.object({
 export const Route = createFileRoute("/api/plugins/deprecate")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        const a = await authed(request);
-        if ("response" in a) return a.response;
-        const parsed = Body.safeParse(await request.json());
-        if (!parsed.success) return jsonBadRequest("Invalid deprecate request");
-        const { name, version, message } = parsed.data;
-        const result = await a.svc.management.deprecate(a.identity, name, version, message);
-        if (!result.ok) return jsonError(manageStatus(result.code), result.message);
-        await a.svc.audit.record({
-          action: "deprecate",
-          packageName: name,
-          version,
-          actor: a.identity,
-          detail: { message },
-        });
-        return jsonPrivate({ ok: true, name, version, deprecated: message });
-      },
+      POST: ({ request }) =>
+        runJson(async () => {
+          const a = await authed(request);
+          const parsed = parseBody(Body, await request.json(), "Invalid deprecate request");
+          const { name, version, message } = parsed;
+          unwrap(
+            await a.svc.management.deprecate(a.identity, name, version, message),
+            manageStatus,
+          );
+          await a.svc.audit.record({
+            action: "deprecate",
+            packageName: name,
+            version,
+            actor: a.identity,
+            detail: { message },
+          });
+          return jsonPrivate({ ok: true, name, version, deprecated: message });
+        }),
     },
   },
 });

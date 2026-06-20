@@ -41,11 +41,19 @@ export type { MemberRef, OrgMember, OrgMembers, OrgRole } from "./membership";
 export { isCanonicalName, isCanonicalOrgSlug, isCanonicalScope, scopeOf } from "./names";
 export {
   BaseClaims,
+  GITHUB_ISSUER,
+  GITLAB_ISSUER,
+  GitlabClaims,
+  githubIdentity,
+  gitlabIdentity,
   type Jwk,
   type JwksProvider,
   OidcClaims,
+  type OidcIdentity,
+  peekIssuer,
   type VerifyOidcOptions,
   verifyGithubOidc,
+  verifyGitlabOidc,
   verifyOidc,
 } from "./oidc";
 export { isOperator, operatorKey, parseOperatorAdmins } from "./operators";

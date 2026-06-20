@@ -1,6 +1,7 @@
 import { isOperator, type PublishIdentity } from "@brika/registry-core";
+import type { z } from "zod";
 import { getCurrentUser, type SessionUser } from "@/lib/auth/auth";
-import { jsonForbidden, jsonUnauthorized } from "@/lib/http";
+import { jsonError } from "@/lib/http";
 import { operatorAdmins } from "@/server/env";
 import { sessionIdentity } from "@/server/registry-identity";
 import { type RegistryServices, registryServices } from "@/server/registry-services";
@@ -14,33 +15,75 @@ export interface ConsoleContext {
 }
 
 /**
- * Resolve the session and build the registry service graph for a console API handler, or
- * return a 401 when there is no session. Used by every `api.*` console route so the auth +
- * composition boilerplate lives in one place: `const a = await authed(request); if ("response"
- * in a) return a.response;`. SERVER-ONLY (touches the D1 binding).
+ * A failure a console handler can throw to short-circuit to a JSON error response. Lets the
+ * handler body read top-to-bottom (auth, parse, call, respond) with no `if`-guard after each
+ * step: the guards live in the helpers below, which throw this, and {@link jsonHandler}
+ * turns it into the response. Any other throw is a real bug and surfaces as a 500.
  */
-export async function authed(
-  request: Request,
-): Promise<ConsoleContext | { readonly response: Response }> {
+export class JsonError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * Run a console handler body, turning a thrown {@link JsonError} into its JSON error response.
+ * Each `api.*` handler wraps its body in this - `METHOD: ({ request, params }) => runJson(async
+ * () => { ... })` - so the body can use the throwing helpers ({@link authed},
+ * {@link operatorAuthed}, {@link unwrap}, {@link parseBody}) and read top-to-bottom with no
+ * guard `if`s. The body is wrapped (not the handler) so the route keeps TanStack's typed
+ * `params`. Any non-{@link JsonError} throw is a real bug and surfaces as a 500.
+ */
+export function runJson(body: () => Promise<Response>): Promise<Response> {
+  return body().catch((error: unknown) => {
+    if (error instanceof JsonError) return jsonError(error.status, error.message);
+    throw error;
+  });
+}
+
+/**
+ * Resolve the session + the registry service graph, or throw {@link JsonError} 401. SERVER-
+ * ONLY (touches the D1 binding). Used by every console route; pair with {@link jsonHandler}.
+ */
+export async function authed(request: Request): Promise<ConsoleContext> {
   const { db } = serverContext();
   const user = await getCurrentUser(request, db);
-  if (user === null) return { response: jsonUnauthorized() };
+  if (user === null) throw new JsonError(401, "Sign in required");
   return { user, identity: sessionIdentity(user), svc: registryServices() };
 }
 
 /**
- * Like {@link authed}, but additionally requires the session to be a registry operator
- * (the `REGISTRY_ADMINS` allowlist) - the gate for the `api/operator/*` endpoints. Returns
- * 401 for a signed-out caller and 403 for a signed-in non-operator. Mirrors the registry's
- * `requireAdmin`, so the console and the registry agree on who may take down content.
+ * Like {@link authed}, but also requires the session to be a registry operator (the
+ * `REGISTRY_ADMINS` allowlist) - the gate for `api/operator/*`. Throws 401 when signed out,
+ * 403 when signed in but not an operator. Mirrors the registry's `requireAdmin`.
  */
-export async function operatorAuthed(
-  request: Request,
-): Promise<ConsoleContext | { readonly response: Response }> {
+export async function operatorAuthed(request: Request): Promise<ConsoleContext> {
   const a = await authed(request);
-  if ("response" in a) return a;
   if (!isOperator(operatorAdmins(), a.identity)) {
-    return { response: jsonForbidden("Not a registry operator") };
+    throw new JsonError(403, "Not a registry operator");
   }
   return a;
+}
+
+/**
+ * Unwrap a domain result, or throw {@link JsonError} with the code mapped to a status
+ * (`orgStatus`, `manageStatus`). Collapses the `if (!result.ok) return jsonError(...)` guard
+ * every handler otherwise repeats into `const { x } = unwrap(await svc.foo(), orgStatus)`.
+ */
+export function unwrap<R extends { readonly ok: true }, C extends string>(
+  result: R | { readonly ok: false; readonly code: C; readonly message: string },
+  toStatus: (code: C) => number,
+): R {
+  if (!result.ok) throw new JsonError(toStatus(result.code), result.message);
+  return result;
+}
+
+/** Parse a request body against `schema`, or throw {@link JsonError} 400 with `message`. */
+export function parseBody<T>(schema: z.ZodType<T>, value: unknown, message: string): T {
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) throw new JsonError(400, message);
+  return parsed.data;
 }

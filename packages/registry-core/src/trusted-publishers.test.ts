@@ -4,12 +4,17 @@ import { type TrustedPublisher, trustedPublisherMatches } from "./trusted-publis
 
 const binding: TrustedPublisher = {
   scope: "@brika",
+  provider: "github",
   repository: "brikalabs/plugin-weather",
   workflow: "publish.yml",
 };
 
-const oidc = (repository: string | null, workflowRef?: string): PublishIdentity => ({
-  provider: "github",
+const oidc = (
+  repository: string | null,
+  workflowRef?: string,
+  provider = "github",
+): PublishIdentity => ({
+  provider,
   owner: repository?.split("/")[0] ?? "x",
   repository,
   provenance: workflowRef === undefined ? undefined : { repository: repository ?? "", workflowRef },
@@ -25,6 +30,12 @@ describe("trustedPublisherMatches", () => {
   test("does not match a different repository", () => {
     const ref = "brikalabs/other/.github/workflows/publish.yml@refs/heads/main";
     expect(trustedPublisherMatches(binding, oidc("brikalabs/other", ref))).toBe(false);
+  });
+
+  test("does not match across providers (same repo on gitlab)", () => {
+    expect(trustedPublisherMatches(binding, oidc("brikalabs/plugin-weather", REF, "gitlab"))).toBe(
+      false,
+    );
   });
 
   test("does not match a different workflow filename", () => {

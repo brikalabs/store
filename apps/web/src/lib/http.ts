@@ -1,5 +1,5 @@
 /** JSON helpers for the `/v1` contract handlers. */
-import type { OrgErrorCode } from "@brika/registry-core";
+import type { ManageErrorCode, OrgErrorCode } from "@brika/registry-core";
 
 export function jsonOk(data: unknown): Response {
   return Response.json(data, { headers: { "cache-control": "public, max-age=300" } });
@@ -35,15 +35,23 @@ export function jsonError(status: number, message: string): Response {
   return Response.json({ error: message }, { status });
 }
 
-/** Map a registry-core `OrgResult` error code to its HTTP status. */
+/**
+ * The one canonical mapping from a registry-core domain error code to its real HTTP status.
+ * Every domain code IS an HTTP-semantic name, so a single exhaustive table covers them all
+ * (`satisfies Record<…>` makes a new, unmapped code a compile error). `orgStatus` /
+ * `manageStatus` are thin typed views over it for their respective result codes.
+ */
+const HTTP_STATUS = {
+  forbidden: 403,
+  not_found: 404,
+  conflict: 409,
+  too_many: 429,
+} satisfies Record<OrgErrorCode | ManageErrorCode, number>;
+
 export function orgStatus(code: OrgErrorCode): number {
-  if (code === "not_found") return 404;
-  if (code === "conflict") return 409;
-  if (code === "too_many") return 429;
-  return 403;
+  return HTTP_STATUS[code];
 }
 
-/** Map a registry-core `ManageResult` error code to its HTTP status. */
-export function manageStatus(code: "forbidden" | "not_found"): number {
-  return code === "not_found" ? 404 : 403;
+export function manageStatus(code: ManageErrorCode): number {
+  return HTTP_STATUS[code];
 }

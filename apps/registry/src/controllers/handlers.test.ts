@@ -474,7 +474,7 @@ describe("trusted publishers (PUB-016)", () => {
     return token;
   }
   const params = { org: "team", scope: "@team" };
-  const binding = { repository: "acme/plugin-x", workflow: "publish.yml" };
+  const binding = { provider: "github", repository: "acme/plugin-x", workflow: "publish.yml" };
 
   test("an admin adds, lists, and removes a binding", async () => {
     const token = await seedScope("alice");

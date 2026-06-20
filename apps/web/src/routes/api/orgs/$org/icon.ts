@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonBadRequest, jsonError, jsonPrivate, orgStatus } from "@/lib/http";
-import { authed } from "@/server/console-api";
+import { jsonBadRequest, jsonPrivate, orgStatus } from "@/lib/http";
+import { authed, runJson, unwrap } from "@/server/console-api";
 import { registryServices } from "@/server/registry-services";
 import { serverContext } from "@/server/server-context";
 
@@ -26,59 +26,58 @@ const CONTENT_TYPE_BY_EXT: Record<string, string> = {
 export const Route = createFileRoute("/api/orgs/$org/icon")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
-        const iconKey = await registryServices().orgs.iconKeyOf(params.org);
-        if (iconKey === null) return new Response("Not found", { status: 404 });
-        const stored = await serverContext().assets.get(iconKey);
-        if (stored === null) return new Response("Not found", { status: 404 });
-        const ext = iconKey.split(".").pop() ?? "";
-        // Copy into a fresh ArrayBuffer-backed view so the body type is concrete.
-        const body = new Uint8Array(stored.byteLength);
-        body.set(stored);
-        return new Response(body, {
-          headers: {
-            "content-type": CONTENT_TYPE_BY_EXT[ext] ?? "application/octet-stream",
-            "cache-control": "public, max-age=300",
-          },
-        });
-      },
-      POST: async ({ request, params }) => {
-        const a = await authed(request);
-        if ("response" in a) return a.response;
-        const type = request.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
-        const ext = ICON_TYPES[type];
-        if (ext === undefined) return jsonBadRequest("Logo must be a PNG, JPEG, or WebP image");
-        const bytes = new Uint8Array(await request.arrayBuffer());
-        if (bytes.byteLength === 0) return jsonBadRequest("Empty upload");
-        if (bytes.byteLength > MAX_ICON_BYTES) return jsonBadRequest("Logo exceeds 512 KiB");
+      GET: ({ params }) =>
+        runJson(async () => {
+          const iconKey = await registryServices().orgs.iconKeyOf(params.org);
+          if (iconKey === null) return new Response("Not found", { status: 404 });
+          const stored = await serverContext().assets.get(iconKey);
+          if (stored === null) return new Response("Not found", { status: 404 });
+          const ext = iconKey.split(".").pop() ?? "";
+          // Copy into a fresh ArrayBuffer-backed view so the body type is concrete.
+          const body = new Uint8Array(stored.byteLength);
+          body.set(stored);
+          return new Response(body, {
+            headers: {
+              "content-type": CONTENT_TYPE_BY_EXT[ext] ?? "application/octet-stream",
+              "cache-control": "public, max-age=300",
+            },
+          });
+        }),
+      POST: ({ request, params }) =>
+        runJson(async () => {
+          const a = await authed(request);
+          const type = request.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
+          const ext = ICON_TYPES[type];
+          if (ext === undefined) return jsonBadRequest("Logo must be a PNG, JPEG, or WebP image");
+          const bytes = new Uint8Array(await request.arrayBuffer());
+          if (bytes.byteLength === 0) return jsonBadRequest("Empty upload");
+          if (bytes.byteLength > MAX_ICON_BYTES) return jsonBadRequest("Logo exceeds 512 KiB");
 
-        const key = `org-icons/${params.org}.${ext}`;
-        await serverContext().assets.put(key, bytes, type);
-        const result = await a.svc.orgs.setIcon(a.identity, params.org, key);
-        if (!result.ok) return jsonError(orgStatus(result.code), result.message);
-        await a.svc.audit.record({
-          action: "org_icon_set",
-          packageName: params.org,
-          version: null,
-          actor: a.identity,
-          detail: { key },
-        });
-        return jsonPrivate({ ok: true, org: params.org });
-      },
-      DELETE: async ({ request, params }) => {
-        const a = await authed(request);
-        if ("response" in a) return a.response;
-        const result = await a.svc.orgs.setIcon(a.identity, params.org, null);
-        if (!result.ok) return jsonError(orgStatus(result.code), result.message);
-        await a.svc.audit.record({
-          action: "org_icon_set",
-          packageName: params.org,
-          version: null,
-          actor: a.identity,
-          detail: { key: null },
-        });
-        return jsonPrivate({ ok: true, org: params.org });
-      },
+          const key = `org-icons/${params.org}.${ext}`;
+          await serverContext().assets.put(key, bytes, type);
+          unwrap(await a.svc.orgs.setIcon(a.identity, params.org, key), orgStatus);
+          await a.svc.audit.record({
+            action: "org_icon_set",
+            packageName: params.org,
+            version: null,
+            actor: a.identity,
+            detail: { key },
+          });
+          return jsonPrivate({ ok: true, org: params.org });
+        }),
+      DELETE: ({ request, params }) =>
+        runJson(async () => {
+          const a = await authed(request);
+          unwrap(await a.svc.orgs.setIcon(a.identity, params.org, null), orgStatus);
+          await a.svc.audit.record({
+            action: "org_icon_set",
+            packageName: params.org,
+            version: null,
+            actor: a.identity,
+            detail: { key: null },
+          });
+          return jsonPrivate({ ok: true, org: params.org });
+        }),
     },
   },
 });

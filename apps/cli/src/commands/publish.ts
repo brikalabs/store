@@ -29,10 +29,16 @@ export const publish = defineCommand({
     }
 
     const { token, registry } = await loadConfig();
-    // Auth precedence: a configured/env BRIKA_TOKEN (human publish), else a tokenless GitHub
-    // OIDC token minted in CI (trusted publishing - the registry authorizes it against a
-    // trusted-publisher binding for the scope; PUB-016).
-    let auth = token;
+    // Auth precedence (PUB-016 trusted publishing):
+    //   1. BRIKA_TOKEN - a human/CI token (works on any system).
+    //   2. BRIKA_OIDC_TOKEN - a CI OIDC token the workflow already minted (GitLab `id_tokens`,
+    //      or any provider): the portable tokenless path.
+    //   3. GitHub Actions - mint the OIDC token on the fly from the runtime.
+    // The registry verifies an OIDC token (GitHub/GitLab) against a trusted-publisher binding.
+    let auth = token ?? process.env.BRIKA_OIDC_TOKEN;
+    if (auth !== undefined && token === undefined) {
+      p.log.info("Authenticating with CI OIDC (trusted publishing)");
+    }
     if (auth === undefined) {
       const oidc = await requestGithubOidcToken(REGISTRY_OIDC_AUDIENCE);
       if (oidc !== null) {
@@ -42,7 +48,7 @@ export const publish = defineCommand({
     }
     if (auth === undefined) {
       throw new CliError(
-        "not authenticated - run `brika login` (or set BRIKA_TOKEN), or publish from a GitHub Actions workflow with `permissions: id-token: write`",
+        "not authenticated - run `brika login` (or set BRIKA_TOKEN), set BRIKA_OIDC_TOKEN from your CI's OIDC id-token, or publish from GitHub Actions with `permissions: id-token: write`",
       );
     }
 
