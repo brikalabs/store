@@ -1,86 +1,124 @@
 # Brika specifications
 
-Production-ready, code-addressable specifications for the Brika platform (store +
-registry + console). Each feature has a stable **code**, a **status**, and
-**Gherkin acceptance criteria** that map one-to-one onto automated tests, so you
-can answer three questions fast:
+Code-addressable, docs-as-code specifications for the Brika platform. Each feature
+is **one markdown file** whose name is its code, carrying machine-readable YAML
+frontmatter and Gherkin acceptance criteria. Three questions, answered fast:
 
-1. **Where is the spec for X?** Grep the code, e.g. `rg "SCOPE-003" docs/specs`.
-2. **Is it built?** Read the status legend below; the [INDEX](./INDEX.md) is the
-   full matrix.
-3. **Is it tested / does it still pass?** Run `bun run spec:coverage` , it
-   cross-links every acceptance-criterion code to the tests that cite it.
+1. **Where is the spec for X?** The code is the filename:
+   `rg --files docs/specs | rg SCOPE-003`, or open `docs/specs/<group>/<CODE>-*.md`.
+2. **Is it built?** The frontmatter `status`. The generated [INDEX](./INDEX.md) is
+   the whole matrix; `bun run spec:index` regenerates it.
+3. **Is it tested / still passing?** `bun run spec:coverage` cross-links every
+   acceptance-criterion code to the tests that cite it.
+
+Architecture decisions live in the [ADR log](../adr/README.md), not here.
+
+## Folder layout
+
+```
+docs/specs/
+  README.md            # this handbook
+  INDEX.md             # GENERATED registry (do not hand-edit)
+  _template.md         # copy this to add a spec
+  auth/                # AUTH-*
+  store/               # STORE-*, SOCIAL-*
+  registry/            # REG-*, PUB-*, SCOPE-*, MANAGE-*, HARDEN-*
+  console/             # CONSOLE-*
+  org/                 # ORG-*
+```
+
+One file per spec: `docs/specs/<group>/<CODE>-<kebab-title>.md`.
 
 ## The code scheme
 
-Every spec and every acceptance criterion has a stable identifier. Codes are
-**append-only**: never renumber, never reuse. Retire a spec by setting its status
-to `Removed`, do not delete the code.
+Stable, **append-only** identifiers. Never renumber, never reuse. Retire a spec by
+setting `status: gone`, do not delete its file's code.
 
 | Kind | Format | Example |
 | --- | --- | --- |
 | Spec (feature) | `<AREA>-<NNN>` | `SCOPE-003` |
 | Acceptance criterion | `<AREA>-<NNN>-AC<n>` | `SCOPE-003-AC2` |
 
-### Area prefixes
+Area prefixes: `AUTH`, `STORE`, `SOCIAL`, `REG`, `PUB`, `SCOPE`, `MANAGE`,
+`HARDEN`, `CONSOLE`, `ORG`.
 
-| Prefix | Domain | File |
-| --- | --- | --- |
-| `AUTH` | Sign-in, sessions, the console auth guard, device approval | [auth.md](./auth.md) |
-| `STORE` | Storefront: discover, browse, detail, profiles, search, media/localization | [store-storefront.md](./store-storefront.md) |
-| `SOCIAL` | Reviews, comments, votes/grading | [store-social.md](./store-social.md) |
-| `REG` | npm-compatible resolve: packument, tarball, catalog, download stats | [registry-resolve.md](./registry-resolve.md) |
-| `PUB` | Publish pipeline: OIDC/token, gates, immutability, integrity, scan | [registry-publish.md](./registry-publish.md) |
-| `SCOPE` | Scope claim, membership + roles, verified display name, ownership (current implementation) | [registry-scopes.md](./registry-scopes.md) |
-| `ORG` | Organisations (planned rename of the scope entity), public org page, anti-squatting | [org.md](./org.md) |
-| `MANAGE` | Deprecate, yank, operator takedown/restore, publish tokens, device flow | [registry-management.md](./registry-management.md) |
-| `HARDEN` | Rate limits, CORS, path-traversal guard, audit log, backups | [registry-hardening.md](./registry-hardening.md) |
-| `CONSOLE` | Developer dashboard UI (overview, plugins, scopes, members, profile, tokens) | [console.md](./console.md) |
+## Spec file format
 
-## Status legend
+YAML frontmatter, then `## Description` and `## Acceptance criteria`:
 
-| Symbol | Status | Meaning |
-| --- | --- | --- |
-| `[DONE]` | Done | Built and verified (has passing tests, or manually verified where noted). |
-| `[WIP]` | In progress | Partially built; see per-criterion notes. |
-| `[TODO]` | Planned | Specified, not yet built. |
-| `[HOLD]` | Blocked | Specified; blocked on an external dependency (e.g. operator credentials). |
-| `[GONE]` | Removed | Was built; intentionally removed. Code retained for history. |
+```markdown
+---
+id: SCOPE-003
+title: "Claim a scope owned by another (conflict)"
+status: done            # done | wip | todo | hold | gone
+area: scope             # the AREA prefix, lowercased
+group: registry         # the folder it lives in
+test_mode: unit         # unit | e2e | manual | none
+traceability:
+  code:
+    - apps/registry/src/controllers/scope.ts
+  tests:
+    - apps/registry/src/controllers/handlers.test.ts
+---
 
-## Anatomy of a spec
+## Description
 
-See [`_template.md`](./_template.md). Each spec carries a one-line front matter
-(status, area, owner, test mode, traceability) and a set of Gherkin acceptance
-criteria, each with its own `-AC<n>` code.
+A scope already owned by another identity cannot be claimed.
+
+## Acceptance criteria
+
+### SCOPE-003-AC1 , claiming another's scope is refused
+` ` `gherkin
+Given "@acme" is owned by another user
+When I claim "@acme"
+Then I get a 409 conflict
+` ` `
+```
+
+Write criteria black-box (observable: HTTP status, UI state, stored data), atomic
+(one criterion = one test), and ASCII (the repo bans the em dash; use a comma,
+colon, or parentheses).
+
+## Status values
+
+| `status` | Meaning |
+| --- | --- |
+| `done` | Built and verified (tests, or manually verified where noted). |
+| `wip` | Partially built. |
+| `todo` | Specified, not built. |
+| `hold` | Specified; blocked on an external dependency (e.g. operator credentials). |
+| `gone` | Was built; intentionally removed. File + code retained for history. |
+
+## Adding or changing a spec
+
+1. `cp docs/specs/_template.md docs/specs/<group>/<CODE>-<slug>.md`.
+2. Fill the frontmatter and the Gherkin criteria.
+3. `bun run spec:index` to regenerate `INDEX.md`.
+4. When you write the test, put the AC code in its title (see below).
 
 ## How acceptance criteria become tests
 
-A test "covers" a criterion by **citing its code in the test title**. Example:
+A test "covers" a criterion by citing its code in the title:
 
 ```ts
-test("SCOPE-003-AC2: claiming a scope owned by another user returns 409", () => {
+test("SCOPE-003-AC1: claiming a scope owned by another returns 409", () => {
   // ...
 });
 ```
 
-`bun run spec:coverage` parses every `-AC<n>` code out of `docs/specs/*.md`,
-greps the test suites (`**/*.test.ts`, `apps/web/e2e/**/*.spec.ts`) for those
-codes, and prints a matrix plus two gap lists:
+- `bun run spec:coverage` , prints a coverage matrix + two gap lists (uncovered
+  criteria; status drift, e.g. a `done` spec with no covering test).
+- `bun run spec:coverage --strict` , non-zero exit on drift, for CI.
+- `bun run spec:check` , regenerate the index, then report coverage.
 
-- **Uncovered criteria**: an `AC` with no test citing it.
-- **Status drift**: a spec marked `[DONE]` whose criteria are not all covered, or
-  a `[TODO]` spec that unexpectedly has covering tests.
+The declared `status` and the verified coverage are intentionally separate: specs
+are first authored from the implemented code, then the test suites are annotated
+with their AC codes, so coverage climbs over time without the docs rotting.
 
-This is the single source of truth for "what is built and still working" , the
-matrix is generated, not hand-maintained, so it cannot rot.
+## Tooling
 
-## Authoring rules
-
-- Codes are append-only and immutable (see above).
-- One criterion = one independently testable behaviour. Keep them atomic so a
-  single test maps to a single `AC`.
-- Write criteria black-box (observable behaviour: HTTP status, UI state, stored
-  data), never implementation detail, so a test can assert them without coupling.
-- Fill **Traceability** with the primary code path(s) and the test file, so a
-  reader jumps from spec to code to test in one hop.
-- Keep prose ASCII (the repo bans the em dash; use a comma, colon, or parentheses).
+| Script | What it does |
+| --- | --- |
+| `scripts/spec-lib.ts` | Shared loader (frontmatter + AC codes). |
+| `scripts/gen-spec-index.ts` (`spec:index`) | Regenerates `INDEX.md`. |
+| `scripts/spec-coverage.ts` (`spec:coverage`) | Test-linkage matrix + drift. |
