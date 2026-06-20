@@ -19,6 +19,10 @@ export const vars = defineEnv(
     // Non-secret: defaults to the production callback. Override in .dev.vars for
     // local dev (http://localhost:3000/auth/github/callback).
     GITHUB_REDIRECT_URI: z.url().min(1).default("https://store.brika.dev/auth/github/callback"),
+    // Stateless org domain-verification secret (ORG-010): HMAC(secret, org:domain). MUST
+    // match the registry worker's DOMAIN_VERIFY_SECRET and stay stable. Security comes from
+    // DNS control, not secrecy, so a dev default is fine; set a shared value in production.
+    DOMAIN_VERIFY_SECRET: z.string().min(1).default("brika-dev-domain-verify-secret"),
   },
   () => env,
 );

@@ -458,6 +458,48 @@ export async function getRegistryPluginPage(
   };
 }
 
+const OrgLinkWire = z.object({ label: z.string(), url: z.string() });
+const OrgInfo = z.object({
+  ok: z.literal(true),
+  slug: z.string(),
+  displayName: z.string().nullable(),
+  description: z.string().nullable().default(null),
+  links: z.array(OrgLinkWire).default([]),
+  iconKey: z.string().nullable().default(null),
+  scopes: z.array(z.string()),
+  verifiedDomains: z.array(z.string()).default([]),
+});
+
+/** An organisation's public info: slug, display name, profile, owned scopes, verified domains. */
+export interface RegistryOrg {
+  readonly slug: string;
+  readonly displayName: string | null;
+  readonly description: string | null;
+  readonly links: { label: string; url: string }[];
+  readonly hasIcon: boolean;
+  readonly scopes: string[];
+  readonly verifiedDomains: string[];
+}
+
+/** Fetch a public org's info from the registry, or null when it does not exist. */
+export async function getRegistryOrg(slug: string): Promise<RegistryOrg | null> {
+  const res = await fetch(`${REGISTRY_ORIGIN}${npmLink("/-/org/:org", { org: slug })}`, {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) return null;
+  const parsed = OrgInfo.safeParse(await res.json());
+  if (!parsed.success) return null;
+  return {
+    slug: parsed.data.slug,
+    displayName: parsed.data.displayName,
+    description: parsed.data.description,
+    links: parsed.data.links,
+    hasIcon: parsed.data.iconKey !== null,
+    scopes: parsed.data.scopes,
+    verifiedDomains: parsed.data.verifiedDomains,
+  };
+}
+
 /** Enumerate published `@brika/*` plugins via the registry catalog endpoint. */
 export async function listRegistryPlugins(
   query: string | undefined,

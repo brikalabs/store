@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { manageStatus, scopeStatus } from "./http";
+import { manageStatus, orgStatus } from "./http";
 
-describe("scopeStatus", () => {
-  test("maps ScopeResult codes to HTTP statuses", () => {
-    expect(scopeStatus("not_found")).toBe(404);
-    expect(scopeStatus("conflict")).toBe(409);
-    expect(scopeStatus("forbidden")).toBe(403);
+describe("orgStatus", () => {
+  test("maps OrgResult codes to HTTP statuses", () => {
+    expect(orgStatus("not_found")).toBe(404);
+    expect(orgStatus("conflict")).toBe(409);
+    expect(orgStatus("too_many")).toBe(429);
+    expect(orgStatus("forbidden")).toBe(403);
   });
 });
 

@@ -1,7 +1,7 @@
 ---
 id: SCOPE-012
 title: "List the scopes I belong to (console read)"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 The console lists the scopes the signed-in user is a member of, each with their role and
 the scope's verified display name, sorted by scope name. This is a plain read model, not an

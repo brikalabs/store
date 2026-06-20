@@ -4,6 +4,7 @@ import {
   type PluginSummary,
   PluginVersion,
 } from "@brika/registry-contract";
+import { scopeOf } from "@brika/registry-core";
 import {
   docLocales,
   fetchCdnText,
@@ -16,10 +17,12 @@ import {
 } from "./npm";
 import {
   compareVersionsDesc,
+  getRegistryOrg,
   getRegistryPackument,
   getRegistryPluginPage,
   isRegistryName,
   listRegistryPlugins,
+  type RegistryOrg,
   versionsFromPackument as registryVersionsFromPackument,
 } from "./registry-source";
 
@@ -163,6 +166,30 @@ export async function getDeveloperPage(
     DeveloperProfile.parse({ id, displayName: id, pluginCount: plugins.length, verified: false });
   const profile = { ...base, pluginCount: plugins.length };
   return { profile, plugins };
+}
+
+/**
+ * The public organisation page (ORG-003): the org's verified display name + the plugins it
+ * publishes, aggregated across every scope it owns. Returns null for an unknown org (the
+ * route 404s). The catalog already excludes yanked/taken-down versions, so a plugin with no
+ * live version drops out of the listing (ORG-003-AC2).
+ */
+export async function getOrgPage(
+  slug: string,
+): Promise<{ org: RegistryOrg; plugins: PluginSummary[] } | null> {
+  // The org lookup and the catalog scan are independent, so overlap their round-trips; the
+  // scope filter below only needs the org's scopes once both have resolved.
+  const [org, catalog] = await Promise.all([
+    getRegistryOrg(slug),
+    listRegistryPlugins(undefined, 200, 0),
+  ]);
+  if (org === null) return null;
+  const owned = new Set(org.scopes);
+  const mine = catalog.plugins.filter((plugin) => {
+    const scope = scopeOf(plugin.name);
+    return scope !== null && owned.has(scope);
+  });
+  return { org, plugins: mine };
 }
 
 export async function getPluginVersions(name: string): Promise<PluginVersion[] | null> {

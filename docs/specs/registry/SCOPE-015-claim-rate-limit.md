@@ -1,7 +1,7 @@
 ---
 id: SCOPE-015
 title: "Claim rate limit (per principal)"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 `PUT /-/scope/:scope` (claim) is rate-limited per authenticated principal via the
 shared `@brika/router` `rateLimit` middleware and the `CLAIM_LIMITER` Cloudflare

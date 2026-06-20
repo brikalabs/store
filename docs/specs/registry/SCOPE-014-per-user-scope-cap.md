@@ -1,7 +1,7 @@
 ---
 id: SCOPE-014
 title: "Per-user scope cap (anti-squatting)"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -15,6 +15,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 An identity may own at most `REGISTRY_LIMITS.maxScopesPerUser` scopes. The cap is
 enforced in `ScopeService.claim` (via `ScopeStore.countOwnedBy`) so a script cannot

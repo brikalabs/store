@@ -5,6 +5,9 @@
   "compatibility_date": "2026-06-12",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Daily re-verification of org domains (ORG-010): the `scheduled` handler in src/index.ts
+  // re-checks every verified domain's challenge TXT and revokes any that no longer resolve.
+  "triggers": { "crons": ["0 3 * * *"] },
   // registry.brika.dev is the only public origin for the npm protocol.
   "workers_dev": false,
   "preview_urls": false,

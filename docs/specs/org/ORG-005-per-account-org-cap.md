@@ -1,13 +1,18 @@
 ---
 id: ORG-005
 title: "Per-account org cap"
-status: todo
+status: done
 area: org
 group: org
-test_mode: none
+test_mode: unit
 traceability:
-  code: []
-  tests: []
+  code:
+    - packages/registry-core/src/org.ts
+    - packages/registry-core/src/limits.ts
+    - packages/db/src/adapters/d1-org-members.ts
+  tests:
+    - packages/registry-core/src/org.test.ts
+    - apps/registry/src/controllers/handlers.test.ts
 ---
 
 ## Description

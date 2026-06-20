@@ -1,13 +1,19 @@
 ---
 id: ORG-008
 title: "Manage an org's scopes"
-status: todo
+status: done
 area: org
 group: org
-test_mode: none
+test_mode: unit
 traceability:
-  code: []
-  tests: []
+  code:
+    - packages/registry-core/src/org.ts
+    - packages/db/src/adapters/d1-org-scopes.ts
+    - apps/registry/src/controllers/org.ts
+    - apps/web/src/routes/api.orgs.$org.scopes.ts
+  tests:
+    - packages/registry-core/src/org.test.ts
+    - apps/registry/src/controllers/handlers.test.ts
 ---
 
 ## Description

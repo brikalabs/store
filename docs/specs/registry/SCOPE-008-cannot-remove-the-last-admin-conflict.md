@@ -1,7 +1,7 @@
 ---
 id: SCOPE-008
 title: "Cannot remove the last admin (conflict)"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 The last-admin invariant also guards removal: an admin who is the scope's only admin
 cannot be removed. The guard is part of the DELETE statement (`role <> 'admin' or

@@ -10,7 +10,7 @@
  * Enforcement status (kept honest on purpose):
  *   - ENFORCED: `maxTarballBytes` (`PublishService`), `maxFileBytes` +
  *     `maxUnpackedBytes` (the manifest gate, off the unpacked tarball),
- *     `maxScopesPerUser` (`ScopeService.claim`, via `ScopeStore.countOwnedBy`).
+ *     `maxOrgsPerAccount` (`OrgService.claim`, via `OrgMembers.countOrgsAdminedBy`).
  *   - NOT YET ENFORCED: the remaining count-based quotas below. They need a
  *     usage-counting port on the metadata store (versions/packages) or a
  *     rolling-window count (the weekly limits); until then, treat them as docs.
@@ -29,8 +29,8 @@ export interface RegistryLimits {
   readonly maxVersionsPerPackage: number;
   /** Max number of packages a single scope may contain. */
   readonly maxPackagesPerScope: number;
-  /** Max number of scopes a single user may own. */
-  readonly maxScopesPerUser: number;
+  /** Max number of orgs a single account may administer. */
+  readonly maxOrgsPerAccount: number;
   /** Package creations allowed per scope within the rolling window. */
   readonly weeklyPackageCreations: number;
   /** Publish attempts allowed per scope within the rolling window. */
@@ -45,7 +45,7 @@ export const REGISTRY_LIMITS: RegistryLimits = {
   maxUnpackedBytes: 40 * MiB, // enforced (SchemaManifestValidator)
   maxVersionsPerPackage: 1000, // @unenforced: needs a count port on the metadata store
   maxPackagesPerScope: 100, // @unenforced: needs a count port on the metadata store
-  maxScopesPerUser: 3, // enforced (ScopeService.claim, via ScopeStore.countOwnedBy)
+  maxOrgsPerAccount: 3, // enforced (OrgService.claim, via OrgMembers.countOrgsAdminedBy)
   weeklyPackageCreations: 20, // @unenforced: needs a rolling-window count port
   weeklyPublishAttempts: 1000, // @unenforced: needs a rolling-window count port
   weeklyWindowDays: 7, // @unenforced: window for the weekly limits above

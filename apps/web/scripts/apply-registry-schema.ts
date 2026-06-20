@@ -6,12 +6,16 @@
  * tables and the registry's `reg_*` tables (each app's deploy migrates its own set into the
  * shared database). Locally, though, `vite dev` gives the store its own miniflare D1 and
  * only auto-applies the store's own migrations (`apps/web/drizzle`) - so the `reg_*` tables
- * the console now reads/writes (scopes, members, tokens, versions) are missing and every
- * authenticated console route 500s with "no such table: reg_*".
+ * the console now reads/writes (orgs, members, scopes, tokens, versions) are missing and
+ * every authenticated console route 500s with "no such table: reg_*".
  *
  * This applies `packages/db/drizzle` (the `reg_*` migrations) to that local D1, idempotently
- * (it no-ops once `reg_scopes` exists). Run it once after `bun run dev` has created the D1,
- * and again after wiping `.wrangler/state`. Safe to re-run.
+ * (it no-ops once `reg_orgs`, the latest schema's marker table, exists). Run it once after
+ * `bun run dev` has created the D1, and again after wiping `.wrangler/state`. Safe to re-run.
+ *
+ * NOTE: the script is not incremental - it replays every migration from 0000. If you have a
+ * local D1 on an OLDER `reg_*` schema (it has `reg_scopes` but not `reg_orgs`), re-running
+ * will fail on a "table already exists"; wipe `.wrangler/state` and re-run from scratch.
  */
 import { Database } from "bun:sqlite";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -36,9 +40,7 @@ if (dbPath === null) {
 }
 
 const db = new Database(dbPath);
-const hasReg = db
-  .query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reg_scopes'")
-  .get();
+const hasReg = db.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reg_orgs'").get();
 if (hasReg !== null) {
   console.log("reg_* schema already present; nothing to do.");
   process.exit(0);

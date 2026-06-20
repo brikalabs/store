@@ -1,7 +1,7 @@
 ---
 id: SCOPE-011
 title: "Ownership policy gates publish by scope membership"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -13,6 +13,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 Publishing is authorized against the package's scope: only a member of that scope (any
 role) may publish under it, anchored on the verified credential. The policy never claims a

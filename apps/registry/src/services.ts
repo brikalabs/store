@@ -1,22 +1,26 @@
 import {
   DeviceService,
   ManagementService,
+  OrgService,
   PublishService,
   ResolveService,
-  ScopeService,
 } from "@brika/registry-core";
 import type { Db } from "@brika/store-db";
 import {
+  CloudflareDohResolver,
   D1AuditLog,
   D1CatalogReader,
   D1DeviceStore,
   D1DownloadStore,
   D1MetadataReader,
   D1MetadataWriter,
+  D1OrgDomains,
+  D1OrgMembers,
+  D1OrgScopes,
+  D1OrgStore,
   D1OwnershipPolicy,
-  D1ScopeMembers,
-  D1ScopeStore,
   D1TokenStore,
+  HmacDomainChallenge,
 } from "@brika/store-db/adapters";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
 import { NoopTarballScanner } from "./adapters/noop-tarball-scanner";
@@ -44,12 +48,15 @@ export function buildServices(
   tarballs: R2Bucket,
   baseUrl: string,
   admins: ReadonlySet<string> = new Set(),
+  domainSecret = "test-domain-secret",
 ) {
-  // The D1 implementation of the ScopeMembers port, built once and injected into the
-  // authorization policy (which depends on the port, not this concrete adapter) and
-  // shared with the scope controller for member management.
-  const scopeMembers = new D1ScopeMembers(db);
-  const ownership = new D1OwnershipPolicy(db, scopeMembers);
+  // The D1 implementations of the org membership + scope-ownership ports, built once and
+  // injected into the authorization policy (which depends on the ports, not these concrete
+  // adapters) and shared with the org controller. Publishing resolves scope -> owning org
+  // (orgScopes) -> membership (orgMembers).
+  const orgMembers = new D1OrgMembers(db);
+  const orgScopes = new D1OrgScopes(db);
+  const ownership = new D1OwnershipPolicy(orgMembers, orgScopes);
   // The raw drizzle client (`db`) is deliberately NOT exposed on the returned graph:
   // every persistence + auth concern goes through a port below, so a controller cannot
   // reach the database directly. Adapters capture `db` here at construction.
@@ -76,8 +83,16 @@ export function buildServices(
     ),
     /** Post-publish management: deprecate, yank. */
     management: new ManagementService(new D1MetadataWriter(db), ownership),
-    /** Scope use cases: create/claim, members + roles, display name (over the stores). */
-    scopes: new ScopeService(new D1ScopeStore(db), scopeMembers),
+    /**
+     * Org use cases: claim an org, members + roles, display name, profile (description,
+     * links, icon), attach/list scopes, and claim/verify domains (over the stores). The
+     * claim gate (ORG-006) defaults to allow-all in `OrgService` until a real identity
+     * verifier lands; domain verification resolves TXT records over DNS-over-HTTPS (ORG-010).
+     */
+    orgs: new OrgService(new D1OrgStore(db), orgMembers, orgScopes, new D1OrgDomains(db), {
+      dnsResolver: new CloudflareDohResolver(),
+      domainChallenge: new HmacDomainChallenge(domainSecret),
+    }),
     /** Package catalog read surface (`GET /-/v1/packages`). */
     catalog: new D1CatalogReader(db),
     /** Publish-token store (issue/verify/revoke) for auth + the device flow. */

@@ -1,23 +1,58 @@
-import type { ScopeRole } from "@brika/registry-core";
+import type { OrgRole } from "@brika/registry-core";
 import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "../client";
-import { regScopeMembers, regScopes, regTokens } from "../schema";
+import { regOrgMembers, regOrgs, regScopes, regTokens } from "../schema";
 
 /**
  * Read-model projections over the `reg_*` tables for the console UIs. These are plain
- * reads (not authorization-bearing use cases, so not domain ports): "the scopes I belong
- * to", "my tokens", and an ownership-guarded token revoke. They live next to the adapters
- * because they are the same SQL layer, and let the web app avoid hand-writing drizzle.
+ * reads (not authorization-bearing use cases, so not domain ports): "the orgs I belong
+ * to", "the scopes I can manage", "my tokens", and an ownership-guarded token revoke.
+ * They live next to the adapters because they are the same SQL layer, and let the web app
+ * avoid hand-writing drizzle.
  */
 
-/** A scope a member belongs to, with their role and the scope's verified display name. */
-export interface MemberScope {
-  readonly scope: string;
-  readonly role: ScopeRole;
+/** An org a member belongs to, with their role and the org's verified display name. */
+export interface MemberOrg {
+  readonly slug: string;
+  readonly role: OrgRole;
   readonly displayName: string | null;
 }
 
-/** Every scope `(provider, memberId)` is a member of, with their role, sorted by name. */
+/** Every org `(provider, memberId)` is a member of, with their role, sorted by slug. */
+export async function listOrgsForMember(
+  db: Db,
+  provider: string,
+  memberId: string,
+): Promise<MemberOrg[]> {
+  const rows = await db
+    .select({
+      slug: regOrgMembers.orgSlug,
+      role: regOrgMembers.role,
+      displayName: regOrgs.displayName,
+    })
+    .from(regOrgMembers)
+    .innerJoin(regOrgs, eq(regOrgMembers.orgSlug, regOrgs.slug))
+    .where(and(eq(regOrgMembers.provider, provider), eq(regOrgMembers.memberId, memberId)))
+    .orderBy(regOrgMembers.orgSlug);
+  return rows.map((row) => ({
+    slug: row.slug,
+    role: row.role === "admin" ? "admin" : "member",
+    displayName: row.displayName,
+  }));
+}
+
+/** A scope a member can manage (via the org that owns it), with the member's org role. */
+export interface MemberScope {
+  readonly scope: string;
+  readonly org: string;
+  readonly role: OrgRole;
+}
+
+/**
+ * Every npm scope `(provider, memberId)` can manage: the scopes owned by any org they are
+ * a member of (1:N), sorted by scope. Used by the storefront to decide whether the signed-
+ * in user owns a package's scope (publishing is gated on org membership).
+ */
 export async function listScopesForMember(
   db: Db,
   provider: string,
@@ -25,18 +60,18 @@ export async function listScopesForMember(
 ): Promise<MemberScope[]> {
   const rows = await db
     .select({
-      scope: regScopeMembers.scope,
-      role: regScopeMembers.role,
-      displayName: regScopes.displayName,
+      scope: regScopes.scope,
+      org: regOrgMembers.orgSlug,
+      role: regOrgMembers.role,
     })
-    .from(regScopeMembers)
-    .innerJoin(regScopes, eq(regScopeMembers.scope, regScopes.scope))
-    .where(and(eq(regScopeMembers.provider, provider), eq(regScopeMembers.memberId, memberId)))
-    .orderBy(regScopeMembers.scope);
+    .from(regOrgMembers)
+    .innerJoin(regScopes, eq(regScopes.orgId, regOrgMembers.orgSlug))
+    .where(and(eq(regOrgMembers.provider, provider), eq(regOrgMembers.memberId, memberId)))
+    .orderBy(regScopes.scope);
   return rows.map((row) => ({
     scope: row.scope,
+    org: row.org,
     role: row.role === "admin" ? "admin" : "member",
-    displayName: row.displayName,
   }));
 }
 

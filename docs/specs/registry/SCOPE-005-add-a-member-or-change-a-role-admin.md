@@ -1,7 +1,7 @@
 ---
 id: SCOPE-005
 title: "Add a member or change a role (admin only)"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 Only an admin may add a member or change a member's role. `PUT /-/scope/:scope/member/:provider/:id`
 carries the target role in the body (`{role: "admin" | "member"}`).

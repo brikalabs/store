@@ -1,13 +1,19 @@
 ---
 id: ORG-001
 title: "Organisation is the ownership entity (rename of \"scope\")"
-status: todo
+status: done
 area: org
 group: org
-test_mode: none
+test_mode: unit
 traceability:
-  code: []
-  tests: []
+  code:
+    - packages/registry-core/src/org.ts
+    - packages/registry-core/src/membership.ts
+    - packages/db/src/adapters/d1-org-store.ts
+    - apps/registry/src/controllers/org.ts
+  tests:
+    - packages/registry-core/src/org.test.ts
+    - apps/registry/src/controllers/handlers.test.ts
 ---
 
 ## Description

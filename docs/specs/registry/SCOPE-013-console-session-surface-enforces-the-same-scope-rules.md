@@ -1,7 +1,7 @@
 ---
 id: SCOPE-013
 title: "Console session surface enforces the same scope rules"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: manual
@@ -15,6 +15,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 The web console API (session auth, identity = sessionIdentity(user) = {provider: github,
 owner: login}) reuses the SAME `ScopeService` over the same shared D1 as the registry HTTP

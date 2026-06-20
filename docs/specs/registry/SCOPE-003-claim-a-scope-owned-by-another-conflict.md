@@ -1,7 +1,7 @@
 ---
 id: SCOPE-003
 title: "Claim a scope owned by another (conflict)"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 A scope is owned by exactly one identity. A second identity cannot take it over.
 

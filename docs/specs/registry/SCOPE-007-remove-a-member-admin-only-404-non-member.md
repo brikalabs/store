@@ -1,7 +1,7 @@
 ---
 id: SCOPE-007
 title: "Remove a member (admin only; 404 non-member)"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 Only an admin may remove a member. Removing someone who is not a member of the scope
 returns 404. `DELETE /-/scope/:scope/member/:provider/:id`.

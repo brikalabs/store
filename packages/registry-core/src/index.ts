@@ -37,8 +37,8 @@ export {
   type ManageResult,
   type VersionManager,
 } from "./manage";
-export type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
-export { isCanonicalName, isCanonicalScope, scopeOf } from "./names";
+export type { MemberRef, OrgMember, OrgMembers, OrgRole } from "./membership";
+export { isCanonicalName, isCanonicalOrgSlug, isCanonicalScope, scopeOf } from "./names";
 export {
   BaseClaims,
   type Jwk,
@@ -48,6 +48,23 @@ export {
   verifyGithubOidc,
   verifyOidc,
 } from "./oidc";
+export {
+  type ClaimVerifier,
+  type DnsResolver,
+  type DomainChallenge,
+  domainChallengeHost,
+  type OrgDomainRecord,
+  type OrgDomains,
+  type OrgErrorCode,
+  type OrgPublic,
+  type OrgRecord,
+  type OrgResult,
+  type OrgScopedDomain,
+  type OrgScopes,
+  OrgService,
+  type OrgServiceOptions,
+  type OrgStore,
+} from "./org";
 export {
   type AbbreviatedPackument,
   buildAbbreviatedPackument,
@@ -59,6 +76,14 @@ export {
   unscopedName,
 } from "./packument";
 export type { MetadataReader, TarballReader } from "./ports";
+export {
+  type OrgLink,
+  type OrgProfileInput,
+  orgDescriptionSchema,
+  orgDomainSchema,
+  orgLinkSchema,
+  orgLinksSchema,
+} from "./profile";
 export {
   type CommitVersionInput,
   type ManifestValidator,
@@ -74,14 +99,6 @@ export {
   type TarballWriter,
 } from "./publish";
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
-export {
-  type ScopeErrorCode,
-  type ScopeRecord,
-  type ScopeResult,
-  ScopeService,
-  type ScopeServiceOptions,
-  type ScopeStore,
-} from "./scope";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export type { TokenPrincipal, TokenStore } from "./tokens";
 export { type PackageRecord, PackageVersion, Provenance, type ScopePublisher } from "./types";
