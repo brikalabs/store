@@ -87,14 +87,19 @@ export function DomainsCard({ org, onError }: Readonly<OrgCardProps>) {
                 </button>
               </div>
               {!d.verified && (
-                <p className="text-muted-foreground text-xs">
-                  Add a TXT record at{" "}
-                  <span className="select-all font-mono text-foreground">{d.host}</span> with value{" "}
-                  <span className="select-all rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">
-                    {d.txt}
-                  </span>
-                  , then click Verify.
-                </p>
+                <div className="flex flex-col gap-1 text-muted-foreground text-xs">
+                  <span>Add this DNS TXT record, then click Verify:</span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span>host</span>
+                    <code className="select-all rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">
+                      {d.host}
+                    </code>
+                    <span>value</span>
+                    <code className="select-all rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">
+                      {d.txt}
+                    </code>
+                  </div>
+                </div>
               )}
             </li>
           ))}

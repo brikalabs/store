@@ -9,27 +9,87 @@ interface ProfileLink {
   url: string;
 }
 
+/** A link with a stable client-side id, so React keys survive add/remove/reorder. */
+interface EditLink extends ProfileLink {
+  id: string;
+}
+
+let linkSeq = 0;
+function newEditLink(link: ProfileLink = { label: "", url: "" }): EditLink {
+  linkSeq += 1;
+  return { id: `link-${linkSeq}`, ...link };
+}
+
+/** One editable link row (icon preview + label + URL + remove). */
+function LinkRow({
+  link,
+  index,
+  onChange,
+  onRemove,
+}: Readonly<{
+  link: EditLink;
+  index: number;
+  onChange: (patch: Partial<ProfileLink>) => void;
+  onRemove: () => void;
+}>) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground">
+        <LinkIcon url={link.url} className="size-4" />
+      </span>
+      <Input
+        value={link.label}
+        onChange={(e) => onChange({ label: e.target.value })}
+        placeholder="Label (e.g. X, LinkedIn, npm)"
+        aria-label={`Link ${index + 1} label`}
+        className="sm:max-w-[180px]"
+      />
+      <Input
+        value={link.url}
+        onChange={(e) => onChange({ url: e.target.value })}
+        placeholder="https://…"
+        aria-label={`Link ${index + 1} URL`}
+        className="flex-1 font-mono"
+      />
+      <button
+        type="button"
+        aria-label={`Remove link ${index + 1}`}
+        onClick={onRemove}
+        className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
+      >
+        <Trash2 className="size-4" />
+      </button>
+    </div>
+  );
+}
+
 /** Edit the org's description + arbitrary labelled links (hydrated from the public record). */
 export function ProfileCard({ org, onError }: Readonly<OrgCardProps>) {
   const [description, setDescription] = useState("");
-  const [links, setLinks] = useState<ProfileLink[]>([]);
+  const [links, setLinks] = useState<EditLink[]>([]);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     void (async () => {
       const res = await fetch(orgPath(org)).catch(() => null);
-      if (res?.ok) {
-        const data = (await res.json()) as { description?: string | null; links?: ProfileLink[] };
-        setDescription(data.description ?? "");
-        setLinks(data.links ?? []);
-      }
+      if (!res?.ok) return;
+      const data: { description?: string | null; links?: ProfileLink[] } = await res.json();
+      setDescription(data.description ?? "");
+      setLinks((data.links ?? []).map((l) => newEditLink(l)));
     })();
   }, [org]);
 
-  function updateLink(index: number, patch: Partial<ProfileLink>) {
-    setLinks((current) => current.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+  function updateLink(id: string, patch: Partial<ProfileLink>) {
+    setLinks((current) => current.map((l) => (l.id === id ? { ...l, ...patch } : l)));
     setSaved(false);
+  }
+  function removeLink(id: string) {
+    setLinks((current) => current.filter((l) => l.id !== id));
+    setSaved(false);
+  }
+  function addLink() {
+    setLinks((current) => [...current, newEditLink()]);
   }
 
   async function save(event: SyntheticEvent<HTMLFormElement>) {
@@ -47,7 +107,7 @@ export function ProfileCard({ org, onError }: Readonly<OrgCardProps>) {
     });
     setBusy(false);
     if (res.ok) {
-      setLinks(cleaned);
+      setLinks(cleaned.map((l) => newEditLink(l)));
       setSaved(true);
     } else {
       onError(await readError(res));
@@ -79,41 +139,17 @@ export function ProfileCard({ org, onError }: Readonly<OrgCardProps>) {
       <div className="flex flex-col gap-2">
         <span className="font-medium text-muted-foreground text-sm">Links</span>
         {links.map((link, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: order-stable editable rows
-          <div key={index} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground">
-              <LinkIcon url={link.url} className="size-4" />
-            </span>
-            <Input
-              value={link.label}
-              onChange={(e) => updateLink(index, { label: e.target.value })}
-              placeholder="Label (e.g. X, LinkedIn, npm)"
-              aria-label={`Link ${index + 1} label`}
-              className="sm:max-w-[180px]"
-            />
-            <Input
-              value={link.url}
-              onChange={(e) => updateLink(index, { url: e.target.value })}
-              placeholder="https://…"
-              aria-label={`Link ${index + 1} URL`}
-              className="flex-1 font-mono"
-            />
-            <button
-              type="button"
-              aria-label={`Remove link ${index + 1}`}
-              onClick={() => {
-                setLinks((c) => c.filter((_, i) => i !== index));
-                setSaved(false);
-              }}
-              className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
-            >
-              <Trash2 className="size-4" />
-            </button>
-          </div>
+          <LinkRow
+            key={link.id}
+            link={link}
+            index={index}
+            onChange={(patch) => updateLink(link.id, patch)}
+            onRemove={() => removeLink(link.id)}
+          />
         ))}
         <button
           type="button"
-          onClick={() => setLinks((c) => [...c, { label: "", url: "" }])}
+          onClick={addLink}
           className="inline-flex h-9 w-fit items-center gap-2 rounded-lg border border-border border-dashed px-3 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
         >
           <Link2 className="size-4" />

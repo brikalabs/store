@@ -1,4 +1,4 @@
-import type { OrgLink, OrgProfileInput, OrgRecord, OrgStore } from "@brika/registry-core";
+import type { OrgProfileInput, OrgRecord, OrgStore } from "@brika/registry-core";
 import { eq } from "drizzle-orm";
 import type { Db } from "../client";
 import { regOrgs } from "../schema";
@@ -10,7 +10,7 @@ function toRecord(row: OrgRow): OrgRecord {
     slug: row.slug,
     displayName: row.displayName,
     description: row.description,
-    links: (row.links ?? []) as OrgLink[],
+    links: row.links ?? [],
     iconKey: row.iconKey,
   };
 }

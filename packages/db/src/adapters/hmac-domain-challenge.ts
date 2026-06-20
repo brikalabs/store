@@ -2,7 +2,7 @@ import type { DomainChallenge } from "@brika/registry-core";
 
 /** base64url (no padding) of raw bytes, for a compact DNS-TXT-safe token. */
 function base64url(bytes: ArrayBuffer): string {
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
+  const b64 = btoa(String.fromCodePoint(...new Uint8Array(bytes)));
   return b64.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 

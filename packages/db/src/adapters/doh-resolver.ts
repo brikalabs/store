@@ -21,7 +21,7 @@ export class CloudflareDohResolver implements DnsResolver {
     // A network failure rejects here and propagates (a transport error, not "no record").
     const res = await fetch(url, { headers: { accept: "application/dns-json" } });
     if (!res.ok) throw new Error(`DoH lookup for ${hostname} failed: HTTP ${res.status}`);
-    const body = (await res.json()) as { Answer?: { type: number; data: string }[] };
+    const body: { Answer?: { type: number; data: string }[] } = await res.json();
     // TXT is record type 16; DoH returns the value quoted (chunked strings as adjacent
     // quoted segments), so strip the surrounding double quotes. A 200 with no Answer is a
     // definitive "no record" -> [].

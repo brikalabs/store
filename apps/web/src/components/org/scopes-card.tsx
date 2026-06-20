@@ -3,6 +3,26 @@ import { Layers, Plus } from "lucide-react";
 import { type SyntheticEvent, useCallback, useEffect, useState } from "react";
 import { type OrgCardProps, orgPath, readError } from "../../lib/org-api";
 
+/** The owned-scopes list: a loading skeleton, an empty hint, or the scope chips. */
+function ScopeList({ scopes }: Readonly<{ scopes: string[] | null }>) {
+  if (scopes === null) return <div className="h-12 animate-pulse rounded-xl bg-muted" />;
+  if (scopes.length === 0) {
+    return <p className="text-muted-foreground text-sm">No scopes attached yet.</p>;
+  }
+  return (
+    <ul className="flex flex-wrap gap-2">
+      {scopes.map((s) => (
+        <li
+          key={s}
+          className="rounded-full border border-border bg-muted px-3 py-1 font-mono font-semibold text-foreground text-sm"
+        >
+          {s}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** The npm scopes an org owns (1:N): list, and (admin) attach a new scope. */
 export function ScopesCard({
   org,
@@ -52,22 +72,7 @@ export function ScopesCard({
         <span className="font-mono">@scope</span> must be attached here before any member can
         publish under it.
       </p>
-      {scopes === null ? (
-        <div className="h-12 animate-pulse rounded-xl bg-muted" />
-      ) : scopes.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No scopes attached yet.</p>
-      ) : (
-        <ul className="flex flex-wrap gap-2">
-          {scopes.map((s) => (
-            <li
-              key={s}
-              className="rounded-full border border-border bg-muted px-3 py-1 font-mono font-semibold text-foreground text-sm"
-            >
-              {s}
-            </li>
-          ))}
-        </ul>
-      )}
+      <ScopeList scopes={scopes} />
       {isAdmin && (
         <form
           onSubmit={attach}
