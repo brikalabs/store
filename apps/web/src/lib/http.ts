@@ -1,4 +1,5 @@
 /** JSON helpers for the `/v1` contract handlers. */
+import type { ScopeErrorCode } from "@brika/registry-core";
 
 export function jsonOk(data: unknown): Response {
   return Response.json(data, { headers: { "cache-control": "public, max-age=300" } });
@@ -35,9 +36,10 @@ export function jsonError(status: number, message: string): Response {
 }
 
 /** Map a registry-core `ScopeResult` error code to its HTTP status. */
-export function scopeStatus(code: "forbidden" | "not_found" | "conflict"): number {
+export function scopeStatus(code: ScopeErrorCode): number {
   if (code === "not_found") return 404;
   if (code === "conflict") return 409;
+  if (code === "too_many") return 429;
   return 403;
 }
 

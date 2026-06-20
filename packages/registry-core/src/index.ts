@@ -79,6 +79,7 @@ export {
   type ScopeRecord,
   type ScopeResult,
   ScopeService,
+  type ScopeServiceOptions,
   type ScopeStore,
 } from "./scope";
 export { readTarGzEntries, type TarEntry } from "./tar";

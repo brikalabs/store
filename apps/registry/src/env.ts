@@ -62,6 +62,7 @@ declare global {
       // `bindingRateLimiter` (cf-rate-limiter.ts) falls back to its in-memory limiter.
       PUBLISH_LIMITER?: CfRateLimitBinding;
       DEVICE_LIMITER?: CfRateLimitBinding;
+      CLAIM_LIMITER?: CfRateLimitBinding;
     }
   }
 }

@@ -1,5 +1,5 @@
 import type { MemberRef, ScopeRecord, ScopeStore } from "@brika/registry-core";
-import { eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import type { Db } from "../client";
 import { regScopes } from "../schema";
 
@@ -41,5 +41,14 @@ export class D1ScopeStore implements ScopeStore {
 
   async setDisplayName(scope: string, displayName: string | null): Promise<void> {
     await this.#db.update(regScopes).set({ displayName }).where(eq(regScopes.scope, scope));
+  }
+
+  /** Count the scopes created by this identity (the `ownerId`), for the per-user cap. */
+  async countOwnedBy(owner: MemberRef): Promise<number> {
+    const rows = await this.#db
+      .select({ n: count() })
+      .from(regScopes)
+      .where(and(eq(regScopes.ownerProvider, owner.provider), eq(regScopes.ownerId, owner.id)));
+    return rows[0]?.n ?? 0;
   }
 }

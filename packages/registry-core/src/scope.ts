@@ -1,3 +1,4 @@
+import { REGISTRY_LIMITS } from "./limits";
 import type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
 import type { PublishIdentity } from "./publish";
 
@@ -19,10 +20,18 @@ export interface ScopeStore {
   /** Claim `scope` for `owner` if unclaimed; return the persisted record (the winner's). */
   claim(scope: string, owner: MemberRef): Promise<ScopeRecord>;
   setDisplayName(scope: string, displayName: string | null): Promise<void>;
+  /** How many scopes this identity already owns (created), for the per-user cap. */
+  countOwnedBy(owner: MemberRef): Promise<number>;
 }
 
 /** Why a scope operation was refused, mapped to an HTTP status by the controller. */
-export type ScopeErrorCode = "forbidden" | "not_found" | "conflict";
+export type ScopeErrorCode = "forbidden" | "not_found" | "conflict" | "too_many";
+
+/** Tuning for {@link ScopeService}; defaults to the documented {@link REGISTRY_LIMITS}. */
+export interface ScopeServiceOptions {
+  /** Max scopes one identity may own (anti-squatting cap). */
+  readonly maxScopesPerUser?: number;
+}
 
 export type ScopeResult<T> =
   | ({ readonly ok: true } & T)
@@ -49,10 +58,12 @@ function refuse(
 export class ScopeService {
   readonly #scopes: ScopeStore;
   readonly #members: ScopeMembers;
+  readonly #maxScopesPerUser: number;
 
-  constructor(scopes: ScopeStore, members: ScopeMembers) {
+  constructor(scopes: ScopeStore, members: ScopeMembers, options: ScopeServiceOptions = {}) {
     this.#scopes = scopes;
     this.#members = members;
+    this.#maxScopesPerUser = options.maxScopesPerUser ?? REGISTRY_LIMITS.maxScopesPerUser;
   }
 
   /** Create/claim a scope. The creator becomes its first admin. */
@@ -67,6 +78,16 @@ export class ScopeService {
       return ownedBy(existing, identity)
         ? { ok: true, created: false, owner }
         : refuse("conflict", `scope ${scope} is owned by ${existing.ownerId}`);
+    }
+
+    // Anti-squatting cap: refuse a NEW claim once this identity is at its scope limit.
+    // Re-claiming a scope you already own (above) is exempt, so it stays idempotent.
+    const owned = await this.#scopes.countOwnedBy(owner);
+    if (owned >= this.#maxScopesPerUser) {
+      return refuse(
+        "too_many",
+        `you already own ${owned} scopes (limit ${this.#maxScopesPerUser}); contact an operator to raise it`,
+      );
     }
 
     const claimed = await this.#scopes.claim(scope, owner);

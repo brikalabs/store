@@ -13,6 +13,7 @@ traceability:
 ## Description
 
 Throttle org/scope claims per authenticated principal so a script cannot mass-claim.
+Supersedes `SCOPE-015` (the same control on today's scope model) when the org rename lands.
 
 ## Acceptance criteria
 
