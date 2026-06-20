@@ -14,6 +14,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PluginsIndexRouteImport } from './routes/plugins.index'
 import { Route as LegalIndexRouteImport } from './routes/legal.index'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as V1VerifiedRouteImport } from './routes/v1.verified'
 import { Route as V1SearchRouteImport } from './routes/v1.search'
 import { Route as V1RegistryRouteImport } from './routes/v1.registry'
@@ -31,7 +32,7 @@ import { Route as AuthGithubRouteImport } from './routes/auth.github'
 import { Route as ApiScopesRouteImport } from './routes/api.scopes'
 import { Route as V1PluginsNameRouteImport } from './routes/v1.plugins.$name'
 import { Route as V1DevelopersIdRouteImport } from './routes/v1.developers.$id'
-import { Route as DashboardScopesScopeRouteImport } from './routes/dashboard.scopes.$scope'
+import { Route as DashboardScopesScopeRouteImport } from './routes/dashboard.scopes_.$scope'
 import { Route as DashboardPluginsSplatRouteImport } from './routes/dashboard.plugins.$'
 import { Route as DashboardAccountTokensRouteImport } from './routes/dashboard.account.tokens'
 import { Route as AuthGithubCallbackRouteImport } from './routes/auth.github.callback'
@@ -79,6 +80,11 @@ const LegalIndexRoute = LegalIndexRouteImport.update({
   id: '/legal/',
   path: '/legal/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const V1VerifiedRoute = V1VerifiedRouteImport.update({
   id: '/v1/verified',
@@ -166,9 +172,9 @@ const V1DevelopersIdRoute = V1DevelopersIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardScopesScopeRoute = DashboardScopesScopeRouteImport.update({
-  id: '/$scope',
-  path: '/$scope',
-  getParentRoute: () => DashboardScopesRoute,
+  id: '/scopes_/$scope',
+  path: '/scopes/$scope',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardPluginsSplatRoute = DashboardPluginsSplatRouteImport.update({
   id: '/plugins/$',
@@ -295,7 +301,7 @@ export interface FileRoutesByFullPath {
   '/auth/github': typeof AuthGithubRouteWithChildren
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
-  '/dashboard/scopes': typeof DashboardScopesRouteWithChildren
+  '/dashboard/scopes': typeof DashboardScopesRoute
   '/developers/$id': typeof DevelopersIdRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
+  '/dashboard/': typeof DashboardIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/plugins/': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
@@ -336,13 +343,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRouteWithChildren
   '/device': typeof DeviceRoute
   '/api/scopes': typeof ApiScopesRouteWithChildren
   '/auth/github': typeof AuthGithubRouteWithChildren
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
-  '/dashboard/scopes': typeof DashboardScopesRouteWithChildren
+  '/dashboard/scopes': typeof DashboardScopesRoute
   '/developers/$id': typeof DevelopersIdRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -353,6 +359,7 @@ export interface FileRoutesByTo {
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
+  '/dashboard': typeof DashboardIndexRoute
   '/legal': typeof LegalIndexRoute
   '/plugins': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
@@ -390,7 +397,7 @@ export interface FileRoutesById {
   '/auth/github': typeof AuthGithubRouteWithChildren
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
-  '/dashboard/scopes': typeof DashboardScopesRouteWithChildren
+  '/dashboard/scopes': typeof DashboardScopesRoute
   '/developers/$id': typeof DevelopersIdRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -401,6 +408,7 @@ export interface FileRoutesById {
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
+  '/dashboard/': typeof DashboardIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/plugins/': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
@@ -413,7 +421,7 @@ export interface FileRoutesById {
   '/auth/github/callback': typeof AuthGithubCallbackRoute
   '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
-  '/dashboard/scopes/$scope': typeof DashboardScopesScopeRoute
+  '/dashboard/scopes_/$scope': typeof DashboardScopesScopeRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
@@ -450,6 +458,7 @@ export interface FileRouteTypes {
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
+    | '/dashboard/'
     | '/legal/'
     | '/plugins/'
     | '/api/account/profile'
@@ -480,7 +489,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/dashboard'
     | '/device'
     | '/api/scopes'
     | '/auth/github'
@@ -497,6 +505,7 @@ export interface FileRouteTypes {
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
+    | '/dashboard'
     | '/legal'
     | '/plugins'
     | '/api/account/profile'
@@ -544,6 +553,7 @@ export interface FileRouteTypes {
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
+    | '/dashboard/'
     | '/legal/'
     | '/plugins/'
     | '/api/account/profile'
@@ -556,7 +566,7 @@ export interface FileRouteTypes {
     | '/auth/github/callback'
     | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
-    | '/dashboard/scopes/$scope'
+    | '/dashboard/scopes_/$scope'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
     | '/api/account/tokens/$hash'
@@ -639,6 +649,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/legal/'
       preLoaderRoute: typeof LegalIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/v1/verified': {
       id: '/v1/verified'
@@ -759,12 +776,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1DevelopersIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard/scopes/$scope': {
-      id: '/dashboard/scopes/$scope'
-      path: '/$scope'
+    '/dashboard/scopes_/$scope': {
+      id: '/dashboard/scopes_/$scope'
+      path: '/scopes/$scope'
       fullPath: '/dashboard/scopes/$scope'
       preLoaderRoute: typeof DashboardScopesScopeRouteImport
-      parentRoute: typeof DashboardScopesRoute
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/plugins/$': {
       id: '/dashboard/plugins/$'
@@ -923,28 +940,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface DashboardScopesRouteChildren {
+interface DashboardRouteChildren {
+  DashboardScopesRoute: typeof DashboardScopesRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardAccountTokensRoute: typeof DashboardAccountTokensRoute
+  DashboardPluginsSplatRoute: typeof DashboardPluginsSplatRoute
   DashboardScopesScopeRoute: typeof DashboardScopesScopeRoute
 }
 
-const DashboardScopesRouteChildren: DashboardScopesRouteChildren = {
-  DashboardScopesScopeRoute: DashboardScopesScopeRoute,
-}
-
-const DashboardScopesRouteWithChildren = DashboardScopesRoute._addFileChildren(
-  DashboardScopesRouteChildren,
-)
-
-interface DashboardRouteChildren {
-  DashboardScopesRoute: typeof DashboardScopesRouteWithChildren
-  DashboardAccountTokensRoute: typeof DashboardAccountTokensRoute
-  DashboardPluginsSplatRoute: typeof DashboardPluginsSplatRoute
-}
-
 const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardScopesRoute: DashboardScopesRouteWithChildren,
+  DashboardScopesRoute: DashboardScopesRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
   DashboardAccountTokensRoute: DashboardAccountTokensRoute,
   DashboardPluginsSplatRoute: DashboardPluginsSplatRoute,
+  DashboardScopesScopeRoute: DashboardScopesScopeRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

@@ -6,7 +6,7 @@ import { AdminShell } from "../components/admin-shell";
 import { GithubIcon } from "../components/clay/icons";
 import { requireUser } from "../lib/require-user";
 
-export const Route = createFileRoute("/dashboard/scopes/$scope")({
+export const Route = createFileRoute("/dashboard/scopes_/$scope")({
   beforeLoad: async ({ location }) => ({ user: await requireUser(location.href) }),
   component: ScopeDetailPage,
 });
