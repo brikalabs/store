@@ -15,7 +15,7 @@ interface EditLink extends ProfileLink {
 }
 
 let linkSeq = 0;
-function newEditLink(link: ProfileLink = { label: "", url: "" }): EditLink {
+function newEditLink(link: ProfileLink): EditLink {
   linkSeq += 1;
   return { id: `link-${linkSeq}`, ...link };
 }
@@ -89,7 +89,7 @@ export function ProfileCard({ org, onError }: Readonly<OrgCardProps>) {
     setSaved(false);
   }
   function addLink() {
-    setLinks((current) => [...current, newEditLink()]);
+    setLinks((current) => [...current, newEditLink({ label: "", url: "" })]);
   }
 
   async function save(event: SyntheticEvent<HTMLFormElement>) {
