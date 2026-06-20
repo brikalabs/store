@@ -80,7 +80,9 @@ function OverviewPage() {
 function OperatorConsoleLink() {
   const [operator, setOperator] = useState(false);
   useEffect(() => {
-    void fetchIsOperator().then(setOperator);
+    fetchIsOperator()
+      .then(setOperator)
+      .catch(() => setOperator(false));
   }, []);
   if (!operator) return null;
   return (

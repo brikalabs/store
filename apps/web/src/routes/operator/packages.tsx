@@ -34,7 +34,10 @@ function OperatorPackagesPage() {
 
   const load = useCallback(async () => {
     const res = await fetch("/api/operator/packages");
-    if (res.ok) setPackages(((await res.json()) as { packages: OperatorPackage[] }).packages);
+    if (res.ok) {
+      const data: { packages: OperatorPackage[] } = await res.json();
+      setPackages(data.packages);
+    }
   }, []);
   useEffect(() => {
     void load();
@@ -43,6 +46,20 @@ function OperatorPackagesPage() {
   const filtered = (packages ?? []).filter((p) =>
     p.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
+
+  function renderBody() {
+    if (packages === null) return <p className="text-muted-foreground text-sm">Loading…</p>;
+    if (filtered.length === 0) {
+      return <p className="text-muted-foreground text-sm">No packages match.</p>;
+    }
+    return (
+      <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
+        {filtered.map((pkg) => (
+          <PackageRow key={pkg.name} pkg={pkg} onError={setError} onChanged={load} />
+        ))}
+      </ul>
+    );
+  }
 
   return (
     <OperatorShell activeLabel="Packages">
@@ -63,17 +80,7 @@ function OperatorPackagesPage() {
 
       {error !== null && <p className="text-destructive text-sm">{error}</p>}
 
-      {packages === null ? (
-        <p className="text-muted-foreground text-sm">Loading…</p>
-      ) : filtered.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No packages match.</p>
-      ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
-          {filtered.map((pkg) => (
-            <PackageRow key={pkg.name} pkg={pkg} onError={setError} onChanged={load} />
-          ))}
-        </ul>
-      )}
+      {renderBody()}
     </OperatorShell>
   );
 }
@@ -93,7 +100,10 @@ function PackageRow({
 
   const loadVersions = useCallback(async () => {
     const res = await fetch(`/api/operator/packages/versions?name=${encodeURIComponent(pkg.name)}`);
-    if (res.ok) setVersions(((await res.json()) as { versions: PackageVersion[] }).versions);
+    if (res.ok) {
+      const data: { versions: PackageVersion[] } = await res.json();
+      setVersions(data.versions);
+    }
   }, [pkg.name]);
 
   function toggle() {
@@ -116,9 +126,10 @@ function PackageRow({
       setBusy(null);
       if (res.ok) {
         await Promise.all([loadVersions(), onChanged()]);
-      } else {
-        onError(((await res.json()) as { error?: string }).error ?? "Action failed");
+        return;
       }
+      const data: { error?: string } = await res.json();
+      onError(data.error ?? "Action failed");
     },
     [pkg.name, loadVersions, onChanged, onError],
   );
