@@ -7,7 +7,6 @@ import {
   isRegistryName,
   listRegistryPlugins,
   type RegistryPluginPage,
-  type RegistryScope,
   versionsFromPackument,
 } from "@/lib/registry/registry-source";
 
@@ -88,4 +87,4 @@ export async function getScopePage(scope: string): Promise<ScopePage | null> {
   };
 }
 
-export type { RegistryScope };
+export type { RegistryScope } from "@/lib/registry/registry-source";
