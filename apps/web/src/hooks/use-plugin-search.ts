@@ -1,32 +1,34 @@
 import { type PluginSummary, SearchResponse } from "@brika/registry-contract";
+import { scopeOf } from "@brika/registry-core";
 import { useEffect, useState } from "react";
 
-export interface AuthorHit {
-  id: string;
+export interface ScopeHit {
+  scope: string;
   name: string;
-  avatarUrl?: string;
 }
 
 interface SearchState {
   plugins: PluginSummary[];
-  authors: AuthorHit[];
+  scopes: ScopeHit[];
   loading: boolean;
 }
 
-const EMPTY: SearchState = { plugins: [], authors: [], loading: false };
+const EMPTY: SearchState = { plugins: [], scopes: [], loading: false };
 
-/** The unique authors whose id matches the query, in first-seen order. */
-function collectAuthors(plugins: PluginSummary[], needle: string): AuthorHit[] {
+/** The unique scopes whose scope (or publisher name) matches the query, in first-seen order. */
+function collectScopes(plugins: PluginSummary[], needle: string): ScopeHit[] {
   const seen = new Set<string>();
-  const authors: AuthorHit[] = [];
+  const scopes: ScopeHit[] = [];
   for (const plugin of plugins) {
-    const author = plugin.author;
-    if (author && !seen.has(author.id) && author.id.toLowerCase().includes(needle)) {
-      seen.add(author.id);
-      authors.push({ id: author.id, name: author.name ?? author.id, avatarUrl: author.avatarUrl });
+    const scope = scopeOf(plugin.name);
+    if (scope === null || seen.has(scope)) continue;
+    const name = plugin.author?.name ?? scope;
+    if (scope.toLowerCase().includes(needle) || name.toLowerCase().includes(needle)) {
+      seen.add(scope);
+      scopes.push({ scope, name });
     }
   }
-  return authors;
+  return scopes;
 }
 
 /** Hit the search endpoint and shape the result; any failure yields an empty state. */
@@ -38,7 +40,7 @@ async function runSearch(q: string): Promise<SearchState> {
     if (!parsed.success) return EMPTY;
     return {
       plugins: parsed.data.plugins,
-      authors: collectAuthors(parsed.data.plugins, q.toLowerCase()),
+      scopes: collectScopes(parsed.data.plugins, q.toLowerCase()),
       loading: false,
     };
   } catch {
@@ -46,7 +48,7 @@ async function runSearch(q: string): Promise<SearchState> {
   }
 }
 
-/** Debounced unified search: returns matching plugins and the authors behind them. */
+/** Debounced unified search: returns matching plugins and the scopes behind them. */
 export function usePluginSearch(query: string): SearchState {
   const [state, setState] = useState<SearchState>(EMPTY);
 

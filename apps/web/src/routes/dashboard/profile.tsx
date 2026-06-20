@@ -3,8 +3,8 @@ import {
   type DeveloperProfile,
   DeveloperProfile as DeveloperProfileSchema,
 } from "@brika/registry-contract";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, ExternalLink } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Check } from "lucide-react";
 import { type SyntheticEvent, useEffect, useState } from "react";
 import { GithubIcon } from "@/components/clay/icons";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
@@ -92,17 +92,7 @@ function ProfileEditor({
 
   return (
     <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-bold font-heading text-xl tracking-tight">Public profile</h2>
-        <Link
-          to="/developers/$id"
-          params={{ id: profile.id }}
-          className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground"
-        >
-          View public profile
-          <ExternalLink className="size-3.5" />
-        </Link>
-      </div>
+      <h2 className="font-bold font-heading text-xl tracking-tight">Public profile</h2>
 
       <div className="flex items-center gap-4">
         {avatarUrl ? (

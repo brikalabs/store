@@ -17,6 +17,22 @@ test("rejects a name with illegal characters", () => {
   expect(result.success).toBe(false);
 });
 
+test("accepts a canonical scoped name", () => {
+  expect(PluginPackageSchema.safeParse({ ...base, name: "@myorg/plugin-name" }).success).toBe(true);
+});
+
+test("rejects an unscoped name", () => {
+  const result = PluginPackageSchema.safeParse({ ...base, name: "lodash" });
+  expect(result.success).toBe(false);
+});
+
+test("rejects a malformed scope shape", () => {
+  // scope starting with a hyphen, and a too-short scope - both bad per the canonical rule
+  expect(PluginPackageSchema.safeParse({ ...base, name: "@-bad/plugin" }).success).toBe(false);
+  expect(PluginPackageSchema.safeParse({ ...base, name: "@a/plugin" }).success).toBe(false);
+  expect(PluginPackageSchema.safeParse({ ...base, name: "@scope/" }).success).toBe(false);
+});
+
 test("rejects a non-semver version", () => {
   expect(PluginPackageSchema.safeParse({ ...base, version: "latest" }).success).toBe(false);
 });

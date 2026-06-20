@@ -7,8 +7,8 @@ group: store
 test_mode: unit
 traceability:
   code:
-    - apps/web/src/routes/v1.search.ts
-    - apps/web/src/lib/registry.ts
+    - apps/web/src/routes/v1/search.ts
+    - apps/web/src/lib/registry/registry.ts
   tests:
     - apps/web/src/lib/registry.test.ts
 ---
@@ -17,8 +17,9 @@ traceability:
 
 `GET /v1/search` is the machine-readable search contract. It validates the query
 against `SearchQuery`, returns a list of plugin summaries plus a total, and is
-cacheable. It supports free-text queries and field-qualified queries such as
-`q=maintainer:<login>`.
+cacheable. It is registry-only: the free-text query is matched against the Brika
+registry catalog (`searchPlugins` -> `listRegistryPlugins`), which searches the
+published `@scope/name` packages; npm is not a source.
 
 ## Acceptance criteria
 
@@ -39,12 +40,13 @@ Then the response status is 400
 And the JSON body is { "error": "Invalid search query" }
 ```
 
-### STORE-005-AC3 , A maintainer-qualified query scopes results to that maintainer
+### STORE-005-AC3 , A free-text query matches published registry packages
 ```gherkin
-Given a request GET /v1/search?q=maintainer:<login>
+Given a request GET /v1/search?q=<term>
 When the handler runs
 Then the response status is 200
-And the returned plugins are limited to those published by <login>
+And the returned plugins are drawn only from the Brika registry catalog (no npm results)
+And they are limited to packages matching <term>
 ```
 
 ### STORE-005-AC4 , limit and offset paginate the results

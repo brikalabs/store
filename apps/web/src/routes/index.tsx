@@ -69,8 +69,7 @@ function DirectionSpotlight({ plugins, total }: DirectionProps) {
               The marketplace for your Brika hub
             </h1>
             <p className="max-w-md text-lg text-muted-foreground leading-relaxed">
-              Discover, compare, and review plugins. Powered by npm, enriched with a community of
-              builders.
+              Discover, compare, and review plugins. A curated registry of verified, scoped plugins.
             </p>
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
@@ -147,7 +146,7 @@ function DirectionSpotlight({ plugins, total }: DirectionProps) {
 function HeroCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
   return (
     <Link
-      to="/plugins/$"
+      to="/$"
       params={{ _splat: plugin.name }}
       className="group flex flex-col gap-4 rounded-[18px] border border-border bg-card p-6 shadow-[0_24px_50px_-24px_rgba(30,20,10,0.3)] transition-transform hover:-translate-y-1"
     >

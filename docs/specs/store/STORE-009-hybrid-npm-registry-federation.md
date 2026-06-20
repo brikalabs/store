@@ -1,7 +1,7 @@
 ---
 id: STORE-009
 title: "Hybrid npm + registry federation"
-status: done
+status: gone
 area: store
 group: store
 test_mode: unit
@@ -17,9 +17,11 @@ traceability:
 
 ## Description
 
-Discovery merges two sources: the Brika registry (`@brika/*`, read from
+> **Superseded/removed: the storefront is now registry-only.** npm is no longer a listing or discovery source; the store lists only verified, scoped plugins published to the Brika registry (npm `bun/npm install` *consumption* still resolves, but it is never read for discovery). `apps/web/src/lib/registry/npm.ts` was deleted and the read model now reads only the hosted catalog (`searchPlugins` -> `listRegistryPlugins`). Retained for history.
+
+Discovery merged two sources: the Brika registry (`@brika/*`, read from
 registry.brika.dev) and npm (packages tagged with the `brika` keyword). Registry
-plugins are placed first and the merged list is deduplicated by name. Registry is
+plugins were placed first and the merged list deduplicated by name. Registry was
 only consulted for the first page of plain (non field-qualified) queries.
 
 ## Acceptance criteria

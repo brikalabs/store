@@ -29,7 +29,7 @@ jobs:
 
 function OverviewPage() {
   const { user } = Route.useRouteContext();
-  const plugins = useMyPlugins(user.login);
+  const plugins = useMyPlugins();
 
   const weekly = plugins.reduce((sum, p) => sum + p.downloadsWeekly, 0);
   const rated = plugins.filter((p) => p.rating);

@@ -2,19 +2,22 @@
 
 A Bun-workspace monorepo for the two services behind the Brika plugin ecosystem:
 
-- **store.brika.dev** , the marketplace: discovery, search, developer profiles,
-  ratings, reviews, discussion, and a publisher console. SSR for SEO.
+- **store.brika.dev** , the marketplace: discovery, search, scope pages,
+  ratings, reviews, discussion, and a publisher console. SSR for SEO. It is
+  **scope-centric and registry-only**: it lists only verified, scoped plugins
+  published to the Brika registry; npm is not a listing or discovery source.
 - **registry.brika.dev** , an npm-compatible package registry that hosts the
-  official `@brika` plugins. Community plugins stay on npm; the store federates
-  discovery across both. (Hybrid model, see [`docs/registry-design.md`](./docs/registry-design.md).)
+  scoped `@brika` plugins the store lists. (See [`docs/registry-design.md`](./docs/registry-design.md).)
 
 ## Why a registry of our own
 
 A Brika hub installs plugins with `bun add`. Rather than publish a niche
-home-automation ecosystem into npm's global namespace, official `@brika` plugins
-are hosted on our **npm-compatible** registry: a hub adds one config line
+home-automation ecosystem into npm's global namespace, `@brika` plugins are
+**published to** our **npm-compatible** registry: a hub adds one config line
 (`@brika:registry=https://registry.brika.dev`) and `bun add @brika/plugin-x`
-resolves from us, everything else from npm. No custom installer.
+resolves from us, everything else from npm. No custom installer. npm stays a
+*consumption* target (`bun/npm install` still resolves), but the storefront lists
+only what is published here, verified , never npm.
 
 Hosting code does not weaken supply-chain safety: every tarball's SHA-512
 **integrity** is returned in the packument and pinned by bun in the lockfile, and

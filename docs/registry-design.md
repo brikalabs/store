@@ -1,8 +1,10 @@
 # Brika Registry: design
 
-Status: proposal (no build yet). Decision context: host official `@brika` plugins
-on our own registry, keep community plugins on npm, federate discovery. Keep the
-hub's `bun add` install path. Plan, then approve, then build.
+Status: built. Decision context: host scoped `@brika` plugins on our own registry
+and keep the hub's `bun add` install path. (This doc originally proposed federating
+npm-hosted community plugins into discovery; that was dropped , the storefront is
+now registry-only and lists only verified, scoped plugins published here. npm stays
+a `bun/npm install` consumption target.)
 
 ## 1. Shape
 
@@ -46,9 +48,11 @@ registry.brika.dev  =  Worker (Hono or TanStack server routes)
         KV   hot packument cache (optional)
 ```
 
-The discovery/social store (`store.brika.dev`, already built) reads the SAME D1
-for `@brika` plugins (no npm sync for those), and keeps npm-syncing community
-plugins. The `RegistrySource` abstraction already federates both.
+The discovery/social store (`store.brika.dev`, already built) is registry-only: it
+reads the SAME registry catalog for the scoped plugins it lists and never reads npm
+for discovery. (An earlier design federated npm-hosted community plugins into
+discovery; that was removed , the store lists only verified, scoped plugins
+published here. npm `bun/npm install` consumption still resolves.)
 
 ## 4. Data model (D1)
 
@@ -90,8 +94,8 @@ reg_audit       id, action, package, version, actor, at, detail(json)
 - `GET /.../-/plugin-x-1.2.3.tgz` streams the immutable object from R2 with a
   long `cache-control` (edge-cached, free egress). bun verifies integrity.
 - Hub config: `@brika:registry=https://registry.brika.dev` (bunfig/.npmrc).
-  Community (npm) installs are unchanged. The existing `RemoteRegistrySource`
-  already federates discovery across our registry + npm.
+  Community (npm) installs are unchanged. Discovery is registry-only: the store
+  reads only this registry's catalog for listing (no npm federation).
 
 ## 7. Security spec
 
@@ -131,11 +135,11 @@ The existing `@brika` plugins are on npm at `0.3.x`. Plan:
 - **M2 Publish (OIDC)**: `brika-publish` Action + `/-/publish` (OIDC verify +
   verify-checks + immutability + R2/D1 write); scope ownership for `@brika`.
 - **M3 Hub integration**: scoped-registry config; end-to-end install from our
-  registry; discovery federation (already built) confirmed.
-- **M4 Store integration**: `@brika` package pages read registry data; show
-  provenance; deprecate/yank in the dev console.
-- **M5 Community scopes (later)**: let community claim scopes and publish to our
-  registry; until then community stays on npm (the hybrid).
+  registry confirmed.
+- **M4 Store integration**: package pages read registry data (registry-only, no
+  npm federation); show provenance; deprecate/yank in the dev console.
+- **M5 Community scopes**: community can claim scopes and publish to our registry;
+  the storefront lists those scoped, verified plugins (it no longer lists from npm).
 - **M6 Hardening**: malware scan, abuse/takedown, audit surfacing, backups,
   rate limits.
 

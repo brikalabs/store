@@ -25,7 +25,14 @@ scope (`@Brika`, or a homoglyph) from being registered next to a real one to imp
 its owner.
 
 The package name after the slash follows the manifest rule from `@brika/schema`:
-lowercase letters, digits, and hyphens (`@scope/my-plugin`).
+lowercase letters, digits, and hyphens (`@scope/my-plugin`). Brika is scope-only, so
+`@brika/schema` rejects an unscoped manifest name at build/publish time; its regex
+mirrors the registry's canonical-name gate (`registry-core/names.ts`), so the two
+never disagree.
+
+The scope is also the publisher's public surface on the storefront: every scope has
+a page at `store.brika.dev/@scope` listing its plugins with its verified-publisher
+header. (An org that owns several scopes also gets an aggregate page at `/orgs/<slug>`.)
 
 ## Creating a scope
 

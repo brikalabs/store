@@ -1,97 +1,40 @@
 /**
- * E2E seed (run with bun). Ensures the example `@brika/*` plugins are published
- * to the local registry so the storefront has registry-backed listings to show.
- *
- * Mints a publish token straight into the shared local D1 (the same row shape
- * `issueToken` writes), then runs `brika publish` for each example. Already-
- * published versions return 409 and are treated as success, so the seed is
- * idempotent and safe to run before every Playwright run.
+ * E2E seed (run with bun). Builds on the shared dev-seed helpers (`scripts/seed-lib.ts`)
+ * to publish the example `@brika/*` plugins to the local registry, then layers the
+ * e2e-only fixtures on top: the operator console fixtures, simulated CI provenance,
+ * dependency/grant/download/social data, and a managed-versions lifecycle. Every step
+ * is idempotent (already-published versions 409 as success), so it is safe to re-run
+ * before every Playwright run.
  */
 import { Database } from "bun:sqlite";
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import {
+  ensureOrg,
+  findLocalD1,
+  log,
+  mintToken,
+  publish,
+  REPO_ROOT,
+  runCli,
+  seedDownloadHistory,
+  waitForRegistry,
+} from "../scripts/seed-lib";
 
-const REGISTRY_URL = process.env.BRIKA_REGISTRY ?? "http://localhost:8787";
-const REPO_ROOT = join(import.meta.dir, "../../..");
 const EXAMPLES = ["plugin-i18n", "plugin-snapshot", "plugin-clock", "plugin-icon"];
-const TOKEN_TTL_SECONDS = 60 * 60;
 /** The login that owns the `brika` org in the e2e fixture (admin member). */
 const SEED_OWNER = "e2e-bot";
 
-function log(message: string): void {
-  process.stderr.write(`[e2e seed] ${message}\n`);
-}
-
-async function waitForRegistry(timeoutMs = 60_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      const res = await fetch(`${REGISTRY_URL}/`);
-      if (res.ok) return;
-    } catch {
-      // not up yet
-    }
-    await Bun.sleep(1000);
-  }
-  throw new Error(`registry at ${REGISTRY_URL} did not become ready`);
-}
-
-/** The shared local D1 sqlite holding the registry tables (`reg_tokens` exists). */
-function findLocalD1(): string {
-  const dir = join(REPO_ROOT, "apps/web/.wrangler/state/v3/d1/miniflare-D1DatabaseObject");
-  const candidates = readdirSync(dir)
-    .filter((name) => name.endsWith(".sqlite") && name !== "metadata.sqlite")
-    .map((name) => join(dir, name));
-  for (const file of candidates) {
-    try {
-      const db = new Database(file);
-      const found = db
-        .query("SELECT name FROM sqlite_master WHERE type='table' AND name='reg_tokens'")
-        .get();
-      db.close();
-      if (found != null) return file;
-    } catch {
-      // Not a readable sqlite (or a stale db); try the next candidate.
-    }
-  }
-  throw new Error(`no local D1 with the registry schema found under ${dir}`);
-}
-
-async function sha256Hex(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function base64Url(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString("base64url");
-}
-
 /**
- * Set up the `brika` organisation that owns the `@brika` scope, with {@link SEED_OWNER}
- * as its admin member. Publishing never claims a scope implicitly (the ownership policy
- * resolves scope -> owning org -> membership), so this must exist before any `@brika/*`
- * publish. Idempotent via INSERT OR IGNORE, so it is safe to re-run.
+ * Set up the `brika` org owning `@brika` (via the shared helper), then clear any
+ * trusted-publisher rows so the console e2e (PUB-016) starts from a clean state.
  */
 function setupBrikaOrg(): void {
+  ensureOrg({ slug: "brika", displayName: "Brika Labs", scope: "@brika", owner: SEED_OWNER });
   const db = new Database(findLocalD1());
-  db.run("INSERT OR IGNORE INTO reg_orgs (slug, display_name) VALUES ('brika', 'Brika Labs')");
-  db.run(
-    "INSERT OR IGNORE INTO reg_org_members (org_slug, provider, member_id, role) VALUES ('brika', 'github', ?, 'admin')",
-    [SEED_OWNER],
-  );
-  db.run("INSERT OR IGNORE INTO reg_scopes (scope, org_id) VALUES ('@brika', 'brika')");
-  // Start each run from a clean trusted-publisher state for the console e2e (PUB-016).
   db.run("DELETE FROM reg_trusted_publishers WHERE scope = '@brika'");
-  // A `users` row so the console (which resolves the session cookie -> users.id -> login)
-  // can sign in as the org admin for the trusted-publisher e2e. id `u-<login>`.
-  const now = Math.floor(Date.now() / 1000);
-  db.run(
-    "INSERT OR REPLACE INTO users (id, github_id, login, name, created_at) VALUES (?, ?, ?, ?, ?)",
-    [`u-${SEED_OWNER}`, 990_002, SEED_OWNER, "E2E Bot", now],
-  );
   db.close();
-  log(`set up org brika (admin ${SEED_OWNER}) owning @brika`);
 }
 
 /** The login of the e2e operator (a `REGISTRY_ADMINS` member; see playwright.config.ts). */
@@ -118,48 +61,6 @@ function setupOperatorFixtures(): void {
   db.run("UPDATE reg_orgs SET takedown = NULL WHERE slug = 'squatter'");
   db.close();
   log(`set up operator ${OPERATOR_LOGIN} + throwaway org squatter`);
-}
-
-/**
- * Insert a fresh publish token into reg_tokens for {@link SEED_OWNER} (the `brika` org
- * admin set up by {@link setupBrikaOrg}) and return the raw token, so `brika publish` is
- * authorized to publish under `@brika`.
- */
-async function mintToken(): Promise<string> {
-  const token = `brika_${base64Url(crypto.getRandomValues(new Uint8Array(32)))}`;
-  const db = new Database(findLocalD1());
-  const now = Math.floor(Date.now() / 1000);
-  db.run(
-    "INSERT OR REPLACE INTO reg_tokens (token_hash, github_login, created_at, expires_at) VALUES (?, ?, ?, ?)",
-    [await sha256Hex(token), SEED_OWNER, now, now + TOKEN_TTL_SECONDS],
-  );
-  db.close();
-  log(`minted token for ${SEED_OWNER}`);
-  return token;
-}
-
-/** Run a `brika` subcommand against the local registry; returns code + output. */
-async function runCli(args: string[], token: string): Promise<{ code: number; output: string }> {
-  const proc = Bun.spawn(["bun", join(REPO_ROOT, "apps/cli/src/index.ts"), ...args], {
-    env: { ...process.env, BRIKA_REGISTRY: REGISTRY_URL, BRIKA_TOKEN: token },
-    stderr: "pipe",
-    stdout: "pipe",
-  });
-  const code = await proc.exited;
-  const output = `${await new Response(proc.stdout).text()}${await new Response(proc.stderr).text()}`;
-  return { code, output };
-}
-
-async function publish(plugin: string, token: string): Promise<void> {
-  const dir = join(REPO_ROOT, "examples", plugin);
-  const { code, output } = await runCli(["publish", dir], token);
-  if (code === 0) {
-    log(`published ${plugin}`);
-  } else if (output.includes("already exists") || output.includes("exists")) {
-    log(`${plugin} already published`);
-  } else {
-    throw new Error(`failed to publish ${plugin}:\n${output}`);
-  }
 }
 
 /**
@@ -228,27 +129,6 @@ function seedDependencies(): void {
     log("seeded dependencies + digest on @brika/plugin-i18n@0.1.0");
   }
   db.close();
-}
-
-/**
- * Seed a smooth ~30-day install history so the sidebar download chart shows a
- * rising trend like the design, instead of the spike a same-day-only count makes.
- */
-function seedDownloadHistory(): void {
-  const db = new Database(findLocalD1());
-  const today = Math.floor(Date.now() / 86_400_000);
-  for (let i = 29; i >= 0; i--) {
-    const day = today - i;
-    // Gentle S-curve growth, 4 -> ~30/day.
-    const count = Math.max(1, Math.round(4 + (26 * (29 - i)) / 29));
-    db.run("INSERT OR REPLACE INTO reg_downloads (name, day, count) VALUES (?, ?, ?)", [
-      "@brika/plugin-i18n",
-      day,
-      count,
-    ]);
-  }
-  db.close();
-  log("seeded 30-day download history on @brika/plugin-i18n");
 }
 
 /**
@@ -422,12 +302,12 @@ function seedSocial(): void {
 await waitForRegistry();
 setupBrikaOrg();
 setupOperatorFixtures();
-const token = await mintToken();
+const token = await mintToken(SEED_OWNER);
 for (const plugin of EXAMPLES) await publish(plugin, token);
 seedProvenance();
 seedDependencies();
 seedGrants();
-seedDownloadHistory();
+seedDownloadHistory("@brika/plugin-i18n");
 await seedManagement(token);
 seedSocial();
 log(`done (dir: ${dirname(findLocalD1())})`);

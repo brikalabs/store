@@ -430,13 +430,22 @@ const ResourcesSchema = z
 // Final Plugin Package Schema
 // ============================================================================
 
+// A canonical scoped package name: `@scope/name`, both segments lowercase
+// `a-z0-9-` and not starting with a hyphen; the scope is 2-20 chars. This MIRRORS
+// `registry-core/names.ts` CANONICAL_NAME (the single source of truth for the
+// publish gate) so the build/publish-time manifest schema and the registry never
+// disagree on what a valid name is. Keep the two in sync. npm caps the full
+// name at 214 chars.
+const CANONICAL_NAME = /^@[a-z0-9][a-z0-9-]{1,19}\/[a-z0-9][a-z0-9-]*$/;
+
 export const PluginPackageSchema = BasePackageJson.extend({
-  // Override: plugin name can be scoped or unscoped
+  // Override: Brika is scope-only - every plugin must be published under a scope.
   name: z
     .string()
-    .regex(/^(@[a-z0-9-]+\/)?[a-z0-9-]+$/)
+    .max(214, "Package name must be at most 214 characters")
+    .regex(CANONICAL_NAME, "Package name must be scoped, e.g. @scope/name")
     .describe(
-      "Plugin package name (used as plugin ID). Can be scoped (e.g., @myorg/plugin-name) or unscoped (e.g., brika-plugin-example)",
+      "Plugin package name (used as plugin ID). Must be a canonical scoped name (e.g., @myorg/plugin-name); unscoped names are rejected.",
     ),
 
   // Override: strict semver for plugins

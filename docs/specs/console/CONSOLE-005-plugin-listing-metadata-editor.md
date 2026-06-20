@@ -1,7 +1,7 @@
 ---
 id: CONSOLE-005
 title: "Plugin listing-metadata editor"
-status: done
+status: gone
 area: console
 group: console
 test_mode: unit
@@ -17,6 +17,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded/removed: editable listing overrides were dropped.** In the registry-only model a plugin's listing is its published, immutable manifest, the single source of truth, so the store-level override layer is gone: the `plugin_listings` table was dropped (migration `apps/web/drizzle/0003_dusty_madame_web.sql`) and the per-plugin console page is stripped to version management (CONSOLE-004). To change how a plugin appears, publish a new version. Retained for history.
 
 The plugin editor persists a store-level listing override (display name, summary,
 description, public/unlisted visibility) to D1, layered on top of the package

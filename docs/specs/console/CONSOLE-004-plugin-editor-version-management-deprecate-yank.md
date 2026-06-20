@@ -7,7 +7,7 @@ group: console
 test_mode: manual (verified in-browser)
 traceability:
   code:
-    - apps/web/src/routes/dashboard.plugins.$.tsx
+    - apps/web/src/routes/dashboard/plugins/$.tsx
     - apps/web/src/routes/api.plugins.versions.ts
     - api.plugins.deprecate.ts
     - api.plugins.yank.ts
@@ -16,8 +16,9 @@ traceability:
 
 ## Description
 
-The plugin editor at `/dashboard/plugins/<name>` includes a real Versions panel.
-It loads the package's versions and a `canManage` flag from
+The per-plugin console page at `/dashboard/plugins/<name>` is stripped to version
+management (the editable store-listing override was removed, see CONSOLE-005). It
+loads the package's versions and a `canManage` flag from
 `GET /api/plugins/versions`. Per-version deprecate/un-deprecate and yank/un-yank
 hit `POST /api/plugins/deprecate` and `POST /api/plugins/yank`. Mutations are
 gated server-side by the domain ownership policy (enforces MANAGE rules), so the
@@ -57,11 +58,11 @@ Then no deprecate or yank buttons are shown on any version row
 And a note explains version management is limited to scopes the user belongs to
 ```
 
-### CONSOLE-004-AC5 , Non-registry package shows a note instead of controls
+### CONSOLE-004-AC5 , A package not on the registry shows a note instead of controls
 ```gherkin
-Given the editor is open for an npm-hosted (non-registry) package
+Given the page is open for a name not published to the Brika registry
 When GET /api/plugins/versions responds 404
-Then the Versions panel shows the "hosted on npm" note instead of a version list
+Then the Versions panel shows the "available for plugins published to the Brika registry" note instead of a version list
 ```
 
 ### CONSOLE-004-AC6 , Failed mutation surfaces the server error

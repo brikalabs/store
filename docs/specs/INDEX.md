@@ -6,15 +6,15 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 ## Totals
 
-136 specs , 373 acceptance criteria.
+139 specs , 383 acceptance criteria.
 
 | Status | Count |
 | --- | --- |
 | [DONE] | 110 |
 | [WIP] | 1 |
-| [TODO] | 8 |
+| [TODO] | 7 |
 | [HOLD] | 2 |
-| [GONE] | 15 |
+| [GONE] | 19 |
 
 ## Backlog (not done)
 
@@ -30,7 +30,6 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [SOCIAL-011](store/SOCIAL-011-comment-moderation.md) | [TODO] | Comment moderation |
 | [STORE-012](store/STORE-012-marketplace-redesign-spotlight-vs-console-direction.md) | [WIP] | Marketplace redesign: Spotlight vs Console direction |
 | [STORE-013](store/STORE-013-verified-publisher-list-signing.md) | [TODO] | Verified publisher list signing |
-| [STORE-014](store/STORE-014-scheduled-npm-sync-cron-prewarm.md) | [TODO] | Scheduled npm sync (CRON prewarm) |
 
 ## auth
 
@@ -54,7 +53,7 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [CONSOLE-002](console/CONSOLE-002-overview-page-and-plugin-stat-cards.md) | [DONE] | Overview page and plugin stat cards |
 | [CONSOLE-003](console/CONSOLE-003-my-plugins-list.md) | [DONE] | My plugins list |
 | [CONSOLE-004](console/CONSOLE-004-plugin-editor-version-management-deprecate-yank.md) | [DONE] | Plugin editor version management (deprecate / yank) |
-| [CONSOLE-005](console/CONSOLE-005-plugin-listing-metadata-editor.md) | [DONE] | Plugin listing-metadata editor |
+| [CONSOLE-005](console/CONSOLE-005-plugin-listing-metadata-editor.md) | [GONE] | Plugin listing-metadata editor |
 | [CONSOLE-006](console/CONSOLE-006-scopes-list.md) | [DONE] | Scopes list |
 | [CONSOLE-007](console/CONSOLE-007-claim-a-scope.md) | [DONE] | Claim a scope |
 | [CONSOLE-008](console/CONSOLE-008-scope-members-management-ui.md) | [DONE] | Scope members management UI |
@@ -135,6 +134,7 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [PUB-014](registry/PUB-014-publish-audit-log.md) | [DONE] | Publish audit log |
 | [PUB-015](registry/PUB-015-real-malware-scanner.md) | [TODO] | Real malware scanner |
 | [PUB-016](registry/PUB-016-trusted-publisher-oidc-binding.md) | [DONE] | Trusted publisher bindings for tokenless OIDC publishing |
+| [PUB-017](registry/PUB-017-canonical-scoped-manifest-name-in-schema.md) | [DONE] | Canonical scoped manifest-name enforcement in @brika/schema |
 | [REG-001](registry/REG-001-fetch-full-packument.md) | [DONE] | Fetch full packument |
 | [REG-002](registry/REG-002-fetch-abbreviated-packument.md) | [DONE] | Fetch abbreviated packument |
 | [REG-003](registry/REG-003-dist-tag-resolution.md) | [DONE] | Dist-tag resolution |
@@ -181,15 +181,17 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [STORE-001](store/STORE-001-home-discover-page.md) | [DONE] | Home / discover page |
 | [STORE-002](store/STORE-002-browse-all-plugins.md) | [DONE] | Browse all plugins |
 | [STORE-003](store/STORE-003-plugin-detail-page.md) | [DONE] | Plugin detail page |
-| [STORE-004](store/STORE-004-public-developer-profile.md) | [DONE] | Public developer profile |
+| [STORE-004](store/STORE-004-public-developer-profile.md) | [GONE] | Public developer profile |
 | [STORE-005](store/STORE-005-discovery-search-endpoint.md) | [DONE] | Discovery: search endpoint |
 | [STORE-006](store/STORE-006-discovery-registry-capabilities-endpoint.md) | [DONE] | Discovery: registry capabilities endpoint |
 | [STORE-007](store/STORE-007-discovery-plugin-detail-endpoint.md) | [DONE] | Discovery: plugin detail endpoint |
 | [STORE-008](store/STORE-008-discovery-version-history-endpoint.md) | [DONE] | Discovery: version history endpoint |
-| [STORE-009](store/STORE-009-hybrid-npm-registry-federation.md) | [DONE] | Hybrid npm + registry federation |
+| [STORE-009](store/STORE-009-hybrid-npm-registry-federation.md) | [GONE] | Hybrid npm + registry federation |
 | [STORE-010](store/STORE-010-localized-store-copy-readme-and-changelog.md) | [DONE] | Localized store copy, readme, and changelog |
 | [STORE-011](store/STORE-011-media-and-asset-serving-from-the-tarball.md) | [DONE] | Media and asset serving from the tarball |
 | [STORE-012](store/STORE-012-marketplace-redesign-spotlight-vs-console-direction.md) | [WIP] | Marketplace redesign: Spotlight vs Console direction |
 | [STORE-013](store/STORE-013-verified-publisher-list-signing.md) | [TODO] | Verified publisher list signing |
-| [STORE-014](store/STORE-014-scheduled-npm-sync-cron-prewarm.md) | [TODO] | Scheduled npm sync (CRON prewarm) |
+| [STORE-014](store/STORE-014-scheduled-npm-sync-cron-prewarm.md) | [GONE] | Scheduled npm sync (CRON prewarm) |
+| [STORE-015](store/STORE-015-public-scope-page.md) | [DONE] | Public scope page |
+| [STORE-016](store/STORE-016-scope-centric-url-scheme.md) | [DONE] | Scope-centric URL scheme |
 

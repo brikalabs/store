@@ -1,4 +1,5 @@
 import type { PluginSummary } from "@brika/registry-contract";
+import { scopeOf } from "@brika/registry-core";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Box,
@@ -29,24 +30,25 @@ export const CAPABILITY_TILES: CapabilityTile[] = [
   { key: "pages", label: "Pages", glyph: FileText, gradient: ["#7C8696", "#525C6B"] },
 ];
 
-type Author = { id: string; name: string; count: number };
+type Scope = { scope: string; name: string; count: number };
 
-function topAuthors(plugins: PluginSummary[], limit: number): Author[] {
-  const byId = new Map<string, Author>();
+function topScopes(plugins: PluginSummary[], limit: number): Scope[] {
+  const byScope = new Map<string, Scope>();
   for (const plugin of plugins) {
-    if (!plugin.author) continue;
-    const existing = byId.get(plugin.author.id);
+    const scope = scopeOf(plugin.name);
+    if (scope === null) continue;
+    const existing = byScope.get(scope);
     if (existing) {
       existing.count += 1;
     } else {
-      byId.set(plugin.author.id, {
-        id: plugin.author.id,
-        name: plugin.author.name ?? plugin.author.id,
+      byScope.set(scope, {
+        scope,
+        name: plugin.author?.name ?? scope,
         count: 1,
       });
     }
   }
-  return [...byId.values()].sort((a, b) => b.count - a.count).slice(0, limit);
+  return [...byScope.values()].sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
 /**
@@ -62,7 +64,7 @@ export function DiscoverIndex({
   const navigate = useNavigate();
   const [term, setTerm] = useState("");
   const [sort, setSort] = useState<SortKey>("downloads");
-  const authors = topAuthors(plugins, 5);
+  const scopes = topScopes(plugins, 5);
   const trending = plugins.slice(0, 5);
   const sorted = sortPlugins(plugins, sort);
 
@@ -77,7 +79,7 @@ export function DiscoverIndex({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-bold font-heading text-3xl tracking-tight">{title}</h1>
-          <p className="mt-1 text-muted-foreground text-sm">{total} plugins · synced from npm</p>
+          <p className="mt-1 text-muted-foreground text-sm">{total} verified, scoped plugins</p>
         </div>
         <SortMenu value={sort} onChange={setSort} />
       </div>
@@ -125,7 +127,7 @@ export function DiscoverIndex({
             {trending.map((plugin, index) => (
               <Link
                 key={plugin.name}
-                to="/plugins/$"
+                to="/$"
                 params={{ _splat: plugin.name }}
                 className="flex items-center gap-3"
               >
@@ -145,22 +147,22 @@ export function DiscoverIndex({
             ))}
           </RailCard>
 
-          {authors.length > 0 ? (
-            <RailCard title="Top authors" icon={<Users className="size-4 text-brand-ink" />}>
-              {authors.map((author) => (
+          {scopes.length > 0 ? (
+            <RailCard title="Top scopes" icon={<Users className="size-4 text-brand-ink" />}>
+              {scopes.map((scope) => (
                 <Link
-                  key={author.id}
-                  to="/developers/$id"
-                  params={{ id: author.id }}
+                  key={scope.scope}
+                  to="/$"
+                  params={{ _splat: scope.scope }}
                   className="flex items-center gap-2.5"
                 >
-                  <GradientAvatar seed={author.id} label={author.name} size={30} />
+                  <GradientAvatar seed={scope.scope} label={scope.name} size={30} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-semibold text-foreground text-xs">
-                      {author.name}
+                      {scope.name}
                     </div>
                     <div className="text-[10.5px] text-muted-foreground">
-                      {author.count} {author.count === 1 ? "plugin" : "plugins"}
+                      {scope.count} {scope.count === 1 ? "plugin" : "plugins"}
                     </div>
                   </div>
                 </Link>

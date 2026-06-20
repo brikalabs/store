@@ -29,7 +29,7 @@ export function ShowcaseCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
   const caps = capabilityTotal(plugin);
   return (
     <Link
-      to="/plugins/$"
+      to="/$"
       params={{ _splat: plugin.name }}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-brand"
     >

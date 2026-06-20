@@ -4,6 +4,7 @@ import { Chart } from "@brika/clay/components/chart";
 import { Separator } from "@brika/clay/components/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@brika/clay/components/tabs";
 import type { PluginDetail } from "@brika/registry-contract";
+import { scopeOf } from "@brika/registry-core";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   BadgeCheck,
@@ -46,11 +47,10 @@ import { FilesSection } from "@/components/plugin/file-browser";
 import { InstallCommand } from "@/components/plugin/install-command";
 import { Markdown } from "@/components/plugin/markdown";
 import { ReviewsSection } from "@/components/plugin/reviews-section";
+import { ScopeView } from "@/components/plugin/scope-page";
 import { formatBytes, formatCount, formatDate } from "@/lib/format";
-import { applyListingOverride } from "@/lib/registry/listing";
-import { fetchPublicListing } from "@/lib/registry/listing-merge";
-import { getPluginPage } from "@/lib/registry/registry";
-import { isRegistryName } from "@/lib/registry/registry-source";
+import { getPluginPage, getScopePage } from "@/lib/registry/registry";
+import type { RegistryPluginPage } from "@/lib/registry/registry-source";
 import { type GrantFamily, type GrantScope, groupGrants } from "@/lib/social/grants";
 
 const DETAIL_TABS = [
@@ -71,20 +71,36 @@ const detailSearch = z.object({
   tab: z.enum(DETAIL_TAB_IDS).optional().catch(undefined),
 });
 
-export const Route = createFileRoute("/plugins/$")({
+/**
+ * The scope/package catch-all at the root. Every package is scoped, and a scope
+ * starts with `@` (no other top-level route does), so this resolves:
+ *   `/@scope`          -> the scope's package listing
+ *   `/@scope/name`     -> the plugin detail page
+ * Anything not starting with `@` (or an unknown scope/plugin) 404s.
+ */
+export const Route = createFileRoute("/$")({
   validateSearch: (input) => detailSearch.parse(input),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   loader: async ({ params, deps }) => {
-    const name = params._splat;
-    if (!name) return null;
-    const page = await getPluginPage(name, deps.lang);
-    if (page === null) return null;
-    // Layer the maintainer's public store-listing override on top of the manifest.
-    const override = await fetchPublicListing({ data: name });
-    return { ...page, detail: applyListingOverride(page.detail, override) };
+    const splat = params._splat;
+    if (!splat?.startsWith("@")) return null;
+    // A bare scope (`@scope`, no `/name`) renders the scope's catalogue.
+    if (!splat.includes("/")) {
+      const scope = await getScopePage(splat);
+      return scope === null ? null : { kind: "scope" as const, scope };
+    }
+    const page = await getPluginPage(splat, deps.lang);
+    return page === null ? null : { kind: "plugin" as const, page };
   },
-  component: PluginDetailPage,
+  component: CatchAllPage,
 });
+
+function CatchAllPage() {
+  const data = Route.useLoaderData();
+  if (data === null) return <NotFoundPage />;
+  if (data.kind === "scope") return <ScopeView page={data.scope} />;
+  return <PluginDetailPage page={data.page} />;
+}
 
 const LOCALE_NAMES: Record<string, string> = {
   en: "English",
@@ -269,7 +285,7 @@ function DetailBreadcrumb({
             {readmeLocales.map((loc) => (
               <Link
                 key={loc}
-                to="/plugins/$"
+                to="/$"
                 params={{ _splat: name }}
                 search={{ lang: loc }}
                 className={segmentClassName(loc === activeLocale, "sm")}
@@ -284,7 +300,7 @@ function DetailBreadcrumb({
   );
 }
 
-/** All-time installs from the registry, falling back to weekly npm downloads, else nothing. */
+/** All-time installs from the registry, falling back to the trailing-week count, else nothing. */
 function HeaderInstalls({ detail }: Readonly<{ detail: PluginDetail }>) {
   if (detail.installs === undefined) {
     if (detail.downloadsWeekly > 0) {
@@ -338,11 +354,11 @@ function DetailHeader({
         <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-muted-foreground text-sm">
           {detail.author ? (
             <Link
-              to="/developers/$id"
-              params={{ id: detail.author.id }}
+              to="/$"
+              params={{ _splat: scopeOf(detail.name) ?? detail.name }}
               className="font-semibold text-brand-ink hover:underline"
             >
-              {detail.author.id}
+              {detail.author.name ?? detail.author.id}
             </Link>
           ) : null}
           <span className="font-mono text-xs">v{detail.version}</span>
@@ -589,7 +605,7 @@ function PermissionsSection({
   );
 }
 
-/** External links card (repository / homepage / npm); hidden without a repo or homepage. */
+/** External links card (repository / homepage); hidden without a repo or homepage. */
 function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
   if (!detail.repository && !detail.homepage) return null;
   return (
@@ -604,15 +620,6 @@ function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
           Homepage
         </MetaLink>
       ) : null}
-      {/* `@brika/*` are hosted on our registry, not npm, so no npm link for them. */}
-      {isRegistryName(detail.name) ? null : (
-        <MetaLink
-          href={`https://www.npmjs.com/package/${detail.name}`}
-          icon={<Box className="size-4" />}
-        >
-          npm package
-        </MetaLink>
-      )}
     </Card>
   );
 }
@@ -623,8 +630,8 @@ function SidebarAuthor({ detail }: Readonly<{ detail: PluginDetail }>) {
   return (
     <Card interactive className="p-0">
       <Link
-        to="/developers/$id"
-        params={{ id: detail.author.id }}
+        to="/$"
+        params={{ _splat: scopeOf(detail.name) ?? detail.name }}
         className="flex items-center gap-3 p-4"
       >
         <GradientAvatar
@@ -636,11 +643,11 @@ function SidebarAuthor({ detail }: Readonly<{ detail: PluginDetail }>) {
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="truncate font-semibold text-foreground text-sm">
-              {detail.author.id}
+              {detail.author.name ?? detail.author.id}
             </span>
             {detail.verified ? <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" /> : null}
           </div>
-          <div className="text-muted-foreground text-xs">View profile</div>
+          <div className="text-muted-foreground text-xs">View scope</div>
         </div>
       </Link>
     </Card>
@@ -1041,18 +1048,15 @@ function SupplyChainPanel({ detail }: Readonly<{ detail: PluginDetail }>) {
         brikaEngine={detail.brikaEngine}
       />
 
-      {/* The file browser is only for our own tarballs (registry plugins); it
-          fetches the file list lazily on mount. */}
-      {isRegistryName(detail.name) ? (
-        <FilesSection
-          name={detail.name}
-          version={detail.version}
-          tarballName={tarballName}
-          tarballUrl={detail.tarballUrl}
-          fileCount={detail.fileCount}
-          unpackedSize={detail.unpackedSize}
-        />
-      ) : null}
+      {/* The file browser reads our own tarballs; it fetches the file list lazily on mount. */}
+      <FilesSection
+        name={detail.name}
+        version={detail.version}
+        tarballName={tarballName}
+        tarballUrl={detail.tarballUrl}
+        fileCount={detail.fileCount}
+        unpackedSize={detail.unpackedSize}
+      />
     </TabsContent>
   );
 }
@@ -1081,16 +1085,11 @@ function useSocialCounts(name: string | undefined): { reviews: number; comments:
   return { reviews: apiReviews, comments: apiComments };
 }
 
-function PluginDetailPage() {
-  const data = Route.useLoaderData();
+function PluginDetailPage({ page }: Readonly<{ page: RegistryPluginPage }>) {
   const { lang, tab } = Route.useSearch();
   const navigate = Route.useNavigate();
   const activeTab: DetailTab = tab ?? "overview";
-  const counts = useSocialCounts(data?.detail.name);
-
-  if (data === null) {
-    return <NotFoundPage />;
-  }
+  const counts = useSocialCounts(page.detail.name);
 
   const onTab = (next: string) => {
     navigate({
@@ -1101,7 +1100,7 @@ function PluginDetailPage() {
     });
   };
 
-  const { detail, readme, versions, readmeLocales } = data;
+  const { detail, readme, versions, readmeLocales } = page;
   const activeLocale = lang ?? (readmeLocales.includes("en") ? "en" : (readmeLocales[0] ?? "en"));
   // Every section renders real data: the plugin's actual locales + screenshots, and
   // live reviews/comments from D1 (empty states until written).
@@ -1176,7 +1175,7 @@ function PluginDetailPage() {
           <DetailSidebar
             detail={detail}
             displayLocales={displayLocales}
-            downloadsSeries={data.downloadsSeries}
+            downloadsSeries={page.downloadsSeries}
           />
         </div>
       </Tabs>
