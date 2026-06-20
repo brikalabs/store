@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth";
 import { jsonBadRequest, jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { serverContext } from "@/lib/server-context";
 import { ensurePluginCached, listReviews, upsertReview } from "@/lib/social";
+import { serverContext } from "@/server/server-context";
 
 const ReviewInput = z.object({
   rating: z.number().int().min(1).max(5),

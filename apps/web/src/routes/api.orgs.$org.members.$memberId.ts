@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { authed } from "@/lib/console-api";
 import { jsonError, jsonPrivate, orgStatus } from "@/lib/http";
+import { authed } from "@/server/console-api";
 
 /**
  * `DELETE /api/orgs/:org/members/:memberId` - remove a member (admin only). The domain

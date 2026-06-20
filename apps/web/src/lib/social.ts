@@ -6,7 +6,7 @@ import {
   Review,
 } from "@brika/registry-contract";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "@/db/client";
+import type { Db } from "@/server/db/client";
 import {
   comments,
   commentVotes,
@@ -15,7 +15,7 @@ import {
   reviews,
   reviewVotes,
   users,
-} from "@/db/schema";
+} from "@/server/db/schema";
 import { getPluginPage } from "./registry";
 
 /** Upsert the GitHub user behind a session. */

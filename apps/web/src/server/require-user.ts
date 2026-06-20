@@ -1,8 +1,8 @@
 import { redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { getCurrentUser, type SessionUser } from "./auth";
-import { serverContext } from "./server-context";
+import { getCurrentUser, type SessionUser } from "@/lib/auth";
+import { serverContext } from "@/server/server-context";
 
 /**
  * Resolve the session user from the request cookie. A server function so the server-only

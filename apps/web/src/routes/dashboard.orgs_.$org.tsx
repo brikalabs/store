@@ -9,7 +9,7 @@ import { type Member, MembersCard } from "@/components/org/members-card";
 import { ProfileCard } from "@/components/org/profile-card";
 import { ScopesCard } from "@/components/org/scopes-card";
 import { orgPath, readError } from "@/lib/org-api";
-import { requireUser } from "@/lib/require-user";
+import { requireUser } from "@/server/require-user";
 
 export const Route = createFileRoute("/dashboard/orgs_/$org")({
   beforeLoad: async ({ location }) => ({ user: await requireUser(location.href) }),

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSessionUserId } from "@/lib/auth";
 import { jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { serverContext } from "@/lib/server-context";
 import { listComments, toggleCommentUpvote } from "@/lib/social";
+import { serverContext } from "@/server/server-context";
 
 /**
  * `POST /v1/plugins/:name/comments/:commentId/vote` - toggle the signed-in

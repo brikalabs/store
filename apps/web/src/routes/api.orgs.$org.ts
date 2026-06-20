@@ -1,7 +1,7 @@
 import { isCanonicalOrgSlug } from "@brika/registry-core";
 import { createFileRoute } from "@tanstack/react-router";
-import { authed } from "@/lib/console-api";
 import { jsonBadRequest, jsonError, jsonPrivate, orgStatus } from "@/lib/http";
+import { authed } from "@/server/console-api";
 
 /**
  * `GET /api/orgs/:org` - the org's editable profile (display name, description, links,

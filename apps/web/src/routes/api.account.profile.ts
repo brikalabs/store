@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { jsonBadRequest, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { serverContext } from "@/lib/server-context";
 import { getDeveloperProfile, updateDeveloperProfile } from "@/lib/social";
+import { serverContext } from "@/server/server-context";
 
 const ProfileInput = z.object({
   displayName: z.string().max(80).optional(),

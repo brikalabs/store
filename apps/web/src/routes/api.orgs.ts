@@ -1,8 +1,8 @@
 import { listOrgsForMember } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
-import { authed } from "@/lib/console-api";
 import { jsonPrivate } from "@/lib/http";
-import { registryDb } from "@/lib/registry-services";
+import { authed } from "@/server/console-api";
+import { registryDb } from "@/server/registry-services";
 
 /** `GET /api/orgs` - the organisations the signed-in user belongs to, with their role. */
 export const Route = createFileRoute("/api/orgs")({

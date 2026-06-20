@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { requireUser } from "@/lib/require-user";
+import { requireUser } from "@/server/require-user";
 
 /**
  * Layout for the developer console (`/dashboard` and its children: scopes, account

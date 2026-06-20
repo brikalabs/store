@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
-import type { Db } from "@/db/client";
-import { users } from "@/db/schema";
+import type { Db } from "@/server/db/client";
+import { users } from "@/server/db/schema";
+import { vars } from "@/server/env";
 import { parseCookies, safeReturnPath } from "./auth-cookies";
-import { vars } from "./env";
 import { signSession, verifySession } from "./session";
 
 // Pure cookie/redirect helpers live in `./auth-cookies` (unit-tested there);

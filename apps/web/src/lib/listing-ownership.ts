@@ -1,10 +1,10 @@
 import { scopeOf } from "@brika/registry-core";
 import { listScopesForMember } from "@brika/store-db/adapters";
+import { registryDb } from "@/server/registry-services";
 import type { SessionUser } from "./auth";
 import { isListingMaintainer } from "./listing";
 import { personName } from "./manifest-mapping";
 import { getPackument } from "./npm";
-import { registryDb } from "./registry-services";
 
 /**
  * May this user edit the store listing for `name`? Resolves the inputs (scope membership

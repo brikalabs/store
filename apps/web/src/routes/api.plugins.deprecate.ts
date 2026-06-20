@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { authed } from "@/lib/console-api";
 import { jsonBadRequest, jsonError, jsonPrivate, manageStatus } from "@/lib/http";
+import { authed } from "@/server/console-api";
 
 const Body = z.object({
   name: z.string().min(1),

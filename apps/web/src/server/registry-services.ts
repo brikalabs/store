@@ -15,7 +15,7 @@ import {
   D1TokenStore,
   HmacDomainChallenge,
 } from "@brika/store-db/adapters";
-import { vars } from "./env";
+import { vars } from "@/server/env";
 
 /**
  * The web app's registry composition root - the D1-backed subset of the registry's own

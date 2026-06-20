@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import type { Db } from "@/db/client";
-import * as schema from "@/db/schema";
-import { comments, plugins, reviews, users } from "@/db/schema";
+import type { Db } from "@/server/db/client";
+import * as schema from "@/server/db/schema";
+import { comments, plugins, reviews, users } from "@/server/db/schema";
 import { listComments, listReviews, toggleCommentUpvote, toggleReviewHelpful } from "./social";
 
 /**

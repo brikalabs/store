@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Building2, ChevronRight, Plus, ShieldCheck } from "lucide-react";
 import { type SyntheticEvent, useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-shell";
-import { requireUser } from "@/lib/require-user";
+import { requireUser } from "@/server/require-user";
 
 export const Route = createFileRoute("/dashboard/orgs")({
   beforeLoad: async ({ location }) => ({ user: await requireUser(location.href) }),

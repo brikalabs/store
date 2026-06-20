@@ -1,5 +1,5 @@
 import { readTarGzEntries, tarballPath } from "@brika/registry-core";
-import type { BlobStore } from "./blob-store";
+import type { BlobStore } from "@/server/blob-store";
 import { contentTypeFor, REGISTRY_ORIGIN } from "./registry-source";
 
 /**

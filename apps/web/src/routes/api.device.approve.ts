@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { approveDeviceCode } from "@/lib/device-approval";
 import { jsonBadRequest, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { serverContext } from "@/lib/server-context";
+import { serverContext } from "@/server/server-context";
 
 /**
  * `POST /api/device/approve`: approve a pending registry device-authorization

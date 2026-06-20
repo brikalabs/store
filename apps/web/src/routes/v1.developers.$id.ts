@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { jsonOk } from "@/lib/http";
 import { getDeveloperPage } from "@/lib/registry";
-import { serverContext } from "@/lib/server-context";
 import { getDeveloperProfile } from "@/lib/social";
+import { serverContext } from "@/server/server-context";
 
 /**
  * `GET /v1/developers/:id`: the public developer profile. The editable D1 row is

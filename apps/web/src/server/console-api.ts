@@ -1,9 +1,9 @@
 import type { PublishIdentity } from "@brika/registry-core";
-import { getCurrentUser, type SessionUser } from "./auth";
-import { jsonUnauthorized } from "./http";
-import { sessionIdentity } from "./registry-identity";
-import { type RegistryServices, registryServices } from "./registry-services";
-import { serverContext } from "./server-context";
+import { getCurrentUser, type SessionUser } from "@/lib/auth";
+import { jsonUnauthorized } from "@/lib/http";
+import { sessionIdentity } from "@/server/registry-identity";
+import { type RegistryServices, registryServices } from "@/server/registry-services";
+import { serverContext } from "@/server/server-context";
 
 /** The authenticated context a console API handler runs in. */
 export interface ConsoleContext {

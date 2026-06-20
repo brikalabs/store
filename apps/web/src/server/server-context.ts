@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
-import { type Db, getDb } from "@/db/client";
-import { type BlobStore, CfR2BlobStore } from "./blob-store";
+import { type BlobStore, CfR2BlobStore } from "@/server/blob-store";
+import { type Db, getDb } from "@/server/db/client";
 
 /**
  * The store's per-request composition root. It reads the Cloudflare bindings in

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sessionIdentity } from "./registry-identity";
+import { sessionIdentity } from "@/server/registry-identity";
 
 describe("sessionIdentity", () => {
   test("maps a session user to a local-actor GitHub publish identity", () => {

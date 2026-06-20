@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getCurrentUser } from "@/lib/auth";
-import { serverContext } from "@/lib/server-context";
+import { serverContext } from "@/server/server-context";
 
 /** `GET /auth/me`: the signed-in user (or null). Never cached. */
 export const Route = createFileRoute("/auth/me")({
