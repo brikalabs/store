@@ -109,7 +109,6 @@ test("SCOPE-003-AC1: claiming a scope owned by another returns 409", () => {
 - `bun run spec:coverage` , prints a coverage matrix + two gap lists (uncovered
   criteria; status drift, e.g. a `done` spec with no covering test).
 - `bun run spec:coverage --strict` , non-zero exit on drift, for CI.
-- `bun run spec:check` , regenerate the index, then report coverage.
 
 The declared `status` and the verified coverage are intentionally separate: specs
 are first authored from the implemented code, then the test suites are annotated
@@ -120,5 +119,7 @@ with their AC codes, so coverage climbs over time without the docs rotting.
 | Script | What it does |
 | --- | --- |
 | `scripts/spec-lib.ts` | Shared loader (frontmatter + AC codes). |
-| `scripts/gen-spec-index.ts` (`spec:index`) | Regenerates `INDEX.md`. |
-| `scripts/spec-coverage.ts` (`spec:coverage`) | Test-linkage matrix + drift. |
+| `scripts/spec-lint.ts` (`spec:lint`) | Validates structure: frontmatter, code/filename/area/group match, AC sequence, fences, duplicate ids. Fails on error. |
+| `scripts/gen-spec-index.ts` (`spec:index`) | Regenerates `INDEX.md`; `--check` fails if stale. |
+| `scripts/spec-coverage.ts` (`spec:coverage`) | Test-linkage matrix + drift; `--strict` for CI. |
+| `spec:check` | `spec:lint` + `spec:index --check` + `spec:coverage`. Runs in CI. |

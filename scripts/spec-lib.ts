@@ -29,7 +29,7 @@ export interface Spec {
 
 const AC_CODE = /\b([A-Z]+-\d+-AC\d+)\b/g;
 
-function frontmatter(text: string): Record<string, string> {
+export function frontmatter(text: string): Record<string, string> {
   const out: Record<string, string> = {};
   if (!text.startsWith("---")) return out;
   const end = text.indexOf("\n---", 3);
@@ -53,12 +53,14 @@ function parseTitle(raw: string): string {
   return raw;
 }
 
-function walk(dir: string): string[] {
+/** Absolute paths of every spec markdown file (excludes README/INDEX/_template). */
+export function specFiles(dir: string = SPECS_DIR): string[] {
   const files: string[] = [];
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
-    if (statSync(full).isDirectory()) files.push(...walk(full));
-    else if (entry.endsWith(".md") && !entry.startsWith("_")) files.push(full);
+    if (statSync(full).isDirectory()) files.push(...specFiles(full));
+    else if (entry.endsWith(".md") && !entry.startsWith("_") && entry !== "README.md" && entry !== "INDEX.md")
+      files.push(full);
   }
   return files;
 }
@@ -66,7 +68,7 @@ function walk(dir: string): string[] {
 /** Load every per-spec file (the ones with a frontmatter `id`). */
 export function loadSpecs(): Spec[] {
   const specs: Spec[] = [];
-  for (const full of walk(SPECS_DIR)) {
+  for (const full of specFiles()) {
     const text = readFileSync(full, "utf8");
     const fm = frontmatter(text);
     if (fm.id === undefined) continue; // README/INDEX/_template have no id

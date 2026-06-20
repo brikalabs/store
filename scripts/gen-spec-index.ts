@@ -4,9 +4,11 @@
  * artifact, never hand-edited, so it cannot drift from the specs. Run after adding or
  * editing a spec: `bun run spec:index` (or `spec:check` runs index + coverage).
  */
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadSpecs, ROOT, STATUS_LABEL, type Status } from "./spec-lib";
+
+const CHECK = process.argv.includes("--check");
 
 const specs = loadSpecs();
 
@@ -60,5 +62,17 @@ for (const [group, list] of [...byGroup].sort()) {
   out.push("");
 }
 
-writeFileSync(join(ROOT, "docs/specs/INDEX.md"), `${out.join("\n")}\n`);
-console.log(`Wrote docs/specs/INDEX.md (${specs.length} specs).`);
+const indexPath = join(ROOT, "docs/specs/INDEX.md");
+const content = `${out.join("\n")}\n`;
+
+if (CHECK) {
+  const current = readFileSync(indexPath, "utf8");
+  if (current !== content) {
+    console.error("docs/specs/INDEX.md is stale. Run `bun run spec:index` and commit.");
+    process.exit(1);
+  }
+  console.log("docs/specs/INDEX.md is up to date.");
+} else {
+  writeFileSync(indexPath, content);
+  console.log(`Wrote docs/specs/INDEX.md (${specs.length} specs).`);
+}
