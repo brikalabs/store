@@ -24,8 +24,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bunx brika check --types
-      - run: bunx brika publish`;
+      - run: bunx @brika/cli check --types
+      - run: bunx @brika/cli publish`;
 
 function OverviewPage() {
   const { user } = Route.useRouteContext();
@@ -155,6 +155,11 @@ function PublishCard() {
           {copied ? <Check className="size-4 text-brand-ink" /> : <Copy className="size-4" />}
         </button>
       </div>
+      <p className="text-muted-foreground text-xs">
+        Other CI (GitLab, etc.)? The same{" "}
+        <span className="font-mono text-foreground">@brika/cli</span> publishes anywhere, set a{" "}
+        <span className="font-mono text-foreground">BRIKA_TOKEN</span> secret instead of using OIDC.
+      </p>
       <Link
         to="/dashboard/orgs"
         className="inline-flex w-fit items-center gap-1 text-brand-ink text-sm hover:underline"
