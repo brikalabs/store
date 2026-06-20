@@ -7,11 +7,11 @@ Status of the platform and the precise next steps. Legend: ✅ done and verified
 
 | Area | Status |
 | --- | --- |
-| Store: SSR pages (home, browse, plugin detail, developer profile) | ✅ |
+| Store: SSR pages (home, browse `/packages`, plugin detail `/@scope/name`, scope page `/@scope`) | ✅ |
 | Store: `/v1` discovery contract (search, plugin, versions, readme, icon, verified) | ✅ |
 | Store: social (GitHub OAuth, reviews, comments, helpful/upvote grading) | ✅ |
 | Store: media (icon, localized readme/changelog, screenshots via jsDelivr) | ✅ |
-| Store: developer console (profile, your packages, publish setup) | ✅ |
+| Store: developer console (profile, your packages by ownership, publish setup) | ✅ |
 | Org model: organisation entity owns scopes 1:N, public `/orgs/:org` page | ✅ |
 | Org model: anti-squat claim rate limit + per-account cap (ORG-004/005) | ✅ |
 | Org model: profile (description, links, logo upload) + verified domains (ORG-009/010) | ✅ |
@@ -51,11 +51,12 @@ Largely built. Remaining:
   claiming (ORG-006) is wired as a provider-agnostic `ClaimVerifier` seam (allow-all
   today) - the real verifier is a fast follow. The `SCOPE-*` specs are retired to `gone`,
   re-coded under `ORG-*` (see [ADR 0001](./adr/0001-organisation-1n-model.md)).
-- ⬜ **Console slices still to build**: review responses + comment moderation,
-  per-package listing settings (repo link, featured).
-- ⬜ **npm sync cron + verified-list signing**: a scheduled refresh and the
-  Ed25519 `/v1/verified` signing key (today the cache fills lazily; the verified
-  list is empty).
+- ⬜ **Console slices still to build**: review responses + comment moderation.
+  (Editable per-plugin listing overrides were dropped: the listing is the
+  published manifest; the per-plugin page is version management only.)
+- ⬜ **Verified-list signing**: the Ed25519 `/v1/verified` signing key (today the
+  verified list is empty). The store is registry-only, so there is no npm catalog
+  to sync.
 
 ## Registry (registry.brika.dev)
 
@@ -78,14 +79,16 @@ Largely built. Remaining:
   warning. Audited.
 - ⬜ **M3 hub install**: ship the `@brika:registry` scoped-registry config; verify
   an end-to-end install of an `@brika` plugin into a hub from the registry.
-- ✅ **M4 store integration**: the storefront reads `@brika/*` from the registry,
-  not npm. A `/-/v1/packages` catalog (npm has no list endpoint) + the
-  npm-compatible packument feed the listing/detail; tarball-bundled assets (icon,
-  screenshots, readme, localized `store.json`) are extracted and served by the
-  store (`/v1/plugins/:name/asset`, R2-cached) so registry plugins render with
-  localized copy. Proven end to end with Playwright.
+- ✅ **M4 store integration**: the storefront is registry-only , it reads every
+  listed plugin from the registry and never from npm. A `/-/v1/packages` catalog
+  (npm has no list endpoint) + the npm-compatible packument feed the listing,
+  detail, and scope pages; tarball-bundled assets (icon, screenshots, readme,
+  localized `store.json`) are extracted and served by the store
+  (`/v1/plugins/:name/asset`, R2-cached) so plugins render with localized copy.
+  Proven end to end with Playwright.
 - ⬜ **M5 community scopes** (later): let community claim scopes and publish to
-  the registry; until then community stays on npm.
+  the registry; the storefront lists those scoped, verified plugins (it does not
+  list from npm).
 - 🟡 **M6 hardening**: done so far - tarball-origin pinning, asset path-traversal
   guard, scoped read-only CORS, ownership-gated management, audit log, and
   **rate limits** on the abuse-prone mutating endpoints (`POST /-/publish` by
@@ -145,10 +148,10 @@ The publish/resolve/store-integration core is shipped (registry M1, M2, M4 and t
    pinning, path-traversal guard, CORS, ownership gates, audit log, rate limits, and
    operator takedown/restore are already done).
 4. **Pick the store design direction** (Spotlight vs Console), finish the redesign
-   across browse/detail/profile/dashboard, then build the remaining console slices
-   (review responses, comment moderation, per-package settings). Org claiming +
+   across browse/detail/scope/dashboard, then build the remaining console slices
+   (review responses, comment moderation). Org claiming +
    management already shipped (ORG-001..005, 008).
 5. **Identity-tied claiming (ORG-006)**: implement a real `ClaimVerifier` behind the
    seam so a name can only be claimed by an identity that provably controls it.
-6. **npm sync cron + verified-list signing**: scheduled refresh and the Ed25519
-   `/v1/verified` signing key (today the verified list is empty).
+6. **Verified-list signing**: the Ed25519 `/v1/verified` signing key (today the
+   verified list is empty). The store is registry-only , no npm catalog to sync.

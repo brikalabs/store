@@ -27,7 +27,7 @@ endpoint accepts `?lang=` and resolves the closest available doc.
 ### STORE-010-AC1 , Localized copy renders for a requested locale
 ```gherkin
 Given @brika/plugin-i18n ships a French store locale
-When a visitor requests GET /plugins/@brika/plugin-i18n?lang=fr
+When a visitor requests GET /@brika/plugin-i18n?lang=fr
 Then the rendered page shows the French localized title
 ```
 

@@ -14,9 +14,11 @@ traceability:
 
 ## Description
 
-`/dashboard/profile` loads the developer's own public profile and lets them edit
+`/dashboard/profile` loads the developer's own account profile and lets them edit
 display name, bio, and website. Saves via `PUT /api/account/profile` (enforces
-SOCIAL profile rules), then reflects the persisted result.
+SOCIAL profile rules), then reflects the persisted result. (The standalone public
+developer page was retired with the move to scope-centric publishing, see STORE-004;
+a publisher's public surface is now its scope page, `/@scope`.)
 
 ## Acceptance criteria
 
@@ -36,9 +38,8 @@ Then on a 200 the editor updates to the persisted profile
 And a Saved confirmation is shown
 ```
 
-### CONSOLE-012-AC3 , Profile links to the public developer page
+### CONSOLE-012-AC3 , Profile shows the public handle
 ```gherkin
 Given the profile editor is rendered
-When the user activates the View public profile link
-Then the app navigates to /developers/<id>
+Then it shows the developer's public @<id> handle and avatar
 ```
