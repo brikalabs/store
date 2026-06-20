@@ -197,6 +197,21 @@ describe("createScope (explicit scope claim)", () => {
     expect(res.status).toBe(200);
   });
 
+  test("SCOPE-014-AC1: 429 once the per-user scope cap is reached", async () => {
+    const ctx = services(db);
+    const token = await issueToken(db, "hoarder");
+    // The default cap is REGISTRY_LIMITS.maxScopesPerUser (3); claim up to it, then over.
+    for (const name of ["@s1", "@s2", "@s3"]) {
+      const res = await createScope({ params: { scope: name }, req: post(undefined, token), ctx });
+      expect(res.status).toBe(201);
+    }
+    expect(
+      await statusOf(createScope({ params: { scope: "@s4" }, req: post(undefined, token), ctx })),
+    ).toBe(429);
+    // the over-cap scope was not created
+    expect(await db.select().from(regScopes).where(eq(regScopes.scope, "@s4"))).toHaveLength(0);
+  });
+
   test("409 when the scope is owned by someone else", async () => {
     await db.insert(regScopes).values({ scope: "@team", ownerId: "alice" });
     const token = await issueToken(db, "mallory");

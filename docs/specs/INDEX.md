@@ -6,11 +6,11 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 ## Totals
 
-131 specs , 359 acceptance criteria.
+133 specs , 363 acceptance criteria.
 
 | Status | Count |
 | --- | --- |
-| [DONE] | 112 |
+| [DONE] | 114 |
 | [WIP] | 2 |
 | [TODO] | 15 |
 | [HOLD] | 2 |
@@ -164,6 +164,8 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [SCOPE-011](registry/SCOPE-011-ownership-policy-gates-publish-by-scope-membership.md) | [DONE] | Ownership policy gates publish by scope membership |
 | [SCOPE-012](registry/SCOPE-012-list-the-scopes-i-belong-to-console-read.md) | [DONE] | List the scopes I belong to (console read) |
 | [SCOPE-013](registry/SCOPE-013-console-session-surface-enforces-the-same-scope-rules.md) | [DONE] | Console session surface enforces the same scope rules |
+| [SCOPE-014](registry/SCOPE-014-per-user-scope-cap.md) | [DONE] | Per-user scope cap (anti-squatting) |
+| [SCOPE-015](registry/SCOPE-015-claim-rate-limit.md) | [DONE] | Claim rate limit (per principal) |
 
 ## store
 

@@ -1,7 +1,8 @@
 import { displayNameSchema, isCanonicalScope, type ScopeErrorCode } from "@brika/registry-core";
-import { badRequest, httpError, reply } from "@brika/router";
+import { badRequest, httpError, rateLimit, reply } from "@brika/router";
 import { z } from "zod";
-import { requireWrite } from "../auth";
+import { cf } from "../adapters/cf-rate-limiter";
+import { principal, requireWrite } from "../auth";
 import { controller, route } from "../http/router";
 
 import type { Services } from "../services";
@@ -25,6 +26,7 @@ import type { Services } from "../services";
 function scopeStatus(code: ScopeErrorCode): number {
   if (code === "not_found") return 404;
   if (code === "conflict") return 409;
+  if (code === "too_many") return 429; // per-user scope cap reached
   return 403;
 }
 
@@ -166,7 +168,15 @@ export const scopeController = controller({
   name: "scope",
   prefix: "/-/scope",
   routes: [
-    route.put({ path: "/:scope", handler: createScope }),
+    // Claim is rate-limited by authenticated principal so a script cannot mass-claim
+    // names (the per-user cap in ScopeService is the hard ceiling; this blunts bursts).
+    route.put({
+      path: "/:scope",
+      middleware: [
+        rateLimit({ max: 10, window: "1m", key: principal, store: cf("CLAIM_LIMITER") }),
+      ],
+      handler: createScope,
+    }),
     route.get({ path: "/:scope/members", handler: listMembers }),
     route.put({ path: "/:scope/member/:provider/:id", body: MemberBody, handler: putMember }),
     route.delete({ path: "/:scope/member/:provider/:id", handler: deleteMember }),

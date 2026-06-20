@@ -9,10 +9,11 @@
  *
  * Enforcement status (kept honest on purpose):
  *   - ENFORCED: `maxTarballBytes` (`PublishService`), `maxFileBytes` +
- *     `maxUnpackedBytes` (the manifest gate, off the unpacked tarball).
- *   - NOT YET ENFORCED: the count-based quotas below. They need a usage-counting
- *     port on the metadata store (versions/packages/scopes) or a rolling-window
- *     count (the weekly limits); until then, treat them as documentation.
+ *     `maxUnpackedBytes` (the manifest gate, off the unpacked tarball),
+ *     `maxScopesPerUser` (`ScopeService.claim`, via `ScopeStore.countOwnedBy`).
+ *   - NOT YET ENFORCED: the remaining count-based quotas below. They need a
+ *     usage-counting port on the metadata store (versions/packages) or a
+ *     rolling-window count (the weekly limits); until then, treat them as docs.
  */
 
 const MiB = 1024 * 1024;
@@ -44,7 +45,7 @@ export const REGISTRY_LIMITS: RegistryLimits = {
   maxUnpackedBytes: 40 * MiB, // enforced (SchemaManifestValidator)
   maxVersionsPerPackage: 1000, // @unenforced: needs a count port on the metadata store
   maxPackagesPerScope: 100, // @unenforced: needs a count port on the metadata store
-  maxScopesPerUser: 3, // @unenforced: needs a count port on the metadata store
+  maxScopesPerUser: 3, // enforced (ScopeService.claim, via ScopeStore.countOwnedBy)
   weeklyPackageCreations: 20, // @unenforced: needs a rolling-window count port
   weeklyPublishAttempts: 1000, // @unenforced: needs a rolling-window count port
   weeklyWindowDays: 7, // @unenforced: window for the weekly limits above

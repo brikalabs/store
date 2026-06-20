@@ -13,6 +13,7 @@ traceability:
 ## Description
 
 A soft cap on how many orgs one account may hold, raisable on request.
+Supersedes `SCOPE-014` (the per-user scope cap on today's model) when the org rename lands.
 
 ## Acceptance criteria
 
