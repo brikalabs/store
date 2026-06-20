@@ -22,6 +22,7 @@
     "test:e2e": "bun run --filter @brika/store-web e2e",
     "typecheck": "bun run --filter '*' typecheck",
     "check:no-em-dash": "bun run scripts/check-no-em-dash.ts",
+    "spec:coverage": "bun run scripts/spec-coverage.ts",
     "markers": "bun run packages/markers/src/cli.ts",
     "unenforced": "bun run packages/markers/src/cli.ts --kind unenforced",
     "markers:vscode": "bun run --filter brika-markers build",
