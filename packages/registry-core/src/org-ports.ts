@@ -35,6 +35,8 @@ export interface OrgRecord {
  */
 export interface OrgStore {
   get(slug: string): Promise<OrgRecord | null>;
+  /** Every org, newest first - for the operator console directory (no membership filter). */
+  listAll(): Promise<OrgRecord[]>;
   /** Create `slug` if unclaimed; return the persisted record and whether this call created it. */
   claim(slug: string): Promise<{ record: OrgRecord; created: boolean }>;
   setDisplayName(slug: string, displayName: string | null): Promise<void>;

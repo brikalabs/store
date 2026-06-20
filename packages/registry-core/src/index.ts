@@ -8,8 +8,9 @@ export {
   registerAttestationProvider,
   TransparencyEntry,
 } from "./attestation";
-export type { AuditEntry, AuditLog } from "./audit";
+export type { AuditEntry, AuditLog, AuditReader, AuditRecord } from "./audit";
 export type { CatalogEntry, CatalogReader } from "./catalog";
+export { isOperator, operatorKey, parseOperatorAdmins } from "./operators";
 export {
   type DeviceGrant,
   type DeviceRedeemResult,

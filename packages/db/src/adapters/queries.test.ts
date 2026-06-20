@@ -1,8 +1,17 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { Db } from "../client";
-import { regOrgMembers, regOrgs, regScopes, regTokens } from "../schema";
-import { makeDb } from "../test-harness";
 import {
+  regDistTags,
+  regOrgMembers,
+  regOrgs,
+  regPackages,
+  regScopes,
+  regTokens,
+  regVersions,
+} from "../schema";
+import { makeDb, seedExamplePackage } from "../test-harness";
+import {
+  listAllPackages,
   listOrgsForMember,
   listScopesForMember,
   listSubjectTokens,
@@ -69,6 +78,66 @@ describe("listScopesForMember", () => {
     await member("acme", "alice", "admin");
     await scope("@acme", "acme");
     expect(await listScopesForMember(db, "github", "nobody")).toEqual([]);
+  });
+});
+
+describe("listAllPackages (operator directory)", () => {
+  test("reports owning org, latest version, and version counts", async () => {
+    await seedExamplePackage(db, "octocat"); // @brika/x@1.0.0 owned by org brika
+    const packages = await listAllPackages(db);
+    expect(packages).toHaveLength(1);
+    expect(packages[0]).toMatchObject({
+      name: "@brika/x",
+      scope: "@brika",
+      org: "brika",
+      latestVersion: "1.0.0",
+      versionCount: 1,
+      takenDownCount: 0,
+      yankedCount: 0,
+    });
+  });
+
+  test("counts taken-down and yanked versions so an operator can find hidden packages", async () => {
+    await seedExamplePackage(db, "octocat");
+    // Versions the public catalog would hide entirely, but the operator must still see.
+    await db.insert(regVersions).values({
+      name: "@brika/x",
+      version: "2.0.0",
+      manifest: { name: "@brika/x", version: "2.0.0" },
+      integrity: "sha512-two",
+      shasum: "feedface",
+      size: 1,
+      takedown: "malware",
+    });
+    await db.insert(regVersions).values({
+      name: "@brika/x",
+      version: "1.5.0",
+      manifest: { name: "@brika/x", version: "1.5.0" },
+      integrity: "sha512-mid",
+      shasum: "c0ffee",
+      size: 1,
+      yanked: true,
+    });
+
+    const [pkg] = await listAllPackages(db);
+    expect(pkg).toMatchObject({ versionCount: 3, takenDownCount: 1, yankedCount: 1 });
+  });
+
+  test("includes a package whose scope is unattached to any org", async () => {
+    await db.insert(regScopes).values({ scope: "@orphan", orgId: null });
+    await db.insert(regPackages).values({ name: "@orphan/y", scope: "@orphan" });
+    await db.insert(regVersions).values({
+      name: "@orphan/y",
+      version: "1.0.0",
+      manifest: { name: "@orphan/y", version: "1.0.0" },
+      integrity: "sha512-orphan",
+      shasum: "ababab",
+      size: 1,
+    });
+    await db.insert(regDistTags).values({ name: "@orphan/y", tag: "latest", version: "1.0.0" });
+
+    const [pkg] = await listAllPackages(db);
+    expect(pkg).toMatchObject({ name: "@orphan/y", org: null, orgDisplayName: null });
   });
 });
 

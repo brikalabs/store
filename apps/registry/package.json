@@ -15,6 +15,8 @@
     "dev": "wrangler dev --persist-to ../web/.wrangler/state",
     "build": "wrangler deploy --dry-run --outdir dist",
     "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply brika-store --local",
+    "db:migrate": "wrangler d1 migrations apply brika-store --remote",
     "typecheck": "tsgo --noEmit",
     "test": "bun test",
     "cf-typegen": "wrangler types"

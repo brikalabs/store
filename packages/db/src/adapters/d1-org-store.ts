@@ -1,5 +1,5 @@
 import type { OrgProfileInput, OrgRecord, OrgStore } from "@brika/registry-core";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { Db } from "../client";
 import { regOrgs } from "../schema";
 
@@ -28,6 +28,11 @@ export class D1OrgStore implements OrgStore {
     const rows = await this.#db.select().from(regOrgs).where(eq(regOrgs.slug, slug)).limit(1);
     const row = rows[0];
     return row === undefined ? null : toRecord(row);
+  }
+
+  async listAll(): Promise<OrgRecord[]> {
+    const rows = await this.#db.select().from(regOrgs).orderBy(desc(regOrgs.createdAt));
+    return rows.map(toRecord);
   }
 
   /**

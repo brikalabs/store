@@ -17,7 +17,13 @@
     {
       "binding": "DB",
       "database_name": "brika-store",
-      "database_id": "fab2588d-5d17-405b-97d5-0a41e177b7d2"
+      "database_id": "fab2588d-5d17-405b-97d5-0a41e177b7d2",
+      // The reg_* schema lives in @brika/db (shared package). Tracked via the d1_migrations
+      // table so `wrangler d1 migrations apply` is idempotent and safe to run on every deploy
+      // -- replaces the old untracked `d1 execute --file` loop that silently drifted prod.
+      // Filenames here never collide with apps/web/drizzle, so sharing one d1_migrations
+      // table across both Workers' migrations is safe.
+      "migrations_dir": "../../packages/db/drizzle"
     }
   ],
   // Immutable tarball bytes. Create with `wrangler r2 bucket create brika-registry-tarballs`.

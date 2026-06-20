@@ -1,17 +1,37 @@
-import type { AuditEntry, AuditLog } from "@brika/registry-core";
+import type { AuditEntry, AuditLog, AuditReader, AuditRecord } from "@brika/registry-core";
+import { desc } from "drizzle-orm";
 import type { Db } from "../client";
 import { regAudit } from "../schema";
 
 /**
- * D1 implementation of the {@link AuditLog} port: the append-only `reg_audit` table.
- * Centralises the actor-resolution rule (CI publishes attributed to the repo, local
- * ones to the owner) and the row shape.
+ * D1 implementation of the {@link AuditLog} (write) and {@link AuditReader} (read) ports:
+ * the append-only `reg_audit` table. Centralises the actor-resolution rule (CI publishes
+ * attributed to the repo, local ones to the owner) and the row shape. The read side backs
+ * the operator console's audit view; the write side is the best-effort recorder.
  */
-export class D1AuditLog implements AuditLog {
+export class D1AuditLog implements AuditLog, AuditReader {
   readonly #db: Db;
 
   constructor(db: Db) {
     this.#db = db;
+  }
+
+  /** The most recent entries, newest first (by `at`, then `id` to break ties stably). */
+  async recent(limit: number): Promise<AuditRecord[]> {
+    const rows = await this.#db
+      .select()
+      .from(regAudit)
+      .orderBy(desc(regAudit.at), desc(regAudit.id))
+      .limit(limit);
+    return rows.map((row) => ({
+      id: row.id,
+      action: row.action,
+      target: row.packageName,
+      version: row.version,
+      actor: row.actor,
+      detail: row.detail ?? null,
+      at: new Date(row.at * 1000).toISOString(),
+    }));
   }
 
   /**

@@ -57,6 +57,15 @@ describe("D1OrgStore", () => {
     });
   });
 
+  test("listAll returns every org (for the operator directory), including taken-down ones", async () => {
+    await store.claim("acme");
+    await store.claim("beta");
+    await store.setTakedown("beta", "squatting");
+    const all = await store.listAll();
+    expect(all.map((o) => o.slug).sort()).toEqual(["acme", "beta"]);
+    expect(all.find((o) => o.slug === "beta")?.takedown).toBe("squatting");
+  });
+
   test("setTakedown records the reason and clears it on restore (ORG-007)", async () => {
     await store.claim("acme");
     await store.setTakedown("acme", "name-squatting");

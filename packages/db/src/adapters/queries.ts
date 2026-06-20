@@ -1,7 +1,15 @@
 import type { OrgRole } from "@brika/registry-core";
 import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "../client";
-import { regOrgMembers, regOrgs, regScopes, regTokens } from "../schema";
+import {
+  regDistTags,
+  regOrgMembers,
+  regOrgs,
+  regPackages,
+  regScopes,
+  regTokens,
+  regVersions,
+} from "../schema";
 
 /**
  * Read-model projections over the `reg_*` tables for the console UIs. These are plain
@@ -73,6 +81,84 @@ export async function listScopesForMember(
     org: row.org,
     role: row.role === "admin" ? "admin" : "member",
   }));
+}
+
+/**
+ * A package as listed in the operator console directory: its owning org, latest version,
+ * and how many of its versions are taken down or yanked. Unlike the public catalog this
+ * includes packages with no non-hidden version, so an operator can find and restore a
+ * fully-taken-down package.
+ */
+export interface OperatorPackage {
+  readonly name: string;
+  readonly scope: string | null;
+  /** Owning org slug + display name, or null for an unattached scope. */
+  readonly org: string | null;
+  readonly orgDisplayName: string | null;
+  readonly latestVersion: string | null;
+  readonly versionCount: number;
+  readonly takenDownCount: number;
+  readonly yankedCount: number;
+}
+
+/**
+ * Every package with moderation-relevant counts, newest published first. Reads the bounded
+ * `reg_*` tables and aggregates in memory (like the catalog reader) rather than with SQL
+ * aggregates: the hosted scope is small and this keeps the query simple and exact.
+ */
+export async function listAllPackages(db: Db): Promise<OperatorPackage[]> {
+  const [packages, latest, versions] = await Promise.all([
+    db
+      .select({
+        name: regPackages.name,
+        scope: regPackages.scope,
+        createdAt: regPackages.createdAt,
+        org: regScopes.orgId,
+        orgDisplayName: regOrgs.displayName,
+      })
+      .from(regPackages)
+      .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
+      .leftJoin(regOrgs, eq(regOrgs.slug, regScopes.orgId)),
+    db
+      .select({ name: regDistTags.name, version: regDistTags.version })
+      .from(regDistTags)
+      .where(eq(regDistTags.tag, "latest")),
+    db
+      .select({
+        name: regVersions.name,
+        takedown: regVersions.takedown,
+        yanked: regVersions.yanked,
+      })
+      .from(regVersions),
+  ]);
+
+  const latestByName = new Map(latest.map((row) => [row.name, row.version]));
+  const counts = new Map<string, { total: number; takenDown: number; yanked: number }>();
+  for (const v of versions) {
+    const c = counts.get(v.name) ?? { total: 0, takenDown: 0, yanked: 0 };
+    c.total += 1;
+    if (v.takedown !== null) c.takenDown += 1;
+    if (v.yanked) c.yanked += 1;
+    counts.set(v.name, c);
+  }
+
+  return packages
+    .map((pkg) => {
+      const c = counts.get(pkg.name) ?? { total: 0, takenDown: 0, yanked: 0 };
+      return {
+        name: pkg.name,
+        scope: pkg.scope,
+        org: pkg.org,
+        orgDisplayName: pkg.orgDisplayName,
+        latestVersion: latestByName.get(pkg.name) ?? null,
+        versionCount: c.total,
+        takenDownCount: c.takenDown,
+        yankedCount: c.yanked,
+        createdAt: pkg.createdAt,
+      };
+    })
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map(({ createdAt: _createdAt, ...rest }) => rest);
 }
 
 /**

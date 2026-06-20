@@ -28,6 +28,9 @@ class FakeOrgStore implements OrgStore {
   async get(slug: string): Promise<OrgRecord | null> {
     return this.rows.get(slug) ?? null;
   }
+  async listAll(): Promise<OrgRecord[]> {
+    return [...this.rows.values()];
+  }
   async claim(slug: string): Promise<{ record: OrgRecord; created: boolean }> {
     const existing = this.rows.get(slug);
     if (existing) return { record: existing, created: false };
