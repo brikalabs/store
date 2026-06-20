@@ -80,7 +80,7 @@ interface ListingFields {
 /** Fetch the maintainer's stored override (null when none / not loaded). */
 async function loadListing(name: string): Promise<ListingFields | null> {
   const res = await fetch(`/api/plugins/${encodeURIComponent(name)}/listing`).catch(() => null);
-  if (res === null || !res.ok) return null;
+  if (!res?.ok) return null;
   const body = (await res.json().catch(() => ({}))) as { listing?: ListingFields | null };
   return body.listing ?? null;
 }

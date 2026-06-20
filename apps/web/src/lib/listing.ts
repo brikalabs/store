@@ -71,9 +71,9 @@ export function isListingMaintainer(opts: {
   readonly maintainers: readonly string[];
   readonly login: string;
 }): boolean {
-  return opts.scope !== null
-    ? opts.memberScopes.includes(opts.scope)
-    : opts.maintainers.includes(opts.login);
+  return opts.scope === null
+    ? opts.maintainers.includes(opts.login)
+    : opts.memberScopes.includes(opts.scope);
 }
 
 /** The public listing override (the fields surfaced on the plugin page). */
