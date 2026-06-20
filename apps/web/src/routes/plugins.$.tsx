@@ -48,6 +48,8 @@ import { Markdown } from "../components/markdown";
 import { ReviewsSection } from "../components/reviews-section";
 import { formatBytes, formatCount, formatDate } from "../lib/format";
 import { type GrantFamily, type GrantScope, groupGrants } from "../lib/grants";
+import { applyListingOverride } from "../lib/listing";
+import { fetchPublicListing } from "../lib/listing-merge";
 import { getPluginPage } from "../lib/registry";
 import { isRegistryName } from "../lib/registry-source";
 
@@ -72,7 +74,15 @@ const detailSearch = z.object({
 export const Route = createFileRoute("/plugins/$")({
   validateSearch: (input) => detailSearch.parse(input),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
-  loader: ({ params, deps }) => (params._splat ? getPluginPage(params._splat, deps.lang) : null),
+  loader: async ({ params, deps }) => {
+    const name = params._splat;
+    if (!name) return null;
+    const page = await getPluginPage(name, deps.lang);
+    if (page === null) return null;
+    // Layer the maintainer's public store-listing override on top of the manifest.
+    const override = await fetchPublicListing({ data: name });
+    return { ...page, detail: applyListingOverride(page.detail, override) };
+  },
   component: PluginDetailPage,
 });
 

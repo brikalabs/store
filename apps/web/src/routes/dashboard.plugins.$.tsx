@@ -70,23 +70,105 @@ function EditListingPage() {
   );
 }
 
-function EditListing({ detail, locales }: Readonly<{ detail: PluginDetail; locales: string[] }>) {
-  const [lang, setLang] = useState("en");
+interface ListingFields {
+  displayName: string | null;
+  summary: string | null;
+  description: string | null;
+  visibility: string;
+}
+
+/** Fetch the maintainer's stored override (null when none / not loaded). */
+async function loadListing(name: string): Promise<ListingFields | null> {
+  const res = await fetch(`/api/plugins/${encodeURIComponent(name)}/listing`).catch(() => null);
+  if (!res?.ok) return null;
+  const body = (await res.json().catch(() => ({}))) as { listing?: ListingFields | null };
+  return body.listing ?? null;
+}
+
+/** Persist the override; resolves to an error message, or null on success. */
+async function putListing(name: string, fields: ListingFields): Promise<string | null> {
+  const res = await fetch(`/api/plugins/${encodeURIComponent(name)}/listing`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(fields),
+  });
+  if (res.ok) return null;
+  const body = (await res.json().catch(() => ({}))) as { error?: string };
+  return body.error ?? "Could not save";
+}
+
+/**
+ * The store-listing form state: seeds from the manifest, loads the maintainer's existing
+ * override, and persists it. Extracted from the component so `EditListing` stays a thin view.
+ */
+function useListingForm(detail: PluginDetail) {
   const [name, setName] = useState(detail.displayName ?? detail.name);
-  const [summary, setSummary] = useState(detail.description ?? "");
+  const [summary, setSummary] = useState("");
   const [description, setDescription] = useState(detail.description ?? "");
   const [visibility, setVisibility] = useState<"public" | "unlisted">("public");
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Demo: treat the first half of the shipped locales as fully translated.
-  const translated = new Set(locales.slice(0, Math.ceil(locales.length / 2)));
-  const isTranslated = translated.has(lang);
+  useEffect(() => {
+    let active = true;
+    loadListing(detail.name).then((l) => {
+      if (!active || l === null) return;
+      setName(l.displayName ?? detail.displayName ?? detail.name);
+      setSummary(l.summary ?? "");
+      setDescription(l.description ?? detail.description ?? "");
+      setVisibility(l.visibility === "unlisted" ? "unlisted" : "public");
+    });
+    return () => {
+      active = false;
+    };
+  }, [detail.name, detail.displayName, detail.description]);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    const message = await putListing(detail.name, {
+      displayName: name.trim() || null,
+      summary: summary.trim() || null,
+      description: description.trim() || null,
+      visibility,
+    });
+    setSaving(false);
+    setError(message);
+    if (message === null) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+  }
+
+  return {
+    name,
+    setName,
+    summary,
+    setSummary,
+    description,
+    setDescription,
+    visibility,
+    setVisibility,
+    saving,
+    saved,
+    error,
+    save,
+  };
+}
+
+function EditListing({ detail, locales }: Readonly<{ detail: PluginDetail; locales: string[] }>) {
+  const [lang, setLang] = useState(locales[0] ?? "en");
+  const form = useListingForm(detail);
+  const { name, setName, summary, setSummary, description, setDescription } = form;
+  const { visibility, setVisibility, saving, saved, error, save } = form;
+
+  const isTranslated = locales.includes(lang);
   const title = detail.displayName ?? detail.name;
 
-  function save() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
+  let saveLabel = "Save changes";
+  if (saving) saveLabel = "Saving…";
+  else if (saved) saveLabel = "Saved";
 
   return (
     <div className="flex flex-col gap-6">
@@ -110,12 +192,17 @@ function EditListing({ detail, locales }: Readonly<{ detail: PluginDetail; local
           >
             Cancel
           </Link>
-          <Button onClick={save} className="gap-1.5">
+          <Button onClick={save} disabled={saving} className="gap-1.5">
             <Check className="size-4" />
-            {saved ? "Saved" : "Save changes"}
+            {saveLabel}
           </Button>
         </div>
       </div>
+      {error !== null && (
+        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive text-sm">
+          {error}
+        </p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_280px] lg:items-start">
         <div className="flex flex-col gap-5">

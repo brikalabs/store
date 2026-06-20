@@ -10,8 +10,8 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 | Status | Count |
 | --- | --- |
-| [DONE] | 114 |
-| [WIP] | 2 |
+| [DONE] | 115 |
+| [WIP] | 1 |
 | [TODO] | 15 |
 | [HOLD] | 2 |
 
@@ -20,7 +20,6 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | Code | Status | Title |
 | --- | --- | --- |
 | [AUTH-009](auth/AUTH-009-oauth-and-secret-configuration.md) | [HOLD] | OAuth and secret configuration |
-| [CONSOLE-005](console/CONSOLE-005-plugin-listing-metadata-editor.md) | [WIP] | Plugin listing-metadata editor |
 | [HARDEN-012](registry/HARDEN-012-real-malware-scanner-behind-the-hook.md) | [TODO] | Real malware scanner behind the hook |
 | [HARDEN-013](registry/HARDEN-013-scheduled-r2-d1-backups.md) | [TODO] | Scheduled R2 + D1 backups |
 | [HARDEN-014](registry/HARDEN-014-operator-provisioning-of-hardening-infrastructure.md) | [HOLD] | Operator provisioning of hardening infrastructure |
@@ -61,7 +60,7 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [CONSOLE-002](console/CONSOLE-002-overview-page-and-plugin-stat-cards.md) | [DONE] | Overview page and plugin stat cards |
 | [CONSOLE-003](console/CONSOLE-003-my-plugins-list.md) | [DONE] | My plugins list |
 | [CONSOLE-004](console/CONSOLE-004-plugin-editor-version-management-deprecate-yank.md) | [DONE] | Plugin editor version management (deprecate / yank) |
-| [CONSOLE-005](console/CONSOLE-005-plugin-listing-metadata-editor.md) | [WIP] | Plugin listing-metadata editor |
+| [CONSOLE-005](console/CONSOLE-005-plugin-listing-metadata-editor.md) | [DONE] | Plugin listing-metadata editor |
 | [CONSOLE-006](console/CONSOLE-006-scopes-list.md) | [DONE] | Scopes list |
 | [CONSOLE-007](console/CONSOLE-007-claim-a-scope.md) | [DONE] | Claim a scope |
 | [CONSOLE-008](console/CONSOLE-008-scope-members-management-ui.md) | [DONE] | Scope members management UI |
