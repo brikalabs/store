@@ -49,30 +49,37 @@ And the prior "SCOPE-*" ownership behaviour is preserved under the new names
 
 ---
 
-## ORG-002 , Org identity is its scope name (1:1, forward-compatible to 1:N)
+## ORG-002 , An org owns one or more scopes (1:N)
 
 - **Status:** [TODO]
 - **Area:** Org / model
 - **Test mode:** none
-- **Traceability:** , (decision pending: see org-model-design.md open question 1)
+- **Traceability:** , (not yet built; reg_orgs + reg_org_members + reg_scopes.orgId)
 
-Starting model: one org maps to exactly one scope; the org slug is the scope name
-without the leading `@`. Forward-compatible to a future multi-scope org via an
-additive `scope.orgId` foreign key.
+An organisation is a distinct entity with its own slug that can own multiple npm
+scopes. Membership lives on the org; a scope belongs to exactly one org.
 
-**ORG-002-AC1** , slug maps to scope
+**ORG-002-AC1** , create an org
 ```gherkin
-Given organisation "acme"
-When it is created
-Then it owns scope "@acme"
+Given I am authenticated
+When I create organisation "acme"
+Then the org exists with me as its admin
 And its public page lives at "/org/acme"
 ```
 
-**ORG-002-AC2** , forward-compatible to multiple scopes (future)
+**ORG-002-AC2** , an org owns multiple scopes
 ```gherkin
-Given the 1:1 model is in place
-When a multi-scope org is later required
-Then a scope-to-org foreign key can be added without reshaping existing data
+Given I admin organisation "acme"
+When I attach scope "@acme" and scope "@acme-labs" to it
+Then both scopes are owned by org "acme"
+And org membership governs publishing to both
+```
+
+**ORG-002-AC3** , a scope belongs to exactly one org
+```gherkin
+Given scope "@acme" is owned by org "acme"
+When anyone attempts to attach "@acme" to a different org
+Then it is refused (a scope cannot belong to two orgs)
 ```
 
 ---
@@ -85,14 +92,14 @@ Then a scope-to-org foreign key can be added without reshaping existing data
 - **Traceability:** , (not yet built; reuses the catalog read path filtered by scope)
 
 A public SSR page at `store.brika.dev/org/:org` listing the org's published
-plugins, with its verified display name.
+plugins aggregated across all of its scopes, with its verified display name.
 
-**ORG-003-AC1** , lists the org's public plugins
+**ORG-003-AC1** , lists the org's public plugins across all its scopes
 ```gherkin
-Given org "brika" owns scope "@brika" with published plugins
-When I visit "/org/brika"
+Given org "acme" owns scopes "@acme" and "@acme-labs" with published plugins
+When I visit "/org/acme"
 Then I see the org's verified display name
-And I see a list of its public plugins
+And I see plugins from both "@acme" and "@acme-labs" in one list
 ```
 
 **ORG-003-AC2** , hides withdrawn versions
@@ -214,5 +221,39 @@ And the action is audited with the operator and reason
 ```gherkin
 Given I am not an operator admin
 When I attempt to take down an org
+Then I get 403 forbidden
+```
+
+---
+
+## ORG-008 , Manage an org's scopes
+
+- **Status:** [TODO]
+- **Area:** Org / model
+- **Test mode:** none
+- **Traceability:** , (not yet built; OrgService attach/transfer/list scopes)
+
+An org admin lists, attaches, and transfers the scopes their org owns. Attaching a
+scope is subject to the anti-squat policy (`ORG-004..006`).
+
+**ORG-008-AC1** , list an org's scopes
+```gherkin
+Given I am a member of org "acme" which owns "@acme" and "@acme-labs"
+When I view the org's scopes
+Then I see both "@acme" and "@acme-labs"
+```
+
+**ORG-008-AC2** , attach a new scope (admin only)
+```gherkin
+Given I am an admin of org "acme"
+And scope "@acme-labs" is unclaimed and is verifiably mine
+When I attach "@acme-labs" to org "acme"
+Then org "acme" owns "@acme-labs"
+```
+
+**ORG-008-AC3** , non-admin cannot attach a scope
+```gherkin
+Given I am a non-admin member of org "acme"
+When I attempt to attach a scope
 Then I get 403 forbidden
 ```

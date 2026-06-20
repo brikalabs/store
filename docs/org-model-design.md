@@ -38,26 +38,36 @@ protocol and must not change, or `bun add @brika/x` breaks.
 Rule of thumb: if a human owns/joins it, it is an **org**; if `bun` parses it out
 of a package name, it is a **scope**.
 
-### D2. An org's identity is its scope name, 1:1 (forward-compatible to 1:N)
+### D2. An org owns one or more scopes (1:N) , DECIDED
 
-Recommended starting model: **one org == one scope**, where the org slug is the
-scope name without the `@` (org `brika` owns scope `@brika`). This is what today's
-data already is (one scope, one owner group), so the rename is mostly mechanical:
-no new join table, no ownership re-pointing.
+An **organisation is a distinct entity** with its own slug, that can own **many**
+npm scopes. Org `acme` (URL `/org/acme`) may own `@acme`, `@acme-labs`, etc.
+Chosen because large orgs realistically run multiple namespaces under one team and
+one membership list.
 
-It fully supports the public page: `/org/brika` resolves to scope `@brika` and
-lists its plugins.
+Model:
 
-**Why not 1:N now:** a true "one org owns many scopes" model needs a separate
-`reg_orgs` table, a `scope -> org` foreign key, membership moved onto the org, and
-new UI to manage an org's scopes , a much larger migration. 1:1 keeps the door
-open: the org entity exists after this work, so adding a `scope.orgId` FK later is
-an additive migration, not a redesign.
+- `reg_orgs` , the org entity: `slug` (PK, e.g. `acme`), `displayName` (the
+  verified-publisher label, now per-org and applied to all its scopes), `createdAt`.
+- `reg_org_members` , membership moves onto the **org**: `(orgSlug, provider,
+  memberId, role)`, roles `admin` / `member` (the last-admin invariant moves here).
+- `reg_scopes` , keeps the npm-namespace rows but gains `orgId` (FK to
+  `reg_orgs.slug`). A scope belongs to exactly one org; an org has many scopes.
 
-**Open question for you:** do you foresee a single org needing multiple npm
-namespaces (e.g. `@acme` and `@acme-labs`) soon? If yes, we plan the `reg_orgs`
-table now to avoid a second migration. If "not soon", 1:1 is the cheaper path.
-Captured as `ORG-002`.
+Authorisation: publishing `@acme/x` is allowed when the caller is a member of the
+org that owns scope `@acme` (`OwnershipPolicy` resolves scope -> org -> membership).
+
+Two claim flows (vs one today): **create an org** (claim a slug, you become its
+admin), then **attach/claim a scope** into an org you admin. Both the org slug and
+each scope name are subject to the anti-squat policy (`ORG-004..006`). Managing an
+org's scopes (list/attach/transfer) is `ORG-008`.
+
+This is a **data-reshaping migration** (not just a rename): backfill one org per
+existing scope (`@brika` -> org `brika`, display name "Brika Labs"; move its
+members to the org; set `reg_scopes.orgId`). Larger than a 1:1 rename, but it is
+the end state, so we do it once.
+
+Public page (`ORG-003`) aggregates plugins across **all** the org's scopes.
 
 ### D3. Public organisation page
 
@@ -94,13 +104,20 @@ in the claim path). `ORG-007` when an operator console exists.
 
 Mechanical rename is large but well-bounded (~113 files, 812 occurrences). Stage it:
 
-1. **Schema + migration** (`packages/db`): `reg_scopes` -> `reg_orgs`,
-   `reg_scope_members` -> `reg_org_members`; a drizzle migration that renames the
-   tables/columns (no data reshape under D2's 1:1 model). Adapters
-   `d1-scope-*` -> `d1-org-*`, `listScopesForMember` -> `listOrgsForMember`.
-2. **Domain** (`registry-core`): `ScopeService` -> `OrgService`, `ScopeMembers`
-   -> `OrgMembers`, `ScopeRecord`/`ScopeResult` -> `Org*`. Keep `isCanonicalScope`
-   and the npm-namespace types named "scope".
+1. **Schema + migration** (`packages/db`): add `reg_orgs` (slug, displayName,
+   createdAt) and `reg_org_members` (orgSlug, provider, memberId, role); add
+   `reg_scopes.orgId` (FK). Backfill: one org per existing scope (slug = scope
+   without `@`), copy its `displayName`, move `reg_scope_members` rows to
+   `reg_org_members`, set each scope's `orgId`. Then drop the now-moved columns
+   from `reg_scopes` (`displayName`, owner) and the old `reg_scope_members` table.
+   Adapters: `d1-org-store` + `d1-org-members` (own the membership + last-admin
+   invariant), `d1-scope-*` keeps only the scope<->org link; `listScopesForMember`
+   -> `listOrgsForMember`; add a scope-by-org reader for the public page.
+2. **Domain** (`registry-core`): introduce `OrgService` (create org, members +
+   roles, display name, attach/transfer scope) and `OrgMembers`; `OwnershipPolicy`
+   resolves scope -> org -> membership. Keep `isCanonicalScope` and the
+   npm-namespace types named "scope". The org slug gets its own
+   `isCanonicalOrgSlug` validator.
 3. **Registry API** (`apps/registry`): controller + routes `/-/scope` -> `/-/org`;
    audit actions `scope_*` -> `org_*`; `OwnershipPolicy` still resolves "is the
    caller a member of the org that owns this package's scope".
@@ -118,12 +135,17 @@ untouched.
 
 ## Open questions
 
-1. **1:1 vs 1:N** (see D2) , the one decision that changes migration size.
+1. ~~1:1 vs 1:N~~ , **DECIDED: 1:N** (D2). An org owns many scopes.
 2. **Claim policy strength at launch** , is `ORG-006` (GitHub-verified claiming)
    required for the first cut, or do `ORG-004`/`005` suffice initially?
-3. **Existing `@brika` scope** , becomes org `brika` (verified publisher "Brika
-   Labs"); no data change under 1:1.
-4. **Personal vs org** , is a solo developer's namespace also an "org", or do we
-   want a separate "personal account" concept? (npm has both; JSR treats all as
-   scopes.) Recommendation: one concept (org) to start; a personal org is just an
-   org with one admin.
+3. **Org slug namespace** , is the org slug independent of scope names (org
+   `acme` could own `@acme` and `@widgets`), or must an org own a scope matching
+   its slug? Recommendation: independent slug, but the FIRST scope you attach
+   seeds the slug suggestion. Affects `ORG-006` (which name is identity-checked:
+   the slug, each scope, or both , recommend both).
+4. **Personal vs org** , is a solo developer's namespace also an "org", or a
+   separate "personal account" concept? Recommendation: one concept (org); a
+   personal org is just an org with one admin and one scope.
+5. **Existing data** , `@brika` backfills to org `brika` (display name "Brika
+   Labs") owning scope `@brika`; existing members move to the org. One-time
+   migration, no behaviour change for current users.
