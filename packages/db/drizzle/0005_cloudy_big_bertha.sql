@@ -1,1 +1,0 @@
-ALTER TABLE `reg_versions` ADD `takedown` text;

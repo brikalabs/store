@@ -1,9 +1,64 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "4cd4962a-7cb2-45ad-a108-684ebade73ba",
+  "id": "f9254139-204a-4c3d-a9b2-3b17e4ffb5bc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
+    "comment_votes": {
+      "name": "comment_votes",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "comment_id": {
+          "name": "comment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "comment_votes_user_id_users_id_fk": {
+          "name": "comment_votes_user_id_users_id_fk",
+          "tableFrom": "comment_votes",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "comment_votes_comment_id_comments_id_fk": {
+          "name": "comment_votes_comment_id_comments_id_fk",
+          "tableFrom": "comment_votes",
+          "tableTo": "comments",
+          "columnsFrom": ["comment_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "comment_votes_user_id_comment_id_pk": {
+          "columns": ["user_id", "comment_id"],
+          "name": "comment_votes_user_id_comment_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "comments": {
       "name": "comments",
       "columns": {

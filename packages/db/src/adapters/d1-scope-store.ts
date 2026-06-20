@@ -1,4 +1,4 @@
-import type { OrgProfileInput, ScopeRecord, ScopeStore } from "@brika/registry-core";
+import type { ScopeProfileInput, ScopeRecord, ScopeStore } from "@brika/registry-core";
 import { desc, eq } from "drizzle-orm";
 import type { Db } from "../client";
 import { regScopes } from "../schema";
@@ -59,7 +59,7 @@ export class D1ScopeStore implements ScopeStore {
     await this.#db.update(regScopes).set({ displayName }).where(eq(regScopes.scope, scope));
   }
 
-  async setProfile(scope: string, profile: OrgProfileInput): Promise<void> {
+  async setProfile(scope: string, profile: ScopeProfileInput): Promise<void> {
     await this.#db
       .update(regScopes)
       .set({ description: profile.description, links: [...profile.links] })

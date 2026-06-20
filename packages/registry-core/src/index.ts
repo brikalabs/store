@@ -66,12 +66,12 @@ export {
 } from "./packument";
 export type { MetadataReader, TarballReader } from "./ports";
 export {
-  type OrgLink,
-  type OrgProfileInput,
-  orgDescriptionSchema,
-  orgDomainSchema,
-  orgLinkSchema,
-  orgLinksSchema,
+  type ScopeLink,
+  type ScopeProfileInput,
+  scopeDescriptionSchema,
+  scopeDomainSchema,
+  scopeLinkSchema,
+  scopeLinksSchema,
 } from "./profile";
 export {
   type CommitVersionInput,

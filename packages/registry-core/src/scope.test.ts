@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
-import type { OrgProfileInput } from "./profile";
+import type { ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 import {
   type ClaimVerifier,
@@ -49,7 +49,7 @@ class FakeScopeStore implements ScopeStore {
     const row = this.rows.get(scope);
     if (row) this.rows.set(scope, { ...row, displayName });
   }
-  async setProfile(scope: string, profile: OrgProfileInput): Promise<void> {
+  async setProfile(scope: string, profile: ScopeProfileInput): Promise<void> {
     const row = this.rows.get(scope);
     if (row)
       this.rows.set(scope, { ...row, description: profile.description, links: [...profile.links] });

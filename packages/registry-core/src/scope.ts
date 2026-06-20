@@ -1,7 +1,7 @@
 import { HttpStatus } from "./http-status";
 import { REGISTRY_LIMITS } from "./limits";
 import type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
-import type { OrgProfileInput } from "./profile";
+import type { ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 import type {
   ClaimVerifier,
@@ -227,8 +227,8 @@ export class ScopeService {
   async setProfile(
     identity: PublishIdentity,
     scope: string,
-    profile: OrgProfileInput,
-  ): Promise<ScopeResult<{ profile: OrgProfileInput }>> {
+    profile: ScopeProfileInput,
+  ): Promise<ScopeResult<{ profile: ScopeProfileInput }>> {
     const gate = await this.#requireAdmin(identity, scope);
     if (!gate.ok) return gate;
     await this.#scopes.setProfile(scope, profile);
