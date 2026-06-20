@@ -32,7 +32,9 @@ never disagree.
 
 The scope is also the publisher's public surface on the storefront: every scope has
 a page at `store.brika.dev/@scope` listing its plugins with its verified-publisher
-header. (An org that owns several scopes also gets an aggregate page at `/orgs/<slug>`.)
+header, profile, and verified-domain badges. The scope is the account: there is no
+separate "organisation" layer that owns scopes; a scope is a standalone account with
+its own members.
 
 ## Creating a scope
 

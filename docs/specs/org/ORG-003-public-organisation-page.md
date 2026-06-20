@@ -1,23 +1,28 @@
 ---
 id: ORG-003
 title: "Public organisation page"
-status: done
+status: gone
 area: org
 group: org
 test_mode: manual
 traceability:
   code:
-    - apps/web/src/routes/orgs.$org.tsx
-    - apps/web/src/lib/registry.ts
-    - apps/registry/src/controllers/org.ts
+    - apps/web/src/components/plugin/scope-page.tsx
   tests: []
 ---
 
 ## Description
 
-A public SSR page at `store.brika.dev/orgs/:org` listing the org's published
-plugins aggregated across all of its scopes, with its verified display name,
-profile (description, links, logo; ORG-009), and verified-domain badges (ORG-010).
+> **Superseded by the org->scope merge:** the public per-org page (`/orgs/:org`
+> aggregating plugins across an org's many scopes) no longer makes sense once a scope
+> is the account itself. The public publisher surface is now the **scope page**,
+> `STORE-015` (`GET /@scope`), which renders one scope's plugins, profile (ORG-009),
+> and verified-domain badges (ORG-010). The old `/orgs/:slug` route was retired. See
+> [ADR 0001](../../adr/0001-organisation-1n-model.md). Retained for history;
+> coverage-exempt.
+
+This spec proposed an aggregate org page across multiple scopes; with no 1:N model
+there is nothing to aggregate.
 
 ## Acceptance criteria
 
