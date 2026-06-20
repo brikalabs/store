@@ -1,23 +1,29 @@
 ---
 id: ORG-002
 title: "An org owns one or more scopes (1:N)"
-status: done
+status: gone
 area: org
 group: org
 test_mode: unit
 traceability:
   code:
-    - packages/registry-core/src/org.ts
-    - packages/db/src/adapters/d1-org-scopes.ts
+    - packages/registry-core/src/scope.ts
   tests:
-    - packages/registry-core/src/org.test.ts
-    - packages/db/src/adapters/d1-org-scopes.test.ts
+    - packages/registry-core/src/scope.test.ts
 ---
 
 ## Description
 
-An organisation is a distinct entity with its own slug that can own multiple npm
-scopes. Membership lives on the org; a scope belongs to exactly one org.
+> **Superseded by the org->scope merge:** the 1:N "an org owns many scopes" model was
+> removed. A scope is now a standalone account (npm/JSR model): membership lives
+> directly on the scope, there is no separate org slug, and a scope does not "belong to"
+> anything. The `reg_orgs`/`reg_org_members` tables and the scope->org foreign key were
+> dropped (migration `drizzle/0015_*`). See
+> [ADR 0001](../../adr/0001-organisation-1n-model.md) for the reversal. Retained for
+> history; coverage-exempt.
+
+This spec proposed a distinct org entity owning multiple npm scopes via a foreign key.
+That relationship no longer exists.
 
 ## Acceptance criteria
 

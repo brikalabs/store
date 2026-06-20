@@ -16,7 +16,7 @@ traceability:
 ## Description
 
 `GET /@scope` renders a scope's public page: a header with the scope's verified
-publisher (its owning org's display name) and a Verified badge, scope stats, and a
+publisher (the scope's `display_name`) and a Verified badge, scope stats, and a
 grid of every plugin published under that scope. The data is read from the same
 registry catalog as browse (`getScopePage` filters `listRegistryPlugins` by scope),
 so cards carry real install counts. The page is the publisher surface that replaced

@@ -1,25 +1,28 @@
 ---
 id: ORG-008
 title: "Manage an org's scopes"
-status: done
+status: gone
 area: org
 group: org
 test_mode: unit
 traceability:
   code:
-    - packages/registry-core/src/org.ts
-    - packages/db/src/adapters/d1-org-scopes.ts
-    - apps/registry/src/controllers/org.ts
-    - apps/web/src/routes/api.orgs.$org.scopes.ts
+    - packages/registry-core/src/scope.ts
   tests:
-    - packages/registry-core/src/org.test.ts
-    - apps/registry/src/controllers/handlers.test.ts
+    - packages/registry-core/src/scope.test.ts
 ---
 
 ## Description
 
-An org admin lists, attaches, and transfers the scopes their org owns. Attaching a
-scope is subject to the anti-squat policy (`ORG-004..006`).
+> **Superseded by the org->scope merge:** there is no separate org that owns and
+> attaches scopes, so "manage an org's scopes" (list/attach/transfer) is gone. A scope
+> is claimed directly and standalone (`ScopeService.claim`, see ORG-004/005/006); the
+> attach machinery (`d1-org-scopes`) was removed. See
+> [ADR 0001](../../adr/0001-organisation-1n-model.md). Retained for history;
+> coverage-exempt.
+
+This spec proposed an admin listing/attaching/transferring the scopes an org owns;
+with no org->scope relationship there is nothing to attach.
 
 ## Acceptance criteria
 

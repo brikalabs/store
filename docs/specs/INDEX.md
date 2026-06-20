@@ -10,11 +10,11 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 | Status | Count |
 | --- | --- |
-| [DONE] | 110 |
+| [DONE] | 106 |
 | [WIP] | 1 |
 | [TODO] | 7 |
 | [HOLD] | 2 |
-| [GONE] | 19 |
+| [GONE] | 23 |
 
 ## Backlog (not done)
 
@@ -68,15 +68,15 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 | Code | Status | Title |
 | --- | --- | --- |
-| [ORG-001](org/ORG-001-organisation-is-the-ownership-entity-rename-of-scope.md) | [DONE] | Organisation is the ownership entity (rename of "scope") |
-| [ORG-002](org/ORG-002-an-org-owns-one-or-more-scopes-1.md) | [DONE] | An org owns one or more scopes (1:N) |
-| [ORG-003](org/ORG-003-public-organisation-page.md) | [DONE] | Public organisation page |
-| [ORG-004](org/ORG-004-claim-rate-limit.md) | [DONE] | Claim rate limit |
-| [ORG-005](org/ORG-005-per-account-org-cap.md) | [DONE] | Per-account org cap |
+| [ORG-001](org/ORG-001-organisation-is-the-ownership-entity-rename-of-scope.md) | [GONE] | Organisation is the ownership entity (rename of "scope") |
+| [ORG-002](org/ORG-002-an-org-owns-one-or-more-scopes-1.md) | [GONE] | An org owns one or more scopes (1:N) |
+| [ORG-003](org/ORG-003-public-organisation-page.md) | [GONE] | Public organisation page |
+| [ORG-004](org/ORG-004-claim-rate-limit.md) | [DONE] | Scope claim rate limit |
+| [ORG-005](org/ORG-005-per-account-org-cap.md) | [DONE] | Per-account scope cap |
 | [ORG-006](org/ORG-006-identity-tied-claiming-github-verified.md) | [TODO] | Identity-tied claiming (GitHub-verified) |
-| [ORG-007](org/ORG-007-operator-takedown-of-a-squatted-org.md) | [DONE] | Operator takedown of a squatted org |
-| [ORG-008](org/ORG-008-manage-an-org-s-scopes.md) | [DONE] | Manage an org's scopes |
-| [ORG-009](org/ORG-009-organisation-profile-description-links-logo.md) | [DONE] | Organisation profile: description, links, and logo |
+| [ORG-007](org/ORG-007-operator-takedown-of-a-squatted-org.md) | [DONE] | Operator takedown of a squatted scope |
+| [ORG-008](org/ORG-008-manage-an-org-s-scopes.md) | [GONE] | Manage an org's scopes |
+| [ORG-009](org/ORG-009-organisation-profile-description-links-logo.md) | [DONE] | Scope profile: description, links, and logo |
 | [ORG-010](org/ORG-010-verified-domains-dns-txt.md) | [DONE] | Verified domains (DNS TXT, stateless challenge, badge-only) |
 
 ## registry
