@@ -85,6 +85,32 @@ function setupBrikaOrg(): void {
   log(`set up org brika (admin ${SEED_OWNER}) owning @brika`);
 }
 
+/** The login of the e2e operator (a `REGISTRY_ADMINS` member; see playwright.config.ts). */
+const OPERATOR_LOGIN = "e2e-operator";
+/** Stable user id the operator e2e mints its session cookie for (see operator-session.ts). */
+const OPERATOR_USER_ID = "u-operator";
+
+/**
+ * Seed the operator console fixtures: a `users` row for the operator (so the signed session
+ * cookie resolves to a real user) and a throwaway org `squatter` to take down and restore.
+ * The squatter org is deliberately separate from `brika` so the operator e2e never disturbs
+ * the storefront's public listings. The operator is granted moderation rights out-of-band
+ * via `REGISTRY_ADMINS=github:e2e-operator` on the web dev server, not via any DB row.
+ */
+function setupOperatorFixtures(): void {
+  const db = new Database(findLocalD1());
+  const now = Math.floor(Date.now() / 1000);
+  db.run(
+    "INSERT OR REPLACE INTO users (id, github_id, login, name, created_at) VALUES (?, ?, ?, ?, ?)",
+    [OPERATOR_USER_ID, 990_001, OPERATOR_LOGIN, "E2E Operator", now],
+  );
+  db.run("INSERT OR IGNORE INTO reg_orgs (slug, display_name) VALUES ('squatter', 'Squatter Co')");
+  // Re-activate it if a previous run left it taken down, so the spec starts from a clean state.
+  db.run("UPDATE reg_orgs SET takedown = NULL WHERE slug = 'squatter'");
+  db.close();
+  log(`set up operator ${OPERATOR_LOGIN} + throwaway org squatter`);
+}
+
 /**
  * Insert a fresh publish token into reg_tokens for {@link SEED_OWNER} (the `brika` org
  * admin set up by {@link setupBrikaOrg}) and return the raw token, so `brika publish` is
@@ -386,6 +412,7 @@ function seedSocial(): void {
 
 await waitForRegistry();
 setupBrikaOrg();
+setupOperatorFixtures();
 const token = await mintToken();
 for (const plugin of EXAMPLES) await publish(plugin, token);
 seedProvenance();

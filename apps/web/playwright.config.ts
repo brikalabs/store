@@ -39,6 +39,13 @@ export default defineConfig({
       url: `${STORE_URL}/`,
       reuseExistingServer: true,
       timeout: 120_000,
+      // The operator e2e (operator.spec.ts) needs the worker to treat `github:e2e-operator`
+      // as an operator and to sign sessions with the pinned dev secret. Those are WORKER env
+      // vars, read by the Cloudflare vite plugin from apps/web/.dev.vars (NOT from this
+      // process env) - so set them there, alongside the already-required SESSION_SECRET:
+      //   SESSION_SECRET=dev-only-secret-not-for-production
+      //   REGISTRY_ADMINS=github:e2e-operator
+      // See .dev.vars.example.
       env: { VITE_REGISTRY_URL: REGISTRY_URL },
     },
   ],
