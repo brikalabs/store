@@ -6,9 +6,9 @@ type NavItem = { label: string; icon: LucideIcon; href?: string };
 
 const NAV: NavItem[] = [
   { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "My plugins", icon: Box, href: "/dashboard#plugins" },
+  { label: "My plugins", icon: Box, href: "/dashboard/plugins" },
   { label: "Scopes", icon: Layers, href: "/dashboard/scopes" },
-  { label: "Profile", icon: User, href: "/dashboard#profile" },
+  { label: "Profile", icon: User, href: "/dashboard/profile" },
   { label: "API tokens", icon: KeyRound, href: "/dashboard/account/tokens" },
 ];
 

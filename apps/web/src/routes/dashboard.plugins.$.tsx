@@ -97,7 +97,7 @@ function EditListing({ detail, locales }: Readonly<{ detail: PluginDetail; local
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
-            <Link to="/dashboard" hash="plugins" className="hover:text-foreground">
+            <Link to="/dashboard/plugins" className="hover:text-foreground">
               My plugins
             </Link>
             <ChevronRight className="size-3" />
@@ -109,8 +109,7 @@ function EditListing({ detail, locales }: Readonly<{ detail: PluginDetail; local
         </div>
         <div className="flex items-center gap-2.5">
           <Link
-            to="/dashboard"
-            hash="plugins"
+            to="/dashboard/plugins"
             className="flex h-10 items-center rounded-xl border border-border px-4 font-semibold text-foreground text-sm transition-colors hover:bg-muted"
           >
             Cancel
