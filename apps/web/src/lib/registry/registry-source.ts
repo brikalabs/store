@@ -458,44 +458,45 @@ export async function getRegistryPluginPage(
   };
 }
 
-const OrgLinkWire = z.object({ label: z.string(), url: z.string() });
-const OrgInfo = z.object({
+const ScopeLinkWire = z.object({ label: z.string(), url: z.string() });
+const ScopeInfo = z.object({
   ok: z.literal(true),
-  slug: z.string(),
+  scope: z.string(),
   displayName: z.string().nullable(),
   description: z.string().nullable().default(null),
-  links: z.array(OrgLinkWire).default([]),
+  links: z.array(ScopeLinkWire).default([]),
   iconKey: z.string().nullable().default(null),
-  scopes: z.array(z.string()),
   verifiedDomains: z.array(z.string()).default([]),
 });
 
-/** An organisation's public info: slug, display name, profile, owned scopes, verified domains. */
-export interface RegistryOrg {
-  readonly slug: string;
+/** A scope's public info: scope, display name, profile, verified domains. */
+export interface RegistryScope {
+  readonly scope: string;
   readonly displayName: string | null;
   readonly description: string | null;
   readonly links: { label: string; url: string }[];
   readonly hasIcon: boolean;
-  readonly scopes: string[];
   readonly verifiedDomains: string[];
 }
 
-/** Fetch a public org's info from the registry, or null when it does not exist. */
-export async function getRegistryOrg(slug: string): Promise<RegistryOrg | null> {
-  const res = await fetch(`${REGISTRY_ORIGIN}${npmLink("/-/org/:org", { org: slug })}`, {
+/**
+ * Fetch a public scope's info from the registry (`GET /-/scope/:scope`), or null when it
+ * does not exist (or has been taken down). The scope is URL-encoded as a single segment
+ * (`@brika` -> `%40brika`), matching the registry's public scope endpoint.
+ */
+export async function getRegistryScope(scope: string): Promise<RegistryScope | null> {
+  const res = await fetch(`${REGISTRY_ORIGIN}/-/scope/${encodeURIComponent(scope)}`, {
     headers: { accept: "application/json" },
   });
   if (!res.ok) return null;
-  const parsed = OrgInfo.safeParse(await res.json());
+  const parsed = ScopeInfo.safeParse(await res.json());
   if (!parsed.success) return null;
   return {
-    slug: parsed.data.slug,
+    scope: parsed.data.scope,
     displayName: parsed.data.displayName,
     description: parsed.data.description,
     links: parsed.data.links,
     hasIcon: parsed.data.iconKey !== null,
-    scopes: parsed.data.scopes,
     verifiedDomains: parsed.data.verifiedDomains,
   };
 }

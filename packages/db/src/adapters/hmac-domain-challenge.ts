@@ -8,7 +8,7 @@ function base64url(bytes: ArrayBuffer): string {
 
 /**
  * Stateless {@link DomainChallenge}: the verification token is
- * `base64url(HMAC-SHA256(secret, "<orgSlug>:<domain>"))`, derived on demand from one
+ * `base64url(HMAC-SHA256(secret, "<scope>:<domain>"))`, derived on demand from one
  * server secret. Nothing per-domain is stored, so there is no challenge to leak from the
  * database, and the registry + console agree on the value as long as they share the secret.
  * Shared by both Workers (constructed in each composition root with `DOMAIN_VERIFY_SECRET`).
@@ -34,8 +34,8 @@ export class HmacDomainChallenge implements DomainChallenge {
     return this.#keyPromise;
   }
 
-  async token(orgSlug: string, domain: string): Promise<string> {
-    const data = new TextEncoder().encode(`${orgSlug}:${domain}`);
+  async token(scope: string, domain: string): Promise<string> {
+    const data = new TextEncoder().encode(`${scope}:${domain}`);
     return base64url(await crypto.subtle.sign("HMAC", await this.#key(), data));
   }
 }

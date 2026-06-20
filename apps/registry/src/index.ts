@@ -6,9 +6,9 @@ import { cors } from "hono/cors";
 import { catalogController } from "./controllers/catalog";
 import { deviceController } from "./controllers/device";
 import { manageController } from "./controllers/manage";
-import { orgController } from "./controllers/org";
 import { packagesController } from "./controllers/packages";
 import { publishController } from "./controllers/publish";
+import { scopeController } from "./controllers/scope";
 import { statsController } from "./controllers/stats";
 import { registryAdmins, vars } from "./env";
 import { logRoutes, mount, type RegistryEnv } from "./http/router";
@@ -50,7 +50,7 @@ const controllers = [
   publishController,
   deviceController,
   manageController,
-  orgController,
+  scopeController,
   packagesController,
 ];
 
@@ -78,7 +78,7 @@ mount(app, controllers, {
 logRoutes(app);
 
 /**
- * Scheduled re-verification of org domains (ORG-010-AC3): on each cron tick, re-check every
+ * Scheduled re-verification of scope domains (ORG-010-AC3): on each cron tick, re-check every
  * currently-verified domain's challenge TXT and revoke the badge for any that no longer
  * resolve (a transient DNS failure is skipped, never revoked). Keeps the verified set honest
  * as DNS changes over time, rather than trusting a one-time check forever.
@@ -91,9 +91,9 @@ async function scheduled(): Promise<void> {
     registryAdmins(),
     vars().DOMAIN_VERIFY_SECRET,
   );
-  const revoked = await services.orgs.reverifyDomains();
+  const revoked = await services.scopes.reverifyDomains();
   if (revoked.length > 0) {
-    console.log(JSON.stringify({ msg: "org domain re-verification revoked badges", revoked }));
+    console.log(JSON.stringify({ msg: "scope domain re-verification revoked badges", revoked }));
   }
 }
 

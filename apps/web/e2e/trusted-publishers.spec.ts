@@ -2,17 +2,17 @@ import { expect, test } from "@playwright/test";
 import { sessionCookie } from "./session";
 
 /**
- * The trusted-publisher console (PUB-016), end to end. An org admin authorizes a GitHub repo
- * + workflow to publish to one of the org's scopes via tokenless OIDC, then revokes it. Signs
- * in as the seeded `brika` org admin (`e2e-bot`) via a minted session cookie; the binding is
- * the `@brika` scope seeded by seed.ts.
+ * The trusted-publisher console (PUB-016), end to end. A scope admin authorizes a GitHub repo
+ * + workflow to publish to their scope via tokenless OIDC, then revokes it. Signs in as the
+ * seeded `@brika` scope admin (`e2e-bot`) via a minted session cookie; the binding is the
+ * `@brika` scope seeded by seed.ts.
  */
-test("an org admin adds and removes a trusted publisher for a scope", async ({ browser }) => {
+test("a scope admin adds and removes a trusted publisher for a scope", async ({ browser }) => {
   const context = await browser.newContext();
   await context.addCookies([sessionCookie("u-e2e-bot")]);
   const page = await context.newPage();
 
-  await page.goto("/dashboard/orgs/brika");
+  await page.goto("/dashboard/scopes/@brika");
   const card = page.locator("section", { hasText: "Trusted publishers" });
   await expect(card.getByText("@brika").first()).toBeVisible();
 

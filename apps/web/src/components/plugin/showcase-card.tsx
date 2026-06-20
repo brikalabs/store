@@ -12,7 +12,7 @@ export function capabilityTotal(plugin: PluginSummary): number {
   return c ? c.tools + c.blocks + c.bricks + c.sparks + c.pages : 0;
 }
 
-/** A boxed headline number + label, used in the developer/org page stat rows. */
+/** A boxed headline number + label, used in the developer/scope page stat rows. */
 export function Stat({ value, label }: Readonly<{ value: string; label: string }>) {
   return (
     <div className="flex flex-col items-center gap-0.5 rounded-2xl border border-border bg-card px-5 py-3">

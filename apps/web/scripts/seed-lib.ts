@@ -1,11 +1,11 @@
 /**
  * Shared seed helpers for the local registry. Both the developer seed
  * (`scripts/seed.ts`, `bun run seed`) and the e2e seed (`e2e/seed.ts`) build on
- * these: ensure an org owns a scope, mint a publish token straight into the
- * shared local D1, and publish the example `@brika/*` plugins through the real
- * CLI so the storefront has registry-backed listings to show.
+ * these: ensure a scope exists with an admin member, mint a publish token straight
+ * into the shared local D1, and publish the example `@brika/*` plugins through the
+ * real CLI so the storefront has registry-backed listings to show.
  *
- * Local only: the org/token rows are written directly to the miniflare D1 sqlite,
+ * Local only: the scope/token rows are written directly to the miniflare D1 sqlite,
  * so this seeds a dev machine, not a remote deployment. To populate a remote
  * registry, publish with the portable CLI (`brika publish`) using a real token.
  */
@@ -65,41 +65,38 @@ function base64Url(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64url");
 }
 
-export interface OrgSeed {
-  /** The org slug, e.g. `brika`. */
-  readonly slug: string;
-  /** The org's verified display name. */
-  readonly displayName: string;
-  /** The npm scope it owns, e.g. `@brika`. */
+export interface ScopeSeed {
+  /** The npm scope, e.g. `@brika`. It is the ownership entity (npm/JSR model). */
   readonly scope: string;
-  /** The GitHub login made admin of the org (and the publish token's owner). */
+  /** The scope's verified display name. */
+  readonly displayName: string;
+  /** The GitHub login made admin of the scope (and the publish token's owner). */
   readonly owner: string;
 }
 
 /**
- * Ensure an org owns a scope, with `owner` as its admin member + a `users` row.
- * Publishing never claims a scope implicitly (the ownership policy resolves scope
- * -> owning org -> membership), so this must exist before any publish to the scope.
- * Idempotent via INSERT OR IGNORE / REPLACE, so it is safe to re-run.
+ * Ensure a scope exists with `owner` as its admin member + a `users` row. The scope IS the
+ * ownership entity (there is no org layer): publishing is gated on scope membership, so this
+ * must exist before any publish to the scope. Idempotent via INSERT OR IGNORE / REPLACE, so
+ * it is safe to re-run.
  */
-export function ensureOrg(org: OrgSeed): void {
+export function ensureScope(seed: ScopeSeed): void {
   const db = new Database(findLocalD1());
-  db.run("INSERT OR IGNORE INTO reg_orgs (slug, display_name) VALUES (?, ?)", [
-    org.slug,
-    org.displayName,
+  db.run("INSERT OR IGNORE INTO reg_scopes (scope, display_name) VALUES (?, ?)", [
+    seed.scope,
+    seed.displayName,
   ]);
   db.run(
-    "INSERT OR IGNORE INTO reg_org_members (org_slug, provider, member_id, role) VALUES (?, 'github', ?, 'admin')",
-    [org.slug, org.owner],
+    "INSERT OR IGNORE INTO reg_scope_members (scope, provider, member_id, role) VALUES (?, 'github', ?, 'admin')",
+    [seed.scope, seed.owner],
   );
-  db.run("INSERT OR IGNORE INTO reg_scopes (scope, org_id) VALUES (?, ?)", [org.scope, org.slug]);
   const now = Math.floor(Date.now() / 1000);
   db.run(
     "INSERT OR REPLACE INTO users (id, github_id, login, name, created_at) VALUES (?, ?, ?, ?, ?)",
-    [`u-${org.owner}`, 990_002, org.owner, org.owner, now],
+    [`u-${seed.owner}`, 990_002, seed.owner, seed.owner, now],
   );
   db.close();
-  log(`ensured org ${org.slug} (admin ${org.owner}) owning ${org.scope}`);
+  log(`ensured scope ${seed.scope} (admin ${seed.owner})`);
 }
 
 const TOKEN_TTL_SECONDS = 60 * 60;

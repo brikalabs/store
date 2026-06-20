@@ -11,8 +11,8 @@ export const Route = createFileRoute("/operator/packages")({
 
 interface OperatorPackage {
   name: string;
-  org: string | null;
-  orgDisplayName: string | null;
+  scope: string | null;
+  scopeDisplayName: string | null;
   latestVersion: string | null;
   versionCount: number;
   takenDownCount: number;
@@ -150,7 +150,7 @@ function PackageRow({
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium font-mono text-sm">{pkg.name}</div>
           <div className="truncate text-muted-foreground text-xs">
-            {pkg.orgDisplayName ?? pkg.org ?? "unattached"} · {pkg.versionCount} version
+            {pkg.scopeDisplayName ?? pkg.scope ?? "unclaimed"} · {pkg.versionCount} version
             {pkg.versionCount === 1 ? "" : "s"}
           </div>
         </div>

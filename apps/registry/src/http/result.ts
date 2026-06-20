@@ -6,7 +6,7 @@ import { httpError } from "@brika/router";
  * `status` directly (a number from `HttpStatus`), so there is nothing to map - this collapses
  * the `if (!result.ok) throw httpError(...)` guard every handler otherwise repeats into:
  *
- *   const { publisher } = okOrThrow(await ctx.orgs.addTrustedPublisher(...));
+ *   const { publisher } = okOrThrow(await ctx.scopes.addTrustedPublisher(...));
  */
 export function okOrThrow<R extends { readonly ok: true }>(
   result: R | { readonly ok: false; readonly status: number; readonly message: string },

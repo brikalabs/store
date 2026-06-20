@@ -2,9 +2,8 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import type { Db } from "../client";
 import {
   regDistTags,
-  regOrgMembers,
-  regOrgs,
   regPackages,
+  regScopeMembers,
   regScopes,
   regTokens,
   regVersions,
@@ -12,7 +11,6 @@ import {
 import { makeDb, seedExamplePackage } from "../test-harness";
 import {
   listAllPackages,
-  listOrgsForMember,
   listScopesForMember,
   listSubjectTokens,
   revokeTokenByHash,
@@ -23,73 +21,44 @@ beforeEach(() => {
   db = makeDb();
 });
 
-async function org(slug: string, displayName: string | null = null) {
-  await db.insert(regOrgs).values({ slug, displayName });
+async function scope(name: string, displayName: string | null = null) {
+  await db.insert(regScopes).values({ scope: name, displayName });
 }
-async function member(orgSlug: string, memberId: string, role: "admin" | "member") {
-  await db.insert(regOrgMembers).values({ orgSlug, memberId, role });
+async function member(scopeName: string, memberId: string, role: "admin" | "member") {
+  await db.insert(regScopeMembers).values({ scope: scopeName, memberId, role });
 }
-async function scope(name: string, orgId: string) {
-  await db.insert(regScopes).values({ scope: name, orgId });
-}
-
-describe("listOrgsForMember", () => {
-  test("returns each org the member belongs to, with role and display name", async () => {
-    await org("acme", "Acme Inc");
-    await org("beta");
-    await org("other");
-    await member("acme", "alice", "admin");
-    await member("beta", "alice", "member");
-    await member("other", "carol", "admin");
-
-    const result = await listOrgsForMember(db, "github", "alice");
-    expect(result).toEqual([
-      { slug: "acme", role: "admin", displayName: "Acme Inc" },
-      { slug: "beta", role: "member", displayName: null },
-    ]);
-  });
-
-  test("is empty for a non-member", async () => {
-    await org("acme");
-    await member("acme", "alice", "admin");
-    expect(await listOrgsForMember(db, "github", "nobody")).toEqual([]);
-  });
-});
 
 describe("listScopesForMember", () => {
-  test("returns every scope owned by an org the member belongs to (1:N), sorted", async () => {
-    await org("acme");
-    await org("beta");
-    await member("acme", "alice", "admin");
-    await member("beta", "bob", "admin");
-    await scope("@acme", "acme");
-    await scope("@acme-labs", "acme");
-    await scope("@beta", "beta");
+  test("returns every scope the member belongs to, with role + display name, sorted", async () => {
+    await scope("@acme", "Acme Inc");
+    await scope("@acme-labs");
+    await scope("@beta");
+    await member("@acme", "alice", "admin");
+    await member("@acme-labs", "alice", "member");
+    await member("@beta", "bob", "admin");
 
     const result = await listScopesForMember(db, "github", "alice");
     expect(result).toEqual([
-      { scope: "@acme", org: "acme", role: "admin" },
-      { scope: "@acme-labs", org: "acme", role: "admin" },
+      { scope: "@acme", role: "admin", displayName: "Acme Inc" },
+      { scope: "@acme-labs", role: "member", displayName: null },
     ]);
   });
 
   test("is empty for a non-member", async () => {
-    await org("acme");
-    await member("acme", "alice", "admin");
-    await scope("@acme", "acme");
+    await scope("@acme");
+    await member("@acme", "alice", "admin");
     expect(await listScopesForMember(db, "github", "nobody")).toEqual([]);
   });
 });
 
 describe("listAllPackages (operator directory)", () => {
-  test("reports owning org, latest version, and version counts", async () => {
-    await seedExamplePackage(db, "octocat"); // @brika/x@1.0.0 owned by org brika
+  test("reports owning scope, latest version, and version counts", async () => {
+    await seedExamplePackage(db, "octocat"); // @brika/x@1.0.0 owned by scope @brika
     const packages = await listAllPackages(db);
     expect(packages).toHaveLength(1);
     expect(packages[0]).toMatchObject({
       name: "@brika/x",
       scope: "@brika",
-      org: "brika",
       latestVersion: "1.0.0",
       versionCount: 1,
       takenDownCount: 0,
@@ -123,8 +92,7 @@ describe("listAllPackages (operator directory)", () => {
     expect(pkg).toMatchObject({ versionCount: 3, takenDownCount: 1, yankedCount: 1 });
   });
 
-  test("includes a package whose scope is unattached to any org", async () => {
-    await db.insert(regScopes).values({ scope: "@orphan", orgId: null });
+  test("includes a package whose scope is unclaimed (no reg_scopes row)", async () => {
     await db.insert(regPackages).values({ name: "@orphan/y", scope: "@orphan" });
     await db.insert(regVersions).values({
       name: "@orphan/y",
@@ -137,7 +105,7 @@ describe("listAllPackages (operator directory)", () => {
     await db.insert(regDistTags).values({ name: "@orphan/y", tag: "latest", version: "1.0.0" });
 
     const [pkg] = await listAllPackages(db);
-    expect(pkg).toMatchObject({ name: "@orphan/y", org: null, orgDisplayName: null });
+    expect(pkg).toMatchObject({ name: "@orphan/y", scope: "@orphan", scopeDisplayName: null });
   });
 });
 

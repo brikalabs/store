@@ -1,11 +1,11 @@
 import type { CatalogEntry, CatalogReader } from "@brika/registry-core";
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../client";
-import { regDistTags, regOrgs, regPackages, regScopes, regVersions } from "../schema";
+import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
 
 /**
  * Cloudflare D1 implementation of the {@link CatalogReader} port: every package's latest
- * non-yanked, non-taken-down version, joined with its scope's owning org as the verified
+ * non-yanked, non-taken-down version, joined with its owning scope as the verified
  * publisher. The hosted scope is bounded (REGISTRY_LIMITS.maxPackagesPerScope), so reading
  * every latest row and letting the caller filter/paginate in memory is cheap and exact.
  */
@@ -28,8 +28,8 @@ export class D1CatalogReader implements CatalogReader {
         integrity: regVersions.integrity,
         yanked: regVersions.yanked,
         takedown: regVersions.takedown,
-        orgSlug: regOrgs.slug,
-        orgDisplayName: regOrgs.displayName,
+        scope: regScopes.scope,
+        scopeDisplayName: regScopes.displayName,
       })
       .from(regDistTags)
       .innerJoin(
@@ -38,7 +38,6 @@ export class D1CatalogReader implements CatalogReader {
       )
       .innerJoin(regPackages, eq(regPackages.name, regDistTags.name))
       .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
-      .leftJoin(regOrgs, eq(regOrgs.slug, regScopes.orgId))
       .where(eq(regDistTags.tag, "latest"));
 
     return rows
@@ -52,11 +51,11 @@ export class D1CatalogReader implements CatalogReader {
         size: row.size,
         integrity: row.integrity,
         publisher:
-          row.orgSlug === null
+          row.scope === null
             ? undefined
             : {
-                id: row.orgSlug,
-                name: row.orgDisplayName ?? row.orgSlug,
+                id: row.scope,
+                name: row.scopeDisplayName ?? row.scope,
                 verified: true as const,
               },
       }))

@@ -14,7 +14,7 @@
  * Idempotent: re-running re-publishes nothing already present (409 is treated as success).
  */
 import {
-  ensureOrg,
+  ensureScope,
   log,
   mintToken,
   publish,
@@ -26,7 +26,7 @@ const EXAMPLES = ["plugin-i18n", "plugin-snapshot", "plugin-clock", "plugin-icon
 const OWNER = process.env.BRIKA_SEED_OWNER ?? "brika-seed";
 
 await waitForRegistry();
-ensureOrg({ slug: "brika", displayName: "Brika Labs", scope: "@brika", owner: OWNER });
+ensureScope({ scope: "@brika", displayName: "Brika Labs", owner: OWNER });
 const token = await mintToken(OWNER);
 for (const plugin of EXAMPLES) await publish(plugin, token);
 seedDownloadHistory("@brika/plugin-i18n");

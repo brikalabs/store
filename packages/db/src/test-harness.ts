@@ -3,15 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import type { Db } from "./client";
-import {
-  regDistTags,
-  regOrgMembers,
-  regOrgs,
-  regPackages,
-  regScopes,
-  regVersions,
-  schema,
-} from "./index";
+import { regDistTags, regPackages, regScopeMembers, regScopes, regVersions, schema } from "./index";
 
 /**
  * Shared in-memory test harness for the `reg_*` schema. Builds a real bun:sqlite
@@ -40,16 +32,15 @@ export function makeDb(): Db {
 
 /**
  * Seed the canonical example package used across the registry tests: `@brika/x@1.0.0`
- * plus org `brika` (whose admin is `owner`, so membership-based publish authorization
- * passes), the `@brika` scope attached to that org, and the `latest` dist-tag. Token
- * issuance is left to the caller, since only the auth-facing tests need one.
+ * plus the `@brika` scope (whose admin is `owner`, so membership-based publish
+ * authorization passes) and the `latest` dist-tag. Token issuance is left to the caller,
+ * since only the auth-facing tests need one.
  */
 export async function seedExamplePackage(db: Db, owner: string): Promise<void> {
-  await db.insert(regOrgs).values({ slug: "brika" });
+  await db.insert(regScopes).values({ scope: "@brika" });
   await db
-    .insert(regOrgMembers)
-    .values({ orgSlug: "brika", provider: "github", memberId: owner, role: "admin" });
-  await db.insert(regScopes).values({ scope: "@brika", orgId: "brika" });
+    .insert(regScopeMembers)
+    .values({ scope: "@brika", provider: "github", memberId: owner, role: "admin" });
   await db.insert(regPackages).values({ name: "@brika/x", scope: "@brika" });
   await db.insert(regVersions).values({
     name: "@brika/x",

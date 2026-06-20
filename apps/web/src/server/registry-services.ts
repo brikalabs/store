@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { ManagementService, OrgService } from "@brika/registry-core";
+import { ManagementService, ScopeService } from "@brika/registry-core";
 import { type Db, getDb } from "@brika/store-db";
 import {
   CloudflareDohResolver,
@@ -7,11 +7,10 @@ import {
   D1CatalogReader,
   D1MetadataReader,
   D1MetadataWriter,
-  D1OrgDomains,
-  D1OrgMembers,
-  D1OrgScopes,
-  D1OrgStore,
   D1OwnershipPolicy,
+  D1ScopeDomains,
+  D1ScopeMembers,
+  D1ScopeStore,
   D1TokenStore,
   D1TrustedPublishers,
   HmacDomainChallenge,
@@ -36,20 +35,19 @@ export function registryDb(): Db {
 }
 
 export function registryServices(db: Db = registryDb()) {
-  const members = new D1OrgMembers(db);
-  const orgScopes = new D1OrgScopes(db);
+  const members = new D1ScopeMembers(db);
   const trustedPublishers = new D1TrustedPublishers(db);
-  const ownership = new D1OwnershipPolicy(members, orgScopes, trustedPublishers);
+  const ownership = new D1OwnershipPolicy(members, trustedPublishers);
   return {
-    /** Org use cases: claim, members + roles, display name, profile, scopes, domains, publishers. */
-    orgs: new OrgService(new D1OrgStore(db), members, orgScopes, new D1OrgDomains(db), {
+    /** Scope use cases: claim, members + roles, display name, profile, domains, publishers. */
+    scopes: new ScopeService(new D1ScopeStore(db), members, new D1ScopeDomains(db), {
       dnsResolver: new CloudflareDohResolver(),
       domainChallenge: new HmacDomainChallenge(vars().DOMAIN_VERIFY_SECRET),
       trustedPublishers,
     }),
-    /** The org membership port directly, for the "orgs I belong to" read projection. */
+    /** The scope membership port directly, for the "scopes I belong to" read projection. */
     members,
-    /** Post-publish management gated by org membership: deprecate, yank. */
+    /** Post-publish management gated by scope membership: deprecate, yank. */
     management: new ManagementService(new D1MetadataWriter(db), ownership),
     /** Packument reader, for listing a package's versions with their flags. */
     metadata: new D1MetadataReader(db),

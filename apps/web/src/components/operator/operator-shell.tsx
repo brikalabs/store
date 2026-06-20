@@ -1,10 +1,10 @@
-import { Box as BoxIcon, Building2, type LucideIcon, ScrollText, ShieldAlert } from "lucide-react";
+import { Box as BoxIcon, Layers, type LucideIcon, ScrollText, ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
 type NavItem = { label: string; icon: LucideIcon; href: string };
 
 const NAV: NavItem[] = [
-  { label: "Organisations", icon: Building2, href: "/operator/orgs" },
+  { label: "Scopes", icon: Layers, href: "/operator/scopes" },
   { label: "Packages", icon: BoxIcon, href: "/operator/packages" },
   { label: "Audit log", icon: ScrollText, href: "/operator/audit" },
 ];
