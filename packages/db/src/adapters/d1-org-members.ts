@@ -9,7 +9,7 @@ function toRole(value: string): OrgRole {
 }
 
 /**
- * Cloudflare D1 implementation of the {@link OrgMembers} domain port (JSR-style org
+ * Cloudflare D1 implementation of the {@link OrgMembers} domain port (org
  * membership). Publishing under any scope the org owns is gated on being a member;
  * managing the org (members, scopes, display name) requires the `admin` role. The org
  * creator is seeded as the first admin (see the org controller). The "at least one admin"

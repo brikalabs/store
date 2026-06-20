@@ -18,7 +18,7 @@ from the markdown headings. Related operational policy:
 [Quotas and limits](../quotas-and-limits.md).
 
 > **Draft, not yet in effect.** These are working documents adapted from common
-> registry policy (npm, JSR) to Brika's architecture. They have **not** been
+> registry policy (npm and others) to Brika's architecture. They have **not** been
 > reviewed by a lawyer and are not a binding agreement until published with a
 > stated effective date. Before going live, confirm:
 >

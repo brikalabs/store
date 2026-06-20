@@ -105,7 +105,7 @@ export const regOrgDomains = sqliteTable(
 );
 
 /**
- * Organisation membership and roles (JSR-style). An org can have several members; each is
+ * Organisation membership and roles. An org can have several members; each is
  * a provider-qualified identity with a role: `admin` (manage members, scopes, everything
  * a member can) or `member` (publish under any scope the org owns). The org creator is
  * seeded as the first admin. Publishing is gated on org membership.

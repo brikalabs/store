@@ -22,7 +22,7 @@ A registry is two halves: an **immutable resolve/download** side and an
   version in D1. We do NOT emulate npm's publish handshake (which is built for
   npmjs.com); owning the publish API gives us provenance and full control.
 
-This is JSR's model: their own registry + an npm-compat layer for install.
+The model: our own registry + an npm-compat layer for install.
 
 ## 2. Why this preserves the safety property
 
@@ -191,7 +191,7 @@ exist on npm, to stop cross-registry squatting.)
 localized metadata, valid manifest, size limits, immutability) and (b) ownership
 verification (OIDC/token -> scope + linked repo). Either failing rejects.
 
-### Publish auth (two secure paths, like npm/JSR)
+### Publish auth (two secure paths, like npm)
 
 - **Local `brika publish`**: OAuth **device authorization flow** (RFC 8628) via
   store.brika.dev's GitHub login -> a **short-lived, scope-limited publish token**

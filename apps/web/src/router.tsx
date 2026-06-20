@@ -6,7 +6,7 @@ export function getRouter() {
     routeTree,
     scrollRestoration: true,
     defaultPreload: "intent",
-    // Keep "@" literal in URLs (e.g. /plugins/@brika/plugin-weather), JSR-style,
+    // Keep "@" literal in URLs (e.g. /plugins/@brika/plugin-weather),
     // instead of percent-encoding it to %40.
     pathParamsAllowedCharacters: ["@"],
   });

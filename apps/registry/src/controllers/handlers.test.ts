@@ -193,7 +193,7 @@ describe("createOrg (explicit org claim)", () => {
 
   test("400 for a non-canonical org slug", async () => {
     const token = await issueToken(db, "alice");
-    const bad = { org: "Team" }; // uppercase: rejected by the JSR-style rule
+    const bad = { org: "Team" }; // uppercase: rejected by the canonical-slug rule
     expect(
       await statusOf(createOrg({ params: bad, req: post(undefined, token), ctx: services(db) })),
     ).toBe(400);

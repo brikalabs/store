@@ -2,7 +2,7 @@
  * Registry quotas and limits: the single source of truth shared by the publish
  * enforcement (`PublishService`) and the documentation (`docs/quotas-and-limits.md`).
  *
- * Values are deliberately close to JSR's defaults, adapted to our hybrid model
+ * Values are deliberately conservative, adapted to our hybrid model
  * (only the `@brika` scope is hosted today; community scopes open later) and to
  * Cloudflare's request/object realities. Quotas are not meant as hard ceilings:
  * a publisher who needs more can ask for an increase (see the docs).

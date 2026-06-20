@@ -18,8 +18,7 @@ import type { Services } from "../services";
 
 /**
  * Organisation management HTTP layer. An org is the first-class ownership entity (it owns
- * one or more npm scopes); publishing under any scope it owns is gated on org MEMBERS
- * (JSR-style):
+ * one or more npm scopes); publishing under any scope it owns is gated on org MEMBERS:
  *
  *   PUT    /-/org/:org                          claim an org (caller becomes admin)
  *   GET    /-/org/:org/members                  list members (any member)
