@@ -32,26 +32,26 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { z } from "zod";
-import { CapabilityChips } from "../components/clay/capability-chips";
-import { Changelog } from "../components/clay/changelog";
-import { GithubIcon } from "../components/clay/icons";
-import { GradientAvatar, PluginIcon } from "../components/clay/plugin-icon";
-import { ScreenshotPanels } from "../components/clay/screenshot-panels";
-import { Segmented, segmentClassName } from "../components/clay/segmented";
-import { Stars } from "../components/clay/stars";
-import { CommentsSection } from "../components/comments-section";
-import { CopyButton } from "../components/copy-button";
-import { NotFoundPage } from "../components/error-pages";
-import { FilesSection } from "../components/file-browser";
-import { InstallCommand } from "../components/install-command";
-import { Markdown } from "../components/markdown";
-import { ReviewsSection } from "../components/reviews-section";
-import { formatBytes, formatCount, formatDate } from "../lib/format";
-import { type GrantFamily, type GrantScope, groupGrants } from "../lib/grants";
-import { applyListingOverride } from "../lib/listing";
-import { fetchPublicListing } from "../lib/listing-merge";
-import { getPluginPage } from "../lib/registry";
-import { isRegistryName } from "../lib/registry-source";
+import { CapabilityChips } from "@/components/clay/capability-chips";
+import { Changelog } from "@/components/clay/changelog";
+import { GithubIcon } from "@/components/clay/icons";
+import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
+import { ScreenshotPanels } from "@/components/clay/screenshot-panels";
+import { Segmented, segmentClassName } from "@/components/clay/segmented";
+import { Stars } from "@/components/clay/stars";
+import { CommentsSection } from "@/components/comments-section";
+import { CopyButton } from "@/components/copy-button";
+import { NotFoundPage } from "@/components/error-pages";
+import { FilesSection } from "@/components/file-browser";
+import { InstallCommand } from "@/components/install-command";
+import { Markdown } from "@/components/markdown";
+import { ReviewsSection } from "@/components/reviews-section";
+import { formatBytes, formatCount, formatDate } from "@/lib/format";
+import { type GrantFamily, type GrantScope, groupGrants } from "@/lib/grants";
+import { applyListingOverride } from "@/lib/listing";
+import { fetchPublicListing } from "@/lib/listing-merge";
+import { getPluginPage } from "@/lib/registry";
+import { isRegistryName } from "@/lib/registry-source";
 
 const DETAIL_TABS = [
   { id: "overview", label: "Overview" },

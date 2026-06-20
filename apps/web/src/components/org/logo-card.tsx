@@ -1,6 +1,6 @@
 import { Trash2, Upload } from "lucide-react";
 import { type ChangeEvent, useState } from "react";
-import { type OrgCardProps, orgPath, readError } from "../../lib/org-api";
+import { type OrgCardProps, orgPath, readError } from "@/lib/org-api";
 
 /** Upload / clear the org's logo (raster image stored in R2, shown on the public page). */
 export function LogoCard({ org, onError }: Readonly<OrgCardProps>) {

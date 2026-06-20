@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getCurrentUser } from "../lib/auth";
-import { jsonBadRequest, jsonForbidden, jsonPrivate, jsonUnauthorized } from "../lib/http";
-import { getPluginListing, PluginListingInput, upsertPluginListing } from "../lib/listing";
-import { canEditPluginListing } from "../lib/listing-ownership";
-import { serverContext } from "../lib/server-context";
+import { getCurrentUser } from "@/lib/auth";
+import { jsonBadRequest, jsonForbidden, jsonPrivate, jsonUnauthorized } from "@/lib/http";
+import { getPluginListing, PluginListingInput, upsertPluginListing } from "@/lib/listing";
+import { canEditPluginListing } from "@/lib/listing-ownership";
+import { serverContext } from "@/lib/server-context";
 
 /**
  * `GET|PUT /api/plugins/:name/listing` , the maintainer's store-listing override for a

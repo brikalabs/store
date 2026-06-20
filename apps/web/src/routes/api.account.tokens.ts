@@ -1,8 +1,8 @@
 import { listSubjectTokens } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
-import { authed } from "../lib/console-api";
-import { jsonPrivate } from "../lib/http";
-import { registryDb } from "../lib/registry-services";
+import { authed } from "@/lib/console-api";
+import { jsonPrivate } from "@/lib/http";
+import { registryDb } from "@/lib/registry-services";
 
 /**
  * `GET  /api/account/tokens` - the signed-in user's publish tokens (metadata only; the

@@ -13,11 +13,11 @@ import {
   Upload,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { AdminShell } from "../components/admin-shell";
-import { PluginIcon } from "../components/clay/plugin-icon";
-import { Segmented, segmentClassName } from "../components/clay/segmented";
-import { getPluginPage } from "../lib/registry";
-import { requireUser } from "../lib/require-user";
+import { AdminShell } from "@/components/admin-shell";
+import { PluginIcon } from "@/components/clay/plugin-icon";
+import { Segmented, segmentClassName } from "@/components/clay/segmented";
+import { getPluginPage } from "@/lib/registry";
+import { requireUser } from "@/lib/require-user";
 
 export const Route = createFileRoute("/dashboard/plugins/$")({
   beforeLoad: async ({ location }) => ({ user: await requireUser(location.href) }),

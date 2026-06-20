@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LegalPage } from "../components/legal-page";
-import content from "../content/legal/acceptable-use.md?raw";
+import { LegalPage } from "@/components/legal-page";
+import content from "@/content/legal/acceptable-use.md?raw";
 
 export const Route = createFileRoute("/legal/acceptable-use")({
   head: () => ({

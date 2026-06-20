@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonNotFound, jsonOk } from "../lib/http";
-import { getPluginPage } from "../lib/registry";
+import { jsonNotFound, jsonOk } from "@/lib/http";
+import { getPluginPage } from "@/lib/registry";
 
 /** `GET /v1/plugins/:name` (name URL-encoded, scoped names allowed) */
 export const Route = createFileRoute("/v1/plugins/$name")({

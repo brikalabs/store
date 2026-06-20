@@ -1,7 +1,7 @@
 import type { PluginSummary } from "@brika/registry-contract";
 import { Link } from "@tanstack/react-router";
 import { Download, ShieldCheck } from "lucide-react";
-import { formatCount } from "../lib/format";
+import { formatCount } from "@/lib/format";
 import { PluginIcon } from "./clay/plugin-icon";
 import { Stars } from "./clay/stars";
 

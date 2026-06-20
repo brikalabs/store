@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type Gradient, gradientFor } from "../components/clay/gradients";
+import { type Gradient, gradientFor } from "@/components/clay/gradients";
 
 /**
  * Derive a plugin's accent gradient from its actual icon. The icon is fetched,

@@ -1,9 +1,9 @@
 import { scopeOf } from "@brika/registry-core";
 import { listScopesForMember } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
-import { authed } from "../lib/console-api";
-import { jsonBadRequest, jsonNotFound, jsonPrivate } from "../lib/http";
-import { registryDb } from "../lib/registry-services";
+import { authed } from "@/lib/console-api";
+import { jsonBadRequest, jsonNotFound, jsonPrivate } from "@/lib/http";
+import { registryDb } from "@/lib/registry-services";
 
 /**
  * `GET /api/plugins/versions?name=<encoded>` - a registry-hosted package's versions with

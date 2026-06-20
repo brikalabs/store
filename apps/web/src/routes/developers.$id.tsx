@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Box, Link2, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
-import { GithubIcon } from "../components/clay/icons";
-import { PluginCard, Stat } from "../components/clay/plugin-card";
-import { GradientAvatar } from "../components/clay/plugin-icon";
-import { formatCount } from "../lib/format";
-import { getDeveloperPage } from "../lib/registry";
+import { GithubIcon } from "@/components/clay/icons";
+import { PluginCard, Stat } from "@/components/clay/plugin-card";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { formatCount } from "@/lib/format";
+import { getDeveloperPage } from "@/lib/registry";
 
 function SocialIcon({
   href,

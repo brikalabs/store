@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { clearReturnCookie, readOauthState, readReturnPath, sessionCookie } from "../lib/auth";
-import { vars } from "../lib/env";
-import { exchangeCode, fetchUser } from "../lib/github";
-import { serverContext } from "../lib/server-context";
-import { markDeveloperVerified, upsertUser } from "../lib/social";
+import { clearReturnCookie, readOauthState, readReturnPath, sessionCookie } from "@/lib/auth";
+import { vars } from "@/lib/env";
+import { exchangeCode, fetchUser } from "@/lib/github";
+import { serverContext } from "@/lib/server-context";
+import { markDeveloperVerified, upsertUser } from "@/lib/social";
 
 /** `GET /auth/github/callback`: finish OAuth, upsert the user, set the session. */
 export const Route = createFileRoute("/auth/github/callback")({

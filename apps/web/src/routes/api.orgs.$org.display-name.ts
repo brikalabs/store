@@ -1,8 +1,8 @@
 import { displayNameSchema } from "@brika/registry-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { authed } from "../lib/console-api";
-import { jsonBadRequest, jsonError, jsonPrivate, orgStatus } from "../lib/http";
+import { authed } from "@/lib/console-api";
+import { jsonBadRequest, jsonError, jsonPrivate, orgStatus } from "@/lib/http";
 
 const Body = z.object({ displayName: displayNameSchema.nullable() });
 

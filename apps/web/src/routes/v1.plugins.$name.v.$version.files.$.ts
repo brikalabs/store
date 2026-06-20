@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonBadRequest, jsonNotFound } from "../lib/http";
-import { getRegistryAsset } from "../lib/registry-assets";
-import { isRegistryName, isSafeAssetPath } from "../lib/registry-source";
-import { serverContext } from "../lib/server-context";
+import { jsonBadRequest, jsonNotFound } from "@/lib/http";
+import { getRegistryAsset } from "@/lib/registry-assets";
+import { isRegistryName, isSafeAssetPath } from "@/lib/registry-source";
+import { serverContext } from "@/lib/server-context";
 
 /**
  * `GET /v1/plugins/:name/v/:version/files/<path>` - serve a single file bundled

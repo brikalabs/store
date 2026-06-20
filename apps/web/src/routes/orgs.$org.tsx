@@ -1,10 +1,10 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { Building2, Globe, ShieldCheck } from "lucide-react";
-import { LinkIcon } from "../components/clay/link-icon";
-import { PluginCard, Stat } from "../components/clay/plugin-card";
-import { GradientAvatar } from "../components/clay/plugin-icon";
-import { formatCount } from "../lib/format";
-import { getOrgPage } from "../lib/registry";
+import { LinkIcon } from "@/components/clay/link-icon";
+import { PluginCard, Stat } from "@/components/clay/plugin-card";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { formatCount } from "@/lib/format";
+import { getOrgPage } from "@/lib/registry";
 
 export const Route = createFileRoute("/orgs/$org")({
   loader: async ({ params }) => {

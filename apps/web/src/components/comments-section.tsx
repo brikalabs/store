@@ -3,8 +3,8 @@ import { Comment } from "@brika/registry-contract";
 import { ChevronUp } from "lucide-react";
 import { type SyntheticEvent, useEffect, useState } from "react";
 import { z } from "zod";
-import { formatDate } from "../lib/format";
-import { useCurrentUser } from "../lib/use-current-user";
+import { formatDate } from "@/lib/format";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { GradientAvatar } from "./clay/plugin-icon";
 
 /** The comment "grade": an upvote toggle showing the running tally. */

@@ -1,7 +1,7 @@
 import { Button, Input } from "@brika/clay";
 import { Layers, Plus } from "lucide-react";
 import { type SyntheticEvent, useCallback, useEffect, useState } from "react";
-import { type OrgCardProps, orgPath, readError } from "../../lib/org-api";
+import { type OrgCardProps, orgPath, readError } from "@/lib/org-api";
 
 /** The owned-scopes list: a loading skeleton, an empty hint, or the scope chips. */
 function ScopeList({ scopes }: Readonly<{ scopes: string[] | null }>) {

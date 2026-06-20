@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
-import { pluginListings } from "../db/schema";
+import { pluginListings } from "@/db/schema";
 import type { ListingOverride } from "./listing";
 import { serverContext } from "./server-context";
 

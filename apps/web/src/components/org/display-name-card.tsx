@@ -1,7 +1,7 @@
 import { Button, Input } from "@brika/clay";
 import { ShieldCheck } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
-import { type OrgCardProps, orgPath, readError } from "../../lib/org-api";
+import { type OrgCardProps, orgPath, readError } from "@/lib/org-api";
 
 /** Set the org's verified-publisher display name (overrides the manifest author). */
 export function DisplayNameCard({ org, onError }: Readonly<OrgCardProps>) {

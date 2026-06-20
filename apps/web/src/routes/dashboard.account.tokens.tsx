@@ -2,9 +2,9 @@ import { Button } from "@brika/clay";
 import { createFileRoute } from "@tanstack/react-router";
 import { KeyRound, LogOut, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { AdminShell } from "../components/admin-shell";
-import { CopyButton } from "../components/copy-button";
-import { requireUser } from "../lib/require-user";
+import { AdminShell } from "@/components/admin-shell";
+import { CopyButton } from "@/components/copy-button";
+import { requireUser } from "@/lib/require-user";
 
 export const Route = createFileRoute("/dashboard/account/tokens")({
   beforeLoad: async ({ location }) => ({ user: await requireUser(location.href) }),

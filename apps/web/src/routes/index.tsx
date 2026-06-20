@@ -3,13 +3,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ChevronRight, Search, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
 import type { ReactNode } from "react";
 import { z } from "zod";
-import { gradientCss } from "../components/clay/gradients";
-import { PluginIcon } from "../components/clay/plugin-icon";
-import { Segmented, segmentClassName } from "../components/clay/segmented";
-import { CAPABILITY_TILES, DiscoverIndex } from "../components/discover-index";
-import { PluginCard } from "../components/plugin-card";
-import { useSearch } from "../components/search-context";
-import { searchPlugins } from "../lib/registry";
+import { gradientCss } from "@/components/clay/gradients";
+import { PluginIcon } from "@/components/clay/plugin-icon";
+import { Segmented, segmentClassName } from "@/components/clay/segmented";
+import { CAPABILITY_TILES, DiscoverIndex } from "@/components/discover-index";
+import { PluginCard } from "@/components/plugin-card";
+import { useSearch } from "@/components/search-context";
+import { searchPlugins } from "@/lib/registry";
 
 const homeSearch = z.object({ d: z.enum(["a", "b"]).optional() });
 

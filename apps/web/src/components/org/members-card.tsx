@@ -1,8 +1,8 @@
 import { Button, Input } from "@brika/clay";
 import { Trash2, UserPlus } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
-import { type OrgCardProps, orgPath, readError } from "../../lib/org-api";
-import { GithubIcon } from "../clay/icons";
+import { GithubIcon } from "@/components/clay/icons";
+import { type OrgCardProps, orgPath, readError } from "@/lib/org-api";
 
 export interface Member {
   provider: string;

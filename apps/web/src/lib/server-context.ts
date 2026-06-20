@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { type Db, getDb } from "../db/client";
+import { type Db, getDb } from "@/db/client";
 import { type BlobStore, CfR2BlobStore } from "./blob-store";
 
 /**

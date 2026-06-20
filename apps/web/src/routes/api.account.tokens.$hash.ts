@@ -1,8 +1,8 @@
 import { revokeTokenByHash } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
-import { authed } from "../lib/console-api";
-import { jsonNotFound, jsonPrivate } from "../lib/http";
-import { registryDb } from "../lib/registry-services";
+import { authed } from "@/lib/console-api";
+import { jsonNotFound, jsonPrivate } from "@/lib/http";
+import { registryDb } from "@/lib/registry-services";
 
 /**
  * `DELETE /api/account/tokens/:hash` - revoke one of the signed-in user's tokens by its

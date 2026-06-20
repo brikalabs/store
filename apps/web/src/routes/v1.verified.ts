@@ -1,6 +1,6 @@
 import { VerifiedList } from "@brika/registry-contract";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonOk } from "../lib/http";
+import { jsonOk } from "@/lib/http";
 
 /**
  * `GET /v1/verified`: the signed curation list. Empty until the curation data

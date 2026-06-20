@@ -4,9 +4,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import type { Db } from "../db/client";
-import * as schema from "../db/schema";
-import { developers, plugins, users } from "../db/schema";
+import type { Db } from "@/db/client";
+import * as schema from "@/db/schema";
+import { developers, plugins, users } from "@/db/schema";
 import {
   addComment,
   ensurePluginCached,

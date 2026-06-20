@@ -10,8 +10,8 @@ import {
 import type { PluginFile } from "@brika/registry-contract";
 import { Box, File as FileIcon, Folder, ShieldCheck } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { formatBytes } from "../lib/format";
-import { assetUrl, pluginVersionUrl } from "../lib/registry-source";
+import { formatBytes } from "@/lib/format";
+import { assetUrl, pluginVersionUrl } from "@/lib/registry-source";
 import {
   Tree,
   TreeItem,

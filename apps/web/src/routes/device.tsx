@@ -11,8 +11,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Check, KeyRound, ShieldCheck } from "lucide-react";
 import { type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { GithubIcon } from "../components/clay/icons";
-import { type CurrentUser, useCurrentUser } from "../lib/use-current-user";
+import { GithubIcon } from "@/components/clay/icons";
+import { type CurrentUser, useCurrentUser } from "@/lib/use-current-user";
 
 const deviceSearch = z.object({ code: z.string().optional() });
 

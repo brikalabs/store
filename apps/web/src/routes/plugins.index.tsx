@@ -4,12 +4,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Box, ChevronRight, PackageSearch, ShieldCheck, Users } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
-import { GradientAvatar } from "../components/clay/plugin-icon";
-import { DiscoverIndex } from "../components/discover-index";
-import { PluginCard } from "../components/plugin-card";
-import { type SortKey, SortMenu, sortPlugins } from "../components/sort-menu";
-import { formatCount } from "../lib/format";
-import { searchPlugins } from "../lib/registry";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { DiscoverIndex } from "@/components/discover-index";
+import { PluginCard } from "@/components/plugin-card";
+import { type SortKey, SortMenu, sortPlugins } from "@/components/sort-menu";
+import { formatCount } from "@/lib/format";
+import { searchPlugins } from "@/lib/registry";
 
 const browseSearch = z.object({ q: z.string().optional() });
 

@@ -1,7 +1,7 @@
 import { SearchQuery } from "@brika/registry-contract";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonBadRequest, jsonOk } from "../lib/http";
-import { searchPlugins } from "../lib/registry";
+import { jsonBadRequest, jsonOk } from "@/lib/http";
+import { searchPlugins } from "@/lib/registry";
 
 /** `GET /v1/search?q=&limit=&offset=&sort=` */
 export const Route = createFileRoute("/v1/search")({

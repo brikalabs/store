@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { clearSessionCookie } from "../lib/auth";
+import { clearSessionCookie } from "@/lib/auth";
 
 /** `GET /auth/logout`: clear the session and return home. */
 export const Route = createFileRoute("/auth/logout")({

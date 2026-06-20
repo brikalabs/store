@@ -1,8 +1,8 @@
 import type { PluginDetail } from "@brika/registry-contract";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import type { Db } from "../db/client";
-import { pluginListings } from "../db/schema";
+import type { Db } from "@/db/client";
+import { pluginListings } from "@/db/schema";
 
 /**
  * Store-level listing overrides a maintainer edits in the console: the validated input

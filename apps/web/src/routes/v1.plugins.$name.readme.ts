@@ -1,7 +1,7 @@
 import type { ReadmeResponse } from "@brika/registry-contract";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonNotFound, jsonOk } from "../lib/http";
-import { getPluginPage } from "../lib/registry";
+import { jsonNotFound, jsonOk } from "@/lib/http";
+import { getPluginPage } from "@/lib/registry";
 
 /** `GET /v1/plugins/:name/readme` */
 export const Route = createFileRoute("/v1/plugins/$name/readme")({

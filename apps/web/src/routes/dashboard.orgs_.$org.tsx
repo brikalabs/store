@@ -1,15 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { AdminShell } from "../components/admin-shell";
-import { DisplayNameCard } from "../components/org/display-name-card";
-import { DomainsCard } from "../components/org/domains-card";
-import { LogoCard } from "../components/org/logo-card";
-import { type Member, MembersCard } from "../components/org/members-card";
-import { ProfileCard } from "../components/org/profile-card";
-import { ScopesCard } from "../components/org/scopes-card";
-import { orgPath, readError } from "../lib/org-api";
-import { requireUser } from "../lib/require-user";
+import { AdminShell } from "@/components/admin-shell";
+import { DisplayNameCard } from "@/components/org/display-name-card";
+import { DomainsCard } from "@/components/org/domains-card";
+import { LogoCard } from "@/components/org/logo-card";
+import { type Member, MembersCard } from "@/components/org/members-card";
+import { ProfileCard } from "@/components/org/profile-card";
+import { ScopesCard } from "@/components/org/scopes-card";
+import { orgPath, readError } from "@/lib/org-api";
+import { requireUser } from "@/lib/require-user";
 
 export const Route = createFileRoute("/dashboard/orgs_/$org")({
   beforeLoad: async ({ location }) => ({ user: await requireUser(location.href) }),

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { authed } from "../lib/console-api";
-import { jsonBadRequest, jsonError, jsonPrivate, orgStatus } from "../lib/http";
-import { registryServices } from "../lib/registry-services";
-import { serverContext } from "../lib/server-context";
+import { authed } from "@/lib/console-api";
+import { jsonBadRequest, jsonError, jsonPrivate, orgStatus } from "@/lib/http";
+import { registryServices } from "@/lib/registry-services";
+import { serverContext } from "@/lib/server-context";
 
 /** Allowed raster logo types -> file extension. SVG is excluded (script-in-SVG surface). */
 const ICON_TYPES: Record<string, string> = {

@@ -1,9 +1,9 @@
 import type { PluginSummary } from "@brika/registry-contract";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Box, Pencil, ShieldCheck } from "lucide-react";
-import { AdminShell } from "../components/admin-shell";
-import { PluginIcon } from "../components/clay/plugin-icon";
-import { useMyPlugins } from "../lib/use-my-plugins";
+import { AdminShell } from "@/components/admin-shell";
+import { PluginIcon } from "@/components/clay/plugin-icon";
+import { useMyPlugins } from "@/lib/use-my-plugins";
 
 export const Route = createFileRoute("/dashboard/plugins/")({
   component: MyPluginsPage,

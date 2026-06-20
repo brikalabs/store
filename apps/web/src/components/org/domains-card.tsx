@@ -1,7 +1,7 @@
 import { Button, Input } from "@brika/clay";
 import { Check, Globe, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { type OrgCardProps, orgPath, readError } from "../../lib/org-api";
+import { type OrgCardProps, orgPath, readError } from "@/lib/org-api";
 
 interface DomainRow {
   domain: string;

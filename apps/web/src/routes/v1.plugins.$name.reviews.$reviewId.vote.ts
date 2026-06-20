@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getSessionUserId } from "../lib/auth";
-import { jsonNotFound, jsonOk, jsonUnauthorized } from "../lib/http";
-import { serverContext } from "../lib/server-context";
-import { listReviews, toggleReviewHelpful } from "../lib/social";
+import { getSessionUserId } from "@/lib/auth";
+import { jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
+import { serverContext } from "@/lib/server-context";
+import { listReviews, toggleReviewHelpful } from "@/lib/social";
 
 /**
  * `POST /v1/plugins/:name/reviews/:reviewId/vote` - toggle the signed-in user's

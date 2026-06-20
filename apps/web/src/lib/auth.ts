@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import type { Db } from "../db/client";
-import { users } from "../db/schema";
+import type { Db } from "@/db/client";
+import { users } from "@/db/schema";
 import { parseCookies, safeReturnPath } from "./auth-cookies";
 import { vars } from "./env";
 import { signSession, verifySession } from "./session";
