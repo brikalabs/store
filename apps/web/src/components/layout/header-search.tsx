@@ -2,9 +2,9 @@ import { Kbd, KbdGroup } from "@brika/clay";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { type SyntheticEvent, useEffect, useState } from "react";
+import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
+import { useSearch } from "@/components/layout/search-context";
 import { usePluginSearch } from "@/hooks/use-plugin-search";
-import { GradientAvatar, PluginIcon } from "./clay/plugin-icon";
-import { useSearch } from "./search-context";
 
 /**
  * The header search: a normal text input (type and press Enter to search), with

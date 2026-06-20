@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Box, Check, Copy, ExternalLink, Rocket } from "lucide-react";
 import { useState } from "react";
-import { AdminShell } from "@/components/admin-shell";
+import { AdminShell } from "@/components/layout/admin-shell";
 import { useMyPlugins } from "@/hooks/use-my-plugins";
 import { formatCount } from "@/lib/format";
 

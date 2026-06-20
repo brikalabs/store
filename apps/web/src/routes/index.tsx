@@ -6,9 +6,9 @@ import { z } from "zod";
 import { gradientCss } from "@/components/clay/gradients";
 import { PluginIcon } from "@/components/clay/plugin-icon";
 import { Segmented, segmentClassName } from "@/components/clay/segmented";
-import { CAPABILITY_TILES, DiscoverIndex } from "@/components/discover-index";
-import { PluginCard } from "@/components/plugin-card";
-import { useSearch } from "@/components/search-context";
+import { useSearch } from "@/components/layout/search-context";
+import { CAPABILITY_TILES, DiscoverIndex } from "@/components/plugin/discover-index";
+import { ListingCard } from "@/components/plugin/listing-card";
 import { searchPlugins } from "@/lib/registry/registry";
 
 const homeSearch = z.object({ d: z.enum(["a", "b"]).optional() });
@@ -97,7 +97,7 @@ function DirectionSpotlight({ plugins, total }: DirectionProps) {
       {featured.length > 0 ? (
         <Rail title="Featured">
           {featured.map((plugin) => (
-            <PluginCard key={plugin.name} plugin={plugin} />
+            <ListingCard key={plugin.name} plugin={plugin} />
           ))}
         </Rail>
       ) : null}
@@ -109,7 +109,7 @@ function DirectionSpotlight({ plugins, total }: DirectionProps) {
           seeAll
         >
           {trending.map((plugin) => (
-            <PluginCard key={plugin.name} plugin={plugin} />
+            <ListingCard key={plugin.name} plugin={plugin} />
           ))}
         </Rail>
       ) : null}

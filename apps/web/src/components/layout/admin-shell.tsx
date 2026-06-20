@@ -1,6 +1,6 @@
 import { Box, Building2, KeyRound, LayoutDashboard, type LucideIcon, User } from "lucide-react";
 import type { ReactNode } from "react";
-import { GradientAvatar } from "./clay/plugin-icon";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
 
 type NavItem = { label: string; icon: LucideIcon; href?: string };
 

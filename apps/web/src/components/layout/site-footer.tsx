@@ -2,7 +2,7 @@ import { BrikaLogo } from "@brika/clay";
 import { Link } from "@tanstack/react-router";
 import { Box } from "lucide-react";
 import type { ReactNode } from "react";
-import { GithubIcon } from "./clay/icons";
+import { GithubIcon } from "@/components/clay/icons";
 
 type FooterLink = { label: string; to?: string; href?: string };
 

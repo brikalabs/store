@@ -14,10 +14,10 @@ import {
   Zap,
 } from "lucide-react";
 import { type ReactNode, type SyntheticEvent, useState } from "react";
-import type { Gradient } from "./clay/gradients";
-import { GradientAvatar, PluginIcon } from "./clay/plugin-icon";
-import { PluginCard } from "./plugin-card";
-import { type SortKey, SortMenu, sortPlugins } from "./sort-menu";
+import type { Gradient } from "@/components/clay/gradients";
+import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
+import { ListingCard } from "@/components/plugin/listing-card";
+import { type SortKey, SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
 
 export type CapabilityTile = { key: string; label: string; glyph: LucideIcon; gradient: Gradient };
 
@@ -116,7 +116,7 @@ export function DiscoverIndex({
 
         <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
           {sorted.map((plugin) => (
-            <PluginCard key={plugin.name} plugin={plugin} />
+            <ListingCard key={plugin.name} plugin={plugin} />
           ))}
         </div>
 

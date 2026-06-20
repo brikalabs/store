@@ -5,9 +5,9 @@ import { Box, ChevronRight, PackageSearch, ShieldCheck, Users } from "lucide-rea
 import { useState } from "react";
 import { z } from "zod";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
-import { DiscoverIndex } from "@/components/discover-index";
-import { PluginCard } from "@/components/plugin-card";
-import { type SortKey, SortMenu, sortPlugins } from "@/components/sort-menu";
+import { DiscoverIndex } from "@/components/plugin/discover-index";
+import { ListingCard } from "@/components/plugin/listing-card";
+import { type SortKey, SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
 import { formatCount } from "@/lib/format";
 import { searchPlugins } from "@/lib/registry/registry";
 
@@ -144,7 +144,7 @@ function BrowsePage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sorted.map((plugin) => (
-              <PluginCard key={plugin.name} plugin={plugin} />
+              <ListingCard key={plugin.name} plugin={plugin} />
             ))}
           </div>
         </section>

@@ -2,8 +2,8 @@ import { Button } from "@brika/clay";
 import { createFileRoute } from "@tanstack/react-router";
 import { KeyRound, LogOut, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin-shell";
-import { CopyButton } from "@/components/copy-button";
+import { AdminShell } from "@/components/layout/admin-shell";
+import { CopyButton } from "@/components/plugin/copy-button";
 import { requireUser } from "@/server/require-user";
 
 export const Route = createFileRoute("/dashboard/account/tokens")({

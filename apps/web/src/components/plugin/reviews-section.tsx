@@ -3,11 +3,11 @@ import { Review } from "@brika/registry-contract";
 import { Heart, Star } from "lucide-react";
 import { type SyntheticEvent, useEffect, useState } from "react";
 import { z } from "zod";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { ReviewDistribution } from "@/components/clay/review-distribution";
+import { Stars } from "@/components/clay/stars";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { formatDate } from "@/lib/format";
-import { GradientAvatar } from "./clay/plugin-icon";
-import { ReviewDistribution } from "./clay/review-distribution";
-import { Stars } from "./clay/stars";
 
 type Props = Readonly<{ pluginName: string; fallback?: Review[] }>;
 

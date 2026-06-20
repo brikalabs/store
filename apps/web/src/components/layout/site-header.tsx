@@ -1,9 +1,9 @@
 import { Avatar, AvatarFallback, AvatarImage, BrikaLogo } from "@brika/clay";
 import { Link } from "@tanstack/react-router";
 import { LogIn } from "lucide-react";
+import { HeaderSearch } from "@/components/layout/header-search";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { type CurrentUser, useCurrentUser } from "@/hooks/use-current-user";
-import { HeaderSearch } from "./header-search";
-import { ThemeToggle } from "./theme-toggle";
 
 function AuthArea({ loading, user }: Readonly<{ loading: boolean; user: CurrentUser | null }>) {
   if (loading) return <div className="size-9 rounded-full bg-muted" />;

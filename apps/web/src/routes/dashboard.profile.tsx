@@ -6,9 +6,9 @@ import {
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, ExternalLink } from "lucide-react";
 import { type SyntheticEvent, useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin-shell";
 import { GithubIcon } from "@/components/clay/icons";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { AdminShell } from "@/components/layout/admin-shell";
 
 export const Route = createFileRoute("/dashboard/profile")({
   component: ProfilePage,

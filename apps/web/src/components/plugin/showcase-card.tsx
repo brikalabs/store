@@ -1,10 +1,10 @@
 import type { PluginSummary } from "@brika/registry-contract";
 import { Link } from "@tanstack/react-router";
 import { Download, ShieldCheck } from "lucide-react";
+import { PluginIcon } from "@/components/clay/plugin-icon";
+import { Stars } from "@/components/clay/stars";
 import { useIconPalette } from "@/hooks/use-icon-palette";
 import { formatCount } from "@/lib/format";
-import { PluginIcon } from "./plugin-icon";
-import { Stars } from "./stars";
 
 /** Total declared capabilities across a plugin's families (0 when none). */
 export function capabilityTotal(plugin: PluginSummary): number {
@@ -23,7 +23,7 @@ export function Stat({ value, label }: Readonly<{ value: string; label: string }
 }
 
 /** A plugin tile (gradient banner, icon, name, description, install/rating/capability footer). */
-export function PluginCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
+export function ShowcaseCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
   // Banner accent comes from the plugin's own icon when it has one, else a hash gradient.
   const gradient = useIconPalette(plugin.iconUrl, plugin.name);
   const caps = capabilityTotal(plugin);

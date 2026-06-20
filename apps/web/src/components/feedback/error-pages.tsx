@@ -1,5 +1,5 @@
 import { ExternalLink, Home, RotateCw, Search, Zap } from "lucide-react";
-import { ErrorState } from "./error-state";
+import { ErrorState } from "@/components/feedback/error-state";
 
 /** 404: nothing matched the route, or the plugin doesn't exist. */
 export function NotFoundPage() {

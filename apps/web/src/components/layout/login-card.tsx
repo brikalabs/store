@@ -1,7 +1,7 @@
 import { BrikaLogo } from "@brika/clay";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ShieldCheck } from "lucide-react";
-import { GithubIcon } from "./clay/icons";
+import { GithubIcon } from "@/components/clay/icons";
 
 /**
  * Developer sign-in screen: a centered card on the warm ember wash. GitHub is

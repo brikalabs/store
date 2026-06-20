@@ -5,10 +5,10 @@ import {
   Scripts,
   useRouterState,
 } from "@tanstack/react-router";
-import { NotFoundPage, ServerErrorPage } from "@/components/error-pages";
-import { SearchProvider } from "@/components/search-context";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
+import { NotFoundPage, ServerErrorPage } from "@/components/feedback/error-pages";
+import { SearchProvider } from "@/components/layout/search-context";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteHeader } from "@/components/layout/site-header";
 import { themeBootScript } from "@/hooks/use-theme";
 import appCss from "@/styles.css?url";
 

@@ -10,8 +10,6 @@ import {
 import type { PluginFile } from "@brika/registry-contract";
 import { Box, File as FileIcon, Folder, ShieldCheck } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { formatBytes } from "@/lib/format";
-import { assetUrl, pluginVersionUrl } from "@/lib/registry/registry-source";
 import {
   Tree,
   TreeItem,
@@ -19,7 +17,9 @@ import {
   TreeItemContent,
   TreeItemLabel,
   TreeItemRow,
-} from "./clay/tree";
+} from "@/components/clay/tree";
+import { formatBytes } from "@/lib/format";
+import { assetUrl, pluginVersionUrl } from "@/lib/registry/registry-source";
 
 /**
  * npm-style file browser for a published tarball: a two-pane tree + source

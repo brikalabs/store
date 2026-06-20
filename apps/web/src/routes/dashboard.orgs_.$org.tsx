@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin-shell";
+import { AdminShell } from "@/components/layout/admin-shell";
 import { DisplayNameCard } from "@/components/org/display-name-card";
 import { DomainsCard } from "@/components/org/domains-card";
 import { LogoCard } from "@/components/org/logo-card";
