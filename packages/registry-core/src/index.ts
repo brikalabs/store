@@ -77,6 +77,7 @@ export {
   type PackumentDist,
   tarballPath,
   tarballUrl,
+  trimTrailingSlash,
   unscopedName,
 } from "./packument";
 export type { MetadataReader, TarballReader } from "./ports";

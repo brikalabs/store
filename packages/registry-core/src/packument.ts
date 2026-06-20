@@ -6,6 +6,13 @@ export function unscopedName(name: string): string {
   return slash === -1 ? name : name.slice(slash + 1);
 }
 
+/** Trim trailing slashes from a base URL. A plain scan (no regex) so there's nothing to backtrack. */
+export function trimTrailingSlash(url: string): string {
+  let end = url.length;
+  while (end > 0 && url[end - 1] === "/") end--;
+  return url.slice(0, end);
+}
+
 /**
  * Tarball path relative to the registry root, following npm's convention:
  * `@brika/plugin-x/-/plugin-x-1.2.3.tgz`. Also used as the R2 object key so the
@@ -17,7 +24,7 @@ export function tarballPath(name: string, version: string): string {
 
 /** Absolute tarball URL placed in the packument's `dist.tarball`. */
 export function tarballUrl(baseUrl: string, name: string, version: string): string {
-  return `${baseUrl.replace(/\/+$/, "")}/${tarballPath(name, version)}`;
+  return `${trimTrailingSlash(baseUrl)}/${tarballPath(name, version)}`;
 }
 
 export interface PackumentDist {

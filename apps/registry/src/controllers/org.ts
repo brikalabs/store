@@ -377,7 +377,7 @@ export async function attachScope({
 // reaches the store (and so it can actually match a real OIDC ref claim).
 const TrustedPublisherBody = z.object({
   provider: z.enum(["github", "gitlab"]),
-  repository: z.string().regex(/^[^\s]+\/[^\s]+$/, "repository must be 'owner/repo'"),
+  repository: z.string().regex(/^[^\s/]+(?:\/[^\s/]+)+$/, "repository must be 'owner/repo'"),
   workflow: z
     .string()
     .regex(/^[\w.-]+\.ya?ml$/, "workflow must be a workflow filename, e.g. publish.yml"),

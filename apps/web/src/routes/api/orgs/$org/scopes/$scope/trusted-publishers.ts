@@ -11,7 +11,7 @@ import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
  */
 const Body = z.object({
   provider: z.enum(["github", "gitlab"]),
-  repository: z.string().regex(/^[^\s]+\/[^\s]+$/, "repository must be 'owner/repo'"),
+  repository: z.string().regex(/^[^\s/]+(?:\/[^\s/]+)+$/, "repository must be 'owner/repo'"),
   workflow: z
     .string()
     .regex(/^[\w.-]+\.ya?ml$/, "workflow must be a workflow filename, e.g. publish.yml"),
