@@ -1,40 +1,73 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { Db } from "../client";
-import { regScopeMembers, regScopes, regTokens } from "../schema";
+import { regOrgMembers, regOrgs, regScopes, regTokens } from "../schema";
 import { makeDb } from "../test-harness";
-import { listScopesForMember, listSubjectTokens, revokeTokenByHash } from "./queries";
+import {
+  listOrgsForMember,
+  listScopesForMember,
+  listSubjectTokens,
+  revokeTokenByHash,
+} from "./queries";
 
 let db: Db;
 beforeEach(() => {
   db = makeDb();
 });
 
-async function scope(name: string, ownerId: string, displayName: string | null = null) {
-  await db.insert(regScopes).values({ scope: name, ownerId, displayName });
+async function org(slug: string, displayName: string | null = null) {
+  await db.insert(regOrgs).values({ slug, displayName });
 }
-async function member(scopeName: string, memberId: string, role: "admin" | "member") {
-  await db.insert(regScopeMembers).values({ scope: scopeName, memberId, role });
+async function member(orgSlug: string, memberId: string, role: "admin" | "member") {
+  await db.insert(regOrgMembers).values({ orgSlug, memberId, role });
+}
+async function scope(name: string, orgId: string) {
+  await db.insert(regScopes).values({ scope: name, orgId });
 }
 
-describe("listScopesForMember", () => {
-  test("returns each scope the member belongs to, with role and display name", async () => {
-    await scope("@acme", "alice", "Acme Inc");
-    await scope("@beta", "bob");
-    await scope("@other", "carol");
-    await member("@acme", "alice", "admin");
-    await member("@beta", "alice", "member");
-    await member("@other", "carol", "admin");
+describe("listOrgsForMember", () => {
+  test("returns each org the member belongs to, with role and display name", async () => {
+    await org("acme", "Acme Inc");
+    await org("beta");
+    await org("other");
+    await member("acme", "alice", "admin");
+    await member("beta", "alice", "member");
+    await member("other", "carol", "admin");
 
-    const result = await listScopesForMember(db, "github", "alice");
+    const result = await listOrgsForMember(db, "github", "alice");
     expect(result).toEqual([
-      { scope: "@acme", role: "admin", displayName: "Acme Inc" },
-      { scope: "@beta", role: "member", displayName: null },
+      { slug: "acme", role: "admin", displayName: "Acme Inc" },
+      { slug: "beta", role: "member", displayName: null },
     ]);
   });
 
   test("is empty for a non-member", async () => {
-    await scope("@acme", "alice");
-    await member("@acme", "alice", "admin");
+    await org("acme");
+    await member("acme", "alice", "admin");
+    expect(await listOrgsForMember(db, "github", "nobody")).toEqual([]);
+  });
+});
+
+describe("listScopesForMember", () => {
+  test("returns every scope owned by an org the member belongs to (1:N), sorted", async () => {
+    await org("acme");
+    await org("beta");
+    await member("acme", "alice", "admin");
+    await member("beta", "bob", "admin");
+    await scope("@acme", "acme");
+    await scope("@acme-labs", "acme");
+    await scope("@beta", "beta");
+
+    const result = await listScopesForMember(db, "github", "alice");
+    expect(result).toEqual([
+      { scope: "@acme", org: "acme", role: "admin" },
+      { scope: "@acme-labs", org: "acme", role: "admin" },
+    ]);
+  });
+
+  test("is empty for a non-member", async () => {
+    await org("acme");
+    await member("acme", "alice", "admin");
+    await scope("@acme", "acme");
     expect(await listScopesForMember(db, "github", "nobody")).toEqual([]);
   });
 });

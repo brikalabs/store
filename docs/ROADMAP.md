@@ -12,6 +12,10 @@ Status of the platform and the precise next steps. Legend: ✅ done and verified
 | Store: social (GitHub OAuth, reviews, comments, helpful/upvote grading) | ✅ |
 | Store: media (icon, localized readme/changelog, screenshots via jsDelivr) | ✅ |
 | Store: developer console (profile, your packages, publish setup) | ✅ |
+| Org model: organisation entity owns scopes 1:N, public `/orgs/:org` page | ✅ |
+| Org model: anti-squat claim rate limit + per-account cap (ORG-004/005) | ✅ |
+| Org model: profile (description, links, logo upload) + verified domains (ORG-009/010) | ✅ |
+| Org model: identity-tied claiming (ORG-006) - provider-agnostic seam only | ⬜ |
 | Store: marketplace redesign (ember accent, Cmd+K, multi-column) | 🟡 |
 | Store: Playwright e2e (browse, detail, localization, assets) | ✅ |
 | Registry M1: npm-compatible resolve (`bun add` works) | ✅ proven |
@@ -38,6 +42,15 @@ Largely built. Remaining:
   display name, per-version deprecate/yank, and publish-token issue/revoke - all by
   reusing the registry domain (`ScopeService`/`ManagementService`/`TokenStore`) against
   the shared D1 (the registry's pure D1 adapters now live in `@brika/store-db/adapters`).
+- ✅ **Organisations (1:N ownership)**: the ownership entity is now an **organisation**
+  (`reg_orgs`) that owns one or more npm scopes (`reg_scopes.org_id`); membership +
+  the last-admin invariant live on the org. The console manages orgs at
+  `/dashboard/orgs` (claim, members/roles, verified display name, attach scopes), and a
+  public `store.brika.dev/org/:org` page aggregates an org's plugins across its scopes.
+  Anti-squat: claim rate limit (ORG-004) + per-account org cap (ORG-005). Identity-tied
+  claiming (ORG-006) is wired as a provider-agnostic `ClaimVerifier` seam (allow-all
+  today) - the real verifier is a fast follow. The `SCOPE-*` specs are retired to `gone`,
+  re-coded under `ORG-*` (see [ADR 0001](./adr/0001-organisation-1n-model.md)).
 - ⬜ **Console slices still to build**: review responses + comment moderation,
   per-package listing settings (repo link, featured).
 - ⬜ **npm sync cron + verified-list signing**: a scheduled refresh and the
@@ -132,7 +145,10 @@ The publish/resolve/store-integration core is shipped (registry M1, M2, M4 and t
    pinning, path-traversal guard, CORS, ownership gates, audit log, rate limits, and
    operator takedown/restore are already done).
 4. **Pick the store design direction** (Spotlight vs Console), finish the redesign
-   across browse/detail/profile/dashboard, then build the console slices (review
-   responses, comment moderation, per-package settings, scope claiming).
-5. **npm sync cron + verified-list signing**: scheduled refresh and the Ed25519
+   across browse/detail/profile/dashboard, then build the remaining console slices
+   (review responses, comment moderation, per-package settings). Org claiming +
+   management already shipped (ORG-001..005, 008).
+5. **Identity-tied claiming (ORG-006)**: implement a real `ClaimVerifier` behind the
+   seam so a name can only be claimed by an identity that provably controls it.
+6. **npm sync cron + verified-list signing**: scheduled refresh and the Ed25519
    `/v1/verified` signing key (today the verified list is empty).

@@ -6,14 +6,15 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 ## Totals
 
-133 specs , 363 acceptance criteria.
+135 specs , 370 acceptance criteria.
 
 | Status | Count |
 | --- | --- |
-| [DONE] | 115 |
+| [DONE] | 108 |
 | [WIP] | 1 |
-| [TODO] | 15 |
+| [TODO] | 9 |
 | [HOLD] | 2 |
+| [GONE] | 15 |
 
 ## Backlog (not done)
 
@@ -23,14 +24,8 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [HARDEN-012](registry/HARDEN-012-real-malware-scanner-behind-the-hook.md) | [TODO] | Real malware scanner behind the hook |
 | [HARDEN-013](registry/HARDEN-013-scheduled-r2-d1-backups.md) | [TODO] | Scheduled R2 + D1 backups |
 | [HARDEN-014](registry/HARDEN-014-operator-provisioning-of-hardening-infrastructure.md) | [HOLD] | Operator provisioning of hardening infrastructure |
-| [ORG-001](org/ORG-001-organisation-is-the-ownership-entity-rename-of-scope.md) | [TODO] | Organisation is the ownership entity (rename of "scope") |
-| [ORG-002](org/ORG-002-an-org-owns-one-or-more-scopes-1.md) | [TODO] | An org owns one or more scopes (1:N) |
-| [ORG-003](org/ORG-003-public-organisation-page.md) | [TODO] | Public organisation page |
-| [ORG-004](org/ORG-004-claim-rate-limit.md) | [TODO] | Claim rate limit |
-| [ORG-005](org/ORG-005-per-account-org-cap.md) | [TODO] | Per-account org cap |
 | [ORG-006](org/ORG-006-identity-tied-claiming-github-verified.md) | [TODO] | Identity-tied claiming (GitHub-verified) |
 | [ORG-007](org/ORG-007-operator-takedown-of-a-squatted-org.md) | [TODO] | Operator takedown of a squatted org |
-| [ORG-008](org/ORG-008-manage-an-org-s-scopes.md) | [TODO] | Manage an org's scopes |
 | [PUB-015](registry/PUB-015-real-malware-scanner.md) | [TODO] | Real malware scanner |
 | [SOCIAL-010](store/SOCIAL-010-author-response-to-a-review.md) | [TODO] | Author response to a review |
 | [SOCIAL-011](store/SOCIAL-011-comment-moderation.md) | [TODO] | Comment moderation |
@@ -75,14 +70,16 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 | Code | Status | Title |
 | --- | --- | --- |
-| [ORG-001](org/ORG-001-organisation-is-the-ownership-entity-rename-of-scope.md) | [TODO] | Organisation is the ownership entity (rename of "scope") |
-| [ORG-002](org/ORG-002-an-org-owns-one-or-more-scopes-1.md) | [TODO] | An org owns one or more scopes (1:N) |
-| [ORG-003](org/ORG-003-public-organisation-page.md) | [TODO] | Public organisation page |
-| [ORG-004](org/ORG-004-claim-rate-limit.md) | [TODO] | Claim rate limit |
-| [ORG-005](org/ORG-005-per-account-org-cap.md) | [TODO] | Per-account org cap |
+| [ORG-001](org/ORG-001-organisation-is-the-ownership-entity-rename-of-scope.md) | [DONE] | Organisation is the ownership entity (rename of "scope") |
+| [ORG-002](org/ORG-002-an-org-owns-one-or-more-scopes-1.md) | [DONE] | An org owns one or more scopes (1:N) |
+| [ORG-003](org/ORG-003-public-organisation-page.md) | [DONE] | Public organisation page |
+| [ORG-004](org/ORG-004-claim-rate-limit.md) | [DONE] | Claim rate limit |
+| [ORG-005](org/ORG-005-per-account-org-cap.md) | [DONE] | Per-account org cap |
 | [ORG-006](org/ORG-006-identity-tied-claiming-github-verified.md) | [TODO] | Identity-tied claiming (GitHub-verified) |
 | [ORG-007](org/ORG-007-operator-takedown-of-a-squatted-org.md) | [TODO] | Operator takedown of a squatted org |
-| [ORG-008](org/ORG-008-manage-an-org-s-scopes.md) | [TODO] | Manage an org's scopes |
+| [ORG-008](org/ORG-008-manage-an-org-s-scopes.md) | [DONE] | Manage an org's scopes |
+| [ORG-009](org/ORG-009-organisation-profile-description-links-logo.md) | [DONE] | Organisation profile: description, links, and logo |
+| [ORG-010](org/ORG-010-verified-domains-dns-txt.md) | [DONE] | Verified domains (DNS TXT, stateless challenge, badge-only) |
 
 ## registry
 
@@ -150,21 +147,21 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [REG-010](registry/REG-010-per-package-download-stats.md) | [DONE] | Per-package download stats |
 | [REG-011](registry/REG-011-tarball-origin-pinned-to-registry-url.md) | [DONE] | Tarball origin pinned to REGISTRY_URL |
 | [REG-012](registry/REG-012-open-cors-frontable-read-surface.md) | [DONE] | Open, CORS-frontable read surface |
-| [SCOPE-001](registry/SCOPE-001-claim-a-new-scope-creator-becomes-first-admin.md) | [DONE] | Claim a new scope (creator becomes first admin) |
-| [SCOPE-002](registry/SCOPE-002-re-claim-a-scope-you-already-own-idempotent.md) | [DONE] | Re-claim a scope you already own (idempotent) |
-| [SCOPE-003](registry/SCOPE-003-claim-a-scope-owned-by-another-conflict.md) | [DONE] | Claim a scope owned by another (conflict) |
-| [SCOPE-004](registry/SCOPE-004-list-members-member-gated.md) | [DONE] | List members (member-gated) |
-| [SCOPE-005](registry/SCOPE-005-add-a-member-or-change-a-role-admin.md) | [DONE] | Add a member or change a role (admin only) |
-| [SCOPE-006](registry/SCOPE-006-cannot-demote-the-last-admin-conflict.md) | [DONE] | Cannot demote the last admin (conflict) |
-| [SCOPE-007](registry/SCOPE-007-remove-a-member-admin-only-404-non-member.md) | [DONE] | Remove a member (admin only; 404 non-member) |
-| [SCOPE-008](registry/SCOPE-008-cannot-remove-the-last-admin-conflict.md) | [DONE] | Cannot remove the last admin (conflict) |
-| [SCOPE-009](registry/SCOPE-009-set-the-verified-publisher-display-name-admin-only.md) | [DONE] | Set the verified publisher display name (admin only, validated) |
-| [SCOPE-010](registry/SCOPE-010-display-name-overrides-the-manifest-author-in-the.md) | [DONE] | Display name overrides the manifest author in the packument |
-| [SCOPE-011](registry/SCOPE-011-ownership-policy-gates-publish-by-scope-membership.md) | [DONE] | Ownership policy gates publish by scope membership |
-| [SCOPE-012](registry/SCOPE-012-list-the-scopes-i-belong-to-console-read.md) | [DONE] | List the scopes I belong to (console read) |
-| [SCOPE-013](registry/SCOPE-013-console-session-surface-enforces-the-same-scope-rules.md) | [DONE] | Console session surface enforces the same scope rules |
-| [SCOPE-014](registry/SCOPE-014-per-user-scope-cap.md) | [DONE] | Per-user scope cap (anti-squatting) |
-| [SCOPE-015](registry/SCOPE-015-claim-rate-limit.md) | [DONE] | Claim rate limit (per principal) |
+| [SCOPE-001](registry/SCOPE-001-claim-a-new-scope-creator-becomes-first-admin.md) | [GONE] | Claim a new scope (creator becomes first admin) |
+| [SCOPE-002](registry/SCOPE-002-re-claim-a-scope-you-already-own-idempotent.md) | [GONE] | Re-claim a scope you already own (idempotent) |
+| [SCOPE-003](registry/SCOPE-003-claim-a-scope-owned-by-another-conflict.md) | [GONE] | Claim a scope owned by another (conflict) |
+| [SCOPE-004](registry/SCOPE-004-list-members-member-gated.md) | [GONE] | List members (member-gated) |
+| [SCOPE-005](registry/SCOPE-005-add-a-member-or-change-a-role-admin.md) | [GONE] | Add a member or change a role (admin only) |
+| [SCOPE-006](registry/SCOPE-006-cannot-demote-the-last-admin-conflict.md) | [GONE] | Cannot demote the last admin (conflict) |
+| [SCOPE-007](registry/SCOPE-007-remove-a-member-admin-only-404-non-member.md) | [GONE] | Remove a member (admin only; 404 non-member) |
+| [SCOPE-008](registry/SCOPE-008-cannot-remove-the-last-admin-conflict.md) | [GONE] | Cannot remove the last admin (conflict) |
+| [SCOPE-009](registry/SCOPE-009-set-the-verified-publisher-display-name-admin-only.md) | [GONE] | Set the verified publisher display name (admin only, validated) |
+| [SCOPE-010](registry/SCOPE-010-display-name-overrides-the-manifest-author-in-the.md) | [GONE] | Display name overrides the manifest author in the packument |
+| [SCOPE-011](registry/SCOPE-011-ownership-policy-gates-publish-by-scope-membership.md) | [GONE] | Ownership policy gates publish by scope membership |
+| [SCOPE-012](registry/SCOPE-012-list-the-scopes-i-belong-to-console-read.md) | [GONE] | List the scopes I belong to (console read) |
+| [SCOPE-013](registry/SCOPE-013-console-session-surface-enforces-the-same-scope-rules.md) | [GONE] | Console session surface enforces the same scope rules |
+| [SCOPE-014](registry/SCOPE-014-per-user-scope-cap.md) | [GONE] | Per-user scope cap (anti-squatting) |
+| [SCOPE-015](registry/SCOPE-015-claim-rate-limit.md) | [GONE] | Claim rate limit (per principal) |
 
 ## store
 

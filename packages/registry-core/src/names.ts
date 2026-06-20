@@ -20,6 +20,17 @@ export function isCanonicalScope(scope: string): boolean {
   return SCOPE.test(scope);
 }
 
+// An organisation slug is the scope charset WITHOUT the leading `@`: 2-20 chars of
+// lowercase a-z/0-9/hyphen, not starting with a hyphen. An org is a first-class account
+// entity (it owns one or more scopes), so its slug lives in its own namespace - the
+// public page is `/org/<slug>`, never `@<slug>`.
+const ORG_SLUG = /^[a-z0-9][a-z0-9-]{1,19}$/;
+
+/** Is this a canonical, claimable organisation slug (`acme`, no leading `@`)? */
+export function isCanonicalOrgSlug(slug: string): boolean {
+  return ORG_SLUG.test(slug);
+}
+
 // A scoped package name: a canonical scope, then `/name`. The name segment uses the
 // SAME lowercase `a-z0-9-` charset as `@brika/schema`'s manifest `name` rule, so the
 // registry's canonical check and the manifest data gate never disagree on a character;

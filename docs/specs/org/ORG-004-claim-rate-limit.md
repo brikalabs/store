@@ -1,13 +1,16 @@
 ---
 id: ORG-004
 title: "Claim rate limit"
-status: todo
+status: done
 area: org
 group: org
-test_mode: none
+test_mode: unit
 traceability:
-  code: []
-  tests: []
+  code:
+    - apps/registry/src/controllers/org.ts
+    - apps/registry/src/adapters/cf-rate-limiter.ts
+  tests:
+    - apps/registry/src/controllers/org.ratelimit.test.ts
 ---
 
 ## Description

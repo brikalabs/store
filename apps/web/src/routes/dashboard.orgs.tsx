@@ -1,33 +1,33 @@
 import { Button, Input } from "@brika/clay";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRight, Layers, Plus, ShieldCheck } from "lucide-react";
+import { Building2, ChevronRight, Plus, ShieldCheck } from "lucide-react";
 import { type SyntheticEvent, useCallback, useEffect, useState } from "react";
 import { AdminShell } from "../components/admin-shell";
 import { requireUser } from "../lib/require-user";
 
-export const Route = createFileRoute("/dashboard/scopes")({
+export const Route = createFileRoute("/dashboard/orgs")({
   beforeLoad: async ({ location }) => ({ user: await requireUser(location.href) }),
-  component: ScopesPage,
+  component: OrgsPage,
 });
 
-interface MemberScope {
-  scope: string;
+interface MemberOrg {
+  slug: string;
   role: "admin" | "member";
   displayName: string | null;
 }
 
-function ScopesPage() {
+function OrgsPage() {
   const { user } = Route.useRouteContext();
-  const [scopes, setScopes] = useState<MemberScope[] | null>(null);
-  const [name, setName] = useState("@");
+  const [orgs, setOrgs] = useState<MemberOrg[] | null>(null);
+  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/scopes");
+    const res = await fetch("/api/orgs");
     if (res.ok) {
-      const data: { scopes: MemberScope[] } = await res.json();
-      setScopes(data.scopes);
+      const data: { orgs: MemberOrg[] } = await res.json();
+      setOrgs(data.orgs);
     }
   }, []);
   useEffect(() => {
@@ -38,24 +38,24 @@ function ScopesPage() {
     event.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await fetch(`/api/scopes/${encodeURIComponent(name)}`, { method: "PUT" });
+    const res = await fetch(`/api/orgs/${encodeURIComponent(name)}`, { method: "PUT" });
     setBusy(false);
     if (res.ok) {
-      setName("@");
+      setName("");
       await load();
     } else {
       const data: { error?: string } = await res.json();
-      setError(data.error ?? "Could not claim scope");
+      setError(data.error ?? "Could not claim organisation");
     }
   }
 
   return (
-    <AdminShell login={user.login} activeLabel="Scopes">
+    <AdminShell login={user.login} activeLabel="Organisations">
       <header className="flex flex-col gap-1">
-        <h1 className="font-bold font-heading text-2xl tracking-tight">Scopes</h1>
+        <h1 className="font-bold font-heading text-2xl tracking-tight">Organisations</h1>
         <p className="text-muted-foreground text-sm">
-          A scope (like <span className="font-mono">@acme</span>) must exist before you can publish
-          under it. Claiming one makes you its first admin.
+          An organisation (like <span className="font-mono">acme</span>) owns one or more npm scopes
+          and its member list. Claiming one makes you its first admin.
         </p>
       </header>
 
@@ -63,16 +63,16 @@ function ScopesPage() {
         onSubmit={claim}
         className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-6"
       >
-        <h2 className="font-bold font-heading text-lg tracking-tight">Claim a scope</h2>
+        <h2 className="font-bold font-heading text-lg tracking-tight">Claim an organisation</h2>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             value={name}
             onChange={(event) => setName(event.target.value.toLowerCase())}
-            placeholder="@your-scope"
-            aria-label="Scope name"
+            placeholder="your-org"
+            aria-label="Organisation slug"
             className="font-mono"
           />
-          <Button type="submit" disabled={busy || name.length < 3}>
+          <Button type="submit" disabled={busy || name.length < 2}>
             <Plus className="size-4" />
             {busy ? "Claiming…" : "Claim"}
           </Button>
@@ -81,45 +81,45 @@ function ScopesPage() {
       </form>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-bold font-heading text-lg tracking-tight">Your scopes</h2>
-        <ScopeList scopes={scopes} />
+        <h2 className="font-bold font-heading text-lg tracking-tight">Your organisations</h2>
+        <OrgList orgs={orgs} />
       </section>
     </AdminShell>
   );
 }
 
-function ScopeList({ scopes }: Readonly<{ scopes: MemberScope[] | null }>) {
-  if (scopes === null) {
+function OrgList({ orgs }: Readonly<{ orgs: MemberOrg[] | null }>) {
+  if (orgs === null) {
     return <div className="h-20 animate-pulse rounded-2xl bg-muted" />;
   }
-  if (scopes.length === 0) {
+  if (orgs.length === 0) {
     return (
       <p className="rounded-2xl border border-border border-dashed bg-card/50 p-6 text-center text-muted-foreground text-sm">
-        You don't belong to any scope yet. Claim one above to get started.
+        You don't belong to any organisation yet. Claim one above to get started.
       </p>
     );
   }
   return (
     <ul className="flex flex-col gap-2">
-      {scopes.map((s) => (
-        <li key={s.scope}>
+      {orgs.map((o) => (
+        <li key={o.slug}>
           <Link
-            to="/dashboard/scopes/$scope"
-            params={{ scope: s.scope }}
+            to="/dashboard/orgs/$org"
+            params={{ org: o.slug }}
             className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-brand/40"
           >
-            <Layers className="size-5 text-brand-ink" />
+            <Building2 className="size-5 text-brand-ink" />
             <div className="min-w-0 flex-1">
-              <div className="font-mono font-semibold text-foreground">{s.scope}</div>
-              {s.displayName !== null && (
+              <div className="font-mono font-semibold text-foreground">{o.slug}</div>
+              {o.displayName !== null && (
                 <div className="flex items-center gap-1 text-muted-foreground text-xs">
                   <ShieldCheck className="size-3.5" />
-                  {s.displayName}
+                  {o.displayName}
                 </div>
               )}
             </div>
             <span className="rounded-full border border-border bg-muted px-2.5 py-1 font-semibold text-muted-foreground text-xs capitalize">
-              {s.role}
+              {o.role}
             </span>
             <ChevronRight className="size-4 text-muted-foreground" />
           </Link>

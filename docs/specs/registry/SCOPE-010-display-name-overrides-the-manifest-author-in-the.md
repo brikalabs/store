@@ -1,7 +1,7 @@
 ---
 id: SCOPE-010
 title: "Display name overrides the manifest author in the packument"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 When a package's scope has a verified display name, the packument surfaces it as the
 trusted `publisher` (name + verified: true), overriding whatever the manifest `author`

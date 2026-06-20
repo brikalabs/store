@@ -1,7 +1,7 @@
 ---
 id: SCOPE-004
 title: "List members (member-gated)"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 Any member of a scope may view its members. A non-member is refused, and the refusal
 distinguishes an unknown scope (404) from a real scope the caller has no membership in (403).

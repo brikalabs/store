@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import { jsonLogger } from "@brika/router";
 import { getDb } from "@brika/store-db";
 import { Hono } from "hono";
@@ -5,9 +6,9 @@ import { cors } from "hono/cors";
 import { catalogController } from "./controllers/catalog";
 import { deviceController } from "./controllers/device";
 import { manageController } from "./controllers/manage";
+import { orgController } from "./controllers/org";
 import { packagesController } from "./controllers/packages";
 import { publishController } from "./controllers/publish";
-import { scopeController } from "./controllers/scope";
 import { statsController } from "./controllers/stats";
 import { registryAdmins, vars } from "./env";
 import { logRoutes, mount, type RegistryEnv } from "./http/router";
@@ -49,7 +50,7 @@ const controllers = [
   publishController,
   deviceController,
   manageController,
-  scopeController,
+  orgController,
   packagesController,
 ];
 
@@ -61,7 +62,13 @@ const controllers = [
 // controller/handler, client IP).
 mount(app, controllers, {
   context: (c) =>
-    buildServices(getDb(c.env.DB), c.env.TARBALLS, baseUrlFor(c.req.url), registryAdmins()),
+    buildServices(
+      getDb(c.env.DB),
+      c.env.TARBALLS,
+      baseUrlFor(c.req.url),
+      registryAdmins(),
+      vars().DOMAIN_VERIFY_SECRET,
+    ),
   logger: jsonLogger("registry request"),
 });
 
@@ -70,4 +77,24 @@ mount(app, controllers, {
 // what it serves.
 logRoutes(app);
 
-export default app;
+/**
+ * Scheduled re-verification of org domains (ORG-010-AC3): on each cron tick, re-check every
+ * currently-verified domain's challenge TXT and revoke the badge for any that no longer
+ * resolve (a transient DNS failure is skipped, never revoked). Keeps the verified set honest
+ * as DNS changes over time, rather than trusting a one-time check forever.
+ */
+async function scheduled(): Promise<void> {
+  const services = buildServices(
+    getDb(env.DB),
+    env.TARBALLS,
+    vars().REGISTRY_URL,
+    registryAdmins(),
+    vars().DOMAIN_VERIFY_SECRET,
+  );
+  const revoked = await services.orgs.reverifyDomains();
+  if (revoked.length > 0) {
+    console.log(JSON.stringify({ msg: "org domain re-verification revoked badges", revoked }));
+  }
+}
+
+export default { fetch: app.fetch, scheduled };

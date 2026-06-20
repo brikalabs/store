@@ -67,6 +67,16 @@ for (const name of names) {
     `INSERT OR REPLACE INTO reg_versions (name, version, manifest, integrity, shasum, size, yanked) VALUES (${sql(name)}, ${sql(latest)}, ${sql(JSON.stringify(version))}, ${sql(version.dist.integrity)}, ${sql(version.dist.shasum)}, ${bytes.length}, 0);`,
     `INSERT OR REPLACE INTO reg_dist_tags (name, tag, version) VALUES (${sql(name)}, 'latest', ${sql(latest)});`,
   );
+  // Attach the scope to an org (slug = scope without '@') so the catalog/packument shows a
+  // verified publisher. Membership is left unseeded - the seed proves the read surface, not
+  // publishing - so an org admin still has to be added before anyone can publish to it.
+  if (scope !== "") {
+    const orgSlug = scope.slice(1);
+    statements.push(
+      `INSERT OR IGNORE INTO reg_orgs (slug) VALUES (${sql(orgSlug)});`,
+      `INSERT OR REPLACE INTO reg_scopes (scope, org_id) VALUES (${sql(scope)}, ${sql(orgSlug)});`,
+    );
+  }
   console.error(`seeded ${name}@${latest} (${bytes.length} bytes)`);
 }
 

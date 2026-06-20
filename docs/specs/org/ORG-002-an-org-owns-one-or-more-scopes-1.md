@@ -1,13 +1,17 @@
 ---
 id: ORG-002
 title: "An org owns one or more scopes (1:N)"
-status: todo
+status: done
 area: org
 group: org
-test_mode: none
+test_mode: unit
 traceability:
-  code: []
-  tests: []
+  code:
+    - packages/registry-core/src/org.ts
+    - packages/db/src/adapters/d1-org-scopes.ts
+  tests:
+    - packages/registry-core/src/org.test.ts
+    - packages/db/src/adapters/d1-org-scopes.test.ts
 ---
 
 ## Description

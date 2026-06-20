@@ -1,28 +1,27 @@
 import {
+  type OrgMembers,
+  type OrgScopes,
   type OwnershipPolicy,
   type PublishIdentity,
-  type ScopeMembers,
   scopeOf,
 } from "@brika/registry-core";
-import { eq } from "drizzle-orm";
-import type { Db } from "../client";
-import { regScopes } from "../schema";
 
 /**
- * Membership-based publish authorization: a scope must be explicitly CREATED (see the
- * scope controller), and only its MEMBERS may publish under it (any role; admins also
- * manage the scope). Publishing never claims a scope implicitly. Anchored on the
- * verified credential (OIDC `repository_owner` or a publish token), so it cannot be
- * spoofed. Reads membership through the {@link ScopeMembers} port (injected), and the
- * `reg_scopes` table only to tell "unknown scope" apart from "not a member".
+ * Membership-based publish authorization (1:N org model): a scope must be attached to an
+ * organisation (see the org controller), and only MEMBERS of that org may publish under
+ * it (any role; admins also manage the org). Publishing never claims a scope or org
+ * implicitly. Anchored on the verified credential (OIDC `repository_owner` or a publish
+ * token), so it cannot be spoofed. Resolves scope -> owning org (via {@link OrgScopes})
+ * -> membership (via {@link OrgMembers}); the scope's `org_id` also tells "unattached
+ * scope" apart from "not a member of the owning org".
  */
 export class D1OwnershipPolicy implements OwnershipPolicy {
-  readonly #db: Db;
-  readonly #members: ScopeMembers;
+  readonly #members: OrgMembers;
+  readonly #scopes: OrgScopes;
 
-  constructor(db: Db, members: ScopeMembers) {
-    this.#db = db;
+  constructor(members: OrgMembers, scopes: OrgScopes) {
     this.#members = members;
+    this.#scopes = scopes;
   }
 
   async canPublish(
@@ -34,18 +33,19 @@ export class D1OwnershipPolicy implements OwnershipPolicy {
       return { ok: false, message: "only scoped packages (@scope/name) can be published" };
     }
 
-    const member = { provider: identity.provider, id: identity.owner };
-    if ((await this.#members.roleOf(scope, member)) !== null) return { ok: true };
+    const org = await this.#scopes.orgForScope(scope);
+    if (org === null) {
+      return {
+        ok: false,
+        message: `scope ${scope} is not attached to an organisation; claim it first`,
+      };
+    }
 
-    // Not a member: distinguish an unknown scope (create it first) from a real scope the
-    // caller has no membership in.
-    const rows = await this.#db
-      .select({ scope: regScopes.scope })
-      .from(regScopes)
-      .where(eq(regScopes.scope, scope))
-      .limit(1);
-    return rows[0] === undefined
-      ? { ok: false, message: `scope ${scope} does not exist; create it first` }
-      : { ok: false, message: `you are not a member of ${scope}` };
+    const member = { provider: identity.provider, id: identity.owner };
+    if ((await this.#members.roleOf(org, member)) !== null) return { ok: true };
+    return {
+      ok: false,
+      message: `you are not a member of organisation ${org} (owner of ${scope})`,
+    };
   }
 }

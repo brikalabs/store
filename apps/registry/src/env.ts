@@ -29,6 +29,12 @@ export const vars = defineEnv(
     // admins, so the takedown endpoints reject everyone until set via
     // `wrangler secret`/`.dev.vars`.
     REGISTRY_ADMINS: z.string().default(""),
+    // Secret for deriving stateless org domain-verification challenges (ORG-010): the TXT
+    // token is HMAC(secret, org:domain). MUST match the store worker's value (both derive
+    // the same token) and stay STABLE (rotating it invalidates every published TXT). The
+    // token's security comes from DNS control, not secrecy, so a dev default is acceptable;
+    // set a real shared value in production via `wrangler secret`.
+    DOMAIN_VERIFY_SECRET: z.string().min(1).default("brika-dev-domain-verify-secret"),
   },
   () => env,
 );

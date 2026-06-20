@@ -1,16 +1,21 @@
 import { env } from "cloudflare:workers";
-import { ManagementService, ScopeService } from "@brika/registry-core";
+import { ManagementService, OrgService } from "@brika/registry-core";
 import { type Db, getDb } from "@brika/store-db";
 import {
+  CloudflareDohResolver,
   D1AuditLog,
   D1CatalogReader,
   D1MetadataReader,
   D1MetadataWriter,
+  D1OrgDomains,
+  D1OrgMembers,
+  D1OrgScopes,
+  D1OrgStore,
   D1OwnershipPolicy,
-  D1ScopeMembers,
-  D1ScopeStore,
   D1TokenStore,
+  HmacDomainChallenge,
 } from "@brika/store-db/adapters";
+import { vars } from "./env";
 
 /**
  * The web app's registry composition root - the D1-backed subset of the registry's own
@@ -29,14 +34,18 @@ export function registryDb(): Db {
 }
 
 export function registryServices(db: Db = registryDb()) {
-  const members = new D1ScopeMembers(db);
-  const ownership = new D1OwnershipPolicy(db, members);
+  const members = new D1OrgMembers(db);
+  const orgScopes = new D1OrgScopes(db);
+  const ownership = new D1OwnershipPolicy(members, orgScopes);
   return {
-    /** Scope use cases: create/claim, members + roles, display name. */
-    scopes: new ScopeService(new D1ScopeStore(db), members),
-    /** The members port directly, for the "scopes I belong to" read projection. */
+    /** Org use cases: claim, members + roles, display name, profile, scopes, domains. */
+    orgs: new OrgService(new D1OrgStore(db), members, orgScopes, new D1OrgDomains(db), {
+      dnsResolver: new CloudflareDohResolver(),
+      domainChallenge: new HmacDomainChallenge(vars().DOMAIN_VERIFY_SECRET),
+    }),
+    /** The org membership port directly, for the "orgs I belong to" read projection. */
     members,
-    /** Post-publish management gated by scope membership: deprecate, yank. */
+    /** Post-publish management gated by org membership: deprecate, yank. */
     management: new ManagementService(new D1MetadataWriter(db), ownership),
     /** Packument reader, for listing a package's versions with their flags. */
     metadata: new D1MetadataReader(db),

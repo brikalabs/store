@@ -16,6 +16,8 @@ const REGISTRY_URL = process.env.BRIKA_REGISTRY ?? "http://localhost:8787";
 const REPO_ROOT = join(import.meta.dir, "../../..");
 const EXAMPLES = ["plugin-i18n", "plugin-snapshot", "plugin-clock", "plugin-icon"];
 const TOKEN_TTL_SECONDS = 60 * 60;
+/** The login that owns the `brika` org in the e2e fixture (admin member). */
+const SEED_OWNER = "e2e-bot";
 
 function log(message: string): void {
   process.stderr.write(`[e2e seed] ${message}\n`);
@@ -66,24 +68,38 @@ function base64Url(bytes: Uint8Array): string {
 }
 
 /**
- * Insert a fresh publish token into reg_tokens and return the raw token. The
- * token's login must own the `@brika` scope to publish, so reuse whoever already
- * claimed it; on a pristine registry no one has, and the first publish claims it.
+ * Set up the `brika` organisation that owns the `@brika` scope, with {@link SEED_OWNER}
+ * as its admin member. Publishing never claims a scope implicitly (the ownership policy
+ * resolves scope -> owning org -> membership), so this must exist before any `@brika/*`
+ * publish. Idempotent via INSERT OR IGNORE, so it is safe to re-run.
+ */
+function setupBrikaOrg(): void {
+  const db = new Database(findLocalD1());
+  db.run("INSERT OR IGNORE INTO reg_orgs (slug, display_name) VALUES ('brika', 'Brika Labs')");
+  db.run(
+    "INSERT OR IGNORE INTO reg_org_members (org_slug, provider, member_id, role) VALUES ('brika', 'github', ?, 'admin')",
+    [SEED_OWNER],
+  );
+  db.run("INSERT OR IGNORE INTO reg_scopes (scope, org_id) VALUES ('@brika', 'brika')");
+  db.close();
+  log(`set up org brika (admin ${SEED_OWNER}) owning @brika`);
+}
+
+/**
+ * Insert a fresh publish token into reg_tokens for {@link SEED_OWNER} (the `brika` org
+ * admin set up by {@link setupBrikaOrg}) and return the raw token, so `brika publish` is
+ * authorized to publish under `@brika`.
  */
 async function mintToken(): Promise<string> {
   const token = `brika_${base64Url(crypto.getRandomValues(new Uint8Array(32)))}`;
   const db = new Database(findLocalD1());
-  const owner = db
-    .query("SELECT github_owner AS owner FROM reg_scopes WHERE scope = '@brika'")
-    .get() as { owner: string } | null;
-  const login = owner?.owner ?? "e2e-bot";
   const now = Math.floor(Date.now() / 1000);
   db.run(
     "INSERT OR REPLACE INTO reg_tokens (token_hash, github_login, created_at, expires_at) VALUES (?, ?, ?, ?)",
-    [await sha256Hex(token), login, now, now + TOKEN_TTL_SECONDS],
+    [await sha256Hex(token), SEED_OWNER, now, now + TOKEN_TTL_SECONDS],
   );
   db.close();
-  log(`minted token for ${login}`);
+  log(`minted token for ${SEED_OWNER}`);
   return token;
 }
 
@@ -369,6 +385,7 @@ function seedSocial(): void {
 }
 
 await waitForRegistry();
+setupBrikaOrg();
 const token = await mintToken();
 for (const plugin of EXAMPLES) await publish(plugin, token);
 seedProvenance();

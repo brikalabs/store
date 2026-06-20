@@ -55,16 +55,15 @@ export const PackageVersion = z.object({
 export type PackageVersion = z.infer<typeof PackageVersion>;
 
 /**
- * The verified publisher of a scope: the owner that controls it, plus the display
- * name it chose. Derived from scope ownership (not the free-text manifest `author`),
- * so it is trustworthy: only the scope owner can set it.
+ * The verified publisher of a scope: the organisation that owns it, plus the display
+ * name it chose. Derived from org ownership (not the free-text manifest `author`), so it
+ * is trustworthy: only an org admin can set it. An org is provider-neutral - membership
+ * is provider-qualified, the org itself is identified by its slug.
  */
 export interface ScopePublisher {
-  /** Identity provider of the owner (e.g. `"github"`). */
-  readonly provider: string;
-  /** Owner id within the provider (the provable identity, e.g. `brikalabs`). */
+  /** Owning org slug (the provable identity, e.g. `brika`). */
   readonly id: string;
-  /** Display name shown to users (owner-set; falls back to `id`). */
+  /** Display name shown to users (admin-set; falls back to the org slug). */
   readonly name: string;
 }
 

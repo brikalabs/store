@@ -12,8 +12,16 @@ traceability:
 
 ## Description
 
-You may only claim an org/scope whose name matches a GitHub identity you provably
-control: your own login, or a GitHub org where you are an admin.
+You may only claim an org/scope whose name matches an identity you provably control:
+your own login, or an org where you are an admin. The title says "GitHub" but the
+enforcement is **provider-agnostic** by design (membership is provider-qualified, so a
+verified GitLab/domain/etc. identity drops in the same way).
+
+> **Seam shipped, enforcement pending.** A provider-agnostic `ClaimVerifier` port is wired
+> into the claim path (`OrgService.claim` / `attachScope`) with an allow-all default
+> (`packages/registry-core/src/org.ts`; `apps/registry/src/adapters/noop-claim-verifier.ts`).
+> A real verifier drops in here without touching the orchestration. This spec stays `todo`
+> until one enforces the criteria below.
 
 ## Acceptance criteria
 

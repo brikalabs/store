@@ -1,13 +1,11 @@
-import type { PluginSummary } from "@brika/registry-contract";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Box, Download, Link2, ShieldCheck } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Box, Link2, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { GithubIcon } from "../components/clay/icons";
-import { GradientAvatar, PluginIcon } from "../components/clay/plugin-icon";
-import { Stars } from "../components/clay/stars";
+import { PluginCard, Stat } from "../components/clay/plugin-card";
+import { GradientAvatar } from "../components/clay/plugin-icon";
 import { formatCount } from "../lib/format";
 import { getDeveloperPage } from "../lib/registry";
-import { useIconPalette } from "../lib/use-icon-palette";
 
 function SocialIcon({
   href,
@@ -32,11 +30,6 @@ export const Route = createFileRoute("/developers/$id")({
   loader: ({ params }) => getDeveloperPage(params.id),
   component: DeveloperPage,
 });
-
-function capabilityTotal(plugin: PluginSummary): number {
-  const c = plugin.capabilities;
-  return c ? c.tools + c.blocks + c.bricks + c.sparks + c.pages : 0;
-}
 
 function DeveloperPage() {
   const { profile, plugins } = Route.useLoaderData();
@@ -116,73 +109,11 @@ function DeveloperPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {plugins.map((plugin) => (
-              <DevPluginCard key={plugin.name} plugin={plugin} />
+              <PluginCard key={plugin.name} plugin={plugin} />
             ))}
           </div>
         )}
       </section>
     </main>
-  );
-}
-
-function Stat({ value, label }: Readonly<{ value: string; label: string }>) {
-  return (
-    <div className="flex flex-col items-center gap-0.5 rounded-2xl border border-border bg-card px-5 py-3">
-      <span className="font-bold font-heading text-foreground text-xl">{value}</span>
-      <span className="text-muted-foreground text-xs">{label}</span>
-    </div>
-  );
-}
-
-function DevPluginCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
-  // Banner accent comes from the plugin's own icon when it has one, else a
-  // deterministic hash gradient.
-  const gradient = useIconPalette(plugin.iconUrl, plugin.name);
-  const caps = capabilityTotal(plugin);
-  return (
-    <Link
-      to="/plugins/$"
-      params={{ _splat: plugin.name }}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-brand"
-    >
-      <div
-        className="h-[88px]"
-        style={{ background: `linear-gradient(135deg, ${gradient[0]}33, ${gradient[1]}55)` }}
-      />
-      <div className="relative flex flex-col gap-2.5 p-[18px] pt-0">
-        <div className="-mt-6 mb-1 w-fit rounded-[15px] border-[3px] border-card">
-          <PluginIcon
-            name={plugin.name}
-            iconUrl={plugin.iconUrl}
-            capabilities={plugin.capabilities}
-            size={44}
-          />
-        </div>
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate font-heading font-semibold text-base text-foreground">
-            {plugin.displayName ?? plugin.name}
-          </span>
-          {plugin.verified ? <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" /> : null}
-        </div>
-        <p className="line-clamp-2 min-h-[2.3rem] text-muted-foreground text-sm leading-relaxed">
-          {plugin.description ?? "No description provided."}
-        </p>
-        <div className="flex items-center gap-3.5 border-border border-t pt-2.5 font-mono text-muted-foreground text-xs">
-          {plugin.downloadsWeekly > 0 ? (
-            <span className="inline-flex items-center gap-1">
-              <Download className="size-3" />
-              {formatCount(plugin.downloadsWeekly)}
-            </span>
-          ) : null}
-          {plugin.rating ? (
-            <span className="inline-flex items-center gap-1 text-amber-500">
-              <Stars value={plugin.rating.average} starClassName="size-3" />
-              {plugin.rating.average.toFixed(1)}
-            </span>
-          ) : null}
-          {caps > 0 ? <span>{caps} capabilities</span> : null}
-        </div>
-      </div>
-    </Link>
   );
 }

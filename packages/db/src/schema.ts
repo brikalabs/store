@@ -55,39 +55,61 @@ export const regDistTags = sqliteTable(
 );
 
 /**
- * Scope ownership: a scope (e.g. `@brika`) is owned by one identity. The owner is
- * provider-qualified (`ownerProvider` + `ownerId`) so the registry is not
- * GitHub-locked; only GitHub is wired today. (`ownerId` keeps the legacy
- * `github_owner` column name; it is the owner id for whatever provider.)
+ * Organisation: the first-class ownership/account entity (ORG-001). An org owns one or
+ * more npm scopes (see `reg_scopes.org_id`); membership lives on the org. The org itself
+ * is provider-neutral - it is identified by its `slug` (e.g. `brika`, no `@`).
  */
-export const regScopes = sqliteTable("reg_scopes", {
-  scope: text("scope").primaryKey(),
-  /** Identity provider of the owner (e.g. `github`). */
-  ownerProvider: text("owner_provider").notNull().default("github"),
-  /** Owner id within the provider (e.g. `brikalabs`). */
-  ownerId: text("github_owner").notNull(),
+export const regOrgs = sqliteTable("reg_orgs", {
+  slug: text("slug").primaryKey(),
   /**
-   * Display name shown as the verified publisher (e.g. "Brika Labs" for `@brika`),
-   * settable only by the scope owner. Null falls back to the owner id. This is the
-   * trusted attribution: a manifest's free-text `author` cannot override it.
+   * Display name shown as the verified publisher (e.g. "Brika Labs" for org `brika`),
+   * settable only by an org admin and applied to every scope the org owns. Null falls
+   * back to the slug. This is the trusted attribution: a manifest's free-text `author`
+   * cannot override it.
    */
   displayName: text("display_name"),
+  /** Free-text org description shown on the public org page (ORG-009). */
+  description: text("description"),
+  /** Arbitrary labelled external links ({ label, url }[]), admin-edited (ORG-009). */
+  links: text("links", { mode: "json" }).$type<{ label: string; url: string }[]>(),
+  /** Storage key of the uploaded org logo in the assets bucket; null = generated avatar. */
+  iconKey: text("icon_key"),
   createdAt: integer("created_at").notNull().default(epoch),
 });
 
 /**
- * Scope membership and roles (JSR-style). A scope can have several members; each is a
- * provider-qualified identity with a role: `admin` (manage members + everything a
- * member can) or `member` (publish under the scope). The scope creator is seeded as the
- * first admin. Publishing is gated on membership, not the single `reg_scopes` owner; the
- * `reg_scopes` owner/displayName remains the public verified-publisher attribution.
+ * Domains an org has claimed and (once its challenge TXT is found in DNS) verified, a
+ * public trust badge (ORG-010). No challenge is stored: the expected TXT value is derived
+ * statelessly from a server secret + org + domain (HMAC), published at
+ * `_brika-challenge.<domain>`; `verified` flips once a DNS lookup confirms it (and back off
+ * if a scheduled re-check no longer finds it).
  */
-export const regScopeMembers = sqliteTable(
-  "reg_scope_members",
+export const regOrgDomains = sqliteTable(
+  "reg_org_domains",
   {
-    scope: text("scope")
+    orgSlug: text("org_slug")
       .notNull()
-      .references(() => regScopes.scope, { onDelete: "cascade" }),
+      .references(() => regOrgs.slug, { onDelete: "cascade" }),
+    domain: text("domain").notNull(),
+    verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+    createdAt: integer("created_at").notNull().default(epoch),
+    verifiedAt: integer("verified_at"),
+  },
+  (t) => [primaryKey({ columns: [t.orgSlug, t.domain] })],
+);
+
+/**
+ * Organisation membership and roles (JSR-style). An org can have several members; each is
+ * a provider-qualified identity with a role: `admin` (manage members, scopes, everything
+ * a member can) or `member` (publish under any scope the org owns). The org creator is
+ * seeded as the first admin. Publishing is gated on org membership.
+ */
+export const regOrgMembers = sqliteTable(
+  "reg_org_members",
+  {
+    orgSlug: text("org_slug")
+      .notNull()
+      .references(() => regOrgs.slug, { onDelete: "cascade" }),
     /** Identity provider of the member (e.g. `github`). */
     provider: text("provider").notNull().default("github"),
     /** Member id within the provider (e.g. a GitHub login or org). */
@@ -96,8 +118,21 @@ export const regScopeMembers = sqliteTable(
     role: text("role").notNull().default("member"),
     createdAt: integer("created_at").notNull().default(epoch),
   },
-  (t) => [primaryKey({ columns: [t.scope, t.provider, t.memberId] })],
+  (t) => [primaryKey({ columns: [t.orgSlug, t.provider, t.memberId] })],
 );
+
+/**
+ * Scope ownership (the npm-namespace string, e.g. `@brika`). A scope belongs to exactly
+ * one organisation via `org_id` (1:N - an org owns many scopes; ORG-002). The scope row
+ * is created when the scope is attached to an org; publishing under it is gated on
+ * membership of the owning org.
+ */
+export const regScopes = sqliteTable("reg_scopes", {
+  scope: text("scope").primaryKey(),
+  /** The organisation that owns this scope. */
+  orgId: text("org_id").references(() => regOrgs.slug),
+  createdAt: integer("created_at").notNull().default(epoch),
+});
 
 /**
  * Per-day tarball download counts: the install signal. One row per (package,

@@ -7,7 +7,7 @@ import { buildServices, type Services } from "../services";
 import { fakeR2, makeDb } from "../test-harness";
 
 /**
- * Integration test for the claim rate limit (SCOPE-015), mirroring the device-code
+ * Integration test for the claim rate limit (ORG-004), mirroring the device-code
  * limiter test: a limit-1 fake of the Workers rate-limit binding stands in for
  * CLAIM_LIMITER, so the second claim from the same principal is denied at the
  * middleware (before the handler/cap). State persists across the file; tests use
@@ -28,7 +28,7 @@ mock.module("cloudflare:workers", () => {
   };
 });
 
-const { scopeController } = await import("./scope");
+const { orgController } = await import("./org");
 
 function services(db: Db): Services {
   return buildServices(db, fakeR2(), "http://localhost:8787");
@@ -42,36 +42,50 @@ beforeEach(() => {
 describe("claim rate limiting (declared via route middleware)", () => {
   function mountedApp(): Hono {
     const app = new Hono();
-    mount(app, [scopeController], { context: () => services(db) });
+    mount(app, [orgController], { context: () => services(db) });
     return app;
   }
 
   const execCtx = { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext;
-  const claim = (app: Hono, scope: string, token: string) =>
+  const claim = (app: Hono, org: string, token: string) =>
     app.request(
-      `/-/scope/${encodeURIComponent(scope)}`,
+      `/-/org/${encodeURIComponent(org)}`,
       { method: "PUT", headers: { authorization: `Bearer ${token}` } },
       {},
       execCtx,
     );
 
-  test("SCOPE-015-AC1: the route's rateLimit middleware returns 429 once exhausted", async () => {
+  test("ORG-004-AC1: the route's rateLimit middleware returns 429 once exhausted", async () => {
     const app = mountedApp();
     const token = await issueToken(db, "alice");
 
-    expect((await claim(app, "@first", token)).status).toBe(201);
+    expect((await claim(app, "first", token)).status).toBe(201);
 
-    const limited = await claim(app, "@second", token);
+    const limited = await claim(app, "second", token);
     expect(limited.status).toBe(429);
     expect(limited.headers.get("retry-after")).toBe("60");
     expect(await limited.json()).toMatchObject({ code: "rate_limited" });
+  });
+
+  test("the scope-attach route is rate-limited under the same budget", async () => {
+    const app = mountedApp();
+    const token = await issueToken(db, "attacher");
+    // First claim succeeds; the attach (same principal, same limiter) is then denied.
+    expect((await claim(app, "myorg", token)).status).toBe(201);
+    const attach = await app.request(
+      `/-/org/myorg/scope/${encodeURIComponent("@myorg")}`,
+      { method: "PUT", headers: { authorization: `Bearer ${token}` } },
+      {},
+      execCtx,
+    );
+    expect(attach.status).toBe(429);
   });
 
   test("a different principal keeps its own budget", async () => {
     const app = mountedApp();
     const alice = await issueToken(db, "alice2");
     const bob = await issueToken(db, "bob2");
-    expect((await claim(app, "@alpha", alice)).status).toBe(201);
-    expect((await claim(app, "@bravo", bob)).status).toBe(201);
+    expect((await claim(app, "alpha", alice)).status).toBe(201);
+    expect((await claim(app, "bravo", bob)).status).toBe(201);
   });
 });

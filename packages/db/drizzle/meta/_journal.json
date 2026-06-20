@@ -64,6 +64,27 @@
       "when": 1781885444467,
       "tag": "0008_famous_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1781961579705,
+      "tag": "0009_ambitious_synch",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1781961619836,
+      "tag": "0010_premium_turbo",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1781967143168,
+      "tag": "0011_nosy_fantastic_four",
+      "breakpoints": true
     }
   ]
 }

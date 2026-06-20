@@ -1,7 +1,7 @@
 ---
 id: SCOPE-002
 title: "Re-claim a scope you already own (idempotent)"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -13,6 +13,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 Claiming a scope you already own is a no-op success, so the operation is safe to retry.
 

@@ -1,5 +1,5 @@
 /** JSON helpers for the `/v1` contract handlers. */
-import type { ScopeErrorCode } from "@brika/registry-core";
+import type { OrgErrorCode } from "@brika/registry-core";
 
 export function jsonOk(data: unknown): Response {
   return Response.json(data, { headers: { "cache-control": "public, max-age=300" } });
@@ -30,13 +30,13 @@ export function jsonPrivate(data: unknown, status = 200): Response {
   return Response.json(data, { status, headers: { "cache-control": "no-store" } });
 }
 
-/** JSON error at an arbitrary status (e.g. from a `scopeStatus`/`manageStatus` mapping). */
+/** JSON error at an arbitrary status (e.g. from an `orgStatus`/`manageStatus` mapping). */
 export function jsonError(status: number, message: string): Response {
   return Response.json({ error: message }, { status });
 }
 
-/** Map a registry-core `ScopeResult` error code to its HTTP status. */
-export function scopeStatus(code: ScopeErrorCode): number {
+/** Map a registry-core `OrgResult` error code to its HTTP status. */
+export function orgStatus(code: OrgErrorCode): number {
   if (code === "not_found") return 404;
   if (code === "conflict") return 409;
   if (code === "too_many") return 429;

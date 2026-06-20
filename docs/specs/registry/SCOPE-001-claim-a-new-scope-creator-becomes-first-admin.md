@@ -1,7 +1,7 @@
 ---
 id: SCOPE-001
 title: "Claim a new scope (creator becomes first admin)"
-status: done
+status: gone
 area: scope
 group: registry
 test_mode: unit
@@ -15,6 +15,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded by the ORG-\* specs** (the organisation rename; see [ADR 0001](../../adr/0001-organisation-1n-model.md)). Retained for history; behaviour now lives under `ORG-*`.
 
 A scope must exist before anything publishes under it. The first caller to claim an
 unclaimed scope owns it and is seeded as its first `admin`. The claim is race-safe:

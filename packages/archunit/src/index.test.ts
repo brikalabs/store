@@ -66,17 +66,17 @@ describe("stripComments + specifiers + classNames", () => {
 
 describe("naming patterns", () => {
   test("case patterns match the right shapes", () => {
-    expect(pascalCase.test("D1ScopeStore")).toBe(true);
-    expect(pascalCase.test("scopeStore")).toBe(false);
-    expect(camelCase.test("scopeStore")).toBe(true);
-    expect(camelCase.test("ScopeStore")).toBe(false);
-    expect(kebabCase.test("d1-scope-store")).toBe(true);
-    expect(kebabCase.test("D1ScopeStore")).toBe(false);
+    expect(pascalCase.test("D1OrgStore")).toBe(true);
+    expect(pascalCase.test("orgStore")).toBe(false);
+    expect(camelCase.test("orgStore")).toBe(true);
+    expect(camelCase.test("OrgStore")).toBe(false);
+    expect(kebabCase.test("d1-org-store")).toBe(true);
+    expect(kebabCase.test("D1OrgStore")).toBe(false);
   });
 
   test("kebabFilename defaults to ts/tsx and accepts custom extensions", () => {
     const ts = kebabFilename();
-    expect(ts.test("d1-scope-store.ts")).toBe(true);
+    expect(ts.test("d1-org-store.ts")).toBe(true);
     expect(ts.test("route.tsx")).toBe(true);
     expect(ts.test("D1Store.ts")).toBe(false);
     expect(ts.test("theme.css")).toBe(false);
