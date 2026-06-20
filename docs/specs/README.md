@@ -31,7 +31,8 @@ to `Removed`, do not delete the code.
 | `SOCIAL` | Reviews, comments, votes/grading | [store-social.md](./store-social.md) |
 | `REG` | npm-compatible resolve: packument, tarball, catalog, download stats | [registry-resolve.md](./registry-resolve.md) |
 | `PUB` | Publish pipeline: OIDC/token, gates, immutability, integrity, scan | [registry-publish.md](./registry-publish.md) |
-| `SCOPE` | Scope claim, membership + roles, verified display name, ownership | [registry-scopes.md](./registry-scopes.md) |
+| `SCOPE` | Scope claim, membership + roles, verified display name, ownership (current implementation) | [registry-scopes.md](./registry-scopes.md) |
+| `ORG` | Organisations (planned rename of the scope entity), public org page, anti-squatting | [org.md](./org.md) |
 | `MANAGE` | Deprecate, yank, operator takedown/restore, publish tokens, device flow | [registry-management.md](./registry-management.md) |
 | `HARDEN` | Rate limits, CORS, path-traversal guard, audit log, backups | [registry-hardening.md](./registry-hardening.md) |
 | `CONSOLE` | Developer dashboard UI (overview, plugins, scopes, members, profile, tokens) | [console.md](./console.md) |

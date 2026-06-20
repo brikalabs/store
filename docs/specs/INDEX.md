@@ -17,14 +17,18 @@ next step, so coverage starts at 0 and climbs as tests are annotated.
 
 ## Totals
 
-123 specs , 339 acceptance criteria.
+130 specs , 355 acceptance criteria.
 
 | Status | Count | Meaning |
 | --- | --- | --- |
 | `[DONE]` | 112 | Built (verified in code/tests or in-browser). |
 | `[WIP]` | 2 | Partially built. |
-| `[TODO]` | 7 | Specified, not built. |
+| `[TODO]` | 14 | Specified, not built. |
 | `[HOLD]` | 2 | Specified, blocked on operator credentials/deploy. |
+
+> The `ORG-*` area is a **proposal** (the scope -> org rename, public org page,
+> and anti-squatting policy). See [../org-model-design.md](../org-model-design.md)
+> for the decisions to react to before implementation.
 
 ## What is NOT done yet (the backlog at a glance)
 
@@ -41,6 +45,13 @@ next step, so coverage starts at 0 and climbs as tests are annotated.
 | HARDEN-013 | [TODO] | Scheduled R2 + D1 backups |
 | AUTH-009 | [HOLD] | OAuth app + secret configuration (operator) |
 | HARDEN-014 | [HOLD] | Operator provisioning of hardening infrastructure |
+| ORG-001 | [TODO] | Organisation is the ownership entity (rename of "scope") |
+| ORG-002 | [TODO] | Org identity is its scope name (1:1, forward-compatible) |
+| ORG-003 | [TODO] | Public organisation page (/org/:org) |
+| ORG-004 | [TODO] | Claim rate limit |
+| ORG-005 | [TODO] | Per-account org cap |
+| ORG-006 | [TODO] | Identity-tied claiming (GitHub-verified) |
+| ORG-007 | [TODO] | Operator takedown of a squatted org |
 
 ## AUTH , Authentication & sessions , [auth.md](./auth.md)
 
@@ -209,3 +220,15 @@ next step, so coverage starts at 0 and climbs as tests are annotated.
 | CONSOLE-012 | [DONE] | Profile editor |
 | CONSOLE-013 | [DONE] | Shared-domain authorization over D1 (401 when unauthenticated) |
 | CONSOLE-014 | [DONE] | Local-dev registry schema setup (db:setup:local) |
+
+## ORG , Organisations & anti-squatting (proposal) , [org.md](./org.md)
+
+| Code | Status | Title |
+| --- | --- | --- |
+| ORG-001 | [TODO] | Organisation is the ownership entity (rename of "scope") |
+| ORG-002 | [TODO] | Org identity is its scope name (1:1, forward-compatible to 1:N) |
+| ORG-003 | [TODO] | Public organisation page |
+| ORG-004 | [TODO] | Claim rate limit |
+| ORG-005 | [TODO] | Per-account org cap |
+| ORG-006 | [TODO] | Identity-tied claiming (GitHub-verified) |
+| ORG-007 | [TODO] | Operator takedown of a squatted org |
