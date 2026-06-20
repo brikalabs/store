@@ -23,7 +23,8 @@ imports.
 
 ```
 apps/web/src/
-  routes/     thin route files (file = URL, TanStack); delegate to the layers below
+  routes/     thin route files, nested into directories by URL segment (api/, v1/,
+              dashboard/, auth/, legal/, plugins/, orgs/, developers/); delegate down
   server/     server-ONLY: Cloudflare bindings + composition root + local D1
               (server-context, blob-store, env, registry-services, console-api,
                registry-identity, require-user, db/). Never import from a client component.
@@ -44,8 +45,10 @@ apps/web/src/
 
 ### What goes where
 
-- **`routes/`** is fixed by TanStack file-based routing (folder = URL); it cannot be freely
-  reorganized, so the rule is: keep route files thin and push logic into the layers below.
+- **`routes/`** is governed by TanStack file-based routing (filename/path = URL). Routes are
+  organized into directories by URL segment (the file-beside-folder layout for parent+child
+  routes) - this is URL-preserving because the generated route-id set is identical to the
+  flat form. The rule stays: keep route files thin and push logic into the layers below.
 - **`server/`** is the only place that may touch `cloudflare:workers`, the D1 binding, or
   the composition root. A client component importing from `@/server/*` is a smell.
 - **`lib/`** is grouped by domain; only genuinely pure/shared utilities live at its root.
