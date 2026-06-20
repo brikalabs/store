@@ -1,4 +1,5 @@
 import {
+  isOperator,
   type OidcClaims,
   type PublishIdentity,
   type TokenStore,
@@ -105,7 +106,6 @@ export async function requireAdmin(
   admins: ReadonlySet<string>,
 ): Promise<PublishIdentity> {
   const identity = await requireWrite(request, tokens);
-  if (!admins.has(`${identity.provider}:${identity.owner}`))
-    throw forbidden("Not a registry admin");
+  if (!isOperator(admins, identity)) throw forbidden("Not a registry admin");
   return identity;
 }

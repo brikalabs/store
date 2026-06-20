@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Box, Check, Copy, ExternalLink, Rocket } from "lucide-react";
-import { useState } from "react";
+import { Box, Check, Copy, ExternalLink, Rocket, ShieldAlert } from "lucide-react";
+import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { useMyPlugins } from "@/hooks/use-my-plugins";
 import { formatCount } from "@/lib/format";
+import { fetchIsOperator } from "@/server/require-operator";
 
 export const Route = createFileRoute("/dashboard/")({
   component: OverviewPage,
@@ -62,10 +63,36 @@ function OverviewPage() {
           <Box className="size-4 text-brand-ink" />
           Manage my plugins
         </Link>
+
+        <OperatorConsoleLink />
       </section>
 
       <PublishCard />
     </AdminShell>
+  );
+}
+
+/**
+ * A link into the operator console, rendered only for registry operators. Operator status
+ * comes from a server function (the allowlist is server-only), so this resolves it after
+ * mount and renders nothing for everyone else - the console's existence stays hidden.
+ */
+function OperatorConsoleLink() {
+  const [operator, setOperator] = useState(false);
+  useEffect(() => {
+    fetchIsOperator()
+      .then(setOperator)
+      .catch(() => setOperator(false));
+  }, []);
+  if (!operator) return null;
+  return (
+    <Link
+      to="/operator/orgs"
+      className="inline-flex w-fit items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-2.5 font-semibold text-foreground text-sm transition-colors hover:bg-amber-500/10"
+    >
+      <ShieldAlert className="size-4 text-amber-600" />
+      Operator console
+    </Link>
   );
 }
 

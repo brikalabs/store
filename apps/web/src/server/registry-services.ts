@@ -14,6 +14,7 @@ import {
   D1OwnershipPolicy,
   D1TokenStore,
   HmacDomainChallenge,
+  listAllPackages,
 } from "@brika/store-db/adapters";
 import { vars } from "@/server/env";
 
@@ -53,8 +54,10 @@ export function registryServices(db: Db = registryDb()) {
     catalog: new D1CatalogReader(db),
     /** Publish-token store: issue/revoke for the account page. */
     tokens: new D1TokenStore(db),
-    /** Append-only audit log of console mutations. */
+    /** Audit log of console mutations: append (write) + recent (read, for the operator view). */
     audit: new D1AuditLog(db),
+    /** Operator directory of every package with moderation counts (incl. hidden versions). */
+    listPackages: () => listAllPackages(db),
   } as const;
 }
 

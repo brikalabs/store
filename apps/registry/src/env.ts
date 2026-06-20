@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { defineEnv } from "@brika/env";
+import { parseOperatorAdmins } from "@brika/registry-core";
 import { z } from "zod";
 import type { CfRateLimitBinding } from "./adapters/cf-rate-limiter";
 
@@ -49,13 +50,7 @@ export type Vars = ReturnType<typeof vars>;
  * identity provider is added.
  */
 export function registryAdmins(): ReadonlySet<string> {
-  return new Set(
-    vars()
-      .REGISTRY_ADMINS.split(",")
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0)
-      .map((entry) => (entry.includes(":") ? entry : `github:${entry}`)),
-  );
+  return parseOperatorAdmins(vars().REGISTRY_ADMINS);
 }
 
 // Binding types for `env` from "cloudflare:workers" (sourced from wrangler.jsonc).

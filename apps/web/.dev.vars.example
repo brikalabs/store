@@ -1,0 +1,21 @@
+# Local dev secrets for the store worker (apps/web). Copy to `.dev.vars` and fill in.
+# The Cloudflare vite plugin reads this file into the worker's `env` (see src/server/env.ts);
+# `.dev.vars` is gitignored. Required vars have no schema default and the server won't boot
+# without them.
+
+# Signs the stateless session cookie (HMAC). Any non-empty value locally.
+SESSION_SECRET=dev-only-secret-not-for-production
+
+# GitHub OAuth app used for sign-in. Create a dev OAuth app and paste its credentials.
+GITHUB_CLIENT_ID=your-dev-oauth-client-id
+GITHUB_CLIENT_SECRET=your-dev-oauth-client-secret
+GITHUB_REDIRECT_URI=http://localhost:3000/auth/github/callback
+
+# Operator allowlist for the /operator console (comma-separated provider:owner; a bare entry
+# defaults to github). Must match the registry worker's REGISTRY_ADMINS. Empty -> no operators.
+# The operator e2e (e2e/operator.spec.ts) requires this exact value:
+REGISTRY_ADMINS=github:e2e-operator
+
+# Shared HMAC secret for stateless org domain-verification (ORG-010). Must match the registry
+# worker's DOMAIN_VERIFY_SECRET. Has a dev default, so optional locally.
+# DOMAIN_VERIFY_SECRET=brika-dev-domain-verify-secret

@@ -1,6 +1,7 @@
-import type { PublishIdentity } from "@brika/registry-core";
+import { isOperator, type PublishIdentity } from "@brika/registry-core";
 import { getCurrentUser, type SessionUser } from "@/lib/auth/auth";
-import { jsonUnauthorized } from "@/lib/http";
+import { jsonForbidden, jsonUnauthorized } from "@/lib/http";
+import { operatorAdmins } from "@/server/env";
 import { sessionIdentity } from "@/server/registry-identity";
 import { type RegistryServices, registryServices } from "@/server/registry-services";
 import { serverContext } from "@/server/server-context";
@@ -25,4 +26,21 @@ export async function authed(
   const user = await getCurrentUser(request, db);
   if (user === null) return { response: jsonUnauthorized() };
   return { user, identity: sessionIdentity(user), svc: registryServices() };
+}
+
+/**
+ * Like {@link authed}, but additionally requires the session to be a registry operator
+ * (the `REGISTRY_ADMINS` allowlist) - the gate for the `api/operator/*` endpoints. Returns
+ * 401 for a signed-out caller and 403 for a signed-in non-operator. Mirrors the registry's
+ * `requireAdmin`, so the console and the registry agree on who may take down content.
+ */
+export async function operatorAuthed(
+  request: Request,
+): Promise<ConsoleContext | { readonly response: Response }> {
+  const a = await authed(request);
+  if ("response" in a) return a;
+  if (!isOperator(operatorAdmins(), a.identity)) {
+    return { response: jsonForbidden("Not a registry operator") };
+  }
+  return a;
 }

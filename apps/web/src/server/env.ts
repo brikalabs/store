@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { defineEnv } from "@brika/env";
+import { parseOperatorAdmins } from "@brika/registry-core";
 import { z } from "zod";
 
 /**
@@ -23,11 +24,21 @@ export const vars = defineEnv(
     // match the registry worker's DOMAIN_VERIFY_SECRET and stay stable. Security comes from
     // DNS control, not secrecy, so a dev default is fine; set a shared value in production.
     DOMAIN_VERIFY_SECRET: z.string().min(1).default("brika-dev-domain-verify-secret"),
+    // Comma-separated operator allowlist gating the /operator console (provider-qualified
+    // `provider:owner`, e.g. `github:octocat`; a bare entry defaults to `github`). MUST match
+    // the registry worker's REGISTRY_ADMINS so the console and the takedown endpoints agree on
+    // who is an operator. Empty -> no operators, so the console is unreachable until set.
+    REGISTRY_ADMINS: z.string().default(""),
   },
   () => env,
 );
 
 export type Vars = ReturnType<typeof vars>;
+
+/** The operator allowlist (provider-qualified keys), derived from `REGISTRY_ADMINS`. */
+export function operatorAdmins(): ReadonlySet<string> {
+  return parseOperatorAdmins(vars().REGISTRY_ADMINS);
+}
 
 // Binding types for `env` from "cloudflare:workers" (sourced from wrangler.jsonc).
 declare global {

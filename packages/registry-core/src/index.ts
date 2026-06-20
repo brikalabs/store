@@ -8,7 +8,7 @@ export {
   registerAttestationProvider,
   TransparencyEntry,
 } from "./attestation";
-export type { AuditEntry, AuditLog } from "./audit";
+export type { AuditEntry, AuditLog, AuditReader, AuditRecord } from "./audit";
 export type { CatalogEntry, CatalogReader } from "./catalog";
 export {
   type DeviceGrant,
@@ -48,6 +48,7 @@ export {
   verifyGithubOidc,
   verifyOidc,
 } from "./oidc";
+export { isOperator, operatorKey, parseOperatorAdmins } from "./operators";
 export {
   type ClaimVerifier,
   type DnsResolver,

@@ -18,11 +18,13 @@ export { D1OwnershipPolicy } from "./d1-ownership";
 export { CloudflareDohResolver } from "./doh-resolver";
 export { HmacDomainChallenge } from "./hmac-domain-challenge";
 export {
+  listAllPackages,
   listOrgsForMember,
   listScopesForMember,
   listSubjectTokens,
   type MemberOrg,
   type MemberScope,
+  type OperatorPackage,
   revokeTokenByHash,
   type SubjectToken,
 } from "./queries";
