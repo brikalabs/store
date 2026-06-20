@@ -74,6 +74,12 @@ export const regOrgs = sqliteTable("reg_orgs", {
   links: text("links", { mode: "json" }).$type<{ label: string; url: string }[]>(),
   /** Storage key of the uploaded org logo in the assets bucket; null = generated avatar. */
   iconKey: text("icon_key"),
+  /**
+   * Operator takedown reason (abuse/squatting/policy; ORG-007). Null = active; non-null = an
+   * admin withdrew the org from public listings, with this reason recorded. Set only via the
+   * operator-admin-gated registry endpoint, never by org members.
+   */
+  takedown: text("takedown"),
   createdAt: integer("created_at").notNull().default(epoch),
 });
 

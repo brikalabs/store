@@ -11,7 +11,7 @@ import {
 import { badRequest, httpError, rateLimit, reply } from "@brika/router";
 import { z } from "zod";
 import { cf } from "../adapters/cf-rate-limiter";
-import { principal, requireWrite } from "../auth";
+import { principal, requireAdmin, requireWrite } from "../auth";
 import { controller, route } from "../http/router";
 
 import type { Services } from "../services";
@@ -28,6 +28,11 @@ import type { Services } from "../services";
  *   POST   /-/org/:org/display-name             set the publisher label (admin)
  *   GET    /-/org/:org/scopes                   list the scopes the org owns (any member)
  *   PUT    /-/org/:org/scope/:scope             attach a scope to the org (admin)
+ *
+ * Plus two operator-admin-gated routes (the `REGISTRY_ADMINS` allowlist, NOT org membership):
+ *
+ *   POST   /-/org/:org/takedown                 withdraw a squatted org from listings (ORG-007)
+ *   POST   /-/org/:org/restore                  reverse a takedown (ORG-007)
  *
  * These handlers are thin: they validate input, resolve the caller's verified identity,
  * delegate the rules + invariants to `ctx.orgs` (the domain `OrgService`), audit the
@@ -386,6 +391,62 @@ export async function attachScope({
   return reply({ ok: true, org, scope }, 201);
 }
 
+const TakedownBody = z.object({ reason: z.string().min(1).max(1024) });
+
+/**
+ * `POST /-/org/:org/takedown` - operator withdraws a squatted/abusive org from public
+ * listings (ORG-007-AC1). Gated on the registry-operator allowlist via {@link requireAdmin}
+ * (NOT org membership), so a non-operator gets 403 (ORG-007-AC2). The reason is audited.
+ */
+export async function takedownOrg({
+  params,
+  body,
+  req,
+  ctx,
+}: {
+  readonly params: { readonly org: string };
+  readonly body: z.infer<typeof TakedownBody>;
+  readonly req: Request;
+  readonly ctx: Services;
+}): Promise<Response> {
+  const { org } = params;
+  const identity = await requireAdmin(req, ctx.tokens, ctx.admins);
+  const result = await ctx.orgs.takedown(org, body.reason);
+  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  await ctx.audit.record({
+    action: "org_takedown",
+    packageName: org,
+    version: null,
+    actor: identity,
+    detail: { reason: body.reason },
+  });
+  return reply({ ok: true, org, takedown: body.reason }, 200);
+}
+
+/** `POST /-/org/:org/restore` - operator reverses a takedown (admin only; ORG-007). */
+export async function restoreOrg({
+  params,
+  req,
+  ctx,
+}: {
+  readonly params: { readonly org: string };
+  readonly req: Request;
+  readonly ctx: Services;
+}): Promise<Response> {
+  const { org } = params;
+  const identity = await requireAdmin(req, ctx.tokens, ctx.admins);
+  const result = await ctx.orgs.restore(org);
+  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  await ctx.audit.record({
+    action: "org_restore",
+    packageName: org,
+    version: null,
+    actor: identity,
+    detail: null,
+  });
+  return reply({ ok: true, org, takedown: null }, 200);
+}
+
 export const orgController = controller({
   name: "org",
   prefix: "/-/org",
@@ -419,5 +480,8 @@ export const orgController = controller({
       ],
       handler: attachScope,
     }),
+    // Operator-only (REGISTRY_ADMINS), not org membership: takedown/restore a squatted org.
+    route.post({ path: "/:org/takedown", body: TakedownBody, handler: takedownOrg }),
+    route.post({ path: "/:org/restore", handler: restoreOrg }),
   ],
 });

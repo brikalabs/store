@@ -19,6 +19,12 @@ export interface OrgRecord {
   readonly description: string | null;
   readonly links: readonly OrgLink[];
   readonly iconKey: string | null;
+  /**
+   * Operator takedown reason, or null when active (ORG-007). A taken-down org is withdrawn
+   * from public listings ({@link import("./org").OrgService.getPublic} returns null) but the
+   * record and its members are retained so an admin can restore it.
+   */
+  readonly takedown: string | null;
 }
 
 /**
@@ -36,6 +42,8 @@ export interface OrgStore {
   setProfile(slug: string, profile: OrgProfileInput): Promise<void>;
   /** Set (or clear, with null) the uploaded icon's storage key. */
   setIcon(slug: string, iconKey: string | null): Promise<void>;
+  /** Set the operator takedown reason (null restores the org); ORG-007. */
+  setTakedown(slug: string, reason: string | null): Promise<void>;
 }
 
 /**

@@ -10,9 +10,9 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 | Status | Count |
 | --- | --- |
-| [DONE] | 108 |
+| [DONE] | 109 |
 | [WIP] | 1 |
-| [TODO] | 9 |
+| [TODO] | 8 |
 | [HOLD] | 2 |
 | [GONE] | 15 |
 
@@ -25,7 +25,6 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [HARDEN-013](registry/HARDEN-013-scheduled-r2-d1-backups.md) | [TODO] | Scheduled R2 + D1 backups |
 | [HARDEN-014](registry/HARDEN-014-operator-provisioning-of-hardening-infrastructure.md) | [HOLD] | Operator provisioning of hardening infrastructure |
 | [ORG-006](org/ORG-006-identity-tied-claiming-github-verified.md) | [TODO] | Identity-tied claiming (GitHub-verified) |
-| [ORG-007](org/ORG-007-operator-takedown-of-a-squatted-org.md) | [TODO] | Operator takedown of a squatted org |
 | [PUB-015](registry/PUB-015-real-malware-scanner.md) | [TODO] | Real malware scanner |
 | [SOCIAL-010](store/SOCIAL-010-author-response-to-a-review.md) | [TODO] | Author response to a review |
 | [SOCIAL-011](store/SOCIAL-011-comment-moderation.md) | [TODO] | Comment moderation |
@@ -76,7 +75,7 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [ORG-004](org/ORG-004-claim-rate-limit.md) | [DONE] | Claim rate limit |
 | [ORG-005](org/ORG-005-per-account-org-cap.md) | [DONE] | Per-account org cap |
 | [ORG-006](org/ORG-006-identity-tied-claiming-github-verified.md) | [TODO] | Identity-tied claiming (GitHub-verified) |
-| [ORG-007](org/ORG-007-operator-takedown-of-a-squatted-org.md) | [TODO] | Operator takedown of a squatted org |
+| [ORG-007](org/ORG-007-operator-takedown-of-a-squatted-org.md) | [DONE] | Operator takedown of a squatted org |
 | [ORG-008](org/ORG-008-manage-an-org-s-scopes.md) | [DONE] | Manage an org's scopes |
 | [ORG-009](org/ORG-009-organisation-profile-description-links-logo.md) | [DONE] | Organisation profile: description, links, and logo |
 | [ORG-010](org/ORG-010-verified-domains-dns-txt.md) | [DONE] | Verified domains (DNS TXT, stateless challenge, badge-only) |
