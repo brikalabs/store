@@ -1,8 +1,8 @@
 import { Button, Input } from "@brika/clay";
 import { Link2, Trash2 } from "lucide-react";
 import { type SyntheticEvent, useEffect, useState } from "react";
-import { type OrgCardProps, orgPath, readError } from "../../lib/org-api";
-import { LinkIcon } from "../clay/link-icon";
+import { LinkIcon } from "@/components/clay/link-icon";
+import { type OrgCardProps, orgPath, readError } from "@/lib/org-api";
 
 interface ProfileLink {
   label: string;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { manageStatus, orgStatus } from "./http";
+import { manageStatus, orgStatus } from "@/lib/http";
 
 describe("orgStatus", () => {
   test("maps OrgResult codes to HTTP statuses", () => {

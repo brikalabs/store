@@ -1,6 +1,6 @@
 import { cn } from "@brika/clay";
 import type { PluginVersion } from "@brika/registry-contract";
-import { formatDate } from "../../lib/format";
+import { formatDate } from "@/lib/format";
 
 function bulletsFrom(changelog: string | undefined): string[] {
   if (!changelog) return [];

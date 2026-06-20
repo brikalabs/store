@@ -1,0 +1,1242 @@
+import { Badge } from "@brika/clay/components/badge";
+import { Card } from "@brika/clay/components/card";
+import { Chart } from "@brika/clay/components/chart";
+import { Separator } from "@brika/clay/components/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@brika/clay/components/tabs";
+import type { PluginDetail } from "@brika/registry-contract";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  BadgeCheck,
+  Box,
+  Cable,
+  Check,
+  ChevronRight,
+  Clock,
+  Database,
+  Download,
+  ExternalLink,
+  Folder,
+  Globe,
+  KeyRound,
+  Layers,
+  Link2,
+  Lock,
+  type LucideIcon,
+  Network,
+  Plus,
+  Scale,
+  ShieldCheck,
+  Sparkles,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { z } from "zod";
+import { CapabilityChips } from "@/components/clay/capability-chips";
+import { Changelog } from "@/components/clay/changelog";
+import { GithubIcon } from "@/components/clay/icons";
+import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
+import { ScreenshotPanels } from "@/components/clay/screenshot-panels";
+import { Segmented, segmentClassName } from "@/components/clay/segmented";
+import { Stars } from "@/components/clay/stars";
+import { NotFoundPage } from "@/components/feedback/error-pages";
+import { CommentsSection } from "@/components/plugin/comments-section";
+import { CopyButton } from "@/components/plugin/copy-button";
+import { FilesSection } from "@/components/plugin/file-browser";
+import { InstallCommand } from "@/components/plugin/install-command";
+import { Markdown } from "@/components/plugin/markdown";
+import { ReviewsSection } from "@/components/plugin/reviews-section";
+import { formatBytes, formatCount, formatDate } from "@/lib/format";
+import { applyListingOverride } from "@/lib/registry/listing";
+import { fetchPublicListing } from "@/lib/registry/listing-merge";
+import { getPluginPage } from "@/lib/registry/registry";
+import { isRegistryName } from "@/lib/registry/registry-source";
+import { type GrantFamily, type GrantScope, groupGrants } from "@/lib/social/grants";
+
+const DETAIL_TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "permissions", label: "Permissions" },
+  { id: "supply-chain", label: "Supply chain" },
+  { id: "versions", label: "Versions" },
+  { id: "reviews", label: "Reviews" },
+  { id: "discussion", label: "Discussion" },
+] as const;
+type DetailTab = (typeof DETAIL_TABS)[number]["id"];
+const DETAIL_TAB_IDS = DETAIL_TABS.map((t) => t.id) as [DetailTab, ...DetailTab[]];
+
+// The active tab lives in the URL (`?tab=`), so it is deep-linkable and the back
+// button steps through panels. Invalid/absent -> Overview (kept out of the URL).
+const detailSearch = z.object({
+  lang: z.string().optional(),
+  tab: z.enum(DETAIL_TAB_IDS).optional().catch(undefined),
+});
+
+export const Route = createFileRoute("/plugins/$")({
+  validateSearch: (input) => detailSearch.parse(input),
+  loaderDeps: ({ search }) => ({ lang: search.lang }),
+  loader: async ({ params, deps }) => {
+    const name = params._splat;
+    if (!name) return null;
+    const page = await getPluginPage(name, deps.lang);
+    if (page === null) return null;
+    // Layer the maintainer's public store-listing override on top of the manifest.
+    const override = await fetchPublicListing({ data: name });
+    return { ...page, detail: applyListingOverride(page.detail, override) };
+  },
+  component: PluginDetailPage,
+});
+
+const LOCALE_NAMES: Record<string, string> = {
+  en: "English",
+  fr: "Français",
+  de: "Deutsch",
+  es: "Español",
+  ja: "日本語",
+  zh: "中文",
+  pt: "Português",
+  it: "Italiano",
+  nl: "Nederlands",
+  ko: "한국어",
+};
+
+// Lucide icon per permission family; unknown families fall back to a shield.
+const FAMILY_ICONS: Record<string, LucideIcon> = {
+  net: Globe,
+  netLocal: Network,
+  rawSocket: Cable,
+  fs: Folder,
+  secrets: KeyRound,
+  storage: Database,
+};
+
+function familyIcon(id: string): LucideIcon {
+  return FAMILY_ICONS[id] ?? ShieldCheck;
+}
+
+function localeName(code: string): string {
+  return LOCALE_NAMES[code] ?? code.toUpperCase();
+}
+
+/** An uppercase group label row inside the dependencies card. */
+function DepGroupLabel({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <div className="border-border border-b bg-muted px-4 py-2 font-semibold text-[10.5px] text-muted-foreground uppercase tracking-[0.05em]">
+      {children}
+    </div>
+  );
+}
+
+/** One dependency row: name (brand-marked / muted) on the left, range on the right. */
+function DepRow({
+  name,
+  range,
+  brand,
+  muted,
+  hubPeer,
+}: Readonly<{ name: string; range: string; brand?: boolean; muted?: boolean; hubPeer?: boolean }>) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-border border-b px-4 py-2.5">
+      <span
+        className={`inline-flex min-w-0 items-center gap-2 font-mono text-xs ${muted ? "text-muted-foreground" : "text-brand"}`}
+      >
+        <Box className="size-3.5 shrink-0 text-muted-foreground/70" />
+        <span className="truncate">{name}</span>
+        {brand ? <ShieldCheck className="size-3 shrink-0 text-brand" /> : null}
+        {hubPeer ? (
+          <span className="shrink-0 rounded-full border border-border bg-muted px-1.5 py-0.5 font-medium font-sans text-[10px] text-muted-foreground">
+            provided by hub
+          </span>
+        ) : null}
+      </span>
+      <span
+        className={`shrink-0 rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-[11px] ${muted ? "text-muted-foreground" : "text-foreground"}`}
+      >
+        {range}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Dependencies grouped by type, faithful to what the manifest actually declares:
+ * runtime + peer + dev with their version ranges (no resolved/installed versions,
+ * since the store only has package.json). The `brika` engine surfaces as a peer.
+ */
+function DependenciesSection({
+  dependencies,
+  peerDependencies,
+  devDependencies,
+  brikaEngine,
+}: Readonly<{
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  brikaEngine: string;
+}>) {
+  const deps = Object.entries(dependencies ?? {});
+  const peers: [string, string][] = [
+    ["brika", brikaEngine],
+    ...Object.entries(peerDependencies ?? {}).filter(([name]) => name !== "brika"),
+  ];
+  const dev = Object.entries(devDependencies ?? {});
+  const DEV_CAP = 8;
+  const devShown = dev.slice(0, DEV_CAP);
+  const devMore = dev.length - devShown.length;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
+          <Layers className="size-4 text-muted-foreground" />
+          Dependencies
+        </h2>
+        <span className="text-muted-foreground text-xs">declared in package.json</span>
+      </div>
+      <div className="flex items-center gap-4 text-muted-foreground text-xs">
+        <span>
+          <strong className="text-foreground">{deps.length}</strong> runtime
+        </span>
+        <span>
+          <strong className="text-foreground">{peers.length}</strong> peer
+        </span>
+        <span>
+          <strong className="text-foreground">{dev.length}</strong> dev
+        </span>
+      </div>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        {deps.length > 0 ? (
+          <>
+            <DepGroupLabel>Dependencies</DepGroupLabel>
+            {deps.map(([name, range]) => (
+              <DepRow key={name} name={name} range={range} brand={name.startsWith("@brika/")} />
+            ))}
+          </>
+        ) : null}
+        <DepGroupLabel>Peer dependencies</DepGroupLabel>
+        {peers.map(([name, range]) => (
+          <DepRow key={name} name={name} range={range} hubPeer />
+        ))}
+        {dev.length > 0 ? (
+          <>
+            <DepGroupLabel>
+              Dev dependencies{" "}
+              <span className="font-normal text-muted-foreground/60 normal-case">
+                · build &amp; test only
+              </span>
+            </DepGroupLabel>
+            {devShown.map(([name, range]) => (
+              <DepRow key={name} name={name} range={range} muted />
+            ))}
+            {devMore > 0 ? (
+              <div className="px-4 py-2.5 text-muted-foreground text-xs">
+                +{devMore} more dev dependencies
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+      <div className="flex items-start gap-2 text-muted-foreground text-xs leading-relaxed">
+        <Box className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/70" />
+        Version ranges as declared by the author. The exact versions a hub installs are resolved at
+        install time, then pinned by the package integrity hash.
+      </div>
+    </section>
+  );
+}
+
+/** Breadcrumb plus the locale switcher (only shown when there's more than one locale). */
+function DetailBreadcrumb({
+  name,
+  readmeLocales,
+  activeLocale,
+}: Readonly<{ name: string; readmeLocales: string[]; activeLocale: string }>) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
+        <Link to="/plugins" className="hover:text-foreground">
+          Browse
+        </Link>
+        <ChevronRight className="size-3" />
+        <span className="text-foreground">{name}</span>
+      </div>
+      {readmeLocales.length > 1 ? (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
+            <Globe className="size-3.5" />
+            Viewing in
+          </span>
+          <Segmented>
+            {readmeLocales.map((loc) => (
+              <Link
+                key={loc}
+                to="/plugins/$"
+                params={{ _splat: name }}
+                search={{ lang: loc }}
+                className={segmentClassName(loc === activeLocale, "sm")}
+              >
+                {loc.toUpperCase()}
+              </Link>
+            ))}
+          </Segmented>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** All-time installs from the registry, falling back to weekly npm downloads, else nothing. */
+function HeaderInstalls({ detail }: Readonly<{ detail: PluginDetail }>) {
+  if (detail.installs === undefined) {
+    if (detail.downloadsWeekly > 0) {
+      return (
+        <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
+          <Download className="size-3.5" />
+          {formatCount(detail.downloadsWeekly)} installs / week
+        </span>
+      );
+    }
+    return null;
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
+      <Download className="size-3.5" />
+      {formatCount(detail.installs)} installs
+    </span>
+  );
+}
+
+/** Plugin icon, title + badges, the inline meta row, description, and the install CTA. */
+function DetailHeader({
+  detail,
+  displayLocales,
+}: Readonly<{ detail: PluginDetail; displayLocales: string[] }>) {
+  const title = detail.displayName ?? detail.name;
+  return (
+    <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+      <PluginIcon
+        name={detail.name}
+        iconUrl={detail.iconUrl}
+        capabilities={detail.capabilities}
+        size={60}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h1 className="font-bold font-heading text-3xl tracking-tight">{title}</h1>
+          {detail.verified ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-2.5 py-1 font-semibold text-brand-ink text-xs">
+              <ShieldCheck className="size-3.5" />
+              Verified
+            </span>
+          ) : null}
+          {detail.featured ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-600 text-xs dark:text-amber-400">
+              <Sparkles className="size-3.5" />
+              Featured
+            </span>
+          ) : null}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-muted-foreground text-sm">
+          {detail.author ? (
+            <Link
+              to="/developers/$id"
+              params={{ id: detail.author.id }}
+              className="font-semibold text-brand-ink hover:underline"
+            >
+              {detail.author.id}
+            </Link>
+          ) : null}
+          <span className="font-mono text-xs">v{detail.version}</span>
+          {detail.rating ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Stars value={detail.rating.average} />
+              {detail.rating.average.toFixed(1)} ({detail.rating.count})
+            </span>
+          ) : null}
+          {detail.license ? (
+            <span className="inline-flex items-center gap-1">
+              <Scale className="size-3.5" />
+              {detail.license}
+            </span>
+          ) : null}
+          <span className="font-mono text-xs">requires brika {detail.brikaEngine}</span>
+          {displayLocales.length > 0 ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Globe className="size-3.5" />
+              {displayLocales.length} languages
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
+          {detail.description ?? "No description provided."}
+        </p>
+      </div>
+      <div className="flex flex-col items-end gap-2">
+        <AddToHubButton command={`brika install ${detail.name}`} />
+        <HeaderInstalls detail={detail} />
+      </div>
+    </div>
+  );
+}
+
+/** "Localization" section listing the languages a plugin ships; hidden when none. */
+function LocalizationSection({ displayLocales }: Readonly<{ displayLocales: string[] }>) {
+  if (displayLocales.length === 0) return null;
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
+        <Globe className="size-4 text-muted-foreground" />
+        Localization
+      </h2>
+      <p className="text-muted-foreground text-sm leading-relaxed">
+        Ships translations for <strong className="text-foreground">{displayLocales.length}</strong>{" "}
+        {displayLocales.length === 1 ? "language" : "languages"}. Brika picks the active locale from
+        the hub at runtime, falling back to English.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {displayLocales.map((loc) => (
+          <span
+            key={loc}
+            className="rounded-[9px] border border-border bg-card px-3 py-1.5 font-medium text-foreground text-sm"
+          >
+            {localeName(loc)}
+            {loc === "en" ? (
+              <span className="ml-1.5 font-semibold text-[10px] text-muted-foreground">
+                DEFAULT
+              </span>
+            ) : null}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** A small "Sensitive" (amber) or "Standard" risk tag on a family card. */
+function RiskTag({ risk }: Readonly<{ risk: GrantFamily["risk"] }>) {
+  return risk === "sensitive" ? (
+    <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-semibold text-[10px] text-amber-600 uppercase tracking-[0.04em] dark:text-amber-400">
+      Sensitive
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 font-semibold text-[10px] text-muted-foreground uppercase tracking-[0.04em]">
+      Standard
+    </span>
+  );
+}
+
+/** Uppercase scope sub-label (Allowed hosts / Read / Write / Operations). */
+function ScopeLabel({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <span className="font-semibold text-[10px] text-muted-foreground uppercase tracking-[0.04em]">
+      {children}
+    </span>
+  );
+}
+
+/** A mono scope value chip; wildcard hosts render dashed, like the hub does. */
+function ScopeChip({ children, dashed }: Readonly<{ children: ReactNode; dashed?: boolean }>) {
+  return (
+    <span
+      className={
+        dashed
+          ? "inline-flex items-center rounded-md border border-muted-foreground/50 border-dashed px-2 py-0.5 font-mono text-[11px] text-muted-foreground"
+          : "inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-[11px] text-foreground"
+      }
+    >
+      {children}
+    </span>
+  );
+}
+
+/** A labelled row of path-pattern chips (the fs Read / Write blocks). */
+function PathScope({ label, paths }: Readonly<{ label: string; paths: readonly string[] }>) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <ScopeLabel>{label}</ScopeLabel>
+      <div className="flex flex-wrap gap-1.5">
+        {paths.map((path) => (
+          <ScopeChip key={path}>{path}</ScopeChip>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Render a family's requested scope: hosts, ports, paths, ops, or raw items. */
+function GrantScopeView({ scope }: Readonly<{ scope: GrantScope }>) {
+  if (scope.kind === "hosts") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <ScopeLabel>Allowed hosts</ScopeLabel>
+        <div className="flex flex-wrap gap-1.5">
+          {scope.hosts.map((host) => (
+            <ScopeChip key={host.value} dashed={host.wildcard}>
+              {host.value}
+            </ScopeChip>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (scope.kind === "ports") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <ScopeLabel>Loopback ports</ScopeLabel>
+        <div className="flex flex-wrap gap-1.5">
+          {scope.ports.map((port) => (
+            <ScopeChip key={port}>localhost:{port}</ScopeChip>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (scope.kind === "paths") {
+    return (
+      <div className="flex flex-col gap-2.5">
+        {scope.read.length > 0 ? <PathScope label="Read" paths={scope.read} /> : null}
+        {scope.write.length > 0 ? <PathScope label="Write" paths={scope.write} /> : null}
+      </div>
+    );
+  }
+  if (scope.kind === "ops") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <ScopeLabel>Operations</ScopeLabel>
+        <div className="flex flex-wrap gap-1.5">
+          {scope.ops.map((op) => (
+            <span
+              key={op}
+              className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 font-medium text-[11px] text-foreground capitalize"
+            >
+              {op}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (scope.kind === "raw") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <ScopeLabel>Scope</ScopeLabel>
+        <div className="flex flex-wrap gap-1.5">
+          {scope.items.map((item) => (
+            <ScopeChip key={item}>{item}</ScopeChip>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return <span className="text-muted-foreground text-xs">Full family access</span>;
+}
+
+/** One permission-family consent card: icon, label, risk, scope, grant ids. */
+function GrantFamilyCard({ family }: Readonly<{ family: GrantFamily }>) {
+  const Icon = familyIcon(family.id);
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
+      <div className="flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <Icon className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-foreground text-sm">{family.label}</span>
+            <RiskTag risk={family.risk} />
+          </div>
+          {family.verbs.length > 0 ? (
+            <div className="mt-0.5 text-muted-foreground text-xs">
+              Covers {family.verbs.join(" · ")}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <GrantScopeView scope={family.scope} />
+      <div className="flex flex-wrap gap-x-3 gap-y-1 border-border border-t pt-2.5 font-mono text-[11px] text-muted-foreground/70">
+        {family.grantIds.map((id) => (
+          <span key={id}>{id}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Permissions requested" section. Grants are grouped by permission family
+ * (one family toggle covers all its verbs), with each family's scope made
+ * visible and a per-family risk tag. Hidden when the plugin requests nothing.
+ */
+function PermissionsSection({
+  grants,
+  grantKeys,
+}: Readonly<{ grants: PluginDetail["grants"]; grantKeys: string[] }>) {
+  if (grantKeys.length === 0) return null;
+  const families = groupGrants(grants);
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="font-bold font-heading text-lg tracking-tight">Permissions requested</h2>
+      <div className="flex flex-col gap-2.5">
+        {families.map((family) => (
+          <GrantFamilyCard key={family.id} family={family} />
+        ))}
+      </div>
+      <p className="flex items-start gap-2 text-muted-foreground text-xs leading-relaxed">
+        <Lock className="mt-0.5 size-3.5 shrink-0" />
+        Consent is granted per family and revocable at any time from your hub. Every grant call is
+        recorded in the audit log, with secrets and request bodies redacted.
+      </p>
+    </section>
+  );
+}
+
+/** External links card (repository / homepage / npm); hidden without a repo or homepage. */
+function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
+  if (!detail.repository && !detail.homepage) return null;
+  return (
+    <Card className="flex flex-col gap-2.5 p-4">
+      {detail.repository ? (
+        <MetaLink href={detail.repository} icon={<GithubIcon className="size-4" />}>
+          Repository
+        </MetaLink>
+      ) : null}
+      {detail.homepage ? (
+        <MetaLink href={detail.homepage} icon={<Link2 className="size-4" />}>
+          Homepage
+        </MetaLink>
+      ) : null}
+      {/* `@brika/*` are hosted on our registry, not npm, so no npm link for them. */}
+      {isRegistryName(detail.name) ? null : (
+        <MetaLink
+          href={`https://www.npmjs.com/package/${detail.name}`}
+          icon={<Box className="size-4" />}
+        >
+          npm package
+        </MetaLink>
+      )}
+    </Card>
+  );
+}
+
+/** Author profile card; hidden when the plugin has no resolved author. */
+function SidebarAuthor({ detail }: Readonly<{ detail: PluginDetail }>) {
+  if (!detail.author) return null;
+  return (
+    <Card interactive className="p-0">
+      <Link
+        to="/developers/$id"
+        params={{ id: detail.author.id }}
+        className="flex items-center gap-3 p-4"
+      >
+        <GradientAvatar
+          seed={detail.author.id}
+          label={detail.author.name ?? detail.author.id}
+          size={42}
+          className="rounded-[11px]"
+        />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate font-semibold text-foreground text-sm">
+              {detail.author.id}
+            </span>
+            {detail.verified ? <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" /> : null}
+          </div>
+          <div className="text-muted-foreground text-xs">View profile</div>
+        </div>
+      </Link>
+    </Card>
+  );
+}
+
+/** Keyword chips; hidden when the plugin declares no keywords. */
+function SidebarKeywords({ keywords }: Readonly<{ keywords: string[] }>) {
+  if (keywords.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
+        Keywords
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {keywords.slice(0, 8).map((keyword) => (
+          <Badge key={keyword} asChild variant="secondary">
+            <Link to="/plugins" search={{ q: keyword }}>
+              {keyword}
+            </Link>
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A label/value row in the provenance grid; value may be a link. */
+function ProvenanceRow({
+  label,
+  href,
+  children,
+}: Readonly<{ label: string; href?: string; children: ReactNode }>) {
+  const value = href ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="truncate font-mono text-brand text-xs underline decoration-1 underline-offset-2"
+    >
+      {children}
+    </a>
+  ) : (
+    <span className="truncate font-mono text-foreground text-xs">{children}</span>
+  );
+  return (
+    <>
+      <span className="font-semibold text-foreground text-xs">{label}</span>
+      {value}
+    </>
+  );
+}
+
+/** The repo path from a GitHub OIDC `workflow_ref` (`owner/repo/<path>@ref`). */
+function workflowPath(workflowRef: string): string {
+  const beforeRef = workflowRef.split("@")[0] ?? workflowRef;
+  const parts = beforeRef.split("/");
+  return parts.length > 2 ? parts.slice(2).join("/") : beforeRef;
+}
+
+/** Built-from-CI block, anchored on the verified OIDC token (cannot be forged). */
+function ProvenanceBlock({ provenance }: Readonly<{ provenance: PluginDetail["provenance"] }>) {
+  if (provenance === undefined) return null;
+  const { repository, sha, ref, workflowRef, runId } = provenance;
+  const repoUrl = `https://github.com/${repository}`;
+  return (
+    <div className="grid grid-cols-[auto_1fr] items-start gap-x-7 gap-y-4 rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-col gap-1.5">
+        <span className="text-muted-foreground text-xs">Built and signed on</span>
+        <span className="inline-flex items-center gap-2 font-bold font-heading text-base text-foreground">
+          <ShieldCheck className="size-4 text-emerald-500" />
+          GitHub Actions
+        </span>
+        {runId ? (
+          <a
+            href={`${repoUrl}/actions/runs/${runId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-foreground text-xs underline underline-offset-2"
+          >
+            View build summary
+          </a>
+        ) : null}
+      </div>
+      <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2.5">
+        <ProvenanceRow label="Source Commit" href={sha ? `${repoUrl}/commit/${sha}` : repoUrl}>
+          github.com/{repository}
+          {sha ? `@${sha.slice(0, 7)}` : ""}
+        </ProvenanceRow>
+        {workflowRef ? (
+          <ProvenanceRow
+            label="Build File"
+            href={
+              ref
+                ? `${repoUrl}/blob/${ref.replace("refs/heads/", "")}/${workflowPath(workflowRef)}`
+                : repoUrl
+            }
+          >
+            {workflowPath(workflowRef)}
+          </ProvenanceRow>
+        ) : null}
+        {provenance.transparencyLog ? (
+          <ProvenanceRow label="Public Ledger" href={provenance.transparencyLog.logUrl}>
+            Transparency log entry
+          </ProvenanceRow>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Main-column "Integrity & provenance" section (npm-style): the tarball's SHA-512
+ * Subresource Integrity (with a copy button) plus, for CI-published versions, the
+ * build provenance derived from the verified GitHub OIDC token.
+ */
+function IntegrityProvenanceSection({
+  integrity,
+  provenance,
+  size,
+  unpackedSize,
+  fileCount,
+}: Readonly<{
+  integrity: string;
+  provenance: PluginDetail["provenance"];
+  size?: number;
+  unpackedSize?: number;
+  fileCount?: number;
+}>) {
+  const digestSize = unpackedSize ?? size;
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
+        <ShieldCheck className="size-4 text-emerald-500" />
+        Integrity &amp; provenance
+      </h2>
+      <p className="text-muted-foreground text-sm leading-relaxed">
+        {provenance
+          ? "This package was built and signed in a public CI run. The integrity hash lets your hub verify the download has not been tampered with."
+          : "The integrity hash lets your hub verify the download has not been tampered with. A published version is immutable, and bun pins this hash in your lockfile."}
+      </p>
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="min-w-16 font-semibold text-muted-foreground text-xs">Integrity</span>
+          <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-muted px-2.5 py-1.5 font-mono text-foreground text-xs">
+            {integrity}
+          </code>
+          <CopyButton value={integrity} />
+        </div>
+        {digestSize === undefined ? null : (
+          <>
+            <Separator />
+            <div className="flex items-center gap-2.5">
+              <span className="min-w-16 font-semibold text-muted-foreground text-xs">Digest</span>
+              <span className="font-mono text-foreground text-xs">
+                tarball · {formatBytes(digestSize)}
+                {fileCount === undefined ? "" : ` · ${fileCount} files`}
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+      <ProvenanceBlock provenance={provenance} />
+    </section>
+  );
+}
+
+/** Running total of a per-day series, as the `{ts, value}` points the Chart plots. */
+function cumulativePoints(series: number[]): { ts: number; value: number }[] {
+  let sum = 0;
+  return series.map((value, index) => {
+    sum += value;
+    return { ts: index, value: sum };
+  });
+}
+
+/** Short "Mon YYYY" label for the chart footer, from an ISO publish date. */
+function sinceLabel(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "short" });
+}
+
+/** Week-over-week install trend (%): last 7 days vs the prior 7. */
+function weekTrend(series: number[]): number {
+  const n = series.length;
+  const sum = (from: number, to: number) =>
+    series.slice(Math.max(0, from), Math.max(0, to)).reduce((a, b) => a + b, 0);
+  const recent = sum(n - 7, n);
+  const prior = sum(n - 14, n - 7);
+  if (prior === 0) return recent > 0 ? 100 : 0;
+  return Math.round(((recent - prior) / prior) * 100);
+}
+
+/** Green/red trend pill with a directional arrow, matching the design. */
+function TrendPill({ trend }: Readonly<{ trend: number }>) {
+  const up = trend >= 0;
+  return (
+    <span
+      className={
+        up
+          ? "inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 font-semibold text-emerald-600 text-xs dark:text-emerald-400"
+          : "inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 font-semibold text-rose-600 text-xs dark:text-rose-400"
+      }
+    >
+      {up ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
+      {trend}%
+    </span>
+  );
+}
+
+/**
+ * Total-downloads card with a real install trend, drawn with the Clay chart kit.
+ * Shown only when the registry has install history (npm carries no per-day series).
+ */
+function DownloadsCard({
+  installs,
+  weekly,
+  series,
+  since,
+}: Readonly<{ installs: number; weekly: number; series: number[]; since?: string }>) {
+  const trend = weekTrend(series);
+  return (
+    <Card className="flex flex-col gap-3 p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
+            Total downloads
+          </span>
+          <span className="font-bold font-heading text-2xl text-foreground leading-tight">
+            {formatCount(installs)}
+          </span>
+        </div>
+        {trend === 0 ? null : <TrendPill trend={trend} />}
+      </div>
+      <div className="h-24">
+        <Chart
+          data={cumulativePoints(series)}
+          color="var(--color-brand)"
+          formatValue={formatCount}
+          formatX={(ts) => `Day ${Math.round(ts) + 1}`}
+        />
+      </div>
+      <div className="flex justify-between font-mono text-muted-foreground text-xs">
+        <span>{formatCount(weekly)} this week</span>
+        <span>{since ? `since ${since}` : "last 30 days"}</span>
+      </div>
+    </Card>
+  );
+}
+
+/** Sticky meta sidebar: install trend, the meta card, links, author, keywords. */
+function DetailSidebar({
+  detail,
+  displayLocales,
+  downloadsSeries,
+}: Readonly<{ detail: PluginDetail; displayLocales: string[]; downloadsSeries: number[] }>) {
+  const hasTrend = downloadsSeries.some((value) => value > 0);
+  return (
+    <aside className="flex flex-col gap-4 lg:sticky lg:top-20">
+      {hasTrend ? (
+        <DownloadsCard
+          installs={detail.installs ?? 0}
+          weekly={detail.downloadsWeekly}
+          series={downloadsSeries}
+          since={detail.publishedAt ? sinceLabel(detail.publishedAt) : undefined}
+        />
+      ) : null}
+
+      <Card className="flex flex-col gap-2.5 p-4 text-sm">
+        <MetaRow label="Version" value={detail.version} mono />
+        {detail.updatedAt ? <MetaRow label="Updated" value={formatDate(detail.updatedAt)} /> : null}
+        {detail.publishedAt ? (
+          <MetaRow label="Published" value={formatDate(detail.publishedAt)} />
+        ) : null}
+        {detail.license ? <MetaRow label="License" value={detail.license} /> : null}
+        <MetaRow label="Brika engine" value={detail.brikaEngine} mono />
+        {displayLocales.length > 0 ? (
+          <MetaRow label="Languages" value={String(displayLocales.length)} mono />
+        ) : null}
+        {detail.provenance ? (
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Provenance</span>
+            <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400">
+              <BadgeCheck className="size-4" />
+              Signed
+            </span>
+          </div>
+        ) : null}
+        {detail.unpackedSize !== undefined || detail.size !== undefined ? (
+          <MetaRow
+            label="Unpacked size"
+            value={formatBytes(detail.unpackedSize ?? detail.size ?? 0)}
+            mono
+          />
+        ) : null}
+      </Card>
+
+      <SidebarLinks detail={detail} />
+      <SidebarAuthor detail={detail} />
+      <SidebarKeywords keywords={detail.keywords} />
+    </aside>
+  );
+}
+
+/**
+ * The Overview tab's main column: the readable intro only, so it is no longer a
+ * giant scroll. Screenshots, Capabilities, Languages, and About. The heavier
+ * reference sections live in the Permissions and Supply chain tabs.
+ */
+function OverviewPanel({
+  detail,
+  readme,
+  displayLocales,
+}: Readonly<{
+  detail: PluginDetail;
+  readme: string | null;
+  displayLocales: string[];
+}>) {
+  const screenshotCount = detail.screenshots.length;
+  return (
+    <TabsContent value="overview" className="mt-0 flex flex-col gap-7">
+      {screenshotCount > 0 ? (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold font-heading text-lg tracking-tight">Screenshots</h2>
+            <span className="text-muted-foreground text-xs">{screenshotCount} images</span>
+          </div>
+          <ScreenshotPanels
+            images={detail.screenshots.map((shot) => shot.url)}
+            seed={detail.name}
+          />
+        </section>
+      ) : null}
+
+      {detail.capabilities ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-bold font-heading text-lg tracking-tight">Capabilities</h2>
+          <CapabilityChips capabilities={detail.capabilities} />
+        </section>
+      ) : null}
+
+      <LocalizationSection displayLocales={displayLocales} />
+
+      {readme ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-bold font-heading text-lg tracking-tight">About</h2>
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <Markdown>{readme}</Markdown>
+          </div>
+        </section>
+      ) : null}
+    </TabsContent>
+  );
+}
+
+/** The Permissions tab: the grant-families section on its own. */
+function PermissionsPanel({
+  detail,
+  grantKeys,
+}: Readonly<{ detail: PluginDetail; grantKeys: string[] }>) {
+  return (
+    <TabsContent value="permissions" className="mt-0 flex flex-col gap-7">
+      {grantKeys.length > 0 ? (
+        <PermissionsSection grants={detail.grants} grantKeys={grantKeys} />
+      ) : (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-bold font-heading text-lg tracking-tight">Permissions requested</h2>
+          <p className="text-muted-foreground text-sm">
+            This plugin requests no permissions. It runs fully sandboxed, with no network, secret,
+            or filesystem access.
+          </p>
+        </section>
+      )}
+    </TabsContent>
+  );
+}
+
+/** The Supply chain tab: integrity &amp; provenance, dependencies, and files together. */
+function SupplyChainPanel({ detail }: Readonly<{ detail: PluginDetail }>) {
+  const tarballName = `${detail.name.split("/").pop() ?? detail.name}-${detail.version}.tgz`;
+  return (
+    <TabsContent value="supply-chain" className="mt-0 flex flex-col gap-7">
+      {detail.integrity ? (
+        <IntegrityProvenanceSection
+          integrity={detail.integrity}
+          provenance={detail.provenance}
+          size={detail.size}
+          unpackedSize={detail.unpackedSize}
+          fileCount={detail.fileCount}
+        />
+      ) : null}
+
+      <DependenciesSection
+        dependencies={detail.dependencies}
+        peerDependencies={detail.peerDependencies}
+        devDependencies={detail.devDependencies}
+        brikaEngine={detail.brikaEngine}
+      />
+
+      {/* The file browser is only for our own tarballs (registry plugins); it
+          fetches the file list lazily on mount. */}
+      {isRegistryName(detail.name) ? (
+        <FilesSection
+          name={detail.name}
+          version={detail.version}
+          tarballName={tarballName}
+          tarballUrl={detail.tarballUrl}
+          fileCount={detail.fileCount}
+          unpackedSize={detail.unpackedSize}
+        />
+      ) : null}
+    </TabsContent>
+  );
+}
+
+/**
+ * Live review/comment counts for the tab badges, from the real `/v1` D1-backed
+ * endpoints. Fetched client-side so the badges are independent of which tab is
+ * mounted; zero until the data loads (and zero when there genuinely are none).
+ */
+function useSocialCounts(name: string | undefined): { reviews: number; comments: number } {
+  const [apiReviews, setApiReviews] = useState(0);
+  const [apiComments, setApiComments] = useState(0);
+  useEffect(() => {
+    if (name === undefined) return;
+    const enc = encodeURIComponent(name);
+    const grab = (path: string, set: (n: number) => void) =>
+      fetch(`/v1/plugins/${enc}/${path}`)
+        .then((res) => res.json())
+        .then((json: unknown) => {
+          if (Array.isArray(json)) set(json.length);
+        })
+        .catch(() => undefined);
+    grab("reviews", setApiReviews);
+    grab("comments", setApiComments);
+  }, [name]);
+  return { reviews: apiReviews, comments: apiComments };
+}
+
+function PluginDetailPage() {
+  const data = Route.useLoaderData();
+  const { lang, tab } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const activeTab: DetailTab = tab ?? "overview";
+  const counts = useSocialCounts(data?.detail.name);
+
+  if (data === null) {
+    return <NotFoundPage />;
+  }
+
+  const onTab = (next: string) => {
+    navigate({
+      // Keep Overview out of the URL for a clean default; replace so tab clicks
+      // don't pile up in history (the back button leaves the page, not steps tabs).
+      search: (prev) => ({ ...prev, tab: next === "overview" ? undefined : (next as DetailTab) }),
+      replace: true,
+    });
+  };
+
+  const { detail, readme, versions, readmeLocales } = data;
+  const activeLocale = lang ?? (readmeLocales.includes("en") ? "en" : (readmeLocales[0] ?? "en"));
+  // Every section renders real data: the plugin's actual locales + screenshots, and
+  // live reviews/comments from D1 (empty states until written).
+  const displayLocales = readmeLocales;
+  const grantKeys = Object.keys(detail.grants);
+  const tabCounts: Partial<Record<DetailTab, number>> = {
+    reviews: counts.reviews,
+    discussion: counts.comments,
+  };
+
+  return (
+    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10">
+      <DetailBreadcrumb
+        name={detail.name}
+        readmeLocales={readmeLocales}
+        activeLocale={activeLocale}
+      />
+
+      <DetailHeader detail={detail} displayLocales={displayLocales} />
+
+      <InstallCommand id="install" command={`brika install ${detail.name}`} />
+
+      <Tabs value={activeTab} onValueChange={onTab}>
+        <TabsList variant="line">
+          {DETAIL_TABS.map(({ id, label }) => {
+            const count = tabCounts[id];
+            return (
+              <TabsTrigger key={id} value={id}>
+                {label}
+                {count ? (
+                  <span className="ml-1.5 font-mono text-[11px] text-muted-foreground/70">
+                    {formatCount(count)}
+                  </span>
+                ) : null}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+
+        <div className="mt-6 grid gap-7 lg:grid-cols-[1fr_290px] lg:items-start">
+          {/* main column: the active tab's panel; the sidebar persists across tabs */}
+          <div className="flex min-w-0 flex-col gap-7">
+            <OverviewPanel detail={detail} readme={readme} displayLocales={displayLocales} />
+
+            <PermissionsPanel detail={detail} grantKeys={grantKeys} />
+
+            <SupplyChainPanel detail={detail} />
+
+            <TabsContent value="versions" className="mt-0">
+              <section className="flex flex-col gap-3">
+                <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
+                  <Clock className="size-4 text-muted-foreground" />
+                  Changelog
+                </h2>
+                {versions.length > 0 ? (
+                  <Changelog versions={versions} />
+                ) : (
+                  <p className="text-muted-foreground text-sm">No release history yet.</p>
+                )}
+              </section>
+            </TabsContent>
+
+            <TabsContent value="reviews" className="mt-0">
+              <ReviewsSection pluginName={detail.name} fallback={[]} />
+            </TabsContent>
+
+            <TabsContent value="discussion" className="mt-0">
+              <CommentsSection pluginName={detail.name} fallback={[]} />
+            </TabsContent>
+          </div>
+
+          <DetailSidebar
+            detail={detail}
+            displayLocales={displayLocales}
+            downloadsSeries={data.downloadsSeries}
+          />
+        </div>
+      </Tabs>
+    </main>
+  );
+}
+
+function MetaRow({
+  label,
+  value,
+  mono,
+}: Readonly<{ label: string; value: string; mono?: boolean }>) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={
+          mono ? "font-semibold font-mono text-foreground" : "font-semibold text-foreground"
+        }
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function MetaLink({
+  href,
+  icon,
+  children,
+}: Readonly<{ href: string; icon: ReactNode; children: ReactNode }>) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-2.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
+    >
+      <span className="text-muted-foreground">{icon}</span>
+      {children}
+      <ExternalLink className="ml-auto size-3.5 text-muted-foreground/60" />
+    </a>
+  );
+}
+
+function AddToHubButton({ command }: Readonly<{ command: string }>) {
+  const [copied, setCopied] = useState(false);
+  async function add() {
+    await navigator.clipboard.writeText(command);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+  return (
+    <button
+      type="button"
+      onClick={add}
+      className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 font-semibold text-brand-foreground shadow-[0_8px_20px_-8px_rgba(242,84,45,0.55)] transition-opacity hover:opacity-90"
+    >
+      {copied ? <Check className="size-4" /> : <Plus className="size-4" />}
+      {copied ? "Copied install" : "Add to hub"}
+    </button>
+  );
+}
