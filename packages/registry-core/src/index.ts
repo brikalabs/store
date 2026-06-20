@@ -33,8 +33,8 @@ export { sha1Hex, sha512Integrity } from "./integrity";
 export { displayNameSchema, hasUnsafeLabelChars } from "./labels";
 export { REGISTRY_LIMITS, type RegistryLimits } from "./limits";
 export { ManagementService, type ManageResult, type VersionManager } from "./manage";
-export type { MemberRef, OrgMember, OrgMembers, OrgRole } from "./membership";
-export { isCanonicalName, isCanonicalOrgSlug, isCanonicalScope, scopeOf } from "./names";
+export type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
+export { isCanonicalName, isCanonicalScope, scopeOf } from "./names";
 export {
   BaseClaims,
   GITHUB_ISSUER,
@@ -54,22 +54,6 @@ export {
 } from "./oidc";
 export { isOperator, operatorKey, parseOperatorAdmins } from "./operators";
 export {
-  type ClaimVerifier,
-  type DnsResolver,
-  type DomainChallenge,
-  domainChallengeHost,
-  type OrgDomainRecord,
-  type OrgDomains,
-  type OrgPublic,
-  type OrgRecord,
-  type OrgResult,
-  type OrgScopedDomain,
-  type OrgScopes,
-  OrgService,
-  type OrgServiceOptions,
-  type OrgStore,
-} from "./org";
-export {
   type AbbreviatedPackument,
   buildAbbreviatedPackument,
   buildPackument,
@@ -82,12 +66,12 @@ export {
 } from "./packument";
 export type { MetadataReader, TarballReader } from "./ports";
 export {
-  type OrgLink,
-  type OrgProfileInput,
-  orgDescriptionSchema,
-  orgDomainSchema,
-  orgLinkSchema,
-  orgLinksSchema,
+  type ScopeLink,
+  type ScopeProfileInput,
+  scopeDescriptionSchema,
+  scopeDomainSchema,
+  scopeLinkSchema,
+  scopeLinksSchema,
 } from "./profile";
 export {
   type CommitVersionInput,
@@ -104,6 +88,21 @@ export {
   type TarballWriter,
 } from "./publish";
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
+export {
+  type ClaimVerifier,
+  type DnsResolver,
+  type DomainChallenge,
+  domainChallengeHost,
+  type ScopeDomainRecord,
+  type ScopeDomains,
+  type ScopePublic,
+  type ScopeRecord,
+  type ScopeResult,
+  type ScopeScopedDomain,
+  ScopeService,
+  type ScopeServiceOptions,
+  type ScopeStore,
+} from "./scope";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export type { TokenPrincipal, TokenStore } from "./tokens";
 export {

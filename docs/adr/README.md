@@ -11,7 +11,7 @@ ADRs explain why the shape is what it is.
 
 | # | Title | Status | Date |
 | --- | --- | --- | --- |
-| [0001](./0001-organisation-1n-model.md) | Organisation entity owning many scopes (1:N) | Accepted | 2026-06-20 |
+| [0001](./0001-organisation-1n-model.md) | Organisation entity owning many scopes (1:N) | Superseded (org->scope merge) | 2026-06-20 |
 | [0002](./0002-web-app-file-architecture.md) | apps/web file architecture (layered, alias-based) | Accepted | 2026-06-20 |
 
 ## Adding an ADR

@@ -22,7 +22,7 @@ import { developers, plugins, users } from "@/server/db/schema";
 
 /** In-memory SQLite from the shipped migrations (see social.test.ts). */
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../drizzle");
-const MIGRATIONS = ["0000_abandoned_bloodscream.sql", "0001_overrated_wild_child.sql"];
+const MIGRATIONS = ["0000_parched_sauron.sql"];
 
 function makeDb(): Db {
   const sqlite = new Database(":memory:");
@@ -70,7 +70,7 @@ describe("markDeveloperVerified", () => {
 describe("ensurePluginCached", () => {
   const NAME = "@brika/plugin-demo";
   // The registry packument; the version manifest carries the Brika engine + display name,
-  // and the publisher (owning org) becomes the cached plugin's author/developer.
+  // and the publisher (the scope) becomes the cached plugin's author/developer.
   const packument = {
     name: NAME,
     "dist-tags": { latest: "1.0.0" },

@@ -1,27 +1,30 @@
 ---
 id: ORG-001
 title: "Organisation is the ownership entity (rename of \"scope\")"
-status: done
+status: gone
 area: org
 group: org
 test_mode: unit
 traceability:
   code:
-    - packages/registry-core/src/org.ts
-    - packages/registry-core/src/membership.ts
-    - packages/db/src/adapters/d1-org-store.ts
-    - apps/registry/src/controllers/org.ts
+    - packages/registry-core/src/scope.ts
   tests:
-    - packages/registry-core/src/org.test.ts
-    - apps/registry/src/controllers/handlers.test.ts
+    - packages/registry-core/src/scope.test.ts
 ---
 
 ## Description
 
-The membership/ownership entity is named **organisation** across domain, storage,
-registry management API, and console. The word "scope" is retained ONLY for the
-npm namespace string an org owns (resolve/publish/packument/`isCanonicalScope`),
-which is npm protocol.
+> **Superseded by the org->scope merge:** the separate "organisation" layer was
+> collapsed back into the scope. The **scope (`@brika`) is the ownership entity
+> itself** (npm/JSR model) - there is no distinct org entity to rename `scope` into,
+> so this spec no longer describes anything real. Ownership + membership live directly
+> on the scope (`ScopeService`, `reg_scopes`, `reg_scope_members`). See
+> [ADR 0001](../../adr/0001-organisation-1n-model.md) for the reversal. Retained for
+> history; coverage-exempt.
+
+This spec proposed renaming the ownership/membership entity to **organisation**,
+keeping "scope" only for the npm namespace string. That distinction is gone: the
+scope is the account.
 
 ## Acceptance criteria
 

@@ -10,20 +10,17 @@ export { D1DeviceStore } from "./d1-device";
 export { D1DownloadStore } from "./d1-downloads";
 export { D1MetadataReader } from "./d1-metadata";
 export { D1MetadataWriter } from "./d1-metadata-writer";
-export { D1OrgDomains } from "./d1-org-domains";
-export { D1OrgMembers } from "./d1-org-members";
-export { D1OrgScopes } from "./d1-org-scopes";
-export { D1OrgStore } from "./d1-org-store";
 export { D1OwnershipPolicy } from "./d1-ownership";
+export { D1ScopeDomains } from "./d1-scope-domains";
+export { D1ScopeMembers } from "./d1-scope-members";
+export { D1ScopeStore } from "./d1-scope-store";
 export { D1TrustedPublishers } from "./d1-trusted-publishers";
 export { CloudflareDohResolver } from "./doh-resolver";
 export { HmacDomainChallenge } from "./hmac-domain-challenge";
 export {
   listAllPackages,
-  listOrgsForMember,
   listScopesForMember,
   listSubjectTokens,
-  type MemberOrg,
   type MemberScope,
   type OperatorPackage,
   revokeTokenByHash,

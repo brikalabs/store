@@ -1,1 +1,0 @@
-ALTER TABLE `reg_scopes` ADD `display_name` text;

@@ -13,7 +13,7 @@ import { D1MetadataReader } from "./d1-metadata";
 let db: Db;
 beforeEach(async () => {
   db = makeDb();
-  await db.insert(regScopes).values({ scope: "@brika", ownerId: "octocat" });
+  await db.insert(regScopes).values({ scope: "@brika", displayName: "Brika Labs" });
 });
 
 describe("D1MetadataReader.getPackage", () => {
@@ -70,6 +70,9 @@ describe("D1MetadataReader.getPackage", () => {
     expect(v11?.deprecated).toBe("use 2.x");
     expect(v11?.yanked).toBe(true);
     expect(v11?.provenance).toBeNull();
+
+    // The verified publisher is derived from the owning scope's display name.
+    expect(record?.publisher).toEqual({ id: "@brika", name: "Brika Labs" });
   });
 
   test("coerces a malformed stored provenance to null via .catch(null)", async () => {

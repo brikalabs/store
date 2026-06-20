@@ -11,7 +11,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
-  ensureOrg,
+  ensureScope,
   findLocalD1,
   log,
   mintToken,
@@ -23,15 +23,15 @@ import {
 } from "../scripts/seed-lib";
 
 const EXAMPLES = ["plugin-i18n", "plugin-snapshot", "plugin-clock", "plugin-icon"];
-/** The login that owns the `brika` org in the e2e fixture (admin member). */
+/** The login that owns the `@brika` scope in the e2e fixture (admin member). */
 const SEED_OWNER = "e2e-bot";
 
 /**
- * Set up the `brika` org owning `@brika` (via the shared helper), then clear any
- * trusted-publisher rows so the console e2e (PUB-016) starts from a clean state.
+ * Set up the `@brika` scope (via the shared helper), then clear any trusted-publisher rows so
+ * the console e2e (PUB-016) starts from a clean state.
  */
-function setupBrikaOrg(): void {
-  ensureOrg({ slug: "brika", displayName: "Brika Labs", scope: "@brika", owner: SEED_OWNER });
+function setupBrikaScope(): void {
+  ensureScope({ scope: "@brika", displayName: "Brika Labs", owner: SEED_OWNER });
   const db = new Database(findLocalD1());
   db.run("DELETE FROM reg_trusted_publishers WHERE scope = '@brika'");
   db.close();
@@ -44,8 +44,8 @@ const OPERATOR_USER_ID = "u-operator";
 
 /**
  * Seed the operator console fixtures: a `users` row for the operator (so the signed session
- * cookie resolves to a real user) and a throwaway org `squatter` to take down and restore.
- * The squatter org is deliberately separate from `brika` so the operator e2e never disturbs
+ * cookie resolves to a real user) and a throwaway scope `@squatter` to take down and restore.
+ * The squatter scope is deliberately separate from `@brika` so the operator e2e never disturbs
  * the storefront's public listings. The operator is granted moderation rights out-of-band
  * via `REGISTRY_ADMINS=github:e2e-operator` on the web dev server, not via any DB row.
  */
@@ -56,11 +56,13 @@ function setupOperatorFixtures(): void {
     "INSERT OR REPLACE INTO users (id, github_id, login, name, created_at) VALUES (?, ?, ?, ?, ?)",
     [OPERATOR_USER_ID, 990_001, OPERATOR_LOGIN, "E2E Operator", now],
   );
-  db.run("INSERT OR IGNORE INTO reg_orgs (slug, display_name) VALUES ('squatter', 'Squatter Co')");
+  db.run(
+    "INSERT OR IGNORE INTO reg_scopes (scope, display_name) VALUES ('@squatter', 'Squatter Co')",
+  );
   // Re-activate it if a previous run left it taken down, so the spec starts from a clean state.
-  db.run("UPDATE reg_orgs SET takedown = NULL WHERE slug = 'squatter'");
+  db.run("UPDATE reg_scopes SET takedown = NULL WHERE scope = '@squatter'");
   db.close();
-  log(`set up operator ${OPERATOR_LOGIN} + throwaway org squatter`);
+  log(`set up operator ${OPERATOR_LOGIN} + throwaway scope @squatter`);
 }
 
 /**
@@ -300,7 +302,7 @@ function seedSocial(): void {
 }
 
 await waitForRegistry();
-setupBrikaOrg();
+setupBrikaScope();
 setupOperatorFixtures();
 const token = await mintToken(SEED_OWNER);
 for (const plugin of EXAMPLES) await publish(plugin, token);

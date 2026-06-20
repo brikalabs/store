@@ -1,12 +1,11 @@
 import type { PluginSummary, PluginVersion } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import {
-  getRegistryOrg,
   getRegistryPackument,
   getRegistryPluginPage,
+  getRegistryScope,
   isRegistryName,
   listRegistryPlugins,
-  type RegistryOrg,
   type RegistryPluginPage,
   versionsFromPackument,
 } from "@/lib/registry/registry-source";
@@ -20,7 +19,7 @@ import {
  */
 
 const BROWSE_LIMIT = 12;
-// Upper bound for a scope/org aggregation scan. The hosted catalog is bounded
+// Upper bound for a scope aggregation scan. The hosted catalog is bounded
 // (REGISTRY_LIMITS.maxPackagesPerScope), so one capped read covers every scope.
 const CATALOG_SCAN = 200;
 
@@ -48,51 +47,44 @@ export async function getPluginVersions(name: string): Promise<PluginVersion[] |
 
 export interface ScopePage {
   readonly scope: string;
-  /** The verified publisher's display name (the owning org), when known. */
+  /** The verified publisher's display name, when set (falls back to the scope). */
   readonly displayName: string | null;
   readonly verified: boolean;
+  readonly description: string | null;
+  readonly links: { label: string; url: string }[];
+  readonly hasIcon: boolean;
+  readonly verifiedDomains: string[];
   readonly plugins: PluginSummary[];
 }
 
 /**
- * The public scope page (`/@scope`): every plugin published under a scope, with the
- * scope's verified publisher (its owning org) for the header. Returns null when the
- * scope hosts no listed plugin, so the route 404s. Derived from the same catalog the
- * browse grid reads, so it carries real install counts + integrity.
+ * The public scope page (`/@scope`): the scope's profile (display name, description, links,
+ * icon, verified domains) from the registry's scope entity, plus every plugin published
+ * under it. A scope IS the account, so the header reads off the scope record (ORG-003/009/010).
+ * Returns null when the scope is unknown/taken-down AND hosts no listed plugin, so the route
+ * 404s. The scope-entity fetch and the catalog scan are independent, so they overlap.
  */
 export async function getScopePage(scope: string): Promise<ScopePage | null> {
-  const { plugins: all } = await listRegistryPlugins(undefined, CATALOG_SCAN, 0);
+  const [entity, { plugins: all }] = await Promise.all([
+    getRegistryScope(scope),
+    listRegistryPlugins(undefined, CATALOG_SCAN, 0),
+  ]);
   const plugins = all.filter((plugin) => scopeOf(plugin.name) === scope);
-  if (plugins.length === 0) return null;
+  // 404 only when the scope neither exists as an entity nor hosts a listed plugin.
+  if (entity === null && plugins.length === 0) return null;
+  // The catalog publisher (when present) is the verified attribution; otherwise the
+  // scope entity's own display name. Either way the scope page is a verified surface.
   const publisher = plugins[0]?.author;
   return {
     scope,
-    displayName: publisher?.name ?? null,
-    verified: publisher?.verified ?? false,
+    displayName: entity?.displayName ?? publisher?.name ?? null,
+    verified: entity !== null || (publisher?.verified ?? false),
+    description: entity?.description ?? null,
+    links: entity?.links ?? [],
+    hasIcon: entity?.hasIcon ?? false,
+    verifiedDomains: entity?.verifiedDomains ?? [],
     plugins,
   };
 }
 
-/**
- * The public organisation page (ORG-003): the org's verified display name + the plugins it
- * publishes, aggregated across every scope it owns. Returns null for an unknown org (the
- * route 404s). The catalog already excludes yanked/taken-down versions, so a plugin with no
- * live version drops out of the listing (ORG-003-AC2).
- */
-export async function getOrgPage(
-  slug: string,
-): Promise<{ org: RegistryOrg; plugins: PluginSummary[] } | null> {
-  // The org lookup and the catalog scan are independent, so overlap their round-trips; the
-  // scope filter below only needs the org's scopes once both have resolved.
-  const [org, catalog] = await Promise.all([
-    getRegistryOrg(slug),
-    listRegistryPlugins(undefined, CATALOG_SCAN, 0),
-  ]);
-  if (org === null) return null;
-  const owned = new Set(org.scopes);
-  const mine = catalog.plugins.filter((plugin) => {
-    const scope = scopeOf(plugin.name);
-    return scope !== null && owned.has(scope);
-  });
-  return { org, plugins: mine };
-}
+export type { RegistryScope } from "@/lib/registry/registry-source";

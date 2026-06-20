@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { Db } from "../client";
-import { regOrgs, regScopes } from "../schema";
+import { regScopes } from "../schema";
 import { makeDb } from "../test-harness";
 import { D1TrustedPublishers } from "./d1-trusted-publishers";
 
@@ -9,9 +9,8 @@ let store: D1TrustedPublishers;
 beforeEach(async () => {
   db = makeDb();
   store = new D1TrustedPublishers(db);
-  // A binding's scope FK must exist (reg_scopes -> reg_orgs).
-  await db.insert(regOrgs).values({ slug: "brika" });
-  await db.insert(regScopes).values({ scope: "@brika", orgId: "brika" });
+  // A binding's scope FK must exist (reg_trusted_publishers -> reg_scopes).
+  await db.insert(regScopes).values({ scope: "@brika" });
 });
 
 describe("D1TrustedPublishers", () => {

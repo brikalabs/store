@@ -1,4 +1,4 @@
-import { Box, Building2, KeyRound, LayoutDashboard, type LucideIcon, User } from "lucide-react";
+import { Box, KeyRound, Layers, LayoutDashboard, type LucideIcon, User } from "lucide-react";
 import type { ReactNode } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 
@@ -7,7 +7,7 @@ type NavItem = { label: string; icon: LucideIcon; href?: string };
 const NAV: NavItem[] = [
   { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
   { label: "My plugins", icon: Box, href: "/dashboard/plugins" },
-  { label: "Organisations", icon: Building2, href: "/dashboard/orgs" },
+  { label: "Scopes", icon: Layers, href: "/dashboard/scopes" },
   { label: "Profile", icon: User, href: "/dashboard/profile" },
   { label: "API tokens", icon: KeyRound, href: "/dashboard/account/tokens" },
 ];

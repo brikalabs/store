@@ -1,11 +1,10 @@
-import type { OrgRole } from "@brika/registry-core";
+import type { ScopeRole } from "@brika/registry-core";
 import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "../client";
 import {
   regDistTags,
-  regOrgMembers,
-  regOrgs,
   regPackages,
+  regScopeMembers,
   regScopes,
   regTokens,
   regVersions,
@@ -13,53 +12,24 @@ import {
 
 /**
  * Read-model projections over the `reg_*` tables for the console UIs. These are plain
- * reads (not authorization-bearing use cases, so not domain ports): "the orgs I belong
- * to", "the scopes I can manage", "my tokens", and an ownership-guarded token revoke.
- * They live next to the adapters because they are the same SQL layer, and let the web app
- * avoid hand-writing drizzle.
+ * reads (not authorization-bearing use cases, so not domain ports): "the scopes I can
+ * manage", "my tokens", and an ownership-guarded token revoke. They live next to the
+ * adapters because they are the same SQL layer, and let the web app avoid hand-writing
+ * drizzle.
  */
 
-/** An org a member belongs to, with their role and the org's verified display name. */
-export interface MemberOrg {
-  readonly slug: string;
-  readonly role: OrgRole;
+/** A scope a member can manage (the scope IS the account), with the member's role. */
+export interface MemberScope {
+  readonly scope: string;
+  readonly role: ScopeRole;
+  /** The scope's verified display name (null falls back to the scope). */
   readonly displayName: string | null;
 }
 
-/** Every org `(provider, memberId)` is a member of, with their role, sorted by slug. */
-export async function listOrgsForMember(
-  db: Db,
-  provider: string,
-  memberId: string,
-): Promise<MemberOrg[]> {
-  const rows = await db
-    .select({
-      slug: regOrgMembers.orgSlug,
-      role: regOrgMembers.role,
-      displayName: regOrgs.displayName,
-    })
-    .from(regOrgMembers)
-    .innerJoin(regOrgs, eq(regOrgMembers.orgSlug, regOrgs.slug))
-    .where(and(eq(regOrgMembers.provider, provider), eq(regOrgMembers.memberId, memberId)))
-    .orderBy(regOrgMembers.orgSlug);
-  return rows.map((row) => ({
-    slug: row.slug,
-    role: row.role === "admin" ? "admin" : "member",
-    displayName: row.displayName,
-  }));
-}
-
-/** A scope a member can manage (via the org that owns it), with the member's org role. */
-export interface MemberScope {
-  readonly scope: string;
-  readonly org: string;
-  readonly role: OrgRole;
-}
-
 /**
- * Every npm scope `(provider, memberId)` can manage: the scopes owned by any org they are
- * a member of (1:N), sorted by scope. Used by the storefront to decide whether the signed-
- * in user owns a package's scope (publishing is gated on org membership).
+ * Every scope `(provider, memberId)` can manage: the scopes they are a member of, sorted by
+ * scope. Used by the storefront to decide whether the signed-in user owns a package's scope
+ * (publishing is gated on scope membership).
  */
 export async function listScopesForMember(
   db: Db,
@@ -68,23 +38,23 @@ export async function listScopesForMember(
 ): Promise<MemberScope[]> {
   const rows = await db
     .select({
-      scope: regScopes.scope,
-      org: regOrgMembers.orgSlug,
-      role: regOrgMembers.role,
+      scope: regScopeMembers.scope,
+      role: regScopeMembers.role,
+      displayName: regScopes.displayName,
     })
-    .from(regOrgMembers)
-    .innerJoin(regScopes, eq(regScopes.orgId, regOrgMembers.orgSlug))
-    .where(and(eq(regOrgMembers.provider, provider), eq(regOrgMembers.memberId, memberId)))
-    .orderBy(regScopes.scope);
+    .from(regScopeMembers)
+    .innerJoin(regScopes, eq(regScopes.scope, regScopeMembers.scope))
+    .where(and(eq(regScopeMembers.provider, provider), eq(regScopeMembers.memberId, memberId)))
+    .orderBy(regScopeMembers.scope);
   return rows.map((row) => ({
     scope: row.scope,
-    org: row.org,
     role: row.role === "admin" ? "admin" : "member",
+    displayName: row.displayName,
   }));
 }
 
 /**
- * A package as listed in the operator console directory: its owning org, latest version,
+ * A package as listed in the operator console directory: its owning scope, latest version,
  * and how many of its versions are taken down or yanked. Unlike the public catalog this
  * includes packages with no non-hidden version, so an operator can find and restore a
  * fully-taken-down package.
@@ -92,9 +62,8 @@ export async function listScopesForMember(
 export interface OperatorPackage {
   readonly name: string;
   readonly scope: string | null;
-  /** Owning org slug + display name, or null for an unattached scope. */
-  readonly org: string | null;
-  readonly orgDisplayName: string | null;
+  /** Owning scope's verified display name, or null when the scope is unclaimed. */
+  readonly scopeDisplayName: string | null;
   readonly latestVersion: string | null;
   readonly versionCount: number;
   readonly takenDownCount: number;
@@ -113,12 +82,10 @@ export async function listAllPackages(db: Db): Promise<OperatorPackage[]> {
         name: regPackages.name,
         scope: regPackages.scope,
         createdAt: regPackages.createdAt,
-        org: regScopes.orgId,
-        orgDisplayName: regOrgs.displayName,
+        scopeDisplayName: regScopes.displayName,
       })
       .from(regPackages)
-      .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
-      .leftJoin(regOrgs, eq(regOrgs.slug, regScopes.orgId)),
+      .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope)),
     db
       .select({ name: regDistTags.name, version: regDistTags.version })
       .from(regDistTags)
@@ -148,8 +115,7 @@ export async function listAllPackages(db: Db): Promise<OperatorPackage[]> {
       return {
         name: pkg.name,
         scope: pkg.scope,
-        org: pkg.org,
-        orgDisplayName: pkg.orgDisplayName,
+        scopeDisplayName: pkg.scopeDisplayName,
         latestVersion: latestByName.get(pkg.name) ?? null,
         versionCount: c.total,
         takenDownCount: c.takenDown,
