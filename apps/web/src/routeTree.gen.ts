@@ -75,6 +75,7 @@ import { Route as ApiOperatorOrgsOrgRestoreRouteImport } from './routes/api/oper
 import { Route as V1PluginsNameVVersionChar91indexChar93RouteImport } from './routes/v1/plugins/$name/v/$version/[index]'
 import { Route as V1PluginsNameReviewsReviewIdVoteRouteImport } from './routes/v1/plugins/$name/reviews/$reviewId/vote'
 import { Route as V1PluginsNameCommentsCommentIdVoteRouteImport } from './routes/v1/plugins/$name/comments/$commentId/vote'
+import { Route as ApiOrgsOrgScopesScopeTrustedPublishersRouteImport } from './routes/api/orgs/$org/scopes/$scope/trusted-publishers'
 import { Route as V1PluginsNameVVersionFilesSplatRouteImport } from './routes/v1/plugins/$name/v/$version/files/$'
 
 const OperatorRoute = OperatorRouteImport.update({
@@ -416,6 +417,12 @@ const V1PluginsNameCommentsCommentIdVoteRoute =
     path: '/$commentId/vote',
     getParentRoute: () => V1PluginsNameCommentsRoute,
   } as any)
+const ApiOrgsOrgScopesScopeTrustedPublishersRoute =
+  ApiOrgsOrgScopesScopeTrustedPublishersRouteImport.update({
+    id: '/$scope/trusted-publishers',
+    path: '/$scope/trusted-publishers',
+    getParentRoute: () => ApiOrgsOrgScopesRoute,
+  } as any)
 const V1PluginsNameVVersionFilesSplatRoute =
   V1PluginsNameVVersionFilesSplatRouteImport.update({
     id: '/v/$version/files/$',
@@ -478,7 +485,7 @@ export interface FileRoutesByFullPath {
   '/api/orgs/$org/icon': typeof ApiOrgsOrgIconRoute
   '/api/orgs/$org/members': typeof ApiOrgsOrgMembersRouteWithChildren
   '/api/orgs/$org/profile': typeof ApiOrgsOrgProfileRoute
-  '/api/orgs/$org/scopes': typeof ApiOrgsOrgScopesRoute
+  '/api/orgs/$org/scopes': typeof ApiOrgsOrgScopesRouteWithChildren
   '/api/plugins/$name/listing': typeof ApiPluginsNameListingRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
@@ -487,6 +494,7 @@ export interface FileRoutesByFullPath {
   '/api/operator/orgs/$org/restore': typeof ApiOperatorOrgsOrgRestoreRoute
   '/api/operator/orgs/$org/takedown': typeof ApiOperatorOrgsOrgTakedownRoute
   '/api/orgs/$org/members/$memberId': typeof ApiOrgsOrgMembersMemberIdRoute
+  '/api/orgs/$org/scopes/$scope/trusted-publishers': typeof ApiOrgsOrgScopesScopeTrustedPublishersRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
   '/v1/plugins/$name/v/$version/index': typeof V1PluginsNameVVersionChar91indexChar93Route
@@ -545,7 +553,7 @@ export interface FileRoutesByTo {
   '/api/orgs/$org/icon': typeof ApiOrgsOrgIconRoute
   '/api/orgs/$org/members': typeof ApiOrgsOrgMembersRouteWithChildren
   '/api/orgs/$org/profile': typeof ApiOrgsOrgProfileRoute
-  '/api/orgs/$org/scopes': typeof ApiOrgsOrgScopesRoute
+  '/api/orgs/$org/scopes': typeof ApiOrgsOrgScopesRouteWithChildren
   '/api/plugins/$name/listing': typeof ApiPluginsNameListingRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
@@ -554,6 +562,7 @@ export interface FileRoutesByTo {
   '/api/operator/orgs/$org/restore': typeof ApiOperatorOrgsOrgRestoreRoute
   '/api/operator/orgs/$org/takedown': typeof ApiOperatorOrgsOrgTakedownRoute
   '/api/orgs/$org/members/$memberId': typeof ApiOrgsOrgMembersMemberIdRoute
+  '/api/orgs/$org/scopes/$scope/trusted-publishers': typeof ApiOrgsOrgScopesScopeTrustedPublishersRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
   '/v1/plugins/$name/v/$version/index': typeof V1PluginsNameVVersionChar91indexChar93Route
@@ -615,7 +624,7 @@ export interface FileRoutesById {
   '/api/orgs/$org/icon': typeof ApiOrgsOrgIconRoute
   '/api/orgs/$org/members': typeof ApiOrgsOrgMembersRouteWithChildren
   '/api/orgs/$org/profile': typeof ApiOrgsOrgProfileRoute
-  '/api/orgs/$org/scopes': typeof ApiOrgsOrgScopesRoute
+  '/api/orgs/$org/scopes': typeof ApiOrgsOrgScopesRouteWithChildren
   '/api/plugins/$name/listing': typeof ApiPluginsNameListingRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
@@ -624,6 +633,7 @@ export interface FileRoutesById {
   '/api/operator/orgs/$org/restore': typeof ApiOperatorOrgsOrgRestoreRoute
   '/api/operator/orgs/$org/takedown': typeof ApiOperatorOrgsOrgTakedownRoute
   '/api/orgs/$org/members/$memberId': typeof ApiOrgsOrgMembersMemberIdRoute
+  '/api/orgs/$org/scopes/$scope/trusted-publishers': typeof ApiOrgsOrgScopesScopeTrustedPublishersRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
   '/v1/plugins/$name/v/$version/index': typeof V1PluginsNameVVersionChar91indexChar93Route
@@ -695,6 +705,7 @@ export interface FileRouteTypes {
     | '/api/operator/orgs/$org/restore'
     | '/api/operator/orgs/$org/takedown'
     | '/api/orgs/$org/members/$memberId'
+    | '/api/orgs/$org/scopes/$scope/trusted-publishers'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
     | '/v1/plugins/$name/v/$version/index'
@@ -762,6 +773,7 @@ export interface FileRouteTypes {
     | '/api/operator/orgs/$org/restore'
     | '/api/operator/orgs/$org/takedown'
     | '/api/orgs/$org/members/$memberId'
+    | '/api/orgs/$org/scopes/$scope/trusted-publishers'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
     | '/v1/plugins/$name/v/$version/index'
@@ -831,6 +843,7 @@ export interface FileRouteTypes {
     | '/api/operator/orgs/$org/restore'
     | '/api/operator/orgs/$org/takedown'
     | '/api/orgs/$org/members/$memberId'
+    | '/api/orgs/$org/scopes/$scope/trusted-publishers'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
     | '/v1/plugins/$name/v/$version/index'
@@ -1337,6 +1350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1PluginsNameCommentsCommentIdVoteRouteImport
       parentRoute: typeof V1PluginsNameCommentsRoute
     }
+    '/api/orgs/$org/scopes/$scope/trusted-publishers': {
+      id: '/api/orgs/$org/scopes/$scope/trusted-publishers'
+      path: '/$scope/trusted-publishers'
+      fullPath: '/api/orgs/$org/scopes/$scope/trusted-publishers'
+      preLoaderRoute: typeof ApiOrgsOrgScopesScopeTrustedPublishersRouteImport
+      parentRoute: typeof ApiOrgsOrgScopesRoute
+    }
     '/v1/plugins/$name/v/$version/files/$': {
       id: '/v1/plugins/$name/v/$version/files/$'
       path: '/v/$version/files/$'
@@ -1400,13 +1420,25 @@ const ApiOrgsOrgMembersRouteChildren: ApiOrgsOrgMembersRouteChildren = {
 const ApiOrgsOrgMembersRouteWithChildren =
   ApiOrgsOrgMembersRoute._addFileChildren(ApiOrgsOrgMembersRouteChildren)
 
+interface ApiOrgsOrgScopesRouteChildren {
+  ApiOrgsOrgScopesScopeTrustedPublishersRoute: typeof ApiOrgsOrgScopesScopeTrustedPublishersRoute
+}
+
+const ApiOrgsOrgScopesRouteChildren: ApiOrgsOrgScopesRouteChildren = {
+  ApiOrgsOrgScopesScopeTrustedPublishersRoute:
+    ApiOrgsOrgScopesScopeTrustedPublishersRoute,
+}
+
+const ApiOrgsOrgScopesRouteWithChildren =
+  ApiOrgsOrgScopesRoute._addFileChildren(ApiOrgsOrgScopesRouteChildren)
+
 interface ApiOrgsOrgRouteChildren {
   ApiOrgsOrgDisplayNameRoute: typeof ApiOrgsOrgDisplayNameRoute
   ApiOrgsOrgDomainsRoute: typeof ApiOrgsOrgDomainsRoute
   ApiOrgsOrgIconRoute: typeof ApiOrgsOrgIconRoute
   ApiOrgsOrgMembersRoute: typeof ApiOrgsOrgMembersRouteWithChildren
   ApiOrgsOrgProfileRoute: typeof ApiOrgsOrgProfileRoute
-  ApiOrgsOrgScopesRoute: typeof ApiOrgsOrgScopesRoute
+  ApiOrgsOrgScopesRoute: typeof ApiOrgsOrgScopesRouteWithChildren
 }
 
 const ApiOrgsOrgRouteChildren: ApiOrgsOrgRouteChildren = {
@@ -1415,7 +1447,7 @@ const ApiOrgsOrgRouteChildren: ApiOrgsOrgRouteChildren = {
   ApiOrgsOrgIconRoute: ApiOrgsOrgIconRoute,
   ApiOrgsOrgMembersRoute: ApiOrgsOrgMembersRouteWithChildren,
   ApiOrgsOrgProfileRoute: ApiOrgsOrgProfileRoute,
-  ApiOrgsOrgScopesRoute: ApiOrgsOrgScopesRoute,
+  ApiOrgsOrgScopesRoute: ApiOrgsOrgScopesRouteWithChildren,
 }
 
 const ApiOrgsOrgRouteWithChildren = ApiOrgsOrgRoute._addFileChildren(

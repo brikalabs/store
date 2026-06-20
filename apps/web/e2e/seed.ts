@@ -81,6 +81,15 @@ function setupBrikaOrg(): void {
     [SEED_OWNER],
   );
   db.run("INSERT OR IGNORE INTO reg_scopes (scope, org_id) VALUES ('@brika', 'brika')");
+  // Start each run from a clean trusted-publisher state for the console e2e (PUB-016).
+  db.run("DELETE FROM reg_trusted_publishers WHERE scope = '@brika'");
+  // A `users` row so the console (which resolves the session cookie -> users.id -> login)
+  // can sign in as the org admin for the trusted-publisher e2e. id `u-<login>`.
+  const now = Math.floor(Date.now() / 1000);
+  db.run(
+    "INSERT OR REPLACE INTO users (id, github_id, login, name, created_at) VALUES (?, ?, ?, ?, ?)",
+    [`u-${SEED_OWNER}`, 990_002, SEED_OWNER, "E2E Bot", now],
+  );
   db.close();
   log(`set up org brika (admin ${SEED_OWNER}) owning @brika`);
 }

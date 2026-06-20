@@ -8,6 +8,7 @@ import { LogoCard } from "@/components/org/logo-card";
 import { type Member, MembersCard } from "@/components/org/members-card";
 import { ProfileCard } from "@/components/org/profile-card";
 import { ScopesCard } from "@/components/org/scopes-card";
+import { TrustedPublishersCard } from "@/components/org/trusted-publishers-card";
 import { orgPath, readError } from "@/lib/org-api";
 import { requireUser } from "@/server/require-user";
 
@@ -68,6 +69,7 @@ function OrgDetailPage() {
       {isAdmin && <ProfileCard org={org} onError={setError} />}
       {isAdmin && <DomainsCard org={org} onError={setError} />}
       <ScopesCard org={org} isAdmin={isAdmin} onError={setError} />
+      <TrustedPublishersCard org={org} isAdmin={isAdmin} onError={setError} />
       <MembersCard
         org={org}
         members={members}
