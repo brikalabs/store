@@ -12,7 +12,7 @@ traceability:
     - packages/db/src/adapters/d1-trusted-publishers.ts
     - packages/db/src/adapters/d1-ownership.ts
     - apps/registry/src/controllers/org.ts
-    - apps/registry/src/adapters/gitlab-jwks.ts
+    - apps/registry/src/adapters/jwks.ts
     - apps/cli/src/commands/publish.ts
     - apps/web/src/components/org/trusted-publishers-card.tsx
     - apps/web/src/routes/api/orgs/$org/scopes/$scope/trusted-publishers.ts

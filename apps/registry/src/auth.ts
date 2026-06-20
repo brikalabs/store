@@ -12,8 +12,7 @@ import {
   verifyGitlabOidc,
 } from "@brika/registry-core";
 import { forbidden, type RateLimitKey, unauthorized } from "@brika/router";
-import { GithubJwksProvider } from "./adapters/github-jwks";
-import { GitlabJwksProvider } from "./adapters/gitlab-jwks";
+import { CachingJwksProvider } from "./adapters/jwks";
 import type { Services } from "./services";
 
 /**
@@ -25,8 +24,10 @@ import type { Services } from "./services";
 
 export const AUDIENCE = "brika-registry";
 
-const githubJwks = new GithubJwksProvider();
-const gitlabJwks = new GitlabJwksProvider();
+const githubJwks = new CachingJwksProvider(
+  "https://token.actions.githubusercontent.com/.well-known/jwks",
+);
+const gitlabJwks = new CachingJwksProvider("https://gitlab.com/oauth/discovery/keys");
 
 /**
  * Verify a CI OIDC token against the provider its issuer names (GitHub or GitLab), returning
