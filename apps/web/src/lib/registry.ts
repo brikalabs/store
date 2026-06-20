@@ -4,7 +4,6 @@ import {
   type PluginSummary,
   PluginVersion,
 } from "@brika/registry-contract";
-import { demoDetail, demoProfile, demoSummary } from "./demo";
 import {
   docLocales,
   fetchCdnText,
@@ -55,12 +54,12 @@ export async function searchPlugins(
     }),
   );
   const npmPlugins = details.flatMap((detail) =>
-    detail === null ? [] : [demoSummary(toPluginSummary(detail))],
+    detail === null ? [] : [toPluginSummary(detail)],
   );
 
-  // Registry plugins carry real data (install counts, integrity), so they skip
-  // the demo enrichment; npm plugins keep it as a placeholder until an npm sync +
-  // D1 social tables land (see docs/store-data-sources.md).
+  // npm-federated plugins carry only what npm exposes (no ratings/curation): those
+  // fields stay at their contract defaults (rating undefined, featured false) rather
+  // than being synthesized. Registry plugins carry real install counts + integrity.
   const seen = new Set(registry.plugins.map((plugin) => plugin.name));
   const plugins = [
     ...registry.plugins,
@@ -109,7 +108,7 @@ export async function getPluginPage(
   if (detail === null) return null;
 
   return {
-    detail: demoDetail(detail),
+    detail,
     readme,
     changelog,
     readmeLocales: docLocales(manifest?.readme),
@@ -152,7 +151,7 @@ function versionsFromPackument(pkg: Awaited<ReturnType<typeof getPackument>>): P
  * contexts) it is authoritative, so dashboard edits (bio, display name, website,
  * verification) show publicly. Without it (the isomorphic route loader, which can
  * run in the browser where there is no D1 binding) it falls back to the
- * npm-derived base. Demo enrichment only fills fields the developer has not set.
+ * npm-derived base (id as display name, unverified, no bio until the developer sets one).
  */
 export async function getDeveloperPage(
   id: string,
@@ -162,7 +161,7 @@ export async function getDeveloperPage(
   const base =
     stored ??
     DeveloperProfile.parse({ id, displayName: id, pluginCount: plugins.length, verified: false });
-  const profile = demoProfile({ ...base, pluginCount: plugins.length }, plugins.length);
+  const profile = { ...base, pluginCount: plugins.length };
   return { profile, plugins };
 }
 

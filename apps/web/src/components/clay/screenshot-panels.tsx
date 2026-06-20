@@ -1,23 +1,10 @@
 import { cn } from "@brika/clay";
 import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { useState } from "react";
-import { gradientFor as gradientForSeed, hashString } from "./gradients";
+import { gradientFor as gradientForSeed } from "./gradients";
 import { Image } from "./image";
 
 const MAX_THUMBS = 5;
-
-// @mock: tarball screenshots (manifest assets)
-// Picsum's `/id/N` endpoint serves a specific pre-existing photo (no slow
-// per-seed generation), so deterministic placeholders load quickly.
-function placeholder(seed: string, index: number): string {
-  const id = (hashString(seed) + index * 7) % 1000;
-  return `https://picsum.photos/id/${id}/600/338`;
-}
-
-/** Deterministic number of placeholder screenshots (5..8) for a plugin. */
-export function placeholderShotCount(seed: string): number {
-  return 5 + (hashString(seed) % 4);
-}
 
 function gradientFor(seed: string, index: number): readonly [string, string] {
   return gradientForSeed(`${seed}#${index}`);
@@ -46,21 +33,19 @@ function GradientFallback({
 /**
  * Screenshot gallery: a large featured image with prev/next navigation and a
  * counter, plus a clickable thumbnail strip (lazy-loaded, with gradient
- * fallbacks). Pass real `images`; when none are declared in the manifest,
- * deterministic placeholder photos keep the layout populated. The strip shows
- * the first {@link MAX_THUMBS}; any beyond collapse into a "+N" tile, and every
- * image stays reachable through the arrows.
+ * fallbacks for a broken image URL). Renders only the real `images` declared in
+ * the manifest; renders nothing when there are none. The strip shows the first
+ * {@link MAX_THUMBS}; any beyond collapse into a "+N" tile, and every image stays
+ * reachable through the arrows.
  */
 export function ScreenshotPanels({
   images,
   seed,
-  count,
   className,
-}: Readonly<{ images?: string[]; seed: string; count?: number; className?: string }>) {
-  const total = images && images.length > 0 ? images.length : (count ?? placeholderShotCount(seed));
-  const shots = Array.from({ length: total }, (_, index) => placeholder(seed, index));
-  const urls = images && images.length > 0 ? images : shots;
+}: Readonly<{ images: string[]; seed: string; className?: string }>) {
+  const urls = images;
   const [active, setActive] = useState(0);
+  if (urls.length === 0) return null;
   const safeActive = Math.min(active, urls.length - 1);
   const go = (delta: number) => setActive((urls.length + safeActive + delta) % urls.length);
 

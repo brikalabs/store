@@ -36,7 +36,7 @@ import { CapabilityChips } from "../components/clay/capability-chips";
 import { Changelog } from "../components/clay/changelog";
 import { GithubIcon } from "../components/clay/icons";
 import { GradientAvatar, PluginIcon } from "../components/clay/plugin-icon";
-import { placeholderShotCount, ScreenshotPanels } from "../components/clay/screenshot-panels";
+import { ScreenshotPanels } from "../components/clay/screenshot-panels";
 import { Segmented, segmentClassName } from "../components/clay/segmented";
 import { Stars } from "../components/clay/stars";
 import { CommentsSection } from "../components/comments-section";
@@ -46,10 +46,8 @@ import { FilesSection } from "../components/file-browser";
 import { InstallCommand } from "../components/install-command";
 import { Markdown } from "../components/markdown";
 import { ReviewsSection } from "../components/reviews-section";
-import { demoLocales } from "../lib/demo";
 import { formatBytes, formatCount, formatDate } from "../lib/format";
 import { type GrantFamily, type GrantScope, groupGrants } from "../lib/grants";
-import { mockComments, mockReviews } from "../lib/mock-social";
 import { getPluginPage } from "../lib/registry";
 import { isRegistryName } from "../lib/registry-source";
 
@@ -947,16 +945,12 @@ function OverviewPanel({
   detail,
   readme,
   displayLocales,
-  isRegistry,
 }: Readonly<{
   detail: PluginDetail;
   readme: string | null;
   displayLocales: string[];
-  isRegistry: boolean;
 }>) {
-  const fallbackShotCount =
-    detail.screenshots.length > 0 ? detail.screenshots.length : placeholderShotCount(detail.name);
-  const screenshotCount = isRegistry ? detail.screenshots.length : fallbackShotCount;
+  const screenshotCount = detail.screenshots.length;
   return (
     <TabsContent value="overview" className="mt-0 flex flex-col gap-7">
       {screenshotCount > 0 ? (
@@ -968,7 +962,6 @@ function OverviewPanel({
           <ScreenshotPanels
             images={detail.screenshots.map((shot) => shot.url)}
             seed={detail.name}
-            count={screenshotCount}
           />
         </section>
       ) : null}
@@ -1055,15 +1048,13 @@ function SupplyChainPanel({ detail }: Readonly<{ detail: PluginDetail }>) {
 }
 
 /**
- * Live review/comment counts for the tab badges. Mirrors the sections' rule: the
- * D1 count when non-empty, else the demo fallback (npm placeholders). Fetched
- * client-side so the badges are independent of which tab is mounted.
+ * Live review/comment counts for the tab badges, from the real `/v1` D1-backed
+ * endpoints. Fetched client-side so the badges are independent of which tab is
+ * mounted; zero until the data loads (and zero when there genuinely are none).
  */
 function useSocialCounts(name: string | undefined): { reviews: number; comments: number } {
-  const fallbackReviews = name && !isRegistryName(name) ? mockReviews(name).length : 0;
-  const fallbackComments = name && !isRegistryName(name) ? mockComments(name).length : 0;
-  const [apiReviews, setApiReviews] = useState<number | null>(null);
-  const [apiComments, setApiComments] = useState<number | null>(null);
+  const [apiReviews, setApiReviews] = useState(0);
+  const [apiComments, setApiComments] = useState(0);
   useEffect(() => {
     if (name === undefined) return;
     const enc = encodeURIComponent(name);
@@ -1077,10 +1068,7 @@ function useSocialCounts(name: string | undefined): { reviews: number; comments:
     grab("reviews", setApiReviews);
     grab("comments", setApiComments);
   }, [name]);
-  return {
-    reviews: apiReviews && apiReviews > 0 ? apiReviews : fallbackReviews,
-    comments: apiComments && apiComments > 0 ? apiComments : fallbackComments,
-  };
+  return { reviews: apiReviews, comments: apiComments };
 }
 
 function PluginDetailPage() {
@@ -1105,11 +1093,9 @@ function PluginDetailPage() {
 
   const { detail, readme, versions, readmeLocales } = data;
   const activeLocale = lang ?? (readmeLocales.includes("en") ? "en" : (readmeLocales[0] ?? "en"));
-  // Registry plugins show real data: their actual locales, screenshots, and live
-  // reviews/comments (empty until written). npm plugins keep the demo placeholders
-  // until an npm sync + the D1 social tables land (see docs/store-data-sources.md).
-  const isRegistry = isRegistryName(detail.name);
-  const displayLocales = isRegistry ? readmeLocales : demoLocales(detail.name, readmeLocales);
+  // Every section renders real data: the plugin's actual locales + screenshots, and
+  // live reviews/comments from D1 (empty states until written).
+  const displayLocales = readmeLocales;
   const grantKeys = Object.keys(detail.grants);
   const tabCounts: Partial<Record<DetailTab, number>> = {
     reviews: counts.reviews,
@@ -1148,12 +1134,7 @@ function PluginDetailPage() {
         <div className="mt-6 grid gap-7 lg:grid-cols-[1fr_290px] lg:items-start">
           {/* main column: the active tab's panel; the sidebar persists across tabs */}
           <div className="flex min-w-0 flex-col gap-7">
-            <OverviewPanel
-              detail={detail}
-              readme={readme}
-              displayLocales={displayLocales}
-              isRegistry={isRegistry}
-            />
+            <OverviewPanel detail={detail} readme={readme} displayLocales={displayLocales} />
 
             <PermissionsPanel detail={detail} grantKeys={grantKeys} />
 
@@ -1174,17 +1155,11 @@ function PluginDetailPage() {
             </TabsContent>
 
             <TabsContent value="reviews" className="mt-0">
-              <ReviewsSection
-                pluginName={detail.name}
-                fallback={isRegistry ? [] : mockReviews(detail.name)}
-              />
+              <ReviewsSection pluginName={detail.name} fallback={[]} />
             </TabsContent>
 
             <TabsContent value="discussion" className="mt-0">
-              <CommentsSection
-                pluginName={detail.name}
-                fallback={isRegistry ? [] : mockComments(detail.name)}
-              />
+              <CommentsSection pluginName={detail.name} fallback={[]} />
             </TabsContent>
           </div>
 

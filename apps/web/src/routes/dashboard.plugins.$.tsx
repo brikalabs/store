@@ -16,7 +16,6 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { AdminShell } from "../components/admin-shell";
 import { PluginIcon } from "../components/clay/plugin-icon";
 import { Segmented, segmentClassName } from "../components/clay/segmented";
-import { demoLocales } from "../lib/demo";
 import { getPluginPage } from "../lib/registry";
 import { requireUser } from "../lib/require-user";
 
@@ -66,10 +65,7 @@ function EditListingPage() {
 
   return (
     <AdminShell login={user.login} activeLabel="My plugins">
-      <EditListing
-        detail={data.detail}
-        locales={demoLocales(data.detail.name, data.readmeLocales)}
-      />
+      <EditListing detail={data.detail} locales={data.readmeLocales} />
     </AdminShell>
   );
 }
