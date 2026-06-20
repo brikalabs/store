@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage, BrikaLogo } from "@brika/clay";
 import { Link } from "@tanstack/react-router";
 import { LogIn } from "lucide-react";
-import { type CurrentUser, useCurrentUser } from "@/lib/use-current-user";
+import { type CurrentUser, useCurrentUser } from "@/hooks/use-current-user";
 import { HeaderSearch } from "./header-search";
 import { ThemeToggle } from "./theme-toggle";
 

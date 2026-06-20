@@ -9,7 +9,7 @@ import { NotFoundPage, ServerErrorPage } from "@/components/error-pages";
 import { SearchProvider } from "@/components/search-context";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { themeBootScript } from "@/lib/use-theme";
+import { themeBootScript } from "@/hooks/use-theme";
 import appCss from "@/styles.css?url";
 
 const FONTS_HREF =

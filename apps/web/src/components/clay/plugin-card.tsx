@@ -1,8 +1,8 @@
 import type { PluginSummary } from "@brika/registry-contract";
 import { Link } from "@tanstack/react-router";
 import { Download, ShieldCheck } from "lucide-react";
+import { useIconPalette } from "@/hooks/use-icon-palette";
 import { formatCount } from "@/lib/format";
-import { useIconPalette } from "@/lib/use-icon-palette";
 import { PluginIcon } from "./plugin-icon";
 import { Stars } from "./stars";
 

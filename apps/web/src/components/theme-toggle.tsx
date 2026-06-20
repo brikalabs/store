@@ -1,6 +1,6 @@
 import { cn } from "@brika/clay";
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "@/lib/use-theme";
+import { useTheme } from "@/hooks/use-theme";
 
 /** Sun/moon control that flips the whole app between light and dark. */
 export function ThemeToggle({ className }: Readonly<{ className?: string }>) {
