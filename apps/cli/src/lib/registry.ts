@@ -1,5 +1,5 @@
 import { CliError } from "@brika/cli-kit";
-import type { TransparencyEntry } from "@brika/registry-core";
+import { type TransparencyEntry, trimTrailingSlash } from "@brika/registry-core";
 import { npmLink } from "@brika/router/npm";
 import { z } from "zod";
 
@@ -111,7 +111,7 @@ export class RegistryClient {
   readonly #timeoutMs: number;
 
   constructor(baseUrl: string, options: RegistryClientOptions = {}) {
-    this.#baseUrl = baseUrl.replace(/\/+$/, "");
+    this.#baseUrl = trimTrailingSlash(baseUrl);
     this.#fetch = options.fetch ?? fetch;
     this.#timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }

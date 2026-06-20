@@ -1,5 +1,4 @@
 /** JSON helpers for the `/v1` contract handlers. */
-import type { OrgErrorCode } from "@brika/registry-core";
 
 export function jsonOk(data: unknown): Response {
   return Response.json(data, { headers: { "cache-control": "public, max-age=300" } });
@@ -30,20 +29,7 @@ export function jsonPrivate(data: unknown, status = 200): Response {
   return Response.json(data, { status, headers: { "cache-control": "no-store" } });
 }
 
-/** JSON error at an arbitrary status (e.g. from an `orgStatus`/`manageStatus` mapping). */
+/** JSON error at an arbitrary status (e.g. a domain result's `status`). */
 export function jsonError(status: number, message: string): Response {
   return Response.json({ error: message }, { status });
-}
-
-/** Map a registry-core `OrgResult` error code to its HTTP status. */
-export function orgStatus(code: OrgErrorCode): number {
-  if (code === "not_found") return 404;
-  if (code === "conflict") return 409;
-  if (code === "too_many") return 429;
-  return 403;
-}
-
-/** Map a registry-core `ManageResult` error code to its HTTP status. */
-export function manageStatus(code: "forbidden" | "not_found"): number {
-  return code === "not_found" ? 404 : 403;
 }

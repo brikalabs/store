@@ -38,7 +38,7 @@ Largely built. Remaining:
   pending a pick, then carry the chosen layout across browse / detail / profile /
   dashboard and remove the dev toggle.
 - ✅ **Console management**: a server-side auth guard plus scope claiming, scope
-  member/role management (JSR-style, last-admin guarded), the verified-publisher
+  member/role management (last-admin guarded), the verified-publisher
   display name, per-version deprecate/yank, and publish-token issue/revoke - all by
   reusing the registry domain (`ScopeService`/`ManagementService`/`TokenStore`) against
   the shared D1 (the registry's pure D1 adapters now live in `@brika/store-db/adapters`).

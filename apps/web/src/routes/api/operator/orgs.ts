@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { jsonPrivate } from "@/lib/http";
-import { operatorAuthed } from "@/server/console-api";
+import { operatorAuthed, runJson } from "@/server/console-api";
 
 /**
  * `GET /api/operator/orgs` - every organisation with its takedown state, for the operator
@@ -9,16 +9,16 @@ import { operatorAuthed } from "@/server/console-api";
 export const Route = createFileRoute("/api/operator/orgs")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        const a = await operatorAuthed(request);
-        if ("response" in a) return a.response;
-        const orgs = (await a.svc.orgs.listForOperator()).map((o) => ({
-          slug: o.slug,
-          displayName: o.displayName,
-          takedown: o.takedown,
-        }));
-        return jsonPrivate({ orgs });
-      },
+      GET: ({ request }) =>
+        runJson(async () => {
+          const a = await operatorAuthed(request);
+          const orgs = (await a.svc.orgs.listForOperator()).map((o) => ({
+            slug: o.slug,
+            displayName: o.displayName,
+            takedown: o.takedown,
+          }));
+          return jsonPrivate({ orgs });
+        }),
     },
   },
 });

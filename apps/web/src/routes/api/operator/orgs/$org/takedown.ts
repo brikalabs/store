@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonBadRequest, jsonError, jsonPrivate, orgStatus } from "@/lib/http";
-import { operatorAuthed } from "@/server/console-api";
+import { jsonPrivate } from "@/lib/http";
+import { operatorAuthed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const Body = z.object({ reason: z.string().min(1).max(1024) });
 
@@ -12,22 +12,20 @@ const Body = z.object({ reason: z.string().min(1).max(1024) });
 export const Route = createFileRoute("/api/operator/orgs/$org/takedown")({
   server: {
     handlers: {
-      POST: async ({ request, params }) => {
-        const a = await operatorAuthed(request);
-        if ("response" in a) return a.response;
-        const parsed = Body.safeParse(await request.json());
-        if (!parsed.success) return jsonBadRequest("A takedown reason is required");
-        const result = await a.svc.orgs.takedown(params.org, parsed.data.reason);
-        if (!result.ok) return jsonError(orgStatus(result.code), result.message);
-        await a.svc.audit.record({
-          action: "org_takedown",
-          packageName: params.org,
-          version: null,
-          actor: a.identity,
-          detail: { reason: parsed.data.reason },
-        });
-        return jsonPrivate({ ok: true, org: params.org, takedown: parsed.data.reason });
-      },
+      POST: ({ request, params }) =>
+        runJson(async () => {
+          const a = await operatorAuthed(request);
+          const parsed = parseBody(Body, await request.json(), "A takedown reason is required");
+          unwrap(await a.svc.orgs.takedown(params.org, parsed.reason));
+          await a.svc.audit.record({
+            action: "org_takedown",
+            packageName: params.org,
+            version: null,
+            actor: a.identity,
+            detail: { reason: parsed.reason },
+          });
+          return jsonPrivate({ ok: true, org: params.org, takedown: parsed.reason });
+        }),
     },
   },
 });

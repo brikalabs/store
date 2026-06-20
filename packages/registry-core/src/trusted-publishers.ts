@@ -10,13 +10,15 @@ import type { PublishIdentity } from "./publish";
  * what "a matching trusted publisher" means, and the rule is unit-tested in one place.
  */
 
-/** A binding: scope `@x` may be published from `repository`'s `workflow` (filename). */
+/** A binding: scope `@x` may be published from `provider`'s `repository` + `workflow`. */
 export interface TrustedPublisher {
   /** The scope this binding authorizes, e.g. `@brika`. */
   readonly scope: string;
-  /** `owner/repo` allowed to publish (matched against the OIDC `repository` claim). */
+  /** OIDC provider this binding trusts: `github`, `gitlab`, ... (matched against the issuer). */
+  readonly provider: string;
+  /** The project allowed to publish: GitHub `owner/repo`, GitLab `group/project`. */
   readonly repository: string;
-  /** Workflow filename, e.g. `publish.yml` (matched against the OIDC `workflow_ref`). */
+  /** Workflow/config filename, e.g. `publish.yml` / `.gitlab-ci.yml` (from the OIDC ref claim). */
   readonly workflow: string;
 }
 
@@ -30,7 +32,7 @@ export interface TrustedPublishers {
   /** Create the binding if absent; idempotent. */
   add(binding: TrustedPublisher): Promise<TrustedPublisher>;
   /** Remove a binding; returns whether one was removed. */
-  remove(scope: string, repository: string, workflow: string): Promise<boolean>;
+  remove(scope: string, provider: string, repository: string, workflow: string): Promise<boolean>;
 }
 
 /** The workflow filename component of an OIDC `workflow_ref`, or null if unparyable. */
@@ -52,6 +54,7 @@ export function trustedPublisherMatches(
   binding: TrustedPublisher,
   identity: PublishIdentity,
 ): boolean {
+  if (identity.provider !== binding.provider) return false;
   if (identity.repository === null || identity.repository !== binding.repository) return false;
   return workflowFilename(identity.provenance?.workflowRef) === binding.workflow;
 }

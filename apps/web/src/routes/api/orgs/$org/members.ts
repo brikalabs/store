@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonBadRequest, jsonError, jsonPrivate, orgStatus } from "@/lib/http";
-import { authed } from "@/server/console-api";
+import { jsonPrivate } from "@/lib/http";
+import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const PutBody = z.object({
   memberId: z.string().min(1),
@@ -16,30 +16,29 @@ const PutBody = z.object({
 export const Route = createFileRoute("/api/orgs/$org/members")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
-        const a = await authed(request);
-        if ("response" in a) return a.response;
-        const result = await a.svc.orgs.listMembers(a.identity, params.org);
-        if (!result.ok) return jsonError(orgStatus(result.code), result.message);
-        return jsonPrivate({ org: params.org, members: result.members });
-      },
-      PUT: async ({ request, params }) => {
-        const a = await authed(request);
-        if ("response" in a) return a.response;
-        const parsed = PutBody.safeParse(await request.json());
-        if (!parsed.success) return jsonBadRequest("Invalid member or role");
-        const target = { provider: "github", id: parsed.data.memberId };
-        const result = await a.svc.orgs.setMember(a.identity, params.org, target, parsed.data.role);
-        if (!result.ok) return jsonError(orgStatus(result.code), result.message);
-        await a.svc.audit.record({
-          action: "org_member_set",
-          packageName: params.org,
-          version: null,
-          actor: a.identity,
-          detail: { ...target, role: parsed.data.role },
-        });
-        return jsonPrivate({ ok: true, org: params.org, member: result.member });
-      },
+      GET: ({ request, params }) =>
+        runJson(async () => {
+          const a = await authed(request);
+          const result = unwrap(await a.svc.orgs.listMembers(a.identity, params.org));
+          return jsonPrivate({ org: params.org, members: result.members });
+        }),
+      PUT: ({ request, params }) =>
+        runJson(async () => {
+          const a = await authed(request);
+          const parsed = parseBody(PutBody, await request.json(), "Invalid member or role");
+          const target = { provider: "github", id: parsed.memberId };
+          const result = unwrap(
+            await a.svc.orgs.setMember(a.identity, params.org, target, parsed.role),
+          );
+          await a.svc.audit.record({
+            action: "org_member_set",
+            packageName: params.org,
+            version: null,
+            actor: a.identity,
+            detail: { ...target, role: parsed.role },
+          });
+          return jsonPrivate({ ok: true, org: params.org, member: result.member });
+        }),
     },
   },
 });

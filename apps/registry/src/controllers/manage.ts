@@ -1,9 +1,4 @@
-import type {
-  ManageErrorCode,
-  ManagementService,
-  ManageResult,
-  PublishIdentity,
-} from "@brika/registry-core";
+import type { ManagementService, ManageResult, PublishIdentity } from "@brika/registry-core";
 import { httpError, reply } from "@brika/router";
 import { type PackageParams, PKG, packageName } from "@brika/router/npm";
 import { z } from "zod";
@@ -29,10 +24,6 @@ import type { Services } from "../services";
 const DeprecateBody = z.object({ message: z.string().max(1024).nullable() });
 const YankBody = z.object({ yanked: z.boolean() });
 const TakedownBody = z.object({ reason: z.string().min(1).max(1024) });
-
-function statusForManageError(code: ManageErrorCode): number {
-  return code === "forbidden" ? 403 : 404;
-}
 
 /** What both management handlers need: typed params + the request + the service graph. */
 interface ManageContext {
@@ -61,9 +52,9 @@ async function auditAndRespond(
     packageName: name,
     version,
     actor: identity,
-    detail: result.ok ? detail : { ...detail, code: result.code, message: result.message },
+    detail: result.ok ? detail : { ...detail, status: result.status, message: result.message },
   });
-  if (!result.ok) throw httpError(statusForManageError(result.code), result.message, result.code);
+  if (!result.ok) throw httpError(result.status, result.message);
   return reply({ ok: true, name, version, ...detail }, 200);
 }
 

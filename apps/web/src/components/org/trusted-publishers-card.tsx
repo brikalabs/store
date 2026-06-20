@@ -4,9 +4,15 @@ import { type SyntheticEvent, useCallback, useEffect, useState } from "react";
 import { type OrgCardProps, orgPath, readError } from "@/lib/org-api";
 
 interface Binding {
+  provider: string;
   repository: string;
   workflow: string;
 }
+
+const PROVIDERS = [
+  { value: "github", label: "GitHub", repoHint: "owner/repo", workflowHint: "publish.yml" },
+  { value: "gitlab", label: "GitLab", repoHint: "group/project", workflowHint: ".gitlab-ci.yml" },
+] as const;
 
 function publishersPath(org: string, scope: string): string {
   return orgPath(org, `/scopes/${encodeURIComponent(scope)}/trusted-publishers`);
@@ -24,9 +30,11 @@ function ScopePublishers({
   onError,
 }: Readonly<OrgCardProps & { scope: string; isAdmin: boolean }>) {
   const [bindings, setBindings] = useState<Binding[] | null>(null);
+  const [provider, setProvider] = useState("github");
   const [repository, setRepository] = useState("");
   const [workflow, setWorkflow] = useState("");
   const [busy, setBusy] = useState(false);
+  const hints = PROVIDERS.find((p) => p.value === provider) ?? PROVIDERS[0];
 
   const load = useCallback(async () => {
     const res = await fetch(publishersPath(org, scope));
@@ -57,7 +65,9 @@ function ScopePublishers({
 
   async function add(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (await mutate("PUT", { repository: repository.trim(), workflow: workflow.trim() })) {
+    if (
+      await mutate("PUT", { provider, repository: repository.trim(), workflow: workflow.trim() })
+    ) {
       setRepository("");
       setWorkflow("");
     }
@@ -75,7 +85,13 @@ function ScopePublishers({
     return (
       <ul className="flex flex-col gap-1.5">
         {bindings.map((b) => (
-          <li key={`${b.repository} ${b.workflow}`} className="flex items-center gap-2 text-sm">
+          <li
+            key={`${b.provider} ${b.repository} ${b.workflow}`}
+            className="flex items-center gap-2 text-sm"
+          >
+            <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs capitalize">
+              {b.provider}
+            </span>
             <span className="font-mono text-foreground">{b.repository}</span>
             <span className="text-muted-foreground">·</span>
             <span className="font-mono text-muted-foreground">{b.workflow}</span>
@@ -84,7 +100,7 @@ function ScopePublishers({
                 type="button"
                 disabled={busy}
                 onClick={() => mutate("DELETE", b)}
-                aria-label={`Remove ${b.repository} ${b.workflow}`}
+                aria-label={`Remove ${b.provider} ${b.repository} ${b.workflow}`}
                 className="ml-auto rounded-md p-1 text-muted-foreground hover:text-destructive"
               >
                 <X className="size-4" />
@@ -105,17 +121,29 @@ function ScopePublishers({
           onSubmit={add}
           className="flex flex-col gap-2 border-border border-t pt-3 sm:flex-row"
         >
+          <select
+            value={provider}
+            onChange={(e) => setProvider(e.target.value)}
+            aria-label="OIDC provider"
+            className="rounded-lg border border-border bg-card px-3 py-2 text-sm"
+          >
+            {PROVIDERS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
           <Input
             value={repository}
             onChange={(e) => setRepository(e.target.value)}
-            placeholder="owner/repo"
-            aria-label="GitHub repository"
+            placeholder={hints.repoHint}
+            aria-label="Repository"
             className="font-mono"
           />
           <Input
             value={workflow}
             onChange={(e) => setWorkflow(e.target.value)}
-            placeholder="publish.yml"
+            placeholder={hints.workflowHint}
             aria-label="Workflow filename"
             className="font-mono sm:max-w-[12rem]"
           />

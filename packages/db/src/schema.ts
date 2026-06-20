@@ -105,7 +105,7 @@ export const regOrgDomains = sqliteTable(
 );
 
 /**
- * Organisation membership and roles (JSR-style). An org can have several members; each is
+ * Organisation membership and roles. An org can have several members; each is
  * a provider-qualified identity with a role: `admin` (manage members, scopes, everything
  * a member can) or `member` (publish under any scope the org owns). The org creator is
  * seeded as the first admin. Publishing is gated on org membership.
@@ -153,13 +153,15 @@ export const regTrustedPublishers = sqliteTable(
     scope: text("scope")
       .notNull()
       .references(() => regScopes.scope, { onDelete: "cascade" }),
-    /** `owner/repo` allowed to publish (matched against the OIDC `repository` claim). */
+    /** OIDC provider the binding trusts: `github`, `gitlab`, ... (matched against the issuer). */
+    provider: text("provider").notNull().default("github"),
+    /** The project the token must come from: GitHub `owner/repo`, GitLab `group/project`. */
     repository: text("repository").notNull(),
-    /** Workflow filename, e.g. `publish.yml` (matched against the OIDC `workflow_ref`). */
+    /** Workflow/config filename, e.g. `publish.yml` / `.gitlab-ci.yml` (from the OIDC ref claim). */
     workflow: text("workflow").notNull(),
     createdAt: integer("created_at").notNull().default(epoch),
   },
-  (t) => [primaryKey({ columns: [t.scope, t.repository, t.workflow] })],
+  (t) => [primaryKey({ columns: [t.scope, t.provider, t.repository, t.workflow] })],
 );
 
 /**

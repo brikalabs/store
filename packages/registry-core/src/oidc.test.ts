@@ -1,5 +1,12 @@
 import { expect, test } from "bun:test";
-import { type Jwk, type JwksProvider, verifyGithubOidc } from "./oidc";
+import {
+  gitlabIdentity,
+  type Jwk,
+  type JwksProvider,
+  peekIssuer,
+  verifyGithubOidc,
+  verifyGitlabOidc,
+} from "./oidc";
 
 const AUD = "brika-registry";
 const NOW = 1_900_000_000;
@@ -88,4 +95,46 @@ test("rejects a token whose header is not valid JSON", async () => {
   const payload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(baseClaims())));
   const token = `${badHeader}.${payload}.AAAA`;
   expect(await verifyGithubOidc(token, jwks, { audience: AUD, now: NOW })).toBeNull();
+});
+
+function gitlabClaims(): Record<string, unknown> {
+  return {
+    iss: "https://gitlab.com",
+    aud: AUD,
+    sub: "project_path:acme/plugin-x:ref_type:branch:ref:main",
+    project_path: "acme/plugin-x",
+    namespace_path: "acme",
+    ci_config_ref_uri: "gitlab.com/acme/plugin-x//.gitlab-ci.yml@refs/heads/main",
+    ref: "main",
+    pipeline_id: "42",
+    exp: NOW + 600,
+    nbf: NOW - 10,
+    iat: NOW,
+  };
+}
+
+test("verifies a GitLab token and maps it to a normalized identity", async () => {
+  const claims = await verifyGitlabOidc(await sign(gitlabClaims()), jwks, {
+    audience: AUD,
+    now: NOW,
+  });
+  expect(claims?.project_path).toBe("acme/plugin-x");
+  const identity = gitlabIdentity(claims as NonNullable<typeof claims>);
+  expect(identity).toMatchObject({
+    provider: "gitlab",
+    owner: "acme",
+    repository: "acme/plugin-x",
+    workflowRef: "gitlab.com/acme/plugin-x//.gitlab-ci.yml@refs/heads/main",
+  });
+});
+
+test("a GitHub token is not accepted as GitLab (issuer mismatch)", async () => {
+  expect(
+    await verifyGitlabOidc(await sign(baseClaims()), jwks, { audience: AUD, now: NOW }),
+  ).toBeNull();
+});
+
+test("peekIssuer reads the unverified issuer for provider dispatch", async () => {
+  expect(peekIssuer(await sign(gitlabClaims()))).toBe("https://gitlab.com");
+  expect(peekIssuer("not-a-token")).toBeNull();
 });

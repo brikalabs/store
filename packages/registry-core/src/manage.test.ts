@@ -70,7 +70,7 @@ describe("deprecate", () => {
     const result = await svc.deprecate(STRANGER, NAME, VERSION, "nope");
     expect(result).toEqual({
       ok: false,
-      code: "forbidden",
+      status: 403,
       message: "scope @brika is owned by brikalabs",
     });
     expect(meta.deprecated.size).toBe(0);
@@ -81,7 +81,7 @@ describe("deprecate", () => {
     const result = await svc.deprecate(OWNER, NAME, "9.9.9", "x");
     expect(result).toEqual({
       ok: false,
-      code: "not_found",
+      status: 404,
       message: `${NAME}@9.9.9 does not exist`,
     });
   });
@@ -108,7 +108,7 @@ describe("setYanked", () => {
     const result = await svc.setYanked(OWNER, NAME, VERSION, true);
     expect(result).toEqual({
       ok: false,
-      code: "not_found",
+      status: 404,
       message: `${NAME}@${VERSION} does not exist`,
     });
   });

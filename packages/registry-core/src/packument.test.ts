@@ -1,6 +1,18 @@
 import { expect, test } from "bun:test";
-import { buildAbbreviatedPackument, buildPackument, tarballPath, unscopedName } from "./packument";
+import {
+  buildAbbreviatedPackument,
+  buildPackument,
+  tarballPath,
+  trimTrailingSlash,
+  unscopedName,
+} from "./packument";
 import type { PackageRecord } from "./types";
+
+test("trimTrailingSlash removes a run of trailing slashes, leaving the rest intact", () => {
+  expect(trimTrailingSlash("https://r.brika.dev///")).toBe("https://r.brika.dev");
+  expect(trimTrailingSlash("https://r.brika.dev")).toBe("https://r.brika.dev");
+  expect(trimTrailingSlash("/")).toBe("");
+});
 
 const record: PackageRecord = {
   name: "@brika/plugin-x",

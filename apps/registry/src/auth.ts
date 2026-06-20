@@ -1,34 +1,52 @@
 import {
+  GITHUB_ISSUER,
+  GITLAB_ISSUER,
+  githubIdentity,
+  gitlabIdentity,
   isOperator,
-  type OidcClaims,
+  type OidcIdentity,
   type PublishIdentity,
+  peekIssuer,
   type TokenStore,
   verifyGithubOidc,
+  verifyGitlabOidc,
 } from "@brika/registry-core";
 import { forbidden, type RateLimitKey, unauthorized } from "@brika/router";
-import { GithubJwksProvider } from "./adapters/github-jwks";
+import { CachingJwksProvider } from "./adapters/jwks";
 import type { Services } from "./services";
 
 /**
  * Shared write-authentication for the registry's mutating endpoints (publish,
- * deprecate, yank). Accepts EITHER a GitHub Actions OIDC token (CI, audience
+ * deprecate, yank). Accepts EITHER a CI OIDC token (GitHub or GitLab, audience
  * `brika-registry`) OR a registry publish token (local `brika` CLI). Returns the
  * resolved publish identity, or null when neither credential validates.
  */
 
 export const AUDIENCE = "brika-registry";
 
-const jwks = new GithubJwksProvider();
+const githubJwks = new CachingJwksProvider(
+  "https://token.actions.githubusercontent.com/.well-known/jwks",
+);
+const gitlabJwks = new CachingJwksProvider("https://gitlab.com/oauth/discovery/keys");
 
-/** Build CI provenance from the verified OIDC claims (it cannot be forged). */
-function provenanceFrom(claims: OidcClaims) {
-  return {
-    repository: claims.repository,
-    sha: claims.sha,
-    ref: claims.ref,
-    workflowRef: claims.workflow_ref,
-    runId: claims.run_id,
-  };
+/**
+ * Verify a CI OIDC token against the provider its issuer names (GitHub or GitLab), returning
+ * a normalized identity, or null. Dispatching on the (unverified) issuer means we fetch only
+ * the right provider's JWKS and never accept a token whose issuer we don't recognize.
+ */
+async function verifyCiOidc(token: string): Promise<OidcIdentity | null> {
+  switch (peekIssuer(token)) {
+    case GITHUB_ISSUER: {
+      const claims = await verifyGithubOidc(token, githubJwks, { audience: AUDIENCE });
+      return claims === null ? null : githubIdentity(claims);
+    }
+    case GITLAB_ISSUER: {
+      const claims = await verifyGitlabOidc(token, gitlabJwks, { audience: AUDIENCE });
+      return claims === null ? null : gitlabIdentity(claims);
+    }
+    default:
+      return null;
+  }
 }
 
 export async function authenticateWrite(
@@ -39,13 +57,20 @@ export async function authenticateWrite(
   if (!authorization?.startsWith("Bearer ")) return null;
   const token = authorization.slice("Bearer ".length);
 
-  const claims = await verifyGithubOidc(token, jwks, { audience: AUDIENCE });
-  if (claims !== null) {
+  const ci = await verifyCiOidc(token);
+  if (ci !== null) {
     return {
-      provider: "github",
-      owner: claims.repository_owner,
-      repository: claims.repository,
-      provenance: provenanceFrom(claims),
+      provider: ci.provider,
+      owner: ci.owner,
+      repository: ci.repository,
+      // Provenance is the verified CI build context (it cannot be forged).
+      provenance: {
+        repository: ci.repository,
+        sha: ci.sha,
+        ref: ci.ref,
+        workflowRef: ci.workflowRef,
+        runId: ci.runId,
+      },
     };
   }
 

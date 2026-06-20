@@ -12,10 +12,10 @@ export function scopeOf(name: string): string | null {
 }
 
 // A scope is `@` + 2-20 chars of lowercase a-z/0-9/hyphen, not starting with a hyphen
-// (JSR's rule). Globally unique, claimed only by explicit creation.
+// Globally unique, claimed only by explicit creation.
 const SCOPE = /^@[a-z0-9][a-z0-9-]{1,19}$/;
 
-/** Is this a canonical, creatable scope (`@name`, JSR-style naming)? */
+/** Is this a canonical, creatable scope (`@name`)? */
 export function isCanonicalScope(scope: string): boolean {
   return SCOPE.test(scope);
 }

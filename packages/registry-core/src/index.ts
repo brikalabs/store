@@ -28,24 +28,28 @@ export {
   summarizeDownloads,
   ZERO_DOWNLOADS,
 } from "./downloads";
+export { HttpStatus } from "./http-status";
 export { sha1Hex, sha512Integrity } from "./integrity";
 export { displayNameSchema, hasUnsafeLabelChars } from "./labels";
 export { REGISTRY_LIMITS, type RegistryLimits } from "./limits";
-export {
-  type ManageErrorCode,
-  ManagementService,
-  type ManageResult,
-  type VersionManager,
-} from "./manage";
+export { ManagementService, type ManageResult, type VersionManager } from "./manage";
 export type { MemberRef, OrgMember, OrgMembers, OrgRole } from "./membership";
 export { isCanonicalName, isCanonicalOrgSlug, isCanonicalScope, scopeOf } from "./names";
 export {
   BaseClaims,
+  GITHUB_ISSUER,
+  GITLAB_ISSUER,
+  GitlabClaims,
+  githubIdentity,
+  gitlabIdentity,
   type Jwk,
   type JwksProvider,
   OidcClaims,
+  type OidcIdentity,
+  peekIssuer,
   type VerifyOidcOptions,
   verifyGithubOidc,
+  verifyGitlabOidc,
   verifyOidc,
 } from "./oidc";
 export { isOperator, operatorKey, parseOperatorAdmins } from "./operators";
@@ -56,7 +60,6 @@ export {
   domainChallengeHost,
   type OrgDomainRecord,
   type OrgDomains,
-  type OrgErrorCode,
   type OrgPublic,
   type OrgRecord,
   type OrgResult,
@@ -74,6 +77,7 @@ export {
   type PackumentDist,
   tarballPath,
   tarballUrl,
+  trimTrailingSlash,
   unscopedName,
 } from "./packument";
 export type { MetadataReader, TarballReader } from "./ports";

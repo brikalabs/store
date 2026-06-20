@@ -193,7 +193,7 @@ describe("createOrg (explicit org claim)", () => {
 
   test("400 for a non-canonical org slug", async () => {
     const token = await issueToken(db, "alice");
-    const bad = { org: "Team" }; // uppercase: rejected by the JSR-style rule
+    const bad = { org: "Team" }; // uppercase: rejected by the canonical-slug rule
     expect(
       await statusOf(createOrg({ params: bad, req: post(undefined, token), ctx: services(db) })),
     ).toBe(400);
@@ -474,7 +474,7 @@ describe("trusted publishers (PUB-016)", () => {
     return token;
   }
   const params = { org: "team", scope: "@team" };
-  const binding = { repository: "acme/plugin-x", workflow: "publish.yml" };
+  const binding = { provider: "github", repository: "acme/plugin-x", workflow: "publish.yml" };
 
   test("an admin adds, lists, and removes a binding", async () => {
     const token = await seedScope("alice");

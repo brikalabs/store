@@ -25,7 +25,7 @@ function slugify(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/^-|-$/g, "");
 }
 
 function textOf(children: ReactNode): string {
@@ -37,7 +37,7 @@ function textOf(children: ReactNode): string {
 function stripInlineMarkdown(text: string): string {
   return text
     .replaceAll("**", "")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^[\]]+)\]\(([^()]*)\)/g, "$1")
     .replaceAll("`", "");
 }
 
@@ -54,12 +54,12 @@ function parseLegalDoc(markdown: string): ParsedDoc {
   const disclaimer: string[] = [];
   const body: string[] = [];
   for (const line of markdown.split("\n")) {
-    const heading = /^#\s+(.+)$/.exec(line);
+    const heading = /^#\s+(\S.*)$/.exec(line);
     if (heading?.[1] && !title) {
       title = heading[1].trim();
       continue;
     }
-    const updated = /^\*\*Last updated:\*\*\s*(.+)$/.exec(line);
+    const updated = /^\*\*Last updated:\*\*\s*(\S.*)$/.exec(line);
     if (updated?.[1]) {
       lastUpdated = updated[1].trim();
       continue;
@@ -81,7 +81,7 @@ function parseLegalDoc(markdown: string): ParsedDoc {
 function tableOfContents(body: string): { id: string; text: string }[] {
   const items: { id: string; text: string }[] = [];
   for (const line of body.split("\n")) {
-    const heading = /^##\s+(.+)$/.exec(line);
+    const heading = /^##\s+(\S.*)$/.exec(line);
     if (heading?.[1]) {
       const text = heading[1].trim();
       items.push({ id: slugify(text), text });

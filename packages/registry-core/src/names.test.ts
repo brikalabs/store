@@ -9,7 +9,7 @@ describe("scopeOf", () => {
   });
 });
 
-describe("isCanonicalScope (JSR-style)", () => {
+describe("isCanonicalScope", () => {
   test("accepts 2-20 lowercase letters/digits/hyphens, no leading hyphen", () => {
     expect(isCanonicalScope("@brika")).toBe(true);
     expect(isCanonicalScope("@my-team")).toBe(true);

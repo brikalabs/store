@@ -1,7 +1,7 @@
 import { listSubjectTokens } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
 import { jsonPrivate } from "@/lib/http";
-import { authed } from "@/server/console-api";
+import { authed, runJson } from "@/server/console-api";
 import { registryDb } from "@/server/registry-services";
 
 /**
@@ -11,18 +11,18 @@ import { registryDb } from "@/server/registry-services";
 export const Route = createFileRoute("/api/account/tokens")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        const a = await authed(request);
-        if ("response" in a) return a.response;
-        const tokens = await listSubjectTokens(registryDb(), "github", a.user.login);
-        return jsonPrivate({ tokens });
-      },
-      POST: async ({ request }) => {
-        const a = await authed(request);
-        if ("response" in a) return a.response;
-        const token = await a.svc.tokens.issue(a.user.login);
-        return jsonPrivate({ token }, 201);
-      },
+      GET: ({ request }) =>
+        runJson(async () => {
+          const a = await authed(request);
+          const tokens = await listSubjectTokens(registryDb(), "github", a.user.login);
+          return jsonPrivate({ tokens });
+        }),
+      POST: ({ request }) =>
+        runJson(async () => {
+          const a = await authed(request);
+          const token = await a.svc.tokens.issue(a.user.login);
+          return jsonPrivate({ token }, 201);
+        }),
     },
   },
 });

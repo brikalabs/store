@@ -8,7 +8,8 @@ import { z } from "zod";
  * wrapper. Pure Web Crypto, JWKS injected for testing.
  */
 
-const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
+export const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
+export const GITLAB_ISSUER = "https://gitlab.com";
 
 /** Claims every OIDC issuer carries; provider-specific claims ride alongside (loose). */
 export const BaseClaims = z
@@ -42,6 +43,82 @@ export const OidcClaims = z.object({
   iat: z.number().optional(),
 });
 export type OidcClaims = z.infer<typeof OidcClaims>;
+
+/**
+ * GitLab CI ID-token claims (gitlab.com). `project_path` is `group/project` (the GitHub
+ * `repository` analog); `ci_config_ref_uri` points at the pipeline's config file (the
+ * `workflow_ref` analog, e.g. `gitlab.com/group/project//.gitlab-ci.yml@refs/heads/main`).
+ */
+export const GitlabClaims = z.object({
+  iss: z.string(),
+  aud: z.string(),
+  sub: z.string(),
+  project_path: z.string(),
+  namespace_path: z.string().optional(),
+  ci_config_ref_uri: z.string().optional(),
+  ref: z.string().optional(),
+  sha: z.string().optional(),
+  pipeline_id: z.string().optional(),
+  exp: z.number(),
+  nbf: z.number().optional(),
+  iat: z.number().optional(),
+});
+export type GitlabClaims = z.infer<typeof GitlabClaims>;
+
+/**
+ * A CI publish identity normalized across OIDC providers, so the registry's authorization +
+ * trusted-publisher matching are provider-neutral. `repository` + `workflowRef` are what a
+ * trusted-publisher binding matches; `provider` qualifies the binding.
+ */
+export interface OidcIdentity {
+  readonly provider: string;
+  /** Owner/namespace (GitHub `repository_owner`, GitLab `namespace_path`). */
+  readonly owner: string;
+  /** Project (GitHub `owner/repo`, GitLab `group/project`). */
+  readonly repository: string;
+  readonly workflowRef?: string;
+  readonly ref?: string;
+  readonly sha?: string;
+  readonly runId?: string;
+}
+
+/** Map verified GitHub claims to the normalized identity. */
+export function githubIdentity(claims: OidcClaims): OidcIdentity {
+  return {
+    provider: "github",
+    owner: claims.repository_owner,
+    repository: claims.repository,
+    workflowRef: claims.workflow_ref,
+    ref: claims.ref,
+    sha: claims.sha,
+    runId: claims.run_id,
+  };
+}
+
+/** Map verified GitLab claims to the normalized identity. */
+export function gitlabIdentity(claims: GitlabClaims): OidcIdentity {
+  return {
+    provider: "gitlab",
+    owner: claims.namespace_path ?? claims.project_path.split("/")[0] ?? claims.project_path,
+    repository: claims.project_path,
+    workflowRef: claims.ci_config_ref_uri,
+    ref: claims.ref,
+    sha: claims.sha,
+    runId: claims.pipeline_id,
+  };
+}
+
+/** Read a token's UNVERIFIED issuer, to pick which provider should verify it. Null if malformed. */
+export function peekIssuer(token: string): string | null {
+  const payloadPart = token.split(".")[1];
+  if (payloadPart === undefined) return null;
+  try {
+    const claims = JSON.parse(new TextDecoder().decode(base64UrlToBytes(payloadPart)));
+    return typeof claims?.iss === "string" ? claims.iss : null;
+  } catch {
+    return null;
+  }
+}
 
 const JwtHeader = z.object({ alg: z.string(), kid: z.string() });
 
@@ -160,4 +237,23 @@ export async function verifyGithubOidc(
   if (claims === null) return null;
   const github = OidcClaims.safeParse(claims);
   return github.success ? github.data : null;
+}
+
+/**
+ * Verify a GitLab CI OIDC ID token (gitlab.com): the generic {@link verifyOidc} checks, then
+ * the GitLab claim shape (`project_path`). Returns the GitLab claims, else null.
+ */
+export async function verifyGitlabOidc(
+  token: string,
+  jwks: JwksProvider,
+  options: VerifyOidcOptions,
+): Promise<GitlabClaims | null> {
+  const claims = await verifyOidc(token, jwks, {
+    issuer: options.issuer ?? GITLAB_ISSUER,
+    audience: options.audience,
+    now: options.now,
+  });
+  if (claims === null) return null;
+  const gitlab = GitlabClaims.safeParse(claims);
+  return gitlab.success ? gitlab.data : null;
 }

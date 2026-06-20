@@ -1,8 +1,8 @@
 import { displayNameSchema } from "@brika/registry-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonBadRequest, jsonError, jsonPrivate, orgStatus } from "@/lib/http";
-import { authed } from "@/server/console-api";
+import { jsonPrivate } from "@/lib/http";
+import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const Body = z.object({ displayName: displayNameSchema.nullable() });
 
@@ -10,26 +10,22 @@ const Body = z.object({ displayName: displayNameSchema.nullable() });
 export const Route = createFileRoute("/api/orgs/$org/display-name")({
   server: {
     handlers: {
-      POST: async ({ request, params }) => {
-        const a = await authed(request);
-        if ("response" in a) return a.response;
-        const parsed = Body.safeParse(await request.json());
-        if (!parsed.success) return jsonBadRequest("Invalid display name");
-        const result = await a.svc.orgs.setDisplayName(
-          a.identity,
-          params.org,
-          parsed.data.displayName,
-        );
-        if (!result.ok) return jsonError(orgStatus(result.code), result.message);
-        await a.svc.audit.record({
-          action: "org_display_name",
-          packageName: params.org,
-          version: null,
-          actor: a.identity,
-          detail: { displayName: parsed.data.displayName },
-        });
-        return jsonPrivate({ ok: true, org: params.org, displayName: result.displayName });
-      },
+      POST: ({ request, params }) =>
+        runJson(async () => {
+          const a = await authed(request);
+          const parsed = parseBody(Body, await request.json(), "Invalid display name");
+          const result = unwrap(
+            await a.svc.orgs.setDisplayName(a.identity, params.org, parsed.displayName),
+          );
+          await a.svc.audit.record({
+            action: "org_display_name",
+            packageName: params.org,
+            version: null,
+            actor: a.identity,
+            detail: { displayName: parsed.displayName },
+          });
+          return jsonPrivate({ ok: true, org: params.org, displayName: result.displayName });
+        }),
     },
   },
 });

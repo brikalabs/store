@@ -2,8 +2,7 @@
 
 Every package on the registry lives under a **scope**: `@scope/name`. A scope is a
 namespace owned by one identity (a person, team, or project), and you must **create a
-scope before you can publish under it**. This is the same model as npm orgs and
-[JSR scopes](https://jsr.io/docs/scopes): ownership is explicit, not granted by being
+scope before you can publish under it**. This is the same model as npm orgs: ownership is explicit, not granted by being
 first to publish.
 
 ## Naming rules
@@ -69,7 +68,7 @@ first-publish race to claim one.
 
 ## Members and roles
 
-Like [JSR](https://jsr.io/docs/scopes), a scope has members with one of two roles:
+A scope has members with one of two roles:
 
 - **member** — may publish versions under the scope.
 - **admin** — everything a member can, plus manage members and set the display name.
@@ -101,7 +100,7 @@ curl -X DELETE https://registry.brika.dev/-/scope/@brika/member/github/alice \
 | Not an admin / member | `403` | |
 
 There is no separate invite-acceptance step yet: an admin adds a member directly by
-`(provider, id)`. (JSR-style invitations are a possible later refinement.)
+`(provider, id)`. (Invitations are a possible later refinement.)
 
 ## Display name
 

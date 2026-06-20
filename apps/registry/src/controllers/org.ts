@@ -3,7 +3,6 @@ import {
   domainChallengeHost,
   isCanonicalOrgSlug,
   isCanonicalScope,
-  type OrgErrorCode,
   orgDescriptionSchema,
   orgDomainSchema,
   orgLinksSchema,
@@ -12,14 +11,14 @@ import { badRequest, httpError, rateLimit, reply } from "@brika/router";
 import { z } from "zod";
 import { cf } from "../adapters/cf-rate-limiter";
 import { principal, requireAdmin, requireWrite } from "../auth";
+import { okOrThrow } from "../http/result";
 import { controller, route } from "../http/router";
 
 import type { Services } from "../services";
 
 /**
  * Organisation management HTTP layer. An org is the first-class ownership entity (it owns
- * one or more npm scopes); publishing under any scope it owns is gated on org MEMBERS
- * (JSR-style):
+ * one or more npm scopes); publishing under any scope it owns is gated on org MEMBERS:
  *
  *   PUT    /-/org/:org                          claim an org (caller becomes admin)
  *   GET    /-/org/:org/members                  list members (any member)
@@ -38,14 +37,6 @@ import type { Services } from "../services";
  * delegate the rules + invariants to `ctx.orgs` (the domain `OrgService`), audit the
  * outcome, and map the result to a status. No database access or business logic here.
  */
-
-/** Map a domain `OrgService` rejection to its HTTP status. */
-function orgStatus(code: OrgErrorCode): number {
-  if (code === "not_found") return 404;
-  if (code === "conflict") return 409;
-  if (code === "too_many") return 429; // per-account org cap reached (ORG-005)
-  return 403;
-}
 
 /**
  * `GET /-/org/:org` - public org info (slug, display name, description, links, icon key,
@@ -80,8 +71,7 @@ export async function createOrg({
     );
   }
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.claim(identity, org);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.claim(identity, org));
   if (result.created) {
     await ctx.audit.record({
       action: "org_create",
@@ -106,8 +96,7 @@ export async function listMembers({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.listMembers(identity, org);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.listMembers(identity, org));
   return reply({ ok: true, org, members: result.members }, 200);
 }
 
@@ -127,8 +116,7 @@ export async function putMember({
 }): Promise<Response> {
   const { org, provider, id } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.setMember(identity, org, { provider, id }, body.role);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.setMember(identity, org, { provider, id }, body.role));
   await ctx.audit.record({
     action: "org_member_set",
     packageName: org,
@@ -151,8 +139,7 @@ export async function deleteMember({
 }): Promise<Response> {
   const { org, provider, id } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.removeMember(identity, org, { provider, id });
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.removeMember(identity, org, { provider, id }));
   await ctx.audit.record({
     action: "org_member_remove",
     packageName: org,
@@ -182,8 +169,7 @@ export async function setDisplayName({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.setDisplayName(identity, org, body.displayName);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  okOrThrow(await ctx.orgs.setDisplayName(identity, org, body.displayName));
   await ctx.audit.record({
     action: "org_display_name",
     packageName: org,
@@ -213,11 +199,12 @@ export async function setProfile({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.setProfile(identity, org, {
-    description: body.description,
-    links: body.links,
-  });
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(
+    await ctx.orgs.setProfile(identity, org, {
+      description: body.description,
+      links: body.links,
+    }),
+  );
   await ctx.audit.record({
     action: "org_profile_set",
     packageName: org,
@@ -240,8 +227,7 @@ export async function listDomains({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.listDomains(identity, org);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.listDomains(identity, org));
   const domains = await Promise.all(
     result.domains.map(async (d) => ({
       ...d,
@@ -272,8 +258,7 @@ export async function addDomain({
   const { org } = params;
   const domain = parseDomain(params.domain);
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.addDomain(identity, org, domain);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.addDomain(identity, org, domain));
   await ctx.audit.record({
     action: "org_domain_add",
     packageName: org,
@@ -306,8 +291,7 @@ export async function verifyDomain({
   const { org } = params;
   const domain = parseDomain(params.domain);
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.verifyDomain(identity, org, domain);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.verifyDomain(identity, org, domain));
   if (result.verified) {
     await ctx.audit.record({
       action: "org_domain_verified",
@@ -333,8 +317,7 @@ export async function deleteDomain({
   const { org } = params;
   const domain = parseDomain(params.domain);
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.removeDomain(identity, org, domain);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  okOrThrow(await ctx.orgs.removeDomain(identity, org, domain));
   await ctx.audit.record({
     action: "org_domain_remove",
     packageName: org,
@@ -357,8 +340,7 @@ export async function listScopes({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.listScopes(identity, org);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.listScopes(identity, org));
   return reply({ ok: true, org, scopes: result.scopes }, 200);
 }
 
@@ -379,8 +361,7 @@ export async function attachScope({
     );
   }
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.attachScope(identity, org, scope);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  okOrThrow(await ctx.orgs.attachScope(identity, org, scope));
   await ctx.audit.record({
     action: "org_scope_attach",
     packageName: scope,
@@ -391,11 +372,12 @@ export async function attachScope({
   return reply({ ok: true, org, scope }, 201);
 }
 
-// A trusted-publisher binding (PUB-016): `owner/repo` + the workflow filename allowed to
-// publish under the scope via OIDC. Validated here so a malformed binding never reaches the
-// store (and so it can actually match a real OIDC `workflow_ref`).
+// A trusted-publisher binding (PUB-016): provider + project + the workflow/config filename
+// allowed to publish under the scope via OIDC. Validated here so a malformed binding never
+// reaches the store (and so it can actually match a real OIDC ref claim).
 const TrustedPublisherBody = z.object({
-  repository: z.string().regex(/^[^/\s]+\/[^/\s]+$/, "repository must be 'owner/repo'"),
+  provider: z.enum(["github", "gitlab"]),
+  repository: z.string().regex(/^[^\s/]+(?:\/[^\s/]+)+$/, "repository must be 'owner/repo'"),
   workflow: z
     .string()
     .regex(/^[\w.-]+\.ya?ml$/, "workflow must be a workflow filename, e.g. publish.yml"),
@@ -413,8 +395,7 @@ export async function listTrustedPublishers({
 }): Promise<Response> {
   const { org, scope } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.listTrustedPublishers(identity, org, scope);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.listTrustedPublishers(identity, org, scope));
   return reply({ ok: true, org, scope, publishers: result.publishers }, 200);
 }
 
@@ -432,20 +413,13 @@ export async function addTrustedPublisher({
 }): Promise<Response> {
   const { org, scope } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.addTrustedPublisher(
-    identity,
-    org,
-    scope,
-    body.repository,
-    body.workflow,
-  );
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.addTrustedPublisher(identity, org, scope, body));
   await ctx.audit.record({
     action: "org_trusted_publisher_add",
     packageName: scope,
     version: null,
     actor: identity,
-    detail: { org, repository: body.repository, workflow: body.workflow },
+    detail: { org, ...body },
   });
   return reply({ ok: true, org, scope, publisher: result.publisher }, 201);
 }
@@ -464,20 +438,13 @@ export async function removeTrustedPublisher({
 }): Promise<Response> {
   const { org, scope } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = await ctx.orgs.removeTrustedPublisher(
-    identity,
-    org,
-    scope,
-    body.repository,
-    body.workflow,
-  );
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  const result = okOrThrow(await ctx.orgs.removeTrustedPublisher(identity, org, scope, body));
   await ctx.audit.record({
     action: "org_trusted_publisher_remove",
     packageName: scope,
     version: null,
     actor: identity,
-    detail: { org, repository: body.repository, workflow: body.workflow },
+    detail: { org, ...body },
   });
   return reply({ ok: true, org, scope, removed: result.removed }, 200);
 }
@@ -502,8 +469,7 @@ export async function takedownOrg({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireAdmin(req, ctx.tokens, ctx.admins);
-  const result = await ctx.orgs.takedown(org, body.reason);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  okOrThrow(await ctx.orgs.takedown(org, body.reason));
   await ctx.audit.record({
     action: "org_takedown",
     packageName: org,
@@ -526,8 +492,7 @@ export async function restoreOrg({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireAdmin(req, ctx.tokens, ctx.admins);
-  const result = await ctx.orgs.restore(org);
-  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  okOrThrow(await ctx.orgs.restore(org));
   await ctx.audit.record({
     action: "org_restore",
     packageName: org,
