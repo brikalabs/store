@@ -37,6 +37,7 @@ class FakeOrgStore implements OrgStore {
       description: null,
       links: [],
       iconKey: null,
+      takedown: null,
     };
     this.rows.set(slug, record);
     return { record, created: true };
@@ -53,6 +54,10 @@ class FakeOrgStore implements OrgStore {
   async setIcon(slug: string, iconKey: string | null): Promise<void> {
     const row = this.rows.get(slug);
     if (row) this.rows.set(slug, { ...row, iconKey });
+  }
+  async setTakedown(slug: string, reason: string | null): Promise<void> {
+    const row = this.rows.get(slug);
+    if (row) this.rows.set(slug, { ...row, takedown: reason });
   }
 }
 
@@ -351,6 +356,27 @@ describe("profile (ORG-009)", () => {
     expect((await orgs.get("acme"))?.iconKey).toBe("org-icons/acme.png");
     await service.setIcon(gh("alice"), "acme", null);
     expect((await orgs.get("acme"))?.iconKey).toBeNull();
+  });
+});
+
+describe("operator takedown (ORG-007)", () => {
+  test("ORG-007-AC1: a taken-down org is withdrawn from public listings, then restorable", async () => {
+    await service.claim(gh("alice"), "acme");
+    expect(await service.getPublic("acme")).not.toBeNull();
+
+    expect(await service.takedown("acme", "name-squatting")).toMatchObject({ ok: true });
+    expect((await orgs.get("acme"))?.takedown).toBe("name-squatting");
+    // Withdrawn from public listings, and the reason is never leaked publicly.
+    expect(await service.getPublic("acme")).toBeNull();
+
+    expect(await service.restore("acme")).toMatchObject({ ok: true });
+    expect((await orgs.get("acme"))?.takedown).toBeNull();
+    expect(await service.getPublic("acme")).not.toBeNull();
+  });
+
+  test("takedown of an unknown org is not_found (membership is not consulted)", async () => {
+    expect(await service.takedown("ghost", "spam")).toMatchObject({ code: "not_found" });
+    expect(await service.restore("ghost")).toMatchObject({ code: "not_found" });
   });
 });
 

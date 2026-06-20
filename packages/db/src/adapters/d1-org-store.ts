@@ -12,6 +12,7 @@ function toRecord(row: OrgRow): OrgRecord {
     description: row.description,
     links: row.links ?? [],
     iconKey: row.iconKey,
+    takedown: row.takedown,
   };
 }
 
@@ -62,5 +63,9 @@ export class D1OrgStore implements OrgStore {
 
   async setIcon(slug: string, iconKey: string | null): Promise<void> {
     await this.#db.update(regOrgs).set({ iconKey }).where(eq(regOrgs.slug, slug));
+  }
+
+  async setTakedown(slug: string, reason: string | null): Promise<void> {
+    await this.#db.update(regOrgs).set({ takedown: reason }).where(eq(regOrgs.slug, slug));
   }
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `reg_orgs` ADD `takedown` text;

@@ -43,8 +43,17 @@ mock.module("cloudflare:workers", () => ({
 
 const { publish } = await import("./publish");
 const { deprecate, yank, takedown, restore } = await import("./manage");
-const { createOrg, deleteMember, listMembers, putMember, setDisplayName, attachScope } =
-  await import("./org");
+const {
+  createOrg,
+  deleteMember,
+  listMembers,
+  putMember,
+  setDisplayName,
+  attachScope,
+  getOrg,
+  takedownOrg,
+  restoreOrg,
+} = await import("./org");
 
 /** The status a handler yields, whether it returns a Response or throws an HttpError. */
 async function statusOf(run: Promise<Response>): Promise<number> {
@@ -556,6 +565,65 @@ describe("takedown / restore (operator-gated)", () => {
       versions: Record<string, unknown>;
     };
     expect(Object.keys(packument.versions)).toEqual(["1.0.0"]);
+  });
+});
+
+describe("org takedown / restore (operator-gated, ORG-007)", () => {
+  const params = { org: "brika" };
+  const asAdmin = (db: Db) => issueToken(db, "operator");
+
+  test("ORG-007-AC2: 403 for a valid credential that is not a registry admin", async () => {
+    await seedBrikaOrg(db, "octocat"); // an org admin, but not a registry operator
+    const token = await issueToken(db, "octocat");
+    expect(
+      await statusOf(
+        takedownOrg({
+          params,
+          body: { reason: "squat" },
+          req: post(undefined, token),
+          ctx: services(db),
+        }),
+      ),
+    ).toBe(403);
+  });
+
+  test("ORG-007-AC1: an operator takedown withdraws the org from public listings; restore re-exposes it", async () => {
+    await seedBrikaOrg(db, "octocat");
+    const ctx = services(db);
+    const token = await asAdmin(db);
+
+    expect((await getOrg({ params, ctx })).status).toBe(200);
+
+    const res = await takedownOrg({
+      params,
+      body: { reason: "name-squatting" },
+      req: post(undefined, token),
+      ctx,
+    });
+    expect(res.status).toBe(200);
+    // The public org page 404s, and the reason is recorded (audited) but never leaked there.
+    expect(await statusOf(getOrg({ params, ctx }))).toBe(404);
+    const taken = await db.select().from(regOrgs).where(eq(regOrgs.slug, "brika"));
+    expect(taken[0]?.takedown).toBe("name-squatting");
+
+    expect((await restoreOrg({ params, req: post(undefined, token), ctx })).status).toBe(200);
+    expect((await getOrg({ params, ctx })).status).toBe(200);
+    const restored = await db.select().from(regOrgs).where(eq(regOrgs.slug, "brika"));
+    expect(restored[0]?.takedown).toBeNull();
+  });
+
+  test("404 when taking down an org that does not exist", async () => {
+    const token = await asAdmin(db);
+    expect(
+      await statusOf(
+        takedownOrg({
+          params: { org: "ghost" },
+          body: { reason: "x" },
+          req: post(undefined, token),
+          ctx: services(db),
+        }),
+      ),
+    ).toBe(404);
   });
 });
 

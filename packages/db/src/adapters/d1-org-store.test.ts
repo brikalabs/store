@@ -33,6 +33,7 @@ describe("D1OrgStore", () => {
       description: null,
       links: [],
       iconKey: null,
+      takedown: null,
     });
   });
 
@@ -54,6 +55,14 @@ describe("D1OrgStore", () => {
       links,
       iconKey: "org-icons/acme.png",
     });
+  });
+
+  test("setTakedown records the reason and clears it on restore (ORG-007)", async () => {
+    await store.claim("acme");
+    await store.setTakedown("acme", "name-squatting");
+    expect((await store.get("acme"))?.takedown).toBe("name-squatting");
+    await store.setTakedown("acme", null);
+    expect((await store.get("acme"))?.takedown).toBeNull();
   });
 });
 
