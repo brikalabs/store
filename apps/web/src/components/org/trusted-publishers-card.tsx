@@ -63,37 +63,43 @@ function ScopePublishers({
     }
   }
 
-  return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
-      <span className="font-mono font-semibold text-foreground text-sm">{scope}</span>
-      {bindings === null ? (
-        <div className="h-8 animate-pulse rounded-lg bg-muted" />
-      ) : bindings.length === 0 ? (
+  function renderBindings() {
+    if (bindings === null) return <div className="h-8 animate-pulse rounded-lg bg-muted" />;
+    if (bindings.length === 0) {
+      return (
         <p className="text-muted-foreground text-xs">
           No trusted publishers. CI publishes to this scope are refused until you add one.
         </p>
-      ) : (
-        <ul className="flex flex-col gap-1.5">
-          {bindings.map((b) => (
-            <li key={`${b.repository} ${b.workflow}`} className="flex items-center gap-2 text-sm">
-              <span className="font-mono text-foreground">{b.repository}</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="font-mono text-muted-foreground">{b.workflow}</span>
-              {isAdmin && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => mutate("DELETE", b)}
-                  aria-label={`Remove ${b.repository} ${b.workflow}`}
-                  className="ml-auto rounded-md p-1 text-muted-foreground hover:text-destructive"
-                >
-                  <X className="size-4" />
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      );
+    }
+    return (
+      <ul className="flex flex-col gap-1.5">
+        {bindings.map((b) => (
+          <li key={`${b.repository} ${b.workflow}`} className="flex items-center gap-2 text-sm">
+            <span className="font-mono text-foreground">{b.repository}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="font-mono text-muted-foreground">{b.workflow}</span>
+            {isAdmin && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => mutate("DELETE", b)}
+                aria-label={`Remove ${b.repository} ${b.workflow}`}
+                className="ml-auto rounded-md p-1 text-muted-foreground hover:text-destructive"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+      <span className="font-mono font-semibold text-foreground text-sm">{scope}</span>
+      {renderBindings()}
       {isAdmin && (
         <form
           onSubmit={add}
@@ -148,6 +154,30 @@ export function TrustedPublishersCard({
     })();
   }, [org]);
 
+  function renderScopes() {
+    if (scopes === null) return <div className="h-12 animate-pulse rounded-xl bg-muted" />;
+    if (scopes.length === 0) {
+      return (
+        <p className="text-muted-foreground text-sm">
+          Attach a scope first, then authorize a repo.
+        </p>
+      );
+    }
+    return (
+      <div className="flex flex-col gap-3">
+        {scopes.map((scope) => (
+          <ScopePublishers
+            key={scope}
+            org={org}
+            scope={scope}
+            isAdmin={isAdmin}
+            onError={onError}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6">
       <div className="flex items-center gap-2">
@@ -158,25 +188,7 @@ export function TrustedPublishersCard({
         Authorize a GitHub repo + workflow to publish to a scope from CI with no token (OIDC). A
         release running that workflow publishes to Brika; a publish from anywhere else is refused.
       </p>
-      {scopes === null ? (
-        <div className="h-12 animate-pulse rounded-xl bg-muted" />
-      ) : scopes.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          Attach a scope first, then authorize a repo.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {scopes.map((scope) => (
-            <ScopePublishers
-              key={scope}
-              org={org}
-              scope={scope}
-              isAdmin={isAdmin}
-              onError={onError}
-            />
-          ))}
-        </div>
-      )}
+      {renderScopes()}
     </section>
   );
 }
