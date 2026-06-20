@@ -2,6 +2,7 @@ import { CliError, defineCommand } from "@brika/cli-kit";
 import * as p from "@brika/cli-kit/prompts";
 import { attestPackage } from "../lib/attest";
 import { loadConfig } from "../lib/config";
+import { REGISTRY_OIDC_AUDIENCE, requestGithubOidcToken } from "../lib/oidc";
 import { RegistryClient } from "../lib/registry";
 import { prepare } from "./prepare";
 
@@ -28,8 +29,21 @@ export const publish = defineCommand({
     }
 
     const { token, registry } = await loadConfig();
-    if (token === undefined) {
-      throw new CliError("not logged in - run `brika login` (or set BRIKA_TOKEN)");
+    // Auth precedence: a configured/env BRIKA_TOKEN (human publish), else a tokenless GitHub
+    // OIDC token minted in CI (trusted publishing - the registry authorizes it against a
+    // trusted-publisher binding for the scope; PUB-016).
+    let auth = token;
+    if (auth === undefined) {
+      const oidc = await requestGithubOidcToken(REGISTRY_OIDC_AUDIENCE);
+      if (oidc !== null) {
+        auth = oidc;
+        p.log.info("Authenticating with GitHub OIDC (trusted publishing)");
+      }
+    }
+    if (auth === undefined) {
+      throw new CliError(
+        "not authenticated - run `brika login` (or set BRIKA_TOKEN), or publish from a GitHub Actions workflow with `permissions: id-token: write`",
+      );
     }
 
     // Sign + record the tarball in a public transparency log (sigstore) when
@@ -46,7 +60,7 @@ export const publish = defineCommand({
     const spin = p.spinner();
     spin.start(`Publishing to ${registry}`);
     const { integrity } = await new RegistryClient(registry)
-      .publish(token, {
+      .publish(auth, {
         name: packed.name,
         version: packed.version,
         manifest: packed.manifest,

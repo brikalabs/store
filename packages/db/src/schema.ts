@@ -141,6 +141,28 @@ export const regScopes = sqliteTable("reg_scopes", {
 });
 
 /**
+ * Trusted publishers (PUB-016): bindings that authorize a tokenless GitHub OIDC publish to
+ * a scope. A binding says "this GitHub repo + workflow may publish under this scope", and an
+ * OIDC publish is allowed only when its verified token claims (`repository` + `workflow_ref`)
+ * match a binding (npm trusted-publisher model). Human token publishes stay org-membership-
+ * gated; this is purely the CI/OIDC path. Managed by org admins of the scope's owning org.
+ */
+export const regTrustedPublishers = sqliteTable(
+  "reg_trusted_publishers",
+  {
+    scope: text("scope")
+      .notNull()
+      .references(() => regScopes.scope, { onDelete: "cascade" }),
+    /** `owner/repo` allowed to publish (matched against the OIDC `repository` claim). */
+    repository: text("repository").notNull(),
+    /** Workflow filename, e.g. `publish.yml` (matched against the OIDC `workflow_ref`). */
+    workflow: text("workflow").notNull(),
+    createdAt: integer("created_at").notNull().default(epoch),
+  },
+  (t) => [primaryKey({ columns: [t.scope, t.repository, t.workflow] })],
+);
+
+/**
  * Per-day tarball download counts: the install signal. One row per (package,
  * day-bucket), incremented when a tarball is served. Total installs is the sum
  * across days; "weekly" is the trailing-7-day window. Day is the unix epoch day

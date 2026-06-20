@@ -20,6 +20,7 @@ import {
   D1OrgStore,
   D1OwnershipPolicy,
   D1TokenStore,
+  D1TrustedPublishers,
   HmacDomainChallenge,
 } from "@brika/store-db/adapters";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
@@ -56,7 +57,10 @@ export function buildServices(
   // (orgScopes) -> membership (orgMembers).
   const orgMembers = new D1OrgMembers(db);
   const orgScopes = new D1OrgScopes(db);
-  const ownership = new D1OwnershipPolicy(orgMembers, orgScopes);
+  // Trusted-publisher bindings (PUB-016) authorize tokenless OIDC publishes; shared between
+  // the publish authorization policy and the org controller that manages the bindings.
+  const trustedPublishers = new D1TrustedPublishers(db);
+  const ownership = new D1OwnershipPolicy(orgMembers, orgScopes, trustedPublishers);
   // The raw drizzle client (`db`) is deliberately NOT exposed on the returned graph:
   // every persistence + auth concern goes through a port below, so a controller cannot
   // reach the database directly. Adapters capture `db` here at construction.
@@ -92,6 +96,7 @@ export function buildServices(
     orgs: new OrgService(new D1OrgStore(db), orgMembers, orgScopes, new D1OrgDomains(db), {
       dnsResolver: new CloudflareDohResolver(),
       domainChallenge: new HmacDomainChallenge(domainSecret),
+      trustedPublishers,
     }),
     /** Package catalog read surface (`GET /-/v1/packages`). */
     catalog: new D1CatalogReader(db),

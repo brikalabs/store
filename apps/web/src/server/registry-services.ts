@@ -13,6 +13,7 @@ import {
   D1OrgStore,
   D1OwnershipPolicy,
   D1TokenStore,
+  D1TrustedPublishers,
   HmacDomainChallenge,
   listAllPackages,
 } from "@brika/store-db/adapters";
@@ -37,12 +38,14 @@ export function registryDb(): Db {
 export function registryServices(db: Db = registryDb()) {
   const members = new D1OrgMembers(db);
   const orgScopes = new D1OrgScopes(db);
-  const ownership = new D1OwnershipPolicy(members, orgScopes);
+  const trustedPublishers = new D1TrustedPublishers(db);
+  const ownership = new D1OwnershipPolicy(members, orgScopes, trustedPublishers);
   return {
-    /** Org use cases: claim, members + roles, display name, profile, scopes, domains. */
+    /** Org use cases: claim, members + roles, display name, profile, scopes, domains, publishers. */
     orgs: new OrgService(new D1OrgStore(db), members, orgScopes, new D1OrgDomains(db), {
       dnsResolver: new CloudflareDohResolver(),
       domainChallenge: new HmacDomainChallenge(vars().DOMAIN_VERIFY_SECRET),
+      trustedPublishers,
     }),
     /** The org membership port directly, for the "orgs I belong to" read projection. */
     members,

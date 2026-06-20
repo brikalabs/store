@@ -15,6 +15,7 @@ import {
   D1OrgMembers,
   D1OrgScopes,
   D1OwnershipPolicy,
+  D1TrustedPublishers,
   issueToken,
 } from "@brika/store-db/adapters";
 import { transaction } from "@brika/tx";
@@ -53,6 +54,9 @@ const {
   getOrg,
   takedownOrg,
   restoreOrg,
+  addTrustedPublisher,
+  listTrustedPublishers,
+  removeTrustedPublisher,
 } = await import("./org");
 
 /** The status a handler yields, whether it returns a Response or throws an HttpError. */
@@ -164,7 +168,11 @@ describe("publish (auth + invariant + ownership gates)", () => {
         new D1MetadataWriter(db),
         new R2TarballWriter(fakeR2()),
         new SchemaManifestValidator(),
-        new D1OwnershipPolicy(new D1OrgMembers(db), new D1OrgScopes(db)),
+        new D1OwnershipPolicy(
+          new D1OrgMembers(db),
+          new D1OrgScopes(db),
+          new D1TrustedPublishers(db),
+        ),
         { maxTarballBytes: 1 },
       ),
     };
@@ -450,6 +458,67 @@ describe("attachScope (1:N org -> scopes)", () => {
         }),
       ),
     ).toBe(409);
+  });
+});
+
+describe("trusted publishers (PUB-016)", () => {
+  /** Create org `team` admined by `login` owning scope `@team`; return the admin token. */
+  async function seedScope(login: string): Promise<string> {
+    const token = await issueToken(db, login);
+    await createOrg({ params: { org: "team" }, req: post(undefined, token), ctx: services(db) });
+    await attachScope({
+      params: { org: "team", scope: "@team" },
+      req: post(undefined, token),
+      ctx: services(db),
+    });
+    return token;
+  }
+  const params = { org: "team", scope: "@team" };
+  const binding = { repository: "acme/plugin-x", workflow: "publish.yml" };
+
+  test("an admin adds, lists, and removes a binding", async () => {
+    const token = await seedScope("alice");
+    expect(
+      (
+        await addTrustedPublisher({
+          params,
+          body: binding,
+          req: post(undefined, token),
+          ctx: services(db),
+        })
+      ).status,
+    ).toBe(201);
+
+    const listed = await (
+      await listTrustedPublishers({ params, req: post(undefined, token), ctx: services(db) })
+    ).json();
+    expect(listed.publishers).toMatchObject([{ scope: "@team", ...binding }]);
+
+    expect(
+      (
+        await removeTrustedPublisher({
+          params,
+          body: binding,
+          req: post(undefined, token),
+          ctx: services(db),
+        })
+      ).status,
+    ).toBe(200);
+  });
+
+  test("a non-admin cannot manage bindings (403)", async () => {
+    await seedScope("alice");
+    const bob = await issueToken(db, "bob");
+    expect(
+      await statusOf(
+        addTrustedPublisher({
+          params,
+          body: binding,
+          req: post(undefined, bob),
+          ctx: services(db),
+        }),
+      ),
+    ).toBe(403);
   });
 });
 

@@ -6,11 +6,11 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 ## Totals
 
-135 specs , 370 acceptance criteria.
+136 specs , 373 acceptance criteria.
 
 | Status | Count |
 | --- | --- |
-| [DONE] | 109 |
+| [DONE] | 110 |
 | [WIP] | 1 |
 | [TODO] | 8 |
 | [HOLD] | 2 |
@@ -134,6 +134,7 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [PUB-013](registry/PUB-013-transparency-log-attestation.md) | [DONE] | Transparency-log attestation |
 | [PUB-014](registry/PUB-014-publish-audit-log.md) | [DONE] | Publish audit log |
 | [PUB-015](registry/PUB-015-real-malware-scanner.md) | [TODO] | Real malware scanner |
+| [PUB-016](registry/PUB-016-trusted-publisher-oidc-binding.md) | [DONE] | Trusted publisher bindings for tokenless OIDC publishing |
 | [REG-001](registry/REG-001-fetch-full-packument.md) | [DONE] | Fetch full packument |
 | [REG-002](registry/REG-002-fetch-abbreviated-packument.md) | [DONE] | Fetch abbreviated packument |
 | [REG-003](registry/REG-003-dist-tag-resolution.md) | [DONE] | Dist-tag resolution |

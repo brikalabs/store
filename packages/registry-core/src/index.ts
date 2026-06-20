@@ -102,4 +102,9 @@ export {
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export type { TokenPrincipal, TokenStore } from "./tokens";
+export {
+  type TrustedPublisher,
+  type TrustedPublishers,
+  trustedPublisherMatches,
+} from "./trusted-publishers";
 export { type PackageRecord, PackageVersion, Provenance, type ScopePublisher } from "./types";

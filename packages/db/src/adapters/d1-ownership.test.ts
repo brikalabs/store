@@ -1,11 +1,20 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { PublishIdentity } from "@brika/registry-core";
 import type { Db } from "../client";
-import { regOrgMembers, regOrgs, regScopes } from "../schema";
+import { regOrgMembers, regOrgs, regScopes, regTrustedPublishers } from "../schema";
 import { makeDb } from "../test-harness";
 import { D1OrgMembers } from "./d1-org-members";
 import { D1OrgScopes } from "./d1-org-scopes";
 import { D1OwnershipPolicy } from "./d1-ownership";
+import { D1TrustedPublishers } from "./d1-trusted-publishers";
+
+/** An OIDC (CI) publish identity: carries the repo + workflow_ref the registry verified. */
+const oidc = (repository: string, workflowRef: string): PublishIdentity => ({
+  provider: "github",
+  owner: repository.split("/")[0] ?? repository,
+  repository,
+  provenance: { repository, workflowRef },
+});
 
 /**
  * Publish authorization (1:N org model). A scope is attached to an org explicitly, and only
@@ -40,7 +49,11 @@ let db: Db;
 let policy: D1OwnershipPolicy;
 beforeEach(() => {
   db = makeDb();
-  policy = new D1OwnershipPolicy(new D1OrgMembers(db), new D1OrgScopes(db));
+  policy = new D1OwnershipPolicy(
+    new D1OrgMembers(db),
+    new D1OrgScopes(db),
+    new D1TrustedPublishers(db),
+  );
 });
 
 describe("D1OwnershipPolicy.canPublish", () => {
@@ -75,5 +88,44 @@ describe("D1OwnershipPolicy.canPublish", () => {
       "@team/b",
     );
     expect(other.ok).toBe(false);
+  });
+
+  describe("OIDC (CI) publish via trusted publishers (PUB-016)", () => {
+    const workflowRef = "acme/plugin-x/.github/workflows/publish.yml@refs/heads/main";
+
+    test("PUB-016-AC1: allows an OIDC publish when a binding matches repo + workflow", async () => {
+      await seedOrg(db, "team", "@team", [{ id: "alice", role: "admin" }]);
+      await db
+        .insert(regTrustedPublishers)
+        .values({ scope: "@team", repository: "acme/plugin-x", workflow: "publish.yml" });
+      expect(await policy.canPublish(oidc("acme/plugin-x", workflowRef), "@team/x")).toEqual({
+        ok: true,
+      });
+    });
+
+    test("PUB-016-AC2: refuses an OIDC publish with no binding (membership is NOT a fallback for CI)", async () => {
+      // The repo owner `acme` is even seeded as an org member, but OIDC still needs a binding.
+      await seedOrg(db, "team", "@team", [{ id: "acme", role: "admin" }]);
+      const result = await policy.canPublish(oidc("acme/plugin-x", workflowRef), "@team/x");
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.message).toContain("no trusted publisher");
+    });
+
+    test("refuses when the binding is for a different repo or workflow", async () => {
+      await seedOrg(db, "team", "@team", [{ id: "alice", role: "admin" }]);
+      await db
+        .insert(regTrustedPublishers)
+        .values({ scope: "@team", repository: "acme/other-repo", workflow: "publish.yml" });
+      expect((await policy.canPublish(oidc("acme/plugin-x", workflowRef), "@team/x")).ok).toBe(
+        false,
+      );
+      // Right repo, wrong workflow filename.
+      await db
+        .insert(regTrustedPublishers)
+        .values({ scope: "@team", repository: "acme/plugin-x", workflow: "release.yml" });
+      expect((await policy.canPublish(oidc("acme/plugin-x", workflowRef), "@team/x")).ok).toBe(
+        false,
+      );
+    });
   });
 });

@@ -391,6 +391,97 @@ export async function attachScope({
   return reply({ ok: true, org, scope }, 201);
 }
 
+// A trusted-publisher binding (PUB-016): `owner/repo` + the workflow filename allowed to
+// publish under the scope via OIDC. Validated here so a malformed binding never reaches the
+// store (and so it can actually match a real OIDC `workflow_ref`).
+const TrustedPublisherBody = z.object({
+  repository: z.string().regex(/^[^/\s]+\/[^/\s]+$/, "repository must be 'owner/repo'"),
+  workflow: z
+    .string()
+    .regex(/^[\w.-]+\.ya?ml$/, "workflow must be a workflow filename, e.g. publish.yml"),
+});
+
+/** `GET /-/org/:org/scope/:scope/trusted-publishers` - list bindings (admin; PUB-016). */
+export async function listTrustedPublishers({
+  params,
+  req,
+  ctx,
+}: {
+  readonly params: { readonly org: string; readonly scope: string };
+  readonly req: Request;
+  readonly ctx: Services;
+}): Promise<Response> {
+  const { org, scope } = params;
+  const identity = await requireWrite(req, ctx.tokens);
+  const result = await ctx.orgs.listTrustedPublishers(identity, org, scope);
+  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  return reply({ ok: true, org, scope, publishers: result.publishers }, 200);
+}
+
+/** `PUT /-/org/:org/scope/:scope/trusted-publishers` - authorize a repo+workflow (admin; PUB-016). */
+export async function addTrustedPublisher({
+  params,
+  body,
+  req,
+  ctx,
+}: {
+  readonly params: { readonly org: string; readonly scope: string };
+  readonly body: z.infer<typeof TrustedPublisherBody>;
+  readonly req: Request;
+  readonly ctx: Services;
+}): Promise<Response> {
+  const { org, scope } = params;
+  const identity = await requireWrite(req, ctx.tokens);
+  const result = await ctx.orgs.addTrustedPublisher(
+    identity,
+    org,
+    scope,
+    body.repository,
+    body.workflow,
+  );
+  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  await ctx.audit.record({
+    action: "org_trusted_publisher_add",
+    packageName: scope,
+    version: null,
+    actor: identity,
+    detail: { org, repository: body.repository, workflow: body.workflow },
+  });
+  return reply({ ok: true, org, scope, publisher: result.publisher }, 201);
+}
+
+/** `DELETE /-/org/:org/scope/:scope/trusted-publishers` - revoke a binding (admin; PUB-016). */
+export async function removeTrustedPublisher({
+  params,
+  body,
+  req,
+  ctx,
+}: {
+  readonly params: { readonly org: string; readonly scope: string };
+  readonly body: z.infer<typeof TrustedPublisherBody>;
+  readonly req: Request;
+  readonly ctx: Services;
+}): Promise<Response> {
+  const { org, scope } = params;
+  const identity = await requireWrite(req, ctx.tokens);
+  const result = await ctx.orgs.removeTrustedPublisher(
+    identity,
+    org,
+    scope,
+    body.repository,
+    body.workflow,
+  );
+  if (!result.ok) throw httpError(orgStatus(result.code), result.message, result.code);
+  await ctx.audit.record({
+    action: "org_trusted_publisher_remove",
+    packageName: scope,
+    version: null,
+    actor: identity,
+    detail: { org, repository: body.repository, workflow: body.workflow },
+  });
+  return reply({ ok: true, org, scope, removed: result.removed }, 200);
+}
+
 const TakedownBody = z.object({ reason: z.string().min(1).max(1024) });
 
 /**
@@ -479,6 +570,19 @@ export const orgController = controller({
         rateLimit({ max: 10, window: "1m", key: principal, store: cf("CLAIM_LIMITER") }),
       ],
       handler: attachScope,
+    }),
+    // Trusted publishers for a scope (PUB-016): the bindings that authorize tokenless OIDC
+    // (CI) publishes. Admin-gated to the scope's owning org.
+    route.get({ path: "/:org/scope/:scope/trusted-publishers", handler: listTrustedPublishers }),
+    route.put({
+      path: "/:org/scope/:scope/trusted-publishers",
+      body: TrustedPublisherBody,
+      handler: addTrustedPublisher,
+    }),
+    route.delete({
+      path: "/:org/scope/:scope/trusted-publishers",
+      body: TrustedPublisherBody,
+      handler: removeTrustedPublisher,
     }),
     // Operator-only (REGISTRY_ADMINS), not org membership: takedown/restore a squatted org.
     route.post({ path: "/:org/takedown", body: TakedownBody, handler: takedownOrg }),
