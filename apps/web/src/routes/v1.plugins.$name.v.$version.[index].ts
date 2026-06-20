@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { jsonNotFound, jsonOk } from "@/lib/http";
-import { getRegistryFileList } from "@/lib/registry-assets";
-import { isRegistryName } from "@/lib/registry-source";
+import { getRegistryFileList } from "@/lib/registry/registry-assets";
+import { isRegistryName } from "@/lib/registry/registry-source";
 import { serverContext } from "@/server/server-context";
 
 /**

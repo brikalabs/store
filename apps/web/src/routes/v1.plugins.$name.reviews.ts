@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { getSessionUserId } from "@/lib/auth";
+import { getSessionUserId } from "@/lib/auth/auth";
 import { jsonBadRequest, jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { ensurePluginCached, listReviews, upsertReview } from "@/lib/social";
+import { ensurePluginCached, listReviews, upsertReview } from "@/lib/social/social";
 import { serverContext } from "@/server/server-context";
 
 const ReviewInput = z.object({

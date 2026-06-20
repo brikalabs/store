@@ -12,7 +12,7 @@ import {
   personName,
   Repository,
   repoUrl,
-} from "./manifest-mapping";
+} from "@/lib/registry/manifest-mapping";
 
 /**
  * The npm side of the cached mirror. These helpers query the public npm
@@ -24,7 +24,7 @@ import {
 
 // Localized-doc helpers are shared mapping; re-exported so consumers keep using
 // the npm facade (`registry.ts`, the tests) without a second import path.
-export { docLocales, type LocalizedDoc, pickDocPath } from "./manifest-mapping";
+export { docLocales, type LocalizedDoc, pickDocPath } from "@/lib/registry/manifest-mapping";
 
 const NPM_REGISTRY = "https://registry.npmjs.org";
 const NPM_SEARCH = `${NPM_REGISTRY}/-/v1/search`;

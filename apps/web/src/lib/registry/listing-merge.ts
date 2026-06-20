@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
+import type { ListingOverride } from "@/lib/registry/listing";
 import { pluginListings } from "@/server/db/schema";
 import { serverContext } from "@/server/server-context";
-import type { ListingOverride } from "./listing";
 
 /**
  * Read a plugin's public listing override. A server function so the plugin page loader

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { jsonNotFound, jsonOk } from "@/lib/http";
-import { getPluginVersions } from "@/lib/registry";
+import { getPluginVersions } from "@/lib/registry/registry";
 
 /** `GET /v1/plugins/:name/versions` */
 export const Route = createFileRoute("/v1/plugins/$name/versions")({

@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
+import { parseCookies, safeReturnPath } from "@/lib/auth/auth-cookies";
+import { signSession, verifySession } from "@/lib/auth/session";
 import type { Db } from "@/server/db/client";
 import { users } from "@/server/db/schema";
 import { vars } from "@/server/env";
-import { parseCookies, safeReturnPath } from "./auth-cookies";
-import { signSession, verifySession } from "./session";
 
 // Pure cookie/redirect helpers live in `./auth-cookies` (unit-tested there);
 // re-exported so callers keep importing them from `./auth`.
-export { parseCookies, safeReturnPath } from "./auth-cookies";
+export { parseCookies, safeReturnPath } from "@/lib/auth/auth-cookies";
 
 const SESSION_COOKIE = "brika_session";
 const STATE_COOKIE = "brika_oauth_state";

@@ -1,5 +1,5 @@
 import type { PublishIdentity } from "@brika/registry-core";
-import { getCurrentUser, type SessionUser } from "@/lib/auth";
+import { getCurrentUser, type SessionUser } from "@/lib/auth/auth";
 import { jsonUnauthorized } from "@/lib/http";
 import { sessionIdentity } from "@/server/registry-identity";
 import { type RegistryServices, registryServices } from "@/server/registry-services";

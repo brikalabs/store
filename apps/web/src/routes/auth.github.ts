@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { returnCookie, safeReturnPath, stateCookie } from "@/lib/auth";
-import { authorizeUrl } from "@/lib/github";
+import { returnCookie, safeReturnPath, stateCookie } from "@/lib/auth/auth";
+import { authorizeUrl } from "@/lib/auth/github";
 import { vars } from "@/server/env";
 
 /** `GET /auth/github`: start the GitHub OAuth flow. A `?return=<path>` is

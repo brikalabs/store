@@ -4,7 +4,7 @@ import { LinkIcon } from "@/components/clay/link-icon";
 import { PluginCard, Stat } from "@/components/clay/plugin-card";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { formatCount } from "@/lib/format";
-import { getOrgPage } from "@/lib/registry";
+import { getOrgPage } from "@/lib/registry/registry";
 
 export const Route = createFileRoute("/orgs/$org")({
   loader: async ({ params }) => {

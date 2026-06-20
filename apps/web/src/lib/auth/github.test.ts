@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { authorizeUrl, exchangeCode, fetchUser } from "./github";
+import { authorizeUrl, exchangeCode, fetchUser } from "@/lib/auth/github";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {

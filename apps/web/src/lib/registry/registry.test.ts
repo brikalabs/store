@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { gzipSync } from "node:zlib";
-import { getDeveloperPage, getPluginPage, getPluginVersions, searchPlugins } from "./registry";
+import {
+  getDeveloperPage,
+  getPluginPage,
+  getPluginVersions,
+  searchPlugins,
+} from "@/lib/registry/registry";
 
 /**
  * Orchestration tests for the store's read model: it merges `@brika/*` plugins

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { clearReturnCookie, readOauthState, readReturnPath, sessionCookie } from "@/lib/auth";
-import { exchangeCode, fetchUser } from "@/lib/github";
-import { markDeveloperVerified, upsertUser } from "@/lib/social";
+import { clearReturnCookie, readOauthState, readReturnPath, sessionCookie } from "@/lib/auth/auth";
+import { exchangeCode, fetchUser } from "@/lib/auth/github";
+import { markDeveloperVerified, upsertUser } from "@/lib/social/social";
 import { vars } from "@/server/env";
 import { serverContext } from "@/server/server-context";
 

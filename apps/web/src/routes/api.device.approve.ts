@@ -1,8 +1,8 @@
 import { env } from "cloudflare:workers";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/auth";
-import { approveDeviceCode } from "@/lib/device-approval";
+import { getCurrentUser } from "@/lib/auth/auth";
+import { approveDeviceCode } from "@/lib/auth/device-approval";
 import { jsonBadRequest, jsonOk, jsonUnauthorized } from "@/lib/http";
 import { serverContext } from "@/server/server-context";
 

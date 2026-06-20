@@ -14,7 +14,7 @@ import {
   searchNpm,
   toPluginDetail,
   toPluginSummary,
-} from "./npm";
+} from "@/lib/registry/npm";
 import {
   compareVersionsDesc,
   getRegistryOrg,
@@ -24,7 +24,7 @@ import {
   listRegistryPlugins,
   type RegistryOrg,
   versionsFromPackument as registryVersionsFromPackument,
-} from "./registry-source";
+} from "@/lib/registry/registry-source";
 
 /**
  * The store's read model. For now it is backed directly by npm so the pages

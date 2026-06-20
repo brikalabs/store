@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { getSessionUserId } from "@/lib/auth";
+import { getSessionUserId } from "@/lib/auth/auth";
 import { jsonBadRequest, jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { addComment, ensurePluginCached, listComments } from "@/lib/social";
+import { addComment, ensurePluginCached, listComments } from "@/lib/social/social";
 import { serverContext } from "@/server/server-context";
 
 const CommentInput = z.object({

@@ -9,7 +9,7 @@ import { DiscoverIndex } from "@/components/discover-index";
 import { PluginCard } from "@/components/plugin-card";
 import { type SortKey, SortMenu, sortPlugins } from "@/components/sort-menu";
 import { formatCount } from "@/lib/format";
-import { searchPlugins } from "@/lib/registry";
+import { searchPlugins } from "@/lib/registry/registry";
 
 const browseSearch = z.object({ q: z.string().optional() });
 

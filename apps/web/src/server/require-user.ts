@@ -1,7 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { getCurrentUser, type SessionUser } from "@/lib/auth";
+import { getCurrentUser, type SessionUser } from "@/lib/auth/auth";
 import { serverContext } from "@/server/server-context";
 
 /**

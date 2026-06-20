@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { jsonOk } from "@/lib/http";
-import { getDeveloperPage } from "@/lib/registry";
-import { getDeveloperProfile } from "@/lib/social";
+import { getDeveloperPage } from "@/lib/registry/registry";
+import { getDeveloperProfile } from "@/lib/social/social";
 import { serverContext } from "@/server/server-context";
 
 /**

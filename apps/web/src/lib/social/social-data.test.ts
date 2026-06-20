@@ -4,9 +4,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import type { Db } from "@/server/db/client";
-import * as schema from "@/server/db/schema";
-import { developers, plugins, users } from "@/server/db/schema";
 import {
   addComment,
   ensurePluginCached,
@@ -18,7 +15,10 @@ import {
   updateDeveloperProfile,
   upsertReview,
   upsertUser,
-} from "./social";
+} from "@/lib/social/social";
+import type { Db } from "@/server/db/client";
+import * as schema from "@/server/db/schema";
+import { developers, plugins, users } from "@/server/db/schema";
 
 /** In-memory SQLite from the shipped migrations (see social.test.ts). */
 const MIGRATIONS_DIR = join(import.meta.dir, "../../drizzle");

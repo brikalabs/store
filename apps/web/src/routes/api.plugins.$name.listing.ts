@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth/auth";
 import { jsonBadRequest, jsonForbidden, jsonPrivate, jsonUnauthorized } from "@/lib/http";
-import { getPluginListing, PluginListingInput, upsertPluginListing } from "@/lib/listing";
-import { canEditPluginListing } from "@/lib/listing-ownership";
+import { getPluginListing, PluginListingInput, upsertPluginListing } from "@/lib/registry/listing";
+import { canEditPluginListing } from "@/lib/registry/listing-ownership";
 import { serverContext } from "@/server/server-context";
 
 /**

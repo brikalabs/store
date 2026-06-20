@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getSessionUserId } from "@/lib/auth";
+import { getSessionUserId } from "@/lib/auth/auth";
 import { jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { listComments, toggleCommentUpvote } from "@/lib/social";
+import { listComments, toggleCommentUpvote } from "@/lib/social/social";
 import { serverContext } from "@/server/server-context";
 
 /**

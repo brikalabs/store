@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { type GrantFamily, groupGrants, parseGrantId } from "./grants";
+import { type GrantFamily, groupGrants, parseGrantId } from "@/lib/social/grants";
 
 test("parseGrantId splits a reverse-DNS grant into family + verb", () => {
   expect(parseGrantId("dev.brika.net.fetch")).toEqual({ family: "net", verb: "fetch" });

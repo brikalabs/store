@@ -1,5 +1,5 @@
 import type { PublishIdentity } from "@brika/registry-core";
-import type { SessionUser } from "@/lib/auth";
+import type { SessionUser } from "@/lib/auth/auth";
 
 /**
  * Map the web session user to the registry's publish identity. The store signs users in

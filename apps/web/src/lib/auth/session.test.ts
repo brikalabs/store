@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { signSession, verifySession } from "./session";
+import { signSession, verifySession } from "@/lib/auth/session";
 
 const SECRET = "test-session-secret-please-change";
 

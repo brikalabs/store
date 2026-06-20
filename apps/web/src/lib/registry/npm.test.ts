@@ -8,7 +8,7 @@ import {
   searchNpm,
   toPluginDetail,
   toPluginSummary,
-} from "./npm";
+} from "@/lib/registry/npm";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseCookies, safeReturnPath } from "./auth-cookies";
+import { parseCookies, safeReturnPath } from "@/lib/auth/auth-cookies";
 
 describe("safeReturnPath (open-redirect guard)", () => {
   test("keeps a same-site path unchanged", () => {

@@ -18,11 +18,11 @@ import {
   personName,
   pickDocPath,
   repoUrl,
-} from "./manifest-mapping";
+} from "@/lib/registry/manifest-mapping";
 
 // Localized-doc helpers are shared mapping; re-exported so the registry facade
 // (and its tests) keep a single import path.
-export { docLocales, pickDocPath } from "./manifest-mapping";
+export { docLocales, pickDocPath } from "@/lib/registry/manifest-mapping";
 
 /**
  * The `@brika/*` plugins are hosted on our own registry (registry.brika.dev),

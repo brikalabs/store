@@ -47,11 +47,11 @@ import { InstallCommand } from "@/components/install-command";
 import { Markdown } from "@/components/markdown";
 import { ReviewsSection } from "@/components/reviews-section";
 import { formatBytes, formatCount, formatDate } from "@/lib/format";
-import { type GrantFamily, type GrantScope, groupGrants } from "@/lib/grants";
-import { applyListingOverride } from "@/lib/listing";
-import { fetchPublicListing } from "@/lib/listing-merge";
-import { getPluginPage } from "@/lib/registry";
-import { isRegistryName } from "@/lib/registry-source";
+import { applyListingOverride } from "@/lib/registry/listing";
+import { fetchPublicListing } from "@/lib/registry/listing-merge";
+import { getPluginPage } from "@/lib/registry/registry";
+import { isRegistryName } from "@/lib/registry/registry-source";
+import { type GrantFamily, type GrantScope, groupGrants } from "@/lib/social/grants";
 
 const DETAIL_TABS = [
   { id: "overview", label: "Overview" },

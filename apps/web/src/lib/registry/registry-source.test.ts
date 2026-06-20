@@ -11,7 +11,7 @@ import {
   manifestToSummary,
   pickDocPath,
   versionsFromPackument,
-} from "./registry-source";
+} from "@/lib/registry/registry-source";
 
 const i18nManifest: Manifest = {
   name: "@brika/plugin-i18n",

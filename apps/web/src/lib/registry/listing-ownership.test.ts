@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isListingMaintainer } from "./listing";
+import { isListingMaintainer } from "@/lib/registry/listing";
 
 describe("isListingMaintainer (CONSOLE-005-AC3 ownership gate)", () => {
   test("CONSOLE-005-AC3: registry scope requires membership", () => {

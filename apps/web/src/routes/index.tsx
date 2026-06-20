@@ -9,7 +9,7 @@ import { Segmented, segmentClassName } from "@/components/clay/segmented";
 import { CAPABILITY_TILES, DiscoverIndex } from "@/components/discover-index";
 import { PluginCard } from "@/components/plugin-card";
 import { useSearch } from "@/components/search-context";
-import { searchPlugins } from "@/lib/registry";
+import { searchPlugins } from "@/lib/registry/registry";
 
 const homeSearch = z.object({ d: z.enum(["a", "b"]).optional() });
 
