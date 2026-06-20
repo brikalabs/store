@@ -9,14 +9,16 @@ import {
   regScopes,
   regVersions,
 } from "@brika/store-db";
+import {
+  D1MetadataWriter,
+  D1OwnershipPolicy,
+  D1ScopeMembers,
+  issueToken,
+} from "@brika/store-db/adapters";
 import { transaction } from "@brika/tx";
 import { eq } from "drizzle-orm";
-import { D1MetadataWriter } from "../adapters/d1-metadata-writer";
-import { D1OwnershipPolicy } from "../adapters/d1-ownership";
-import { D1ScopeMembers } from "../adapters/d1-scope-members";
 import { SchemaManifestValidator } from "../adapters/manifest-validator";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
-import { issueToken } from "../adapters/token";
 import { buildServices, type Services } from "../services";
 import { fakeR2, makeDb, seedExamplePackage } from "../test-harness";
 import { handleCatalog } from "./catalog";

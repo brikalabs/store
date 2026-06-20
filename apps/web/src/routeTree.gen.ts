@@ -14,6 +14,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PluginsIndexRouteImport } from './routes/plugins.index'
 import { Route as LegalIndexRouteImport } from './routes/legal.index'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as V1VerifiedRouteImport } from './routes/v1.verified'
 import { Route as V1SearchRouteImport } from './routes/v1.search'
 import { Route as V1RegistryRouteImport } from './routes/v1.registry'
@@ -24,19 +25,34 @@ import { Route as LegalLicensesRouteImport } from './routes/legal.licenses'
 import { Route as LegalCookiesRouteImport } from './routes/legal.cookies'
 import { Route as LegalAcceptableUseRouteImport } from './routes/legal.acceptable-use'
 import { Route as DevelopersIdRouteImport } from './routes/developers.$id'
+import { Route as DashboardScopesRouteImport } from './routes/dashboard.scopes'
+import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
 import { Route as AuthMeRouteImport } from './routes/auth.me'
 import { Route as AuthLogoutRouteImport } from './routes/auth.logout'
 import { Route as AuthGithubRouteImport } from './routes/auth.github'
+import { Route as ApiScopesRouteImport } from './routes/api.scopes'
+import { Route as DashboardPluginsIndexRouteImport } from './routes/dashboard.plugins.index'
 import { Route as V1PluginsNameRouteImport } from './routes/v1.plugins.$name'
 import { Route as V1DevelopersIdRouteImport } from './routes/v1.developers.$id'
+import { Route as DashboardScopesScopeRouteImport } from './routes/dashboard.scopes_.$scope'
 import { Route as DashboardPluginsSplatRouteImport } from './routes/dashboard.plugins.$'
+import { Route as DashboardAccountTokensRouteImport } from './routes/dashboard.account.tokens'
 import { Route as AuthGithubCallbackRouteImport } from './routes/auth.github.callback'
+import { Route as ApiScopesScopeRouteImport } from './routes/api.scopes.$scope'
+import { Route as ApiPluginsYankRouteImport } from './routes/api.plugins.yank'
+import { Route as ApiPluginsVersionsRouteImport } from './routes/api.plugins.versions'
+import { Route as ApiPluginsDeprecateRouteImport } from './routes/api.plugins.deprecate'
 import { Route as ApiDeviceApproveRouteImport } from './routes/api.device.approve'
+import { Route as ApiAccountTokensRouteImport } from './routes/api.account.tokens'
 import { Route as ApiAccountProfileRouteImport } from './routes/api.account.profile'
 import { Route as V1PluginsNameVersionsRouteImport } from './routes/v1.plugins.$name.versions'
 import { Route as V1PluginsNameReviewsRouteImport } from './routes/v1.plugins.$name.reviews'
 import { Route as V1PluginsNameReadmeRouteImport } from './routes/v1.plugins.$name.readme'
 import { Route as V1PluginsNameCommentsRouteImport } from './routes/v1.plugins.$name.comments'
+import { Route as ApiScopesScopeMembersRouteImport } from './routes/api.scopes.$scope.members'
+import { Route as ApiScopesScopeDisplayNameRouteImport } from './routes/api.scopes.$scope.display-name'
+import { Route as ApiAccountTokensHashRouteImport } from './routes/api.account.tokens.$hash'
+import { Route as ApiScopesScopeMembersMemberIdRouteImport } from './routes/api.scopes.$scope.members.$memberId'
 import { Route as V1PluginsNameVVersionChar91indexChar93RouteImport } from './routes/v1.plugins.$name.v.$version.[index]'
 import { Route as V1PluginsNameReviewsReviewIdVoteRouteImport } from './routes/v1.plugins.$name.reviews.$reviewId.vote'
 import { Route as V1PluginsNameCommentsCommentIdVoteRouteImport } from './routes/v1.plugins.$name.comments.$commentId.vote'
@@ -66,6 +82,11 @@ const LegalIndexRoute = LegalIndexRouteImport.update({
   id: '/legal/',
   path: '/legal/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const V1VerifiedRoute = V1VerifiedRouteImport.update({
   id: '/v1/verified',
@@ -117,6 +138,16 @@ const DevelopersIdRoute = DevelopersIdRouteImport.update({
   path: '/developers/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardScopesRoute = DashboardScopesRouteImport.update({
+  id: '/scopes',
+  path: '/scopes',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardProfileRoute = DashboardProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const AuthMeRoute = AuthMeRouteImport.update({
   id: '/auth/me',
   path: '/auth/me',
@@ -132,6 +163,16 @@ const AuthGithubRoute = AuthGithubRouteImport.update({
   path: '/auth/github',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiScopesRoute = ApiScopesRouteImport.update({
+  id: '/api/scopes',
+  path: '/api/scopes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardPluginsIndexRoute = DashboardPluginsIndexRouteImport.update({
+  id: '/plugins/',
+  path: '/plugins/',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const V1PluginsNameRoute = V1PluginsNameRouteImport.update({
   id: '/v1/plugins/$name',
   path: '/v1/plugins/$name',
@@ -142,9 +183,19 @@ const V1DevelopersIdRoute = V1DevelopersIdRouteImport.update({
   path: '/v1/developers/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardScopesScopeRoute = DashboardScopesScopeRouteImport.update({
+  id: '/scopes_/$scope',
+  path: '/scopes/$scope',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardPluginsSplatRoute = DashboardPluginsSplatRouteImport.update({
   id: '/plugins/$',
   path: '/plugins/$',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAccountTokensRoute = DashboardAccountTokensRouteImport.update({
+  id: '/account/tokens',
+  path: '/account/tokens',
   getParentRoute: () => DashboardRoute,
 } as any)
 const AuthGithubCallbackRoute = AuthGithubCallbackRouteImport.update({
@@ -152,9 +203,34 @@ const AuthGithubCallbackRoute = AuthGithubCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => AuthGithubRoute,
 } as any)
+const ApiScopesScopeRoute = ApiScopesScopeRouteImport.update({
+  id: '/$scope',
+  path: '/$scope',
+  getParentRoute: () => ApiScopesRoute,
+} as any)
+const ApiPluginsYankRoute = ApiPluginsYankRouteImport.update({
+  id: '/api/plugins/yank',
+  path: '/api/plugins/yank',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPluginsVersionsRoute = ApiPluginsVersionsRouteImport.update({
+  id: '/api/plugins/versions',
+  path: '/api/plugins/versions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPluginsDeprecateRoute = ApiPluginsDeprecateRouteImport.update({
+  id: '/api/plugins/deprecate',
+  path: '/api/plugins/deprecate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDeviceApproveRoute = ApiDeviceApproveRouteImport.update({
   id: '/api/device/approve',
   path: '/api/device/approve',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAccountTokensRoute = ApiAccountTokensRouteImport.update({
+  id: '/api/account/tokens',
+  path: '/api/account/tokens',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAccountProfileRoute = ApiAccountProfileRouteImport.update({
@@ -182,6 +258,28 @@ const V1PluginsNameCommentsRoute = V1PluginsNameCommentsRouteImport.update({
   path: '/comments',
   getParentRoute: () => V1PluginsNameRoute,
 } as any)
+const ApiScopesScopeMembersRoute = ApiScopesScopeMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => ApiScopesScopeRoute,
+} as any)
+const ApiScopesScopeDisplayNameRoute =
+  ApiScopesScopeDisplayNameRouteImport.update({
+    id: '/display-name',
+    path: '/display-name',
+    getParentRoute: () => ApiScopesScopeRoute,
+  } as any)
+const ApiAccountTokensHashRoute = ApiAccountTokensHashRouteImport.update({
+  id: '/$hash',
+  path: '/$hash',
+  getParentRoute: () => ApiAccountTokensRoute,
+} as any)
+const ApiScopesScopeMembersMemberIdRoute =
+  ApiScopesScopeMembersMemberIdRouteImport.update({
+    id: '/$memberId',
+    path: '/$memberId',
+    getParentRoute: () => ApiScopesScopeMembersRoute,
+  } as any)
 const V1PluginsNameVVersionChar91indexChar93Route =
   V1PluginsNameVVersionChar91indexChar93RouteImport.update({
     id: '/v/$version/index',
@@ -211,9 +309,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/device': typeof DeviceRoute
+  '/api/scopes': typeof ApiScopesRouteWithChildren
   '/auth/github': typeof AuthGithubRouteWithChildren
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/scopes': typeof DashboardScopesRoute
   '/developers/$id': typeof DevelopersIdRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -224,18 +325,31 @@ export interface FileRoutesByFullPath {
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
+  '/dashboard/': typeof DashboardIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/plugins/': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
+  '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/device/approve': typeof ApiDeviceApproveRoute
+  '/api/plugins/deprecate': typeof ApiPluginsDeprecateRoute
+  '/api/plugins/versions': typeof ApiPluginsVersionsRoute
+  '/api/plugins/yank': typeof ApiPluginsYankRoute
+  '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
   '/auth/github/callback': typeof AuthGithubCallbackRoute
+  '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
+  '/dashboard/scopes/$scope': typeof DashboardScopesScopeRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
+  '/dashboard/plugins/': typeof DashboardPluginsIndexRoute
+  '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
+  '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
+  '/api/scopes/$scope/members': typeof ApiScopesScopeMembersRouteWithChildren
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
+  '/api/scopes/$scope/members/$memberId': typeof ApiScopesScopeMembersMemberIdRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
   '/v1/plugins/$name/v/$version/index': typeof V1PluginsNameVVersionChar91indexChar93Route
@@ -243,11 +357,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRouteWithChildren
   '/device': typeof DeviceRoute
+  '/api/scopes': typeof ApiScopesRouteWithChildren
   '/auth/github': typeof AuthGithubRouteWithChildren
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/scopes': typeof DashboardScopesRoute
   '/developers/$id': typeof DevelopersIdRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -258,18 +374,31 @@ export interface FileRoutesByTo {
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
+  '/dashboard': typeof DashboardIndexRoute
   '/legal': typeof LegalIndexRoute
   '/plugins': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
+  '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/device/approve': typeof ApiDeviceApproveRoute
+  '/api/plugins/deprecate': typeof ApiPluginsDeprecateRoute
+  '/api/plugins/versions': typeof ApiPluginsVersionsRoute
+  '/api/plugins/yank': typeof ApiPluginsYankRoute
+  '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
   '/auth/github/callback': typeof AuthGithubCallbackRoute
+  '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
+  '/dashboard/scopes/$scope': typeof DashboardScopesScopeRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
+  '/dashboard/plugins': typeof DashboardPluginsIndexRoute
+  '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
+  '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
+  '/api/scopes/$scope/members': typeof ApiScopesScopeMembersRouteWithChildren
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
+  '/api/scopes/$scope/members/$memberId': typeof ApiScopesScopeMembersMemberIdRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
   '/v1/plugins/$name/v/$version/index': typeof V1PluginsNameVVersionChar91indexChar93Route
@@ -280,9 +409,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/device': typeof DeviceRoute
+  '/api/scopes': typeof ApiScopesRouteWithChildren
   '/auth/github': typeof AuthGithubRouteWithChildren
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/scopes': typeof DashboardScopesRoute
   '/developers/$id': typeof DevelopersIdRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/cookies': typeof LegalCookiesRoute
@@ -293,18 +425,31 @@ export interface FileRoutesById {
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
+  '/dashboard/': typeof DashboardIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/plugins/': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
+  '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/device/approve': typeof ApiDeviceApproveRoute
+  '/api/plugins/deprecate': typeof ApiPluginsDeprecateRoute
+  '/api/plugins/versions': typeof ApiPluginsVersionsRoute
+  '/api/plugins/yank': typeof ApiPluginsYankRoute
+  '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
   '/auth/github/callback': typeof AuthGithubCallbackRoute
+  '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
+  '/dashboard/scopes_/$scope': typeof DashboardScopesScopeRoute
   '/v1/developers/$id': typeof V1DevelopersIdRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
+  '/dashboard/plugins/': typeof DashboardPluginsIndexRoute
+  '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
+  '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
+  '/api/scopes/$scope/members': typeof ApiScopesScopeMembersRouteWithChildren
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
+  '/api/scopes/$scope/members/$memberId': typeof ApiScopesScopeMembersMemberIdRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
   '/v1/plugins/$name/v/$version/index': typeof V1PluginsNameVVersionChar91indexChar93Route
@@ -316,9 +461,12 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/device'
+    | '/api/scopes'
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/profile'
+    | '/dashboard/scopes'
     | '/developers/$id'
     | '/legal/acceptable-use'
     | '/legal/cookies'
@@ -329,18 +477,31 @@ export interface FileRouteTypes {
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
+    | '/dashboard/'
     | '/legal/'
     | '/plugins/'
     | '/api/account/profile'
+    | '/api/account/tokens'
     | '/api/device/approve'
+    | '/api/plugins/deprecate'
+    | '/api/plugins/versions'
+    | '/api/plugins/yank'
+    | '/api/scopes/$scope'
     | '/auth/github/callback'
+    | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
+    | '/dashboard/scopes/$scope'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
+    | '/dashboard/plugins/'
+    | '/api/account/tokens/$hash'
+    | '/api/scopes/$scope/display-name'
+    | '/api/scopes/$scope/members'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
+    | '/api/scopes/$scope/members/$memberId'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
     | '/v1/plugins/$name/v/$version/index'
@@ -348,11 +509,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/dashboard'
     | '/device'
+    | '/api/scopes'
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/profile'
+    | '/dashboard/scopes'
     | '/developers/$id'
     | '/legal/acceptable-use'
     | '/legal/cookies'
@@ -363,18 +526,31 @@ export interface FileRouteTypes {
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
+    | '/dashboard'
     | '/legal'
     | '/plugins'
     | '/api/account/profile'
+    | '/api/account/tokens'
     | '/api/device/approve'
+    | '/api/plugins/deprecate'
+    | '/api/plugins/versions'
+    | '/api/plugins/yank'
+    | '/api/scopes/$scope'
     | '/auth/github/callback'
+    | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
+    | '/dashboard/scopes/$scope'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
+    | '/dashboard/plugins'
+    | '/api/account/tokens/$hash'
+    | '/api/scopes/$scope/display-name'
+    | '/api/scopes/$scope/members'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
+    | '/api/scopes/$scope/members/$memberId'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
     | '/v1/plugins/$name/v/$version/index'
@@ -384,9 +560,12 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/device'
+    | '/api/scopes'
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/profile'
+    | '/dashboard/scopes'
     | '/developers/$id'
     | '/legal/acceptable-use'
     | '/legal/cookies'
@@ -397,18 +576,31 @@ export interface FileRouteTypes {
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
+    | '/dashboard/'
     | '/legal/'
     | '/plugins/'
     | '/api/account/profile'
+    | '/api/account/tokens'
     | '/api/device/approve'
+    | '/api/plugins/deprecate'
+    | '/api/plugins/versions'
+    | '/api/plugins/yank'
+    | '/api/scopes/$scope'
     | '/auth/github/callback'
+    | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
+    | '/dashboard/scopes_/$scope'
     | '/v1/developers/$id'
     | '/v1/plugins/$name'
+    | '/dashboard/plugins/'
+    | '/api/account/tokens/$hash'
+    | '/api/scopes/$scope/display-name'
+    | '/api/scopes/$scope/members'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
+    | '/api/scopes/$scope/members/$memberId'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
     | '/v1/plugins/$name/v/$version/index'
@@ -419,6 +611,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   DeviceRoute: typeof DeviceRoute
+  ApiScopesRoute: typeof ApiScopesRouteWithChildren
   AuthGithubRoute: typeof AuthGithubRouteWithChildren
   AuthLogoutRoute: typeof AuthLogoutRoute
   AuthMeRoute: typeof AuthMeRoute
@@ -435,7 +628,11 @@ export interface RootRouteChildren {
   LegalIndexRoute: typeof LegalIndexRoute
   PluginsIndexRoute: typeof PluginsIndexRoute
   ApiAccountProfileRoute: typeof ApiAccountProfileRoute
+  ApiAccountTokensRoute: typeof ApiAccountTokensRouteWithChildren
   ApiDeviceApproveRoute: typeof ApiDeviceApproveRoute
+  ApiPluginsDeprecateRoute: typeof ApiPluginsDeprecateRoute
+  ApiPluginsVersionsRoute: typeof ApiPluginsVersionsRoute
+  ApiPluginsYankRoute: typeof ApiPluginsYankRoute
   V1DevelopersIdRoute: typeof V1DevelopersIdRoute
   V1PluginsNameRoute: typeof V1PluginsNameRouteWithChildren
 }
@@ -476,6 +673,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/legal/'
       preLoaderRoute: typeof LegalIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/v1/verified': {
       id: '/v1/verified'
@@ -547,6 +751,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevelopersIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/scopes': {
+      id: '/dashboard/scopes'
+      path: '/scopes'
+      fullPath: '/dashboard/scopes'
+      preLoaderRoute: typeof DashboardScopesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/profile': {
+      id: '/dashboard/profile'
+      path: '/profile'
+      fullPath: '/dashboard/profile'
+      preLoaderRoute: typeof DashboardProfileRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/auth/me': {
       id: '/auth/me'
       path: '/auth/me'
@@ -568,6 +786,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthGithubRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/scopes': {
+      id: '/api/scopes'
+      path: '/api/scopes'
+      fullPath: '/api/scopes'
+      preLoaderRoute: typeof ApiScopesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/plugins/': {
+      id: '/dashboard/plugins/'
+      path: '/plugins'
+      fullPath: '/dashboard/plugins/'
+      preLoaderRoute: typeof DashboardPluginsIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/v1/plugins/$name': {
       id: '/v1/plugins/$name'
       path: '/v1/plugins/$name'
@@ -582,11 +814,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1DevelopersIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/scopes_/$scope': {
+      id: '/dashboard/scopes_/$scope'
+      path: '/scopes/$scope'
+      fullPath: '/dashboard/scopes/$scope'
+      preLoaderRoute: typeof DashboardScopesScopeRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/plugins/$': {
       id: '/dashboard/plugins/$'
       path: '/plugins/$'
       fullPath: '/dashboard/plugins/$'
       preLoaderRoute: typeof DashboardPluginsSplatRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/account/tokens': {
+      id: '/dashboard/account/tokens'
+      path: '/account/tokens'
+      fullPath: '/dashboard/account/tokens'
+      preLoaderRoute: typeof DashboardAccountTokensRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/auth/github/callback': {
@@ -596,11 +842,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthGithubCallbackRouteImport
       parentRoute: typeof AuthGithubRoute
     }
+    '/api/scopes/$scope': {
+      id: '/api/scopes/$scope'
+      path: '/$scope'
+      fullPath: '/api/scopes/$scope'
+      preLoaderRoute: typeof ApiScopesScopeRouteImport
+      parentRoute: typeof ApiScopesRoute
+    }
+    '/api/plugins/yank': {
+      id: '/api/plugins/yank'
+      path: '/api/plugins/yank'
+      fullPath: '/api/plugins/yank'
+      preLoaderRoute: typeof ApiPluginsYankRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/plugins/versions': {
+      id: '/api/plugins/versions'
+      path: '/api/plugins/versions'
+      fullPath: '/api/plugins/versions'
+      preLoaderRoute: typeof ApiPluginsVersionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/plugins/deprecate': {
+      id: '/api/plugins/deprecate'
+      path: '/api/plugins/deprecate'
+      fullPath: '/api/plugins/deprecate'
+      preLoaderRoute: typeof ApiPluginsDeprecateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/device/approve': {
       id: '/api/device/approve'
       path: '/api/device/approve'
       fullPath: '/api/device/approve'
       preLoaderRoute: typeof ApiDeviceApproveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/account/tokens': {
+      id: '/api/account/tokens'
+      path: '/api/account/tokens'
+      fullPath: '/api/account/tokens'
+      preLoaderRoute: typeof ApiAccountTokensRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/account/profile': {
@@ -638,6 +919,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1PluginsNameCommentsRouteImport
       parentRoute: typeof V1PluginsNameRoute
     }
+    '/api/scopes/$scope/members': {
+      id: '/api/scopes/$scope/members'
+      path: '/members'
+      fullPath: '/api/scopes/$scope/members'
+      preLoaderRoute: typeof ApiScopesScopeMembersRouteImport
+      parentRoute: typeof ApiScopesScopeRoute
+    }
+    '/api/scopes/$scope/display-name': {
+      id: '/api/scopes/$scope/display-name'
+      path: '/display-name'
+      fullPath: '/api/scopes/$scope/display-name'
+      preLoaderRoute: typeof ApiScopesScopeDisplayNameRouteImport
+      parentRoute: typeof ApiScopesScopeRoute
+    }
+    '/api/account/tokens/$hash': {
+      id: '/api/account/tokens/$hash'
+      path: '/$hash'
+      fullPath: '/api/account/tokens/$hash'
+      preLoaderRoute: typeof ApiAccountTokensHashRouteImport
+      parentRoute: typeof ApiAccountTokensRoute
+    }
+    '/api/scopes/$scope/members/$memberId': {
+      id: '/api/scopes/$scope/members/$memberId'
+      path: '/$memberId'
+      fullPath: '/api/scopes/$scope/members/$memberId'
+      preLoaderRoute: typeof ApiScopesScopeMembersMemberIdRouteImport
+      parentRoute: typeof ApiScopesScopeMembersRoute
+    }
     '/v1/plugins/$name/v/$version/index': {
       id: '/v1/plugins/$name/v/$version/index'
       path: '/v/$version/index'
@@ -670,15 +979,66 @@ declare module '@tanstack/react-router' {
 }
 
 interface DashboardRouteChildren {
+  DashboardProfileRoute: typeof DashboardProfileRoute
+  DashboardScopesRoute: typeof DashboardScopesRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardAccountTokensRoute: typeof DashboardAccountTokensRoute
   DashboardPluginsSplatRoute: typeof DashboardPluginsSplatRoute
+  DashboardScopesScopeRoute: typeof DashboardScopesScopeRoute
+  DashboardPluginsIndexRoute: typeof DashboardPluginsIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardProfileRoute: DashboardProfileRoute,
+  DashboardScopesRoute: DashboardScopesRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
+  DashboardAccountTokensRoute: DashboardAccountTokensRoute,
   DashboardPluginsSplatRoute: DashboardPluginsSplatRoute,
+  DashboardScopesScopeRoute: DashboardScopesScopeRoute,
+  DashboardPluginsIndexRoute: DashboardPluginsIndexRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
+)
+
+interface ApiScopesScopeMembersRouteChildren {
+  ApiScopesScopeMembersMemberIdRoute: typeof ApiScopesScopeMembersMemberIdRoute
+}
+
+const ApiScopesScopeMembersRouteChildren: ApiScopesScopeMembersRouteChildren = {
+  ApiScopesScopeMembersMemberIdRoute: ApiScopesScopeMembersMemberIdRoute,
+}
+
+const ApiScopesScopeMembersRouteWithChildren =
+  ApiScopesScopeMembersRoute._addFileChildren(
+    ApiScopesScopeMembersRouteChildren,
+  )
+
+interface ApiScopesScopeRouteChildren {
+  ApiScopesScopeDisplayNameRoute: typeof ApiScopesScopeDisplayNameRoute
+  ApiScopesScopeMembersRoute: typeof ApiScopesScopeMembersRouteWithChildren
+}
+
+const ApiScopesScopeRouteChildren: ApiScopesScopeRouteChildren = {
+  ApiScopesScopeDisplayNameRoute: ApiScopesScopeDisplayNameRoute,
+  ApiScopesScopeMembersRoute: ApiScopesScopeMembersRouteWithChildren,
+}
+
+const ApiScopesScopeRouteWithChildren = ApiScopesScopeRoute._addFileChildren(
+  ApiScopesScopeRouteChildren,
+)
+
+interface ApiScopesRouteChildren {
+  ApiScopesScopeRoute: typeof ApiScopesScopeRouteWithChildren
+}
+
+const ApiScopesRouteChildren: ApiScopesRouteChildren = {
+  ApiScopesScopeRoute: ApiScopesScopeRouteWithChildren,
+}
+
+const ApiScopesRouteWithChildren = ApiScopesRoute._addFileChildren(
+  ApiScopesRouteChildren,
 )
 
 interface AuthGithubRouteChildren {
@@ -692,6 +1052,17 @@ const AuthGithubRouteChildren: AuthGithubRouteChildren = {
 const AuthGithubRouteWithChildren = AuthGithubRoute._addFileChildren(
   AuthGithubRouteChildren,
 )
+
+interface ApiAccountTokensRouteChildren {
+  ApiAccountTokensHashRoute: typeof ApiAccountTokensHashRoute
+}
+
+const ApiAccountTokensRouteChildren: ApiAccountTokensRouteChildren = {
+  ApiAccountTokensHashRoute: ApiAccountTokensHashRoute,
+}
+
+const ApiAccountTokensRouteWithChildren =
+  ApiAccountTokensRoute._addFileChildren(ApiAccountTokensRouteChildren)
 
 interface V1PluginsNameCommentsRouteChildren {
   V1PluginsNameCommentsCommentIdVoteRoute: typeof V1PluginsNameCommentsCommentIdVoteRoute
@@ -745,6 +1116,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
   DeviceRoute: DeviceRoute,
+  ApiScopesRoute: ApiScopesRouteWithChildren,
   AuthGithubRoute: AuthGithubRouteWithChildren,
   AuthLogoutRoute: AuthLogoutRoute,
   AuthMeRoute: AuthMeRoute,
@@ -761,7 +1133,11 @@ const rootRouteChildren: RootRouteChildren = {
   LegalIndexRoute: LegalIndexRoute,
   PluginsIndexRoute: PluginsIndexRoute,
   ApiAccountProfileRoute: ApiAccountProfileRoute,
+  ApiAccountTokensRoute: ApiAccountTokensRouteWithChildren,
   ApiDeviceApproveRoute: ApiDeviceApproveRoute,
+  ApiPluginsDeprecateRoute: ApiPluginsDeprecateRoute,
+  ApiPluginsVersionsRoute: ApiPluginsVersionsRoute,
+  ApiPluginsYankRoute: ApiPluginsYankRoute,
   V1DevelopersIdRoute: V1DevelopersIdRoute,
   V1PluginsNameRoute: V1PluginsNameRouteWithChildren,
 }

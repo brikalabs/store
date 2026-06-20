@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { PublishIdentity } from "@brika/registry-core";
-import { type Db, regScopeMembers, regScopes } from "@brika/store-db";
+import type { Db } from "../client";
+import { regScopeMembers, regScopes } from "../schema";
 import { makeDb } from "../test-harness";
 import { D1OwnershipPolicy } from "./d1-ownership";
 import { D1ScopeMembers } from "./d1-scope-members";

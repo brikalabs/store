@@ -1,17 +1,27 @@
 import { Button, Input, Textarea } from "@brika/clay";
 import type { PluginDetail } from "@brika/registry-contract";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, ChevronRight, Globe, Image as ImageIcon, Plus, Trash2, Upload } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import {
+  Archive,
+  Ban,
+  Check,
+  ChevronRight,
+  Globe,
+  Image as ImageIcon,
+  Plus,
+  RotateCcw,
+  Upload,
+} from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { AdminShell } from "../components/admin-shell";
 import { PluginIcon } from "../components/clay/plugin-icon";
 import { Segmented, segmentClassName } from "../components/clay/segmented";
-import { LoginCard } from "../components/login-card";
 import { demoLocales } from "../lib/demo";
 import { getPluginPage } from "../lib/registry";
-import { useCurrentUser } from "../lib/use-current-user";
+import { requireUser } from "../lib/require-user";
 
 export const Route = createFileRoute("/dashboard/plugins/$")({
+  beforeLoad: async ({ location }) => ({ user: await requireUser(location.href) }),
   loader: ({ params }) => (params._splat ? getPluginPage(params._splat) : null),
   component: EditListingPage,
 });
@@ -43,7 +53,7 @@ const LOCALE_FULL: Record<string, string> = {
 
 function EditListingPage() {
   const data = Route.useLoaderData();
-  const { user, loading } = useCurrentUser();
+  const { user } = Route.useRouteContext();
 
   if (data === null) {
     return (
@@ -52,16 +62,6 @@ function EditListingPage() {
         <p className="mt-2 text-muted-foreground">That package isn't a Brika plugin on npm.</p>
       </main>
     );
-  }
-  if (loading) {
-    return (
-      <main className="mx-auto max-w-6xl px-6 py-16">
-        <div className="h-40 animate-pulse rounded-2xl bg-muted" />
-      </main>
-    );
-  }
-  if (!user) {
-    return <LoginCard />;
   }
 
   return (
@@ -97,7 +97,7 @@ function EditListing({ detail, locales }: Readonly<{ detail: PluginDetail; local
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
-            <Link to="/dashboard" hash="plugins" className="hover:text-foreground">
+            <Link to="/dashboard/plugins" className="hover:text-foreground">
               My plugins
             </Link>
             <ChevronRight className="size-3" />
@@ -109,8 +109,7 @@ function EditListing({ detail, locales }: Readonly<{ detail: PluginDetail; local
         </div>
         <div className="flex items-center gap-2.5">
           <Link
-            to="/dashboard"
-            hash="plugins"
+            to="/dashboard/plugins"
             className="flex h-10 items-center rounded-xl border border-border px-4 font-semibold text-foreground text-sm transition-colors hover:bg-muted"
           >
             Cancel
@@ -270,6 +269,8 @@ function EditListing({ detail, locales }: Readonly<{ detail: PluginDetail; local
               </span>
             </div>
           </Card>
+
+          <VersionsCard name={detail.name} />
         </div>
 
         {/* sidebar */}
@@ -302,17 +303,15 @@ function EditListing({ detail, locales }: Readonly<{ detail: PluginDetail; local
             />
           </Card>
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-destructive/40 bg-card p-4">
-            <span className="font-semibold text-destructive text-xs uppercase tracking-[0.04em]">
-              Danger zone
+          <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
+            <span className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
+              Version management
             </span>
-            <button
-              type="button"
-              className="flex h-9 items-center justify-center gap-2 rounded-lg border border-destructive/40 font-semibold text-destructive text-sm transition-colors hover:bg-destructive/10"
-            >
-              <Trash2 className="size-4" />
-              Deprecate listing
-            </button>
+            <p className="text-muted-foreground text-xs">
+              Deprecate or yank individual published versions in the{" "}
+              <span className="font-semibold text-foreground">Versions</span> panel. Yanked versions
+              stay installable for existing lockfiles but are hidden from new installs.
+            </p>
           </div>
         </aside>
       </div>
@@ -381,6 +380,182 @@ function SideRow({
         {value}
       </span>
     </div>
+  );
+}
+
+interface PkgVersion {
+  version: string;
+  publishedAt: string;
+  deprecated: string | null;
+  yanked: boolean;
+  takedownReason: string | null;
+}
+
+interface VersionsState {
+  name: string;
+  latest: string | null;
+  canManage: boolean;
+  versions: PkgVersion[];
+}
+
+const VERSION_ACTION =
+  "inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 font-medium text-foreground text-xs transition-colors hover:bg-muted disabled:opacity-50";
+
+/**
+ * Real per-version management for registry-hosted (`@brika`) plugins: deprecate/un-deprecate
+ * and yank/un-yank, hitting the console API (server-side ownership-gated). For npm-hosted
+ * packages the versions endpoint 404s and we show a note instead.
+ */
+function VersionsCard({ name }: Readonly<{ name: string }>) {
+  const [state, setState] = useState<VersionsState | null>(null);
+  const [notRegistry, setNotRegistry] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch(`/api/plugins/versions?name=${encodeURIComponent(name)}`);
+    if (res.status === 404) {
+      setNotRegistry(true);
+      return;
+    }
+    if (res.ok) {
+      const data: VersionsState = await res.json();
+      setState(data);
+    }
+  }, [name]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function act(path: string, body: unknown, key: string) {
+    setPending(key);
+    setError(null);
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setPending(null);
+    if (res.ok) {
+      await load();
+    } else {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error ?? "Action failed");
+    }
+  }
+
+  if (notRegistry) {
+    return (
+      <Card>
+        <CardTitle icon={<Archive className="size-4 text-brand-ink" />}>Versions</CardTitle>
+        <p className="text-muted-foreground text-sm">
+          This package is hosted on npm. Version management (deprecate / yank) is available for
+          plugins published to the Brika registry.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardTitle icon={<Archive className="size-4 text-brand-ink" />}>Versions</CardTitle>
+      {error !== null && (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-xs">
+          {error}
+        </p>
+      )}
+      {state === null ? (
+        <div className="h-16 animate-pulse rounded-xl bg-muted" />
+      ) : (
+        <ul className="flex flex-col divide-y divide-border">
+          {state.versions.map((v) => (
+            <VersionRow
+              key={v.version}
+              name={name}
+              version={v}
+              isLatest={v.version === state.latest}
+              canManage={state.canManage}
+              pending={pending}
+              onAct={act}
+            />
+          ))}
+        </ul>
+      )}
+      {state !== null && !state.canManage && (
+        <p className="text-muted-foreground text-xs">
+          You can manage versions only for scopes you belong to.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+function VersionRow({
+  name,
+  version,
+  isLatest,
+  canManage,
+  pending,
+  onAct,
+}: Readonly<{
+  name: string;
+  version: PkgVersion;
+  isLatest: boolean;
+  canManage: boolean;
+  pending: string | null;
+  onAct: (path: string, body: unknown, key: string) => void;
+}>) {
+  const v = version.version;
+  const deprecated = version.deprecated !== null;
+  return (
+    <li className="flex flex-wrap items-center gap-2 py-3">
+      <span className="font-mono font-semibold text-foreground text-sm">{v}</span>
+      {isLatest ? (
+        <span className="rounded-full bg-brand/10 px-2 py-0.5 font-semibold text-[11px] text-brand-ink">
+          latest
+        </span>
+      ) : null}
+      {deprecated ? (
+        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-semibold text-[11px] text-amber-600 dark:text-amber-400">
+          deprecated
+        </span>
+      ) : null}
+      {version.yanked ? (
+        <span className="rounded-full bg-destructive/15 px-2 py-0.5 font-semibold text-[11px] text-destructive">
+          yanked
+        </span>
+      ) : null}
+      {canManage ? (
+        <div className="ml-auto flex gap-2">
+          <button
+            type="button"
+            disabled={pending === `dep:${v}`}
+            onClick={() =>
+              onAct(
+                "/api/plugins/deprecate",
+                { name, version: v, message: deprecated ? null : "Deprecated by the maintainer" },
+                `dep:${v}`,
+              )
+            }
+            className={VERSION_ACTION}
+          >
+            {deprecated ? <RotateCcw className="size-3.5" /> : <Archive className="size-3.5" />}
+            {deprecated ? "Un-deprecate" : "Deprecate"}
+          </button>
+          <button
+            type="button"
+            disabled={pending === `yank:${v}`}
+            onClick={() =>
+              onAct("/api/plugins/yank", { name, version: v, yanked: !version.yanked }, `yank:${v}`)
+            }
+            className={VERSION_ACTION}
+          >
+            {version.yanked ? <RotateCcw className="size-3.5" /> : <Ban className="size-3.5" />}
+            {version.yanked ? "Un-yank" : "Yank"}
+          </button>
+        </div>
+      ) : null}
+    </li>
   );
 }
 

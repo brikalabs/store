@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Db } from "@brika/store-db";
+import type { Db } from "../client";
 import { D1AuditLog } from "./d1-audit";
 
 describe("D1AuditLog.record", () => {

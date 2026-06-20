@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { type Db, regDownloads, regPackages, regScopes } from "@brika/store-db";
 import { and, eq } from "drizzle-orm";
+import type { Db } from "../client";
+import { regDownloads, regPackages, regScopes } from "../schema";
 import { makeDb } from "../test-harness";
 import { D1DownloadStore } from "./d1-downloads";
 

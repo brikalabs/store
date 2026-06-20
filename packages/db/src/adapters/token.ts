@@ -1,6 +1,7 @@
 import type { TokenPrincipal, TokenStore } from "@brika/registry-core";
-import { type Db, regTokens } from "@brika/store-db";
 import { eq } from "drizzle-orm";
+import type { Db } from "../client";
+import { regTokens } from "../schema";
 
 /**
  * Registry publish tokens for local `brika publish`. The token is shown once;

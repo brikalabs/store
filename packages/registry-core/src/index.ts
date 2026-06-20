@@ -29,6 +29,7 @@ export {
   ZERO_DOWNLOADS,
 } from "./downloads";
 export { sha1Hex, sha512Integrity } from "./integrity";
+export { displayNameSchema, hasUnsafeLabelChars } from "./labels";
 export { REGISTRY_LIMITS, type RegistryLimits } from "./limits";
 export {
   type ManageErrorCode,

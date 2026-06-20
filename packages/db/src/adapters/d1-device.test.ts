@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { type Db, regDeviceAuth } from "@brika/store-db";
 import { eq } from "drizzle-orm";
+import type { Db } from "../client";
+import { regDeviceAuth } from "../schema";
 import { makeDb } from "../test-harness";
 import { D1DeviceStore } from "./d1-device";
 

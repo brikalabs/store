@@ -5,8 +5,9 @@ import {
   epochDay,
   summarizeDownloads,
 } from "@brika/registry-core";
-import { type Db, regDownloads } from "@brika/store-db";
 import { eq, inArray, sql } from "drizzle-orm";
+import type { Db } from "../client";
+import { regDownloads } from "../schema";
 
 /**
  * D1 implementation of the {@link DownloadStore} port. Each tarball download increments

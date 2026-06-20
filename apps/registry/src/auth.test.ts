@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { HttpError } from "@brika/router";
 import type { Db } from "@brika/store-db";
-import { D1TokenStore, issueToken } from "./adapters/token";
+import { D1TokenStore, issueToken } from "@brika/store-db/adapters";
 import { AUDIENCE, authenticateWrite, requireAdmin, requireWrite } from "./auth";
 import { makeDb } from "./test-harness";
 

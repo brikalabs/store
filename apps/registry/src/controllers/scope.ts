@@ -1,4 +1,4 @@
-import { isCanonicalScope, type ScopeErrorCode } from "@brika/registry-core";
+import { displayNameSchema, isCanonicalScope, type ScopeErrorCode } from "@brika/registry-core";
 import { badRequest, httpError, reply } from "@brika/router";
 import { z } from "zod";
 import { requireWrite } from "../auth";
@@ -131,33 +131,10 @@ export async function deleteMember({
   return reply({ ok: true, scope, removed: result.removed }, 200);
 }
 
-/**
- * Reject invisible / control / format / spoofing characters in the publisher label,
- * which is the name users are told to trust over the manifest `author`. Unicode
- * property classes catch the dangerous code points in one pass: `Cc` (C0/C1
- * controls), `Cf` (zero-width, bidi marks/overrides/isolates, ALM, soft hyphen, word
- * joiner, BOM, the invisible Tags block), `Cs` (lone surrogates), `Co` (private use);
- * plus the blank "filler" letters (U+115F/1160/3164/FFA0) that render invisible but
- * are not `Cf`. Visible-homoglyph (confusable script) detection is a deeper follow-up.
- *
- * The pattern is escape-only (every code point is a `\u`/`\p` escape, never a literal
- * glyph), so the source stays pure ASCII and no invisible character can hide in it.
- */
-const UNSAFE_LABEL = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\u115f\u1160\u3164\uffa0]/u;
-
-function hasUnsafeLabelChars(value: string): boolean {
-  return UNSAFE_LABEL.test(value);
-}
-
-const DisplayNameBody = z.object({
-  displayName: z
-    .string()
-    .min(1)
-    .max(120)
-    .refine((value) => !hasUnsafeLabelChars(value), "display name has disallowed characters")
-    .transform((value) => value.normalize("NFC"))
-    .nullable(),
-});
+// The publisher label is the name users are told to trust over the manifest `author`, so
+// its validation (length + no spoofing/invisible chars + NFC) lives in `@brika/registry-core`
+// `displayNameSchema` and is shared with the store console, defined once.
+const DisplayNameBody = z.object({ displayName: displayNameSchema.nullable() });
 
 /** `POST /-/scope/:scope/display-name` - set the verified publisher label (admin). */
 export async function setDisplayName({
