@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const PutBody = z.object({
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/orgs/$org/members")({
       GET: ({ request, params }) =>
         runJson(async () => {
           const a = await authed(request);
-          const result = unwrap(await a.svc.orgs.listMembers(a.identity, params.org), orgStatus);
+          const result = unwrap(await a.svc.orgs.listMembers(a.identity, params.org));
           return jsonPrivate({ org: params.org, members: result.members });
         }),
       PUT: ({ request, params }) =>
@@ -29,7 +29,6 @@ export const Route = createFileRoute("/api/orgs/$org/members")({
           const target = { provider: "github", id: parsed.memberId };
           const result = unwrap(
             await a.svc.orgs.setMember(a.identity, params.org, target, parsed.role),
-            orgStatus,
           );
           await a.svc.audit.record({
             action: "org_member_set",

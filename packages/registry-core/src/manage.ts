@@ -1,3 +1,4 @@
+import { HttpStatus } from "./http-status";
 import type { OwnershipPolicy, PublishIdentity } from "./publish";
 
 /**
@@ -25,11 +26,9 @@ export interface VersionManager {
   setTakedown(name: string, version: string, reason: string | null): Promise<void>;
 }
 
-export type ManageErrorCode = "forbidden" | "not_found";
-
 export type ManageResult =
   | { readonly ok: true }
-  | { readonly ok: false; readonly code: ManageErrorCode; readonly message: string };
+  | { readonly ok: false; readonly status: number; readonly message: string };
 
 /** Maximum length of a deprecation message / takedown reason. */
 const MAX_MESSAGE = 1024;
@@ -50,9 +49,13 @@ export class ManagementService {
     version: string,
   ): Promise<ManageResult> {
     const owns = await this.#ownership.canPublish(identity, name);
-    if (!owns.ok) return { ok: false, code: "forbidden", message: owns.message };
+    if (!owns.ok) return { ok: false, status: HttpStatus.FORBIDDEN, message: owns.message };
     if (!(await this.#meta.versionExists(name, version))) {
-      return { ok: false, code: "not_found", message: `${name}@${version} does not exist` };
+      return {
+        ok: false,
+        status: HttpStatus.NOT_FOUND,
+        message: `${name}@${version} does not exist`,
+      };
     }
     return { ok: true };
   }
@@ -89,7 +92,11 @@ export class ManagementService {
    */
   async takedown(name: string, version: string, reason: string): Promise<ManageResult> {
     if (!(await this.#meta.versionExists(name, version))) {
-      return { ok: false, code: "not_found", message: `${name}@${version} does not exist` };
+      return {
+        ok: false,
+        status: HttpStatus.NOT_FOUND,
+        message: `${name}@${version} does not exist`,
+      };
     }
     await this.#meta.setTakedown(name, version, reason.slice(0, MAX_MESSAGE));
     return { ok: true };
@@ -98,7 +105,11 @@ export class ManagementService {
   /** Reverse a takedown, restoring the version to new installs. */
   async restore(name: string, version: string): Promise<ManageResult> {
     if (!(await this.#meta.versionExists(name, version))) {
-      return { ok: false, code: "not_found", message: `${name}@${version} does not exist` };
+      return {
+        ok: false,
+        status: HttpStatus.NOT_FOUND,
+        message: `${name}@${version} does not exist`,
+      };
     }
     await this.#meta.setTakedown(name, version, null);
     return { ok: true };

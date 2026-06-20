@@ -3,7 +3,6 @@ import {
   domainChallengeHost,
   isCanonicalOrgSlug,
   isCanonicalScope,
-  type OrgErrorCode,
   orgDescriptionSchema,
   orgDomainSchema,
   orgLinksSchema,
@@ -41,22 +40,6 @@ import type { Services } from "../services";
  */
 
 /**
- * Map a domain `OrgService` rejection to its HTTP status. An exhaustive lookup
- * (`satisfies Record<…>`): a new error code is a compile error until mapped here, never a
- * silent 403. (429 = the per-account org cap, ORG-005.)
- */
-const ORG_STATUS = {
-  forbidden: 403,
-  not_found: 404,
-  conflict: 409,
-  too_many: 429,
-} satisfies Record<OrgErrorCode, number>;
-
-function orgStatus(code: OrgErrorCode): number {
-  return ORG_STATUS[code];
-}
-
-/**
  * `GET /-/org/:org` - public org info (slug, display name, description, links, icon key,
  * owned scopes, verified domains) or 404. Pending domains + membership are never exposed.
  */
@@ -89,7 +72,7 @@ export async function createOrg({
     );
   }
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.orgs.claim(identity, org), orgStatus);
+  const result = okOrThrow(await ctx.orgs.claim(identity, org));
   if (result.created) {
     await ctx.audit.record({
       action: "org_create",
@@ -114,7 +97,7 @@ export async function listMembers({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.orgs.listMembers(identity, org), orgStatus);
+  const result = okOrThrow(await ctx.orgs.listMembers(identity, org));
   return reply({ ok: true, org, members: result.members }, 200);
 }
 
@@ -134,10 +117,7 @@ export async function putMember({
 }): Promise<Response> {
   const { org, provider, id } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(
-    await ctx.orgs.setMember(identity, org, { provider, id }, body.role),
-    orgStatus,
-  );
+  const result = okOrThrow(await ctx.orgs.setMember(identity, org, { provider, id }, body.role));
   await ctx.audit.record({
     action: "org_member_set",
     packageName: org,
@@ -160,7 +140,7 @@ export async function deleteMember({
 }): Promise<Response> {
   const { org, provider, id } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.orgs.removeMember(identity, org, { provider, id }), orgStatus);
+  const result = okOrThrow(await ctx.orgs.removeMember(identity, org, { provider, id }));
   await ctx.audit.record({
     action: "org_member_remove",
     packageName: org,
@@ -190,7 +170,7 @@ export async function setDisplayName({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  okOrThrow(await ctx.orgs.setDisplayName(identity, org, body.displayName), orgStatus);
+  okOrThrow(await ctx.orgs.setDisplayName(identity, org, body.displayName));
   await ctx.audit.record({
     action: "org_display_name",
     packageName: org,
@@ -225,7 +205,6 @@ export async function setProfile({
       description: body.description,
       links: body.links,
     }),
-    orgStatus,
   );
   await ctx.audit.record({
     action: "org_profile_set",
@@ -249,7 +228,7 @@ export async function listDomains({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.orgs.listDomains(identity, org), orgStatus);
+  const result = okOrThrow(await ctx.orgs.listDomains(identity, org));
   const domains = await Promise.all(
     result.domains.map(async (d) => ({
       ...d,
@@ -280,7 +259,7 @@ export async function addDomain({
   const { org } = params;
   const domain = parseDomain(params.domain);
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.orgs.addDomain(identity, org, domain), orgStatus);
+  const result = okOrThrow(await ctx.orgs.addDomain(identity, org, domain));
   await ctx.audit.record({
     action: "org_domain_add",
     packageName: org,
@@ -313,7 +292,7 @@ export async function verifyDomain({
   const { org } = params;
   const domain = parseDomain(params.domain);
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.orgs.verifyDomain(identity, org, domain), orgStatus);
+  const result = okOrThrow(await ctx.orgs.verifyDomain(identity, org, domain));
   if (result.verified) {
     await ctx.audit.record({
       action: "org_domain_verified",
@@ -339,7 +318,7 @@ export async function deleteDomain({
   const { org } = params;
   const domain = parseDomain(params.domain);
   const identity = await requireWrite(req, ctx.tokens);
-  okOrThrow(await ctx.orgs.removeDomain(identity, org, domain), orgStatus);
+  okOrThrow(await ctx.orgs.removeDomain(identity, org, domain));
   await ctx.audit.record({
     action: "org_domain_remove",
     packageName: org,
@@ -362,7 +341,7 @@ export async function listScopes({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.orgs.listScopes(identity, org), orgStatus);
+  const result = okOrThrow(await ctx.orgs.listScopes(identity, org));
   return reply({ ok: true, org, scopes: result.scopes }, 200);
 }
 
@@ -383,7 +362,7 @@ export async function attachScope({
     );
   }
   const identity = await requireWrite(req, ctx.tokens);
-  okOrThrow(await ctx.orgs.attachScope(identity, org, scope), orgStatus);
+  okOrThrow(await ctx.orgs.attachScope(identity, org, scope));
   await ctx.audit.record({
     action: "org_scope_attach",
     packageName: scope,
@@ -417,7 +396,7 @@ export async function listTrustedPublishers({
 }): Promise<Response> {
   const { org, scope } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.orgs.listTrustedPublishers(identity, org, scope), orgStatus);
+  const result = okOrThrow(await ctx.orgs.listTrustedPublishers(identity, org, scope));
   return reply({ ok: true, org, scope, publishers: result.publishers }, 200);
 }
 
@@ -435,10 +414,7 @@ export async function addTrustedPublisher({
 }): Promise<Response> {
   const { org, scope } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(
-    await ctx.orgs.addTrustedPublisher(identity, org, scope, body),
-    orgStatus,
-  );
+  const result = okOrThrow(await ctx.orgs.addTrustedPublisher(identity, org, scope, body));
   await ctx.audit.record({
     action: "org_trusted_publisher_add",
     packageName: scope,
@@ -463,10 +439,7 @@ export async function removeTrustedPublisher({
 }): Promise<Response> {
   const { org, scope } = params;
   const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(
-    await ctx.orgs.removeTrustedPublisher(identity, org, scope, body),
-    orgStatus,
-  );
+  const result = okOrThrow(await ctx.orgs.removeTrustedPublisher(identity, org, scope, body));
   await ctx.audit.record({
     action: "org_trusted_publisher_remove",
     packageName: scope,
@@ -497,7 +470,7 @@ export async function takedownOrg({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireAdmin(req, ctx.tokens, ctx.admins);
-  okOrThrow(await ctx.orgs.takedown(org, body.reason), orgStatus);
+  okOrThrow(await ctx.orgs.takedown(org, body.reason));
   await ctx.audit.record({
     action: "org_takedown",
     packageName: org,
@@ -520,7 +493,7 @@ export async function restoreOrg({
 }): Promise<Response> {
   const { org } = params;
   const identity = await requireAdmin(req, ctx.tokens, ctx.admins);
-  okOrThrow(await ctx.orgs.restore(org), orgStatus);
+  okOrThrow(await ctx.orgs.restore(org));
   await ctx.audit.record({
     action: "org_restore",
     packageName: org,

@@ -1,7 +1,7 @@
 import { isCanonicalScope } from "@brika/registry-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonBadRequest, jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonBadRequest, jsonPrivate } from "@/lib/http";
 import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const AttachBody = z.object({ scope: z.string().min(1) });
@@ -17,7 +17,7 @@ export const Route = createFileRoute("/api/orgs/$org/scopes")({
       GET: ({ request, params }) =>
         runJson(async () => {
           const a = await authed(request);
-          const result = unwrap(await a.svc.orgs.listScopes(a.identity, params.org), orgStatus);
+          const result = unwrap(await a.svc.orgs.listScopes(a.identity, params.org));
           return jsonPrivate({ org: params.org, scopes: result.scopes });
         }),
       PUT: ({ request, params }) =>
@@ -33,10 +33,7 @@ export const Route = createFileRoute("/api/orgs/$org/scopes")({
               "Scope must be '@' + 2-20 lowercase letters, digits or hyphens, not starting with a hyphen",
             );
           }
-          const result = unwrap(
-            await a.svc.orgs.attachScope(a.identity, params.org, parsed.scope),
-            orgStatus,
-          );
+          const result = unwrap(await a.svc.orgs.attachScope(a.identity, params.org, parsed.scope));
           await a.svc.audit.record({
             action: "org_scope_attach",
             packageName: parsed.scope,

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate, manageStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const Body = z.object({
@@ -19,10 +19,7 @@ export const Route = createFileRoute("/api/plugins/deprecate")({
           const a = await authed(request);
           const parsed = parseBody(Body, await request.json(), "Invalid deprecate request");
           const { name, version, message } = parsed;
-          unwrap(
-            await a.svc.management.deprecate(a.identity, name, version, message),
-            manageStatus,
-          );
+          unwrap(await a.svc.management.deprecate(a.identity, name, version, message));
           await a.svc.audit.record({
             action: "deprecate",
             packageName: name,

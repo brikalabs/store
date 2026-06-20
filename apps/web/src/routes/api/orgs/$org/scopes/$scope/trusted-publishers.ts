@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 /**
@@ -25,7 +25,6 @@ export const Route = createFileRoute("/api/orgs/$org/scopes/$scope/trusted-publi
           const a = await authed(request);
           const { publishers } = unwrap(
             await a.svc.orgs.listTrustedPublishers(a.identity, params.org, params.scope),
-            orgStatus,
           );
           return jsonPrivate({ org: params.org, scope: params.scope, publishers });
         }),
@@ -35,7 +34,6 @@ export const Route = createFileRoute("/api/orgs/$org/scopes/$scope/trusted-publi
           const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
           const { publisher } = unwrap(
             await a.svc.orgs.addTrustedPublisher(a.identity, params.org, params.scope, binding),
-            orgStatus,
           );
           await a.svc.audit.record({
             action: "org_trusted_publisher_add",
@@ -52,7 +50,6 @@ export const Route = createFileRoute("/api/orgs/$org/scopes/$scope/trusted-publi
           const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
           const { removed } = unwrap(
             await a.svc.orgs.removeTrustedPublisher(a.identity, params.org, params.scope, binding),
-            orgStatus,
           );
           await a.svc.audit.record({
             action: "org_trusted_publisher_remove",

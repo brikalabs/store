@@ -1,7 +1,7 @@
 import { domainChallengeHost, orgDomainSchema } from "@brika/registry-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const DomainBody = z.object({ domain: orgDomainSchema });
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/orgs/$org/domains")({
       GET: ({ request, params }) =>
         runJson(async () => {
           const a = await authed(request);
-          const result = unwrap(await a.svc.orgs.listDomains(a.identity, params.org), orgStatus);
+          const result = unwrap(await a.svc.orgs.listDomains(a.identity, params.org));
           // Surface the (derived) TXT host + value each pending domain must publish.
           const domains = await Promise.all(
             result.domains.map(async (d) => ({
@@ -35,10 +35,7 @@ export const Route = createFileRoute("/api/orgs/$org/domains")({
           const a = await authed(request);
           const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
           const { domain } = parsed;
-          const result = unwrap(
-            await a.svc.orgs.addDomain(a.identity, params.org, domain),
-            orgStatus,
-          );
+          const result = unwrap(await a.svc.orgs.addDomain(a.identity, params.org, domain));
           await a.svc.audit.record({
             action: "org_domain_add",
             packageName: params.org,
@@ -62,7 +59,6 @@ export const Route = createFileRoute("/api/orgs/$org/domains")({
           const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
           const result = unwrap(
             await a.svc.orgs.verifyDomain(a.identity, params.org, parsed.domain),
-            orgStatus,
           );
           if (result.verified) {
             await a.svc.audit.record({
@@ -79,7 +75,7 @@ export const Route = createFileRoute("/api/orgs/$org/domains")({
         runJson(async () => {
           const a = await authed(request);
           const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
-          unwrap(await a.svc.orgs.removeDomain(a.identity, params.org, parsed.domain), orgStatus);
+          unwrap(await a.svc.orgs.removeDomain(a.identity, params.org, parsed.domain));
           await a.svc.audit.record({
             action: "org_domain_remove",
             packageName: params.org,

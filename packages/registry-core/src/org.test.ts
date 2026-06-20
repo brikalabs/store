@@ -213,7 +213,7 @@ describe("claim", () => {
     await service.claim(gh("alice"), "team");
     expect(await service.claim(gh("alice"), "team")).toMatchObject({ ok: true, created: false });
     const other = await service.claim(gh("mallory"), "team");
-    expect(other).toMatchObject({ ok: false, code: "conflict" });
+    expect(other).toMatchObject({ ok: false, status: 409 });
   });
 });
 
@@ -223,7 +223,7 @@ describe("per-account org cap (ORG-005, anti-squatting)", () => {
     expect(await capped.claim(gh("alice"), "a")).toMatchObject({ ok: true, created: true });
     expect(await capped.claim(gh("alice"), "b")).toMatchObject({ ok: true, created: true });
     const third = await capped.claim(gh("alice"), "c");
-    expect(third).toMatchObject({ ok: false, code: "too_many" });
+    expect(third).toMatchObject({ ok: false, status: 429 });
     // the over-cap org was not created
     expect(await orgs.get("c")).toBeNull();
   });
@@ -238,7 +238,7 @@ describe("per-account org cap (ORG-005, anti-squatting)", () => {
   test("ORG-005-AC2: the cap is raisable (a higher-limit service lets the claim through)", async () => {
     const capped = new OrgService(orgs, members, scopes, domains, { maxOrgsPerAccount: 1 });
     await capped.claim(gh("alice"), "a");
-    expect(await capped.claim(gh("alice"), "b")).toMatchObject({ ok: false, code: "too_many" });
+    expect(await capped.claim(gh("alice"), "b")).toMatchObject({ ok: false, status: 429 });
     const raised = new OrgService(orgs, members, scopes, domains, { maxOrgsPerAccount: 2 });
     expect(await raised.claim(gh("alice"), "b")).toMatchObject({ ok: true, created: true });
   });
@@ -262,7 +262,7 @@ describe("claim verifier (ORG-006 seam)", () => {
     const gated = new OrgService(orgs, members, scopes, domains, { claimVerifier: denying });
     expect(await gated.claim(gh("alice"), "microsoft")).toMatchObject({
       ok: false,
-      code: "forbidden",
+      status: 403,
     });
     expect(await orgs.get("microsoft")).toBeNull();
   });
@@ -286,7 +286,7 @@ describe("scopes (1:N ownership)", () => {
     await service.claim(gh("bob"), "other");
     expect(await service.attachScope(gh("bob"), "other", "@acme")).toMatchObject({
       ok: false,
-      code: "conflict",
+      status: 409,
     });
   });
 
@@ -295,16 +295,16 @@ describe("scopes (1:N ownership)", () => {
     await service.setMember(gh("alice"), "acme", ref("bob"), "member");
     expect(await service.attachScope(gh("bob"), "acme", "@acme")).toMatchObject({
       ok: false,
-      code: "forbidden",
+      status: 403,
     });
   });
 });
 
 describe("membership gates", () => {
   test("listMembers: 404 unknown org, 403 non-member, ok for a member", async () => {
-    expect(await service.listMembers(gh("alice"), "team")).toMatchObject({ code: "not_found" });
+    expect(await service.listMembers(gh("alice"), "team")).toMatchObject({ status: 404 });
     await service.claim(gh("alice"), "team");
-    expect(await service.listMembers(gh("bob"), "team")).toMatchObject({ code: "forbidden" });
+    expect(await service.listMembers(gh("bob"), "team")).toMatchObject({ status: 403 });
     expect(await service.listMembers(gh("alice"), "team")).toMatchObject({ ok: true });
   });
 
@@ -313,10 +313,10 @@ describe("membership gates", () => {
     await service.setMember(gh("alice"), "team", ref("bob"), "member");
     // bob is a plain member -> cannot manage
     expect(await service.setMember(gh("bob"), "team", ref("carol"), "member")).toMatchObject({
-      code: "forbidden",
+      status: 403,
     });
     expect(await service.setDisplayName(gh("bob"), "team", "Team")).toMatchObject({
-      code: "forbidden",
+      status: 403,
     });
   });
 });
@@ -325,10 +325,10 @@ describe("last-admin invariant", () => {
   test("the sole admin cannot be demoted or removed", async () => {
     await service.claim(gh("alice"), "team");
     expect(await service.setMember(gh("alice"), "team", ref("alice"), "member")).toMatchObject({
-      code: "conflict",
+      status: 409,
     });
     expect(await service.removeMember(gh("alice"), "team", ref("alice"))).toMatchObject({
-      code: "conflict",
+      status: 409,
     });
   });
 
@@ -344,7 +344,7 @@ describe("last-admin invariant", () => {
   test("removing a non-member is not_found", async () => {
     await service.claim(gh("alice"), "team");
     expect(await service.removeMember(gh("alice"), "team", ref("ghost"))).toMatchObject({
-      code: "not_found",
+      status: 404,
     });
   });
 });
@@ -377,9 +377,9 @@ describe("profile (ORG-009)", () => {
     await service.setMember(gh("alice"), "acme", ref("bob"), "member");
     expect(
       await service.setProfile(gh("bob"), "acme", { description: "x", links: [] }),
-    ).toMatchObject({ code: "forbidden" });
+    ).toMatchObject({ status: 403 });
     expect(await service.setIcon(gh("bob"), "acme", "org-icons/acme.png")).toMatchObject({
-      code: "forbidden",
+      status: 403,
     });
   });
 
@@ -408,8 +408,8 @@ describe("operator takedown (ORG-007)", () => {
   });
 
   test("takedown of an unknown org is not_found (membership is not consulted)", async () => {
-    expect(await service.takedown("ghost", "spam")).toMatchObject({ code: "not_found" });
-    expect(await service.restore("ghost")).toMatchObject({ code: "not_found" });
+    expect(await service.takedown("ghost", "spam")).toMatchObject({ status: 404 });
+    expect(await service.restore("ghost")).toMatchObject({ status: 404 });
   });
 
   test("listForOperator returns every org with its takedown state (no membership filter)", async () => {
@@ -459,7 +459,7 @@ describe("trusted publishers (PUB-016)", () => {
     await seedOrgWithScope();
     await service.setMember(gh("alice"), "acme", ref("bob"), "member");
     expect(await service.addTrustedPublisher(gh("bob"), "acme", "@acme", gh_binding)).toMatchObject(
-      { code: "forbidden" },
+      { status: 403 },
     );
   });
 
@@ -467,7 +467,7 @@ describe("trusted publishers (PUB-016)", () => {
     await seedOrgWithScope();
     expect(
       await service.addTrustedPublisher(gh("alice"), "acme", "@other", gh_binding),
-    ).toMatchObject({ code: "not_found" });
+    ).toMatchObject({ status: 404 });
   });
 
   test("removing an unknown binding is not_found", async () => {
@@ -477,7 +477,7 @@ describe("trusted publishers (PUB-016)", () => {
         ...gh_binding,
         workflow: "none.yml",
       }),
-    ).toMatchObject({ code: "not_found" });
+    ).toMatchObject({ status: 404 });
   });
 });
 
@@ -531,10 +531,10 @@ describe("domains (ORG-010, badge-only, stateless HMAC challenge)", () => {
     await service.claim(gh("alice"), "acme");
     await service.setMember(gh("alice"), "acme", ref("bob"), "member");
     expect(await service.addDomain(gh("bob"), "acme", "brika.dev")).toMatchObject({
-      code: "forbidden",
+      status: 403,
     });
     expect(await service.verifyDomain(gh("alice"), "acme", "nope.dev")).toMatchObject({
-      code: "not_found",
+      status: 404,
     });
   });
 
@@ -545,7 +545,7 @@ describe("domains (ORG-010, badge-only, stateless HMAC challenge)", () => {
       ok: true,
     });
     expect(await service.removeDomain(gh("alice"), "acme", "brika.dev")).toMatchObject({
-      code: "not_found",
+      status: 404,
     });
   });
 

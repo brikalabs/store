@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { authed, runJson, unwrap } from "@/server/console-api";
 
 /**
@@ -13,10 +13,7 @@ export const Route = createFileRoute("/api/orgs/$org/members/$memberId")({
         runJson(async () => {
           const a = await authed(request);
           const target = { provider: "github", id: params.memberId };
-          const result = unwrap(
-            await a.svc.orgs.removeMember(a.identity, params.org, target),
-            orgStatus,
-          );
+          const result = unwrap(await a.svc.orgs.removeMember(a.identity, params.org, target));
           await a.svc.audit.record({
             action: "org_member_remove",
             packageName: params.org,

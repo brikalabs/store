@@ -1,5 +1,4 @@
 /** JSON helpers for the `/v1` contract handlers. */
-import type { ManageErrorCode, OrgErrorCode } from "@brika/registry-core";
 
 export function jsonOk(data: unknown): Response {
   return Response.json(data, { headers: { "cache-control": "public, max-age=300" } });
@@ -30,27 +29,7 @@ export function jsonPrivate(data: unknown, status = 200): Response {
   return Response.json(data, { status, headers: { "cache-control": "no-store" } });
 }
 
-/** JSON error at an arbitrary status (e.g. from an `orgStatus`/`manageStatus` mapping). */
+/** JSON error at an arbitrary status (e.g. a domain result's `status`). */
 export function jsonError(status: number, message: string): Response {
   return Response.json({ error: message }, { status });
-}
-
-/**
- * The one table of real HTTP statuses. Domain error codes are HTTP-semantic names, so
- * `orgStatus` / `manageStatus` just index this with their respective result codes (TS
- * still rejects a code that isn't a key here).
- */
-const HTTP_STATUS = {
-  forbidden: 403,
-  not_found: 404,
-  conflict: 409,
-  too_many: 429,
-} as const;
-
-export function orgStatus(code: OrgErrorCode): number {
-  return HTTP_STATUS[code];
-}
-
-export function manageStatus(code: ManageErrorCode): number {
-  return HTTP_STATUS[code];
 }

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { operatorAuthed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const Body = z.object({ reason: z.string().min(1).max(1024) });
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/operator/orgs/$org/takedown")({
         runJson(async () => {
           const a = await operatorAuthed(request);
           const parsed = parseBody(Body, await request.json(), "A takedown reason is required");
-          unwrap(await a.svc.orgs.takedown(params.org, parsed.reason), orgStatus);
+          unwrap(await a.svc.orgs.takedown(params.org, parsed.reason));
           await a.svc.audit.record({
             action: "org_takedown",
             packageName: params.org,

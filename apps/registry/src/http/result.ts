@@ -1,20 +1,16 @@
 import { httpError } from "@brika/router";
 
 /**
- * Unwrap a domain result at an HTTP boundary. Returns the success branch, or throws the
- * code-mapped `HttpError` (caught by the router and serialized). This collapses the
- * `if (!result.ok) throw httpError(toStatus(result.code), result.message, result.code)` guard
- * that every handler otherwise repeats, into one call:
+ * Unwrap a domain result at an HTTP boundary: return the success branch, or throw the
+ * result's own HTTP status (caught by the router and serialized). Domain results carry their
+ * `status` directly (a number from `HttpStatus`), so there is nothing to map - this collapses
+ * the `if (!result.ok) throw httpError(...)` guard every handler otherwise repeats into:
  *
- *   const { publisher } = okOrThrow(await ctx.orgs.addTrustedPublisher(...), orgStatus);
- *
- * `toStatus` maps the domain's error code to a status (e.g. `orgStatus`, `manageStatus`), so
- * the helper stays domain-neutral while each call site keeps its own mapping inline.
+ *   const { publisher } = okOrThrow(await ctx.orgs.addTrustedPublisher(...));
  */
-export function okOrThrow<R extends { readonly ok: true }, C extends string>(
-  result: R | { readonly ok: false; readonly code: C; readonly message: string },
-  toStatus: (code: C) => number,
+export function okOrThrow<R extends { readonly ok: true }>(
+  result: R | { readonly ok: false; readonly status: number; readonly message: string },
 ): R {
-  if (!result.ok) throw httpError(toStatus(result.code), result.message, result.code);
+  if (!result.ok) throw httpError(result.status, result.message);
   return result;
 }

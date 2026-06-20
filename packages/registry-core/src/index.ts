@@ -28,15 +28,11 @@ export {
   summarizeDownloads,
   ZERO_DOWNLOADS,
 } from "./downloads";
+export { HttpStatus } from "./http-status";
 export { sha1Hex, sha512Integrity } from "./integrity";
 export { displayNameSchema, hasUnsafeLabelChars } from "./labels";
 export { REGISTRY_LIMITS, type RegistryLimits } from "./limits";
-export {
-  type ManageErrorCode,
-  ManagementService,
-  type ManageResult,
-  type VersionManager,
-} from "./manage";
+export { ManagementService, type ManageResult, type VersionManager } from "./manage";
 export type { MemberRef, OrgMember, OrgMembers, OrgRole } from "./membership";
 export { isCanonicalName, isCanonicalOrgSlug, isCanonicalScope, scopeOf } from "./names";
 export {
@@ -64,7 +60,6 @@ export {
   domainChallengeHost,
   type OrgDomainRecord,
   type OrgDomains,
-  type OrgErrorCode,
   type OrgPublic,
   type OrgRecord,
   type OrgResult,

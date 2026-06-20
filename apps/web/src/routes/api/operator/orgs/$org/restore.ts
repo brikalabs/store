@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { operatorAuthed, runJson, unwrap } from "@/server/console-api";
 
 /** `POST /api/operator/orgs/:org/restore` - reverse an org takedown (ORG-007). Operator-gated. */
@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/operator/orgs/$org/restore")({
       POST: ({ request, params }) =>
         runJson(async () => {
           const a = await operatorAuthed(request);
-          unwrap(await a.svc.orgs.restore(params.org), orgStatus);
+          unwrap(await a.svc.orgs.restore(params.org));
           await a.svc.audit.record({
             action: "org_restore",
             packageName: params.org,

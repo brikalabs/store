@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonBadRequest, jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonBadRequest, jsonPrivate } from "@/lib/http";
 import { authed, runJson, unwrap } from "@/server/console-api";
 import { registryServices } from "@/server/registry-services";
 import { serverContext } from "@/server/server-context";
@@ -55,7 +55,7 @@ export const Route = createFileRoute("/api/orgs/$org/icon")({
 
           const key = `org-icons/${params.org}.${ext}`;
           await serverContext().assets.put(key, bytes, type);
-          unwrap(await a.svc.orgs.setIcon(a.identity, params.org, key), orgStatus);
+          unwrap(await a.svc.orgs.setIcon(a.identity, params.org, key));
           await a.svc.audit.record({
             action: "org_icon_set",
             packageName: params.org,
@@ -68,7 +68,7 @@ export const Route = createFileRoute("/api/orgs/$org/icon")({
       DELETE: ({ request, params }) =>
         runJson(async () => {
           const a = await authed(request);
-          unwrap(await a.svc.orgs.setIcon(a.identity, params.org, null), orgStatus);
+          unwrap(await a.svc.orgs.setIcon(a.identity, params.org, null));
           await a.svc.audit.record({
             action: "org_icon_set",
             packageName: params.org,

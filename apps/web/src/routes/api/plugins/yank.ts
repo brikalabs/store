@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate, manageStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const Body = z.object({
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/api/plugins/yank")({
           const a = await authed(request);
           const parsed = parseBody(Body, await request.json(), "Invalid yank request");
           const { name, version, yanked } = parsed;
-          unwrap(await a.svc.management.setYanked(a.identity, name, version, yanked), manageStatus);
+          unwrap(await a.svc.management.setYanked(a.identity, name, version, yanked));
           await a.svc.audit.record({
             action: yanked ? "yank" : "unyank",
             packageName: name,

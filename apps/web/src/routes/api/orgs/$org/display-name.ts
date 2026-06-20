@@ -1,7 +1,7 @@
 import { displayNameSchema } from "@brika/registry-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const Body = z.object({ displayName: displayNameSchema.nullable() });
@@ -16,7 +16,6 @@ export const Route = createFileRoute("/api/orgs/$org/display-name")({
           const parsed = parseBody(Body, await request.json(), "Invalid display name");
           const result = unwrap(
             await a.svc.orgs.setDisplayName(a.identity, params.org, parsed.displayName),
-            orgStatus,
           );
           await a.svc.audit.record({
             action: "org_display_name",

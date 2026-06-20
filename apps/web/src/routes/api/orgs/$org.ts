@@ -1,6 +1,6 @@
 import { isCanonicalOrgSlug } from "@brika/registry-core";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonBadRequest, jsonError, jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonBadRequest, jsonError, jsonPrivate } from "@/lib/http";
 import { authed, runJson, unwrap } from "@/server/console-api";
 
 /**
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/api/orgs/$org")({
               "Org slug must be 2-20 lowercase letters, digits or hyphens, not starting with a hyphen",
             );
           }
-          const result = unwrap(await a.svc.orgs.claim(a.identity, org), orgStatus);
+          const result = unwrap(await a.svc.orgs.claim(a.identity, org));
           if (result.created) {
             await a.svc.audit.record({
               action: "org_create",

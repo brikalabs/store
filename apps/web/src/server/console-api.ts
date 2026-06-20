@@ -69,15 +69,14 @@ export async function operatorAuthed(request: Request): Promise<ConsoleContext> 
 }
 
 /**
- * Unwrap a domain result, or throw {@link JsonError} with the code mapped to a status
- * (`orgStatus`, `manageStatus`). Collapses the `if (!result.ok) return jsonError(...)` guard
- * every handler otherwise repeats into `const { x } = unwrap(await svc.foo(), orgStatus)`.
+ * Unwrap a domain result, or throw {@link JsonError} with the result's own HTTP `status`.
+ * Domain results carry their status directly, so there is nothing to map: this collapses the
+ * `if (!result.ok) return jsonError(...)` guard into `const { x } = unwrap(await svc.foo())`.
  */
-export function unwrap<R extends { readonly ok: true }, C extends string>(
-  result: R | { readonly ok: false; readonly code: C; readonly message: string },
-  toStatus: (code: C) => number,
+export function unwrap<R extends { readonly ok: true }>(
+  result: R | { readonly ok: false; readonly status: number; readonly message: string },
 ): R {
-  if (!result.ok) throw new JsonError(toStatus(result.code), result.message);
+  if (!result.ok) throw new JsonError(result.status, result.message);
   return result;
 }
 

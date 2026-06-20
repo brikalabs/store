@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate, manageStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { operatorAuthed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const Body = z.object({
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/operator/packages/takedown")({
             "name, version and reason are required",
           );
           const { name, version, reason } = parsed;
-          unwrap(await a.svc.management.takedown(name, version, reason), manageStatus);
+          unwrap(await a.svc.management.takedown(name, version, reason));
           await a.svc.audit.record({
             action: "takedown",
             packageName: name,

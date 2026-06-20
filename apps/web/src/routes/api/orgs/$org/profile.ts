@@ -1,7 +1,7 @@
 import { orgDescriptionSchema, orgLinksSchema } from "@brika/registry-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate, orgStatus } from "@/lib/http";
+import { jsonPrivate } from "@/lib/http";
 import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const Body = z.object({
@@ -22,7 +22,6 @@ export const Route = createFileRoute("/api/orgs/$org/profile")({
               description: parsed.description,
               links: parsed.links,
             }),
-            orgStatus,
           );
           await a.svc.audit.record({
             action: "org_profile_set",
