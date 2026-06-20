@@ -1,12 +1,12 @@
-import { orgDescriptionSchema, orgLinksSchema } from "@brika/registry-core";
+import { scopeDescriptionSchema, scopeLinksSchema } from "@brika/registry-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { jsonPrivate } from "@/lib/http";
 import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
 const Body = z.object({
-  description: orgDescriptionSchema.nullable(),
-  links: orgLinksSchema,
+  description: scopeDescriptionSchema.nullable(),
+  links: scopeLinksSchema,
 });
 
 /** `PUT /api/scopes/:scope/profile` - set the scope's description + links (admin only; ORG-009). */

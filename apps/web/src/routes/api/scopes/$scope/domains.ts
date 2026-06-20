@@ -1,10 +1,10 @@
-import { domainChallengeHost, orgDomainSchema } from "@brika/registry-core";
+import { domainChallengeHost, scopeDomainSchema } from "@brika/registry-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { jsonPrivate } from "@/lib/http";
 import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
 
-const DomainBody = z.object({ domain: orgDomainSchema });
+const DomainBody = z.object({ domain: scopeDomainSchema });
 
 /**
  * Scope domain claims (ORG-010), all admin-gated except the member-readable list:

@@ -1,4 +1,4 @@
-import type { OrgLink, OrgProfileInput } from "./profile";
+import type { ScopeLink, ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 
 /**
@@ -17,7 +17,7 @@ export interface ScopeRecord {
   readonly scope: string;
   readonly displayName: string | null;
   readonly description: string | null;
-  readonly links: readonly OrgLink[];
+  readonly links: readonly ScopeLink[];
   readonly iconKey: string | null;
   /**
    * Operator takedown reason, or null when active (ORG-007). A taken-down scope is withdrawn
@@ -41,7 +41,7 @@ export interface ScopeStore {
   claim(scope: string): Promise<{ record: ScopeRecord; created: boolean }>;
   setDisplayName(scope: string, displayName: string | null): Promise<void>;
   /** Set the editable profile (description + links). */
-  setProfile(scope: string, profile: OrgProfileInput): Promise<void>;
+  setProfile(scope: string, profile: ScopeProfileInput): Promise<void>;
   /** Set (or clear, with null) the uploaded icon's storage key. */
   setIcon(scope: string, iconKey: string | null): Promise<void>;
   /** Set the operator takedown reason (null restores the scope); ORG-007. */
@@ -118,7 +118,7 @@ export interface ScopePublic {
   readonly scope: string;
   readonly displayName: string | null;
   readonly description: string | null;
-  readonly links: readonly OrgLink[];
+  readonly links: readonly ScopeLink[];
   /** Whether the scope has an uploaded icon (the storage key itself is not public). */
   readonly hasIcon: boolean;
   readonly verifiedDomains: string[];

@@ -2,9 +2,9 @@ import {
   displayNameSchema,
   domainChallengeHost,
   isCanonicalScope,
-  orgDescriptionSchema,
-  orgDomainSchema,
-  orgLinksSchema,
+  scopeDescriptionSchema,
+  scopeDomainSchema,
+  scopeLinksSchema,
 } from "@brika/registry-core";
 import { badRequest, httpError, rateLimit, reply } from "@brika/router";
 import { z } from "zod";
@@ -191,8 +191,8 @@ export async function setDisplayName({
 }
 
 const ProfileBody = z.object({
-  description: orgDescriptionSchema.nullable(),
-  links: orgLinksSchema,
+  description: scopeDescriptionSchema.nullable(),
+  links: scopeLinksSchema,
 });
 
 /** `PUT /-/scope/:scope/profile` - set the description + links (admin; ORG-009). */
@@ -250,7 +250,7 @@ export async function listDomains({
 
 /** Validate + normalize a `:domain` path param (lowercased) or 400. */
 function parseDomain(raw: string): string {
-  const parsed = orgDomainSchema.safeParse(decodeURIComponent(raw));
+  const parsed = scopeDomainSchema.safeParse(decodeURIComponent(raw));
   if (!parsed.success) throw badRequest("not a valid domain name");
   return parsed.data;
 }

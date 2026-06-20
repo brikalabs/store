@@ -20,7 +20,7 @@ import { comments, plugins, reviews, users } from "@/server/db/schema";
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../drizzle");
-const MIGRATIONS = ["0000_abandoned_bloodscream.sql", "0001_overrated_wild_child.sql"];
+const MIGRATIONS = ["0000_parched_sauron.sql"];
 
 function makeDb(): Db {
   const sqlite = new Database(":memory:");
