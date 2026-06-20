@@ -8,7 +8,7 @@ test_mode: manual
 traceability:
   code:
     - apps/web/src/routes/$.tsx
-    - apps/web/src/routes/packages/index.tsx
+    - apps/web/src/routes/plugins/index.tsx
   tests: []
 ---
 
@@ -17,7 +17,7 @@ traceability:
 The storefront uses JSR-style root URLs. Every package is scoped and a scope starts
 with `@` (no other top-level route does), so the `/$` catch-all resolves `/@scope`
 to the scope's package listing (STORE-015) and `/@scope/name` to the plugin detail
-page (STORE-003). Browse lives at its own path, `/packages`. Anything not starting
+page (STORE-003). Browse lives at its own path, `/plugins`. Anything not starting
 with `@` (and not a real route) 404s. The retired `/developers/:id` and
 `/v1/developers/:id` routes were removed.
 
@@ -37,9 +37,9 @@ When a visitor requests GET /@brika/plugin-i18n
 Then the plugin detail page is rendered
 ```
 
-### STORE-016-AC3 , Browse lives at /packages
+### STORE-016-AC3 , Browse lives at /plugins
 ```gherkin
-Given a visitor requests GET /packages
+Given a visitor requests GET /plugins
 Then the response is 200 HTML
 And the browse discovery index is rendered
 ```

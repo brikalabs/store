@@ -81,7 +81,7 @@ function DirectionSpotlight({ plugins, total }: DirectionProps) {
                 Search the store
               </button>
               <Link
-                to="/packages"
+                to="/plugins"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-5 py-3 font-semibold transition-colors hover:bg-muted"
               >
                 Browse all
@@ -119,7 +119,7 @@ function DirectionSpotlight({ plugins, total }: DirectionProps) {
           {CAPABILITY_TILES.map((tile) => (
             <Link
               key={tile.key}
-              to="/packages"
+              to="/plugins"
               search={{ q: tile.key }}
               className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-brand"
             >
@@ -205,7 +205,7 @@ function Rail({
         </h2>
         {seeAll ? (
           <Link
-            to="/packages"
+            to="/plugins"
             className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground"
           >
             See all

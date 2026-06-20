@@ -14,7 +14,7 @@ import { searchPlugins } from "@/lib/registry/registry";
 
 const browseSearch = z.object({ q: z.string().optional() });
 
-export const Route = createFileRoute("/packages/")({
+export const Route = createFileRoute("/plugins/")({
   validateSearch: (input) => browseSearch.parse(input),
   loaderDeps: ({ search }) => ({ q: search.q }),
   loader: ({ deps }) => searchPlugins(deps.q),
@@ -59,7 +59,7 @@ function BrowsePage() {
   if (!q) {
     return (
       <main className="mx-auto max-w-7xl px-6 py-10">
-        <DiscoverIndex plugins={plugins} total={total} title="Browse packages" />
+        <DiscoverIndex plugins={plugins} total={total} title="Browse plugins" />
       </main>
     );
   }

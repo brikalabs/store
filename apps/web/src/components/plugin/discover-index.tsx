@@ -71,7 +71,7 @@ export function DiscoverIndex({
   function submitFilter(event: SyntheticEvent) {
     event.preventDefault();
     const next = term.trim();
-    navigate({ to: "/packages", search: next.length > 0 ? { q: next } : {} });
+    navigate({ to: "/plugins", search: next.length > 0 ? { q: next } : {} });
   }
 
   return (
@@ -99,7 +99,7 @@ export function DiscoverIndex({
             {CAPABILITY_TILES.map((tile) => (
               <Link
                 key={tile.key}
-                to="/packages"
+                to="/plugins"
                 search={{ q: tile.key }}
                 className="flex items-center justify-between rounded-md px-1 py-1 text-muted-foreground text-sm transition-colors hover:text-foreground"
               >

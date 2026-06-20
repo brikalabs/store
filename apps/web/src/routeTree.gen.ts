@@ -14,7 +14,7 @@ import { Route as DeviceRouteImport } from './routes/device'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PackagesIndexRouteImport } from './routes/packages/index'
+import { Route as PluginsIndexRouteImport } from './routes/plugins/index'
 import { Route as OperatorIndexRouteImport } from './routes/operator/index'
 import { Route as LegalIndexRouteImport } from './routes/legal/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
@@ -101,9 +101,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PackagesIndexRoute = PackagesIndexRouteImport.update({
-  id: '/packages/',
-  path: '/packages/',
+const PluginsIndexRoute = PluginsIndexRouteImport.update({
+  id: '/plugins/',
+  path: '/plugins/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperatorIndexRoute = OperatorIndexRouteImport.update({
@@ -445,7 +445,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/operator/': typeof OperatorIndexRoute
-  '/packages/': typeof PackagesIndexRoute
+  '/plugins/': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/device/approve': typeof ApiDeviceApproveRoute
@@ -511,7 +511,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/legal': typeof LegalIndexRoute
   '/operator': typeof OperatorIndexRoute
-  '/packages': typeof PackagesIndexRoute
+  '/plugins': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/device/approve': typeof ApiDeviceApproveRoute
@@ -580,7 +580,7 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/operator/': typeof OperatorIndexRoute
-  '/packages/': typeof PackagesIndexRoute
+  '/plugins/': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/device/approve': typeof ApiDeviceApproveRoute
@@ -650,7 +650,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/legal/'
     | '/operator/'
-    | '/packages/'
+    | '/plugins/'
     | '/api/account/profile'
     | '/api/account/tokens'
     | '/api/device/approve'
@@ -716,7 +716,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/legal'
     | '/operator'
-    | '/packages'
+    | '/plugins'
     | '/api/account/profile'
     | '/api/account/tokens'
     | '/api/device/approve'
@@ -784,7 +784,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/legal/'
     | '/operator/'
-    | '/packages/'
+    | '/plugins/'
     | '/api/account/profile'
     | '/api/account/tokens'
     | '/api/device/approve'
@@ -846,7 +846,7 @@ export interface RootRouteChildren {
   V1SearchRoute: typeof V1SearchRoute
   V1VerifiedRoute: typeof V1VerifiedRoute
   LegalIndexRoute: typeof LegalIndexRoute
-  PackagesIndexRoute: typeof PackagesIndexRoute
+  PluginsIndexRoute: typeof PluginsIndexRoute
   ApiAccountProfileRoute: typeof ApiAccountProfileRoute
   ApiAccountTokensRoute: typeof ApiAccountTokensRouteWithChildren
   ApiDeviceApproveRoute: typeof ApiDeviceApproveRoute
@@ -897,11 +897,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/packages/': {
-      id: '/packages/'
-      path: '/packages'
-      fullPath: '/packages/'
-      preLoaderRoute: typeof PackagesIndexRouteImport
+    '/plugins/': {
+      id: '/plugins/'
+      path: '/plugins'
+      fullPath: '/plugins/'
+      preLoaderRoute: typeof PluginsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operator/': {
@@ -1545,7 +1545,7 @@ const rootRouteChildren: RootRouteChildren = {
   V1SearchRoute: V1SearchRoute,
   V1VerifiedRoute: V1VerifiedRoute,
   LegalIndexRoute: LegalIndexRoute,
-  PackagesIndexRoute: PackagesIndexRoute,
+  PluginsIndexRoute: PluginsIndexRoute,
   ApiAccountProfileRoute: ApiAccountProfileRoute,
   ApiAccountTokensRoute: ApiAccountTokensRouteWithChildren,
   ApiDeviceApproveRoute: ApiDeviceApproveRoute,

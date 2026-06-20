@@ -18,10 +18,10 @@ export function HeaderSearch() {
   const [open, setOpen] = useState(false);
   const { plugins, scopes } = usePluginSearch(value);
 
-  // Mirror the active query from the URL (e.g. /packages?q=ai).
+  // Mirror the active query from the URL (e.g. /plugins?q=ai).
   const urlQuery = useRouterState({
     select: (state) =>
-      state.location.pathname === "/packages"
+      state.location.pathname === "/plugins"
         ? ((state.location.search as { q?: string }).q ?? "")
         : "",
   });
@@ -34,7 +34,7 @@ export function HeaderSearch() {
     const next = value.trim();
     setOpen(false);
     inputRef.current?.blur();
-    navigate({ to: "/packages", search: next.length > 0 ? { q: next } : {} });
+    navigate({ to: "/plugins", search: next.length > 0 ? { q: next } : {} });
   }
 
   function go(action: () => void) {

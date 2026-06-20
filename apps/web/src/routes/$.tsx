@@ -269,7 +269,7 @@ function DetailBreadcrumb({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
-        <Link to="/packages" className="hover:text-foreground">
+        <Link to="/plugins" className="hover:text-foreground">
           Browse
         </Link>
         <ChevronRight className="size-3" />
@@ -665,7 +665,7 @@ function SidebarKeywords({ keywords }: Readonly<{ keywords: string[] }>) {
       <div className="flex flex-wrap gap-1.5">
         {keywords.slice(0, 8).map((keyword) => (
           <Badge key={keyword} asChild variant="secondary">
-            <Link to="/packages" search={{ q: keyword }}>
+            <Link to="/plugins" search={{ q: keyword }}>
               {keyword}
             </Link>
           </Badge>

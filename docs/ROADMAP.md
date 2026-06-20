@@ -7,7 +7,7 @@ Status of the platform and the precise next steps. Legend: ✅ done and verified
 
 | Area | Status |
 | --- | --- |
-| Store: SSR pages (home, browse `/packages`, plugin detail `/@scope/name`, scope page `/@scope`) | ✅ |
+| Store: SSR pages (home, browse `/plugins`, plugin detail `/@scope/name`, scope page `/@scope`) | ✅ |
 | Store: `/v1` discovery contract (search, plugin, versions, readme, icon, verified) | ✅ |
 | Store: social (GitHub OAuth, reviews, comments, helpful/upvote grading) | ✅ |
 | Store: media (icon, localized readme/changelog, screenshots via jsDelivr) | ✅ |

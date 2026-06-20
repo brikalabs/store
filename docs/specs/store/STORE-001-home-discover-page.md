@@ -36,7 +36,7 @@ And the rendered HTML contains the marketplace headline and a total plugin count
 ```gherkin
 Given the home page is rendered
 When the visitor reads the hero
-Then there is a link to browse all plugins (/packages)
+Then there is a link to browse all plugins (/plugins)
 And there is a control to search the store
 ```
 

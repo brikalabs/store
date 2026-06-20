@@ -9,8 +9,8 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Product",
     links: [
-      { label: "Browse plugins", to: "/packages" },
-      { label: "Trending", to: "/packages" },
+      { label: "Browse plugins", to: "/plugins" },
+      { label: "Trending", to: "/plugins" },
       { label: "Categories" },
       { label: "Publish a plugin", to: "/dashboard" },
     ],

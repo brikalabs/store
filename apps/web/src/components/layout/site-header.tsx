@@ -58,7 +58,7 @@ export function SiteHeader() {
         <nav className="flex shrink-0 items-center gap-3 text-sm sm:gap-4">
           <ThemeToggle />
           <Link
-            to="/packages"
+            to="/plugins"
             className="font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Browse
