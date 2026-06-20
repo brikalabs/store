@@ -68,44 +68,57 @@ describe("markDeveloperVerified", () => {
 });
 
 describe("ensurePluginCached", () => {
-  function stubPackument(body: unknown, status = 200) {
-    globalThis.fetch = (() =>
-      Promise.resolve(
-        new Response(JSON.stringify(body), {
-          status,
+  const NAME = "@brika/plugin-demo";
+  // The registry packument; the version manifest carries the Brika engine + display name,
+  // and the publisher (owning org) becomes the cached plugin's author/developer.
+  const packument = {
+    name: NAME,
+    "dist-tags": { latest: "1.0.0" },
+    publisher: { id: "brika", name: "Brika Labs", verified: true },
+    versions: {
+      "1.0.0": { name: NAME, version: "1.0.0", displayName: "Demo", engines: { brika: "^0.1.0" } },
+    },
+    time: { created: "2026-01-01T00:00:00.000Z", "1.0.0": "2026-01-01T00:00:00.000Z" },
+  };
+
+  /** Registry packument for the `@brika` plugin; downloads + tarball 404 (zeros / no files). */
+  function stubRegistry() {
+    globalThis.fetch = ((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith(".tgz") || url.includes("/-/v1/downloads")) {
+        return Promise.resolve(new Response("", { status: 404 }));
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(packument), {
+          status: 200,
           headers: { "content-type": "application/json" },
         }),
-      )) as typeof fetch;
+      );
+    }) as typeof fetch;
   }
 
-  test("caches a plugin row + developer from npm, and is idempotent", async () => {
-    stubPackument({
-      name: "brika-plugin-demo",
-      "dist-tags": { latest: "1.0.0" },
-      maintainers: [{ name: "octo" }],
-      versions: {
-        "1.0.0": {
-          version: "1.0.0",
-          displayName: "Demo",
-          engines: { brika: "^0.1.0" },
-          author: "Octo",
-        },
-      },
-      time: { created: "2026-01-01T00:00:00.000Z", "1.0.0": "2026-01-01T00:00:00.000Z" },
-    });
-    expect(await ensurePluginCached(db, "brika-plugin-demo")).toBe(true);
-    const rows = await db.select().from(plugins).where(eq(plugins.name, "brika-plugin-demo"));
+  test("caches a plugin row + developer from the registry, and is idempotent", async () => {
+    stubRegistry();
+    expect(await ensurePluginCached(db, NAME)).toBe(true);
+    const rows = await db.select().from(plugins).where(eq(plugins.name, NAME));
     expect(rows[0]?.displayName).toBe("Demo");
     // Second call short-circuits on the existing row (no fetch needed).
     globalThis.fetch = (() => {
       throw new Error("should not fetch again");
     }) as typeof fetch;
-    expect(await ensurePluginCached(db, "brika-plugin-demo")).toBe(true);
+    expect(await ensurePluginCached(db, NAME)).toBe(true);
   });
 
-  test("returns false when the package is not a Brika plugin", async () => {
-    stubPackument({ error: "Not found" }, 404);
-    expect(await ensurePluginCached(db, "not-a-plugin")).toBe(false);
+  test("returns false for a non-registry (npm) name without fetching", async () => {
+    globalThis.fetch = (() => {
+      throw new Error("should not fetch for a non-registry name");
+    }) as typeof fetch;
+    expect(await ensurePluginCached(db, "lodash")).toBe(false);
+  });
+
+  test("returns false when the registry has no such plugin", async () => {
+    globalThis.fetch = (() => Promise.resolve(new Response("", { status: 404 }))) as typeof fetch;
+    expect(await ensurePluginCached(db, "@brika/missing")).toBe(false);
   });
 });
 

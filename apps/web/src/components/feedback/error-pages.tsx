@@ -9,7 +9,7 @@ export function NotFoundPage() {
       title="This brick isn't in the wall."
       message="We dug through every plugin and couldn't find that page. It was either unpublished, mistyped, or never bricked into existence."
       primary={{ label: "Back to store", icon: Home, to: "/" }}
-      secondary={{ label: "Search plugins", icon: Search, to: "/plugins" }}
+      secondary={{ label: "Search plugins", icon: Search, to: "/packages" }}
       mono="// no route matched"
     />
   );

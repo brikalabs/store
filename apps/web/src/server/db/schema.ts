@@ -92,25 +92,6 @@ export const users = sqliteTable("users", {
   createdAt: integer("created_at").notNull().default(epoch),
 });
 
-/**
- * Store-level listing overrides a maintainer sets in the console, layered on top of
- * the package manifest / bundled store.json at read time. One row per package; only
- * the set fields override (null = fall through to the manifest). Lets a maintainer
- * edit how their plugin appears in the store without republishing a version.
- */
-export const pluginListings = sqliteTable("plugin_listings", {
-  pluginName: text("plugin_name").primaryKey(),
-  displayName: text("display_name"),
-  summary: text("summary"),
-  description: text("description"),
-  visibility: text("visibility", { mode: "text" }).notNull().default("public"),
-  keywords: text("keywords", { mode: "json" }).$type<string[]>(),
-  updatedAt: integer("updated_at").notNull().default(epoch),
-  updatedBy: text("updated_by")
-    .notNull()
-    .references(() => users.id),
-});
-
 export const reviews = sqliteTable(
   "reviews",
   {

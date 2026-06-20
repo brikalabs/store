@@ -11,7 +11,7 @@ export const Route = createFileRoute("/dashboard/plugins/")({
 
 function MyPluginsPage() {
   const { user } = Route.useRouteContext();
-  const plugins = useMyPlugins(user.login);
+  const plugins = useMyPlugins();
 
   return (
     <AdminShell login={user.login} activeLabel="My plugins">
@@ -19,7 +19,8 @@ function MyPluginsPage() {
         <div>
           <h1 className="font-bold font-heading text-2xl tracking-tight">My plugins</h1>
           <p className="mt-1 text-muted-foreground text-sm">
-            Manage how your packages appear in the store. Code &amp; versions sync from npm.
+            Plugins published under scopes your organisations own. Code &amp; versions come from the
+            published package.
           </p>
         </div>
 
@@ -35,7 +36,7 @@ function MyPluginsPage() {
               <Box className="size-7 text-muted-foreground" />
               <p className="font-medium text-foreground">No published plugins yet</p>
               <p className="text-muted-foreground text-sm">
-                Plugins you maintain on npm (keyword <code>brika</code>) show up here.
+                Plugins published under scopes you belong to show up here.
               </p>
             </div>
           ) : (

@@ -16,12 +16,12 @@ export function HeaderSearch() {
   const navigate = useNavigate();
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
-  const { plugins, authors } = usePluginSearch(value);
+  const { plugins, scopes } = usePluginSearch(value);
 
-  // Mirror the active query from the URL (e.g. /plugins?q=ai).
+  // Mirror the active query from the URL (e.g. /packages?q=ai).
   const urlQuery = useRouterState({
     select: (state) =>
-      state.location.pathname === "/plugins"
+      state.location.pathname === "/packages"
         ? ((state.location.search as { q?: string }).q ?? "")
         : "",
   });
@@ -34,7 +34,7 @@ export function HeaderSearch() {
     const next = value.trim();
     setOpen(false);
     inputRef.current?.blur();
-    navigate({ to: "/plugins", search: next.length > 0 ? { q: next } : {} });
+    navigate({ to: "/packages", search: next.length > 0 ? { q: next } : {} });
   }
 
   function go(action: () => void) {
@@ -43,7 +43,7 @@ export function HeaderSearch() {
     action();
   }
 
-  const showResults = open && value.trim().length > 0 && (plugins.length > 0 || authors.length > 0);
+  const showResults = open && value.trim().length > 0 && (plugins.length > 0 || scopes.length > 0);
 
   return (
     <form onSubmit={submit} className="relative hidden max-w-md flex-1 sm:block">
@@ -63,8 +63,8 @@ export function HeaderSearch() {
             inputRef.current?.blur();
           }
         }}
-        placeholder="Search plugins and authors…"
-        aria-label="Search plugins and authors"
+        placeholder="Search plugins and scopes…"
+        aria-label="Search plugins and scopes"
         className="h-10 w-full rounded-xl border border-border bg-muted/50 pr-16 pl-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/40 focus:bg-card"
       />
       <KbdGroup className="-translate-y-1/2 absolute top-1/2 right-3">
@@ -83,7 +83,7 @@ export function HeaderSearch() {
                   type="button"
                   onMouseDown={(event) => {
                     event.preventDefault();
-                    go(() => navigate({ to: "/plugins/$", params: { _splat: plugin.name } }));
+                    go(() => navigate({ to: "/$", params: { _splat: plugin.name } }));
                   }}
                   className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
                 >
@@ -101,21 +101,24 @@ export function HeaderSearch() {
               ))}
             </div>
           ) : null}
-          {authors.length > 0 ? (
+          {scopes.length > 0 ? (
             <div className="border-border border-t p-1.5">
-              <div className="px-2 py-1 font-semibold text-muted-foreground text-xs">Authors</div>
-              {authors.map((author) => (
+              <div className="px-2 py-1 font-semibold text-muted-foreground text-xs">Scopes</div>
+              {scopes.map((scope) => (
                 <button
-                  key={author.id}
+                  key={scope.scope}
                   type="button"
                   onMouseDown={(event) => {
                     event.preventDefault();
-                    go(() => navigate({ to: "/developers/$id", params: { id: author.id } }));
+                    go(() => navigate({ to: "/$", params: { _splat: scope.scope } }));
                   }}
                   className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
                 >
-                  <GradientAvatar seed={author.id} label={author.name} size={22} />
-                  <span className="font-medium">{author.name}</span>
+                  <GradientAvatar seed={scope.scope} label={scope.name} size={22} />
+                  <span className="font-medium">{scope.name}</span>
+                  <span className="ml-auto truncate font-mono text-muted-foreground text-xs">
+                    {scope.scope}
+                  </span>
                 </button>
               ))}
             </div>

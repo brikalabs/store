@@ -24,7 +24,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "Discover, review, and install Brika plugins. A cached npm mirror with a community.",
+          "Discover, review, and install Brika plugins. A curated registry of verified, scoped plugins.",
       },
     ],
     links: [

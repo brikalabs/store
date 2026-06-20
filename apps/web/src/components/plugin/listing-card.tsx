@@ -13,7 +13,7 @@ function capabilityTotal(plugin: PluginSummary): number {
   return c.tools + c.blocks + c.bricks + c.sparks + c.pages;
 }
 
-/** Install count from the registry, falling back to weekly npm downloads, else nothing. */
+/** Install count from the registry, falling back to weekly downloads, else nothing. */
 function InstallsBadge({ plugin }: PluginCardProps) {
   if (plugin.installs === undefined) {
     if (plugin.downloadsWeekly > 0) {
@@ -55,7 +55,7 @@ export function ListingCard({ plugin }: PluginCardProps) {
   const capabilities = capabilityTotal(plugin);
   return (
     <Link
-      to="/plugins/$"
+      to="/$"
       params={{ _splat: plugin.name }}
       className="group flex h-full flex-col gap-3.5 rounded-2xl border border-border bg-card p-[18px] transition-colors hover:border-brand"
     >

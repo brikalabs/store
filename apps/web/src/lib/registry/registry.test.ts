@@ -1,17 +1,18 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { gzipSync } from "node:zlib";
 import {
-  getDeveloperPage,
   getPluginPage,
   getPluginVersions,
+  getScopePage,
   searchPlugins,
 } from "@/lib/registry/registry";
 
 /**
- * Orchestration tests for the store's read model: it merges `@brika/*` plugins
- * (our registry) with npm results and prefers the registry for detail/versions.
- * `fetch` is stubbed per URL so no network is touched; the registry tarball is a
- * real gzipped USTAR archive so the readme/locale extraction path runs for real.
+ * Orchestration tests for the store's read model: every listed plugin is hosted on
+ * the Brika registry and resolved through its npm-compatible HTTP surface - npm is
+ * never a listing source. `fetch` is stubbed per URL so no network is touched; the
+ * registry tarball is a real gzipped USTAR archive so the readme/locale extraction
+ * path runs for real.
  */
 
 const realFetch = globalThis.fetch;
@@ -77,6 +78,7 @@ const catalog = {
       manifest: registryManifest,
       publishedAt: "2026-06-16T00:00:00.000Z",
       createdAt: "2026-06-16T00:00:00.000Z",
+      publisher: { id: "brika", name: "Brika Labs", verified: true },
       downloads: { total: 5000, weekly: 120 },
     },
   ],
@@ -95,7 +97,7 @@ const tarball = makeTarGz([
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-/** Route a stubbed fetch by URL to the registry, tarball, or npm responses. */
+/** Route a stubbed fetch by URL to the registry catalog, packument, or tarball. */
 function stubAll() {
   globalThis.fetch = ((input: string | URL | Request) => {
     const url = typeof input === "string" ? input : input.toString();
@@ -109,14 +111,12 @@ function stubAll() {
       return Promise.resolve(new Response(tarball, { status: 200 }));
     }
     if (url.includes("registry.brika.dev")) return Promise.resolve(json(registryPackument));
-    if (url.includes("/-/v1/search")) return Promise.resolve(json({ objects: [], total: 0 }));
-    if (url.includes("api.npmjs.org")) return Promise.resolve(json({ downloads: 0 }));
     return Promise.resolve(json({ error: "not found" }, 404));
   }) as typeof fetch;
 }
 
 describe("searchPlugins", () => {
-  test("includes registry plugins with real install counts on the first page", async () => {
+  test("lists registry plugins with real install counts", async () => {
     stubAll();
     const { plugins, total } = await searchPlugins(undefined, 12, 0);
     const i18n = plugins.find((p) => p.name === "@brika/plugin-i18n");
@@ -124,17 +124,22 @@ describe("searchPlugins", () => {
     expect(i18n?.installs).toBe(5000);
     expect(total).toBeGreaterThanOrEqual(1);
   });
+});
 
-  test("skips the registry for qualifier searches (maintainer:)", async () => {
-    let catalogHit = false;
-    globalThis.fetch = ((input: string | URL | Request) => {
-      const url = typeof input === "string" ? input : input.toString();
-      if (url.includes("/-/v1/packages")) catalogHit = true;
-      if (url.includes("/-/v1/search")) return Promise.resolve(json({ objects: [], total: 0 }));
-      return Promise.resolve(json({ error: "x" }, 404));
-    }) as typeof fetch;
-    await searchPlugins("maintainer:octo", 12, 0);
-    expect(catalogHit).toBe(false);
+describe("getScopePage", () => {
+  test("lists a scope's plugins with the verified publisher for the header", async () => {
+    stubAll();
+    const page = await getScopePage("@brika");
+    expect(page).not.toBeNull();
+    expect(page?.scope).toBe("@brika");
+    expect(page?.displayName).toBe("Brika Labs");
+    expect(page?.verified).toBe(true);
+    expect(page?.plugins.map((p) => p.name)).toContain("@brika/plugin-i18n");
+  });
+
+  test("returns null for a scope with no listed plugin", async () => {
+    stubAll();
+    expect(await getScopePage("@nobody")).toBeNull();
   });
 });
 
@@ -165,9 +170,14 @@ describe("getPluginPage", () => {
     expect(page?.detail.devDependencyCount).toBe(2);
   });
 
-  test("falls through to a 404 for an unknown registry plugin", async () => {
+  test("returns null for an unknown registry plugin", async () => {
     globalThis.fetch = (() => Promise.resolve(json({ error: "x" }, 404))) as typeof fetch;
     expect(await getPluginPage("@brika/missing")).toBeNull();
+  });
+
+  test("returns null for a non-@brika name (npm packages are not listed)", async () => {
+    stubAll();
+    expect(await getPluginPage("lodash")).toBeNull();
   });
 });
 
@@ -178,70 +188,8 @@ describe("getPluginVersions", () => {
     expect(versions?.[0]?.version).toBe("0.1.0");
   });
 
-  test("returns null for an unknown package", async () => {
-    globalThis.fetch = (() => Promise.resolve(json({ error: "x" }, 404))) as typeof fetch;
+  test("returns null for a non-@brika name", async () => {
+    stubAll();
     expect(await getPluginVersions("totally-unknown")).toBeNull();
-  });
-});
-
-const npmPackument = {
-  name: "brika-plugin-community",
-  "dist-tags": { latest: "2.0.0" },
-  versions: {
-    "2.0.0": {
-      version: "2.0.0",
-      displayName: "Community",
-      engines: { brika: "^0.1.0" },
-      readme: "./README.md",
-    },
-  },
-  time: { created: "2026-01-01T00:00:00.000Z", "2.0.0": "2026-02-01T00:00:00.000Z" },
-};
-
-/** Stub for a non-`@brika` (npm-hosted) plugin: packument, downloads, jsDelivr readme. */
-function stubNpm() {
-  globalThis.fetch = ((input: string | URL | Request) => {
-    const url = typeof input === "string" ? input : input.toString();
-    if (url.includes("api.npmjs.org")) return Promise.resolve(json({ downloads: 7 }));
-    if (url.includes("cdn.jsdelivr.net"))
-      return Promise.resolve(new Response("# Community readme"));
-    if (url.includes("registry.npmjs.org")) return Promise.resolve(json(npmPackument));
-    return Promise.resolve(json({ error: "x" }, 404));
-  }) as typeof fetch;
-}
-
-describe("npm fallback", () => {
-  test("getPluginPage resolves a non-@brika plugin from npm + jsDelivr", async () => {
-    stubNpm();
-    const page = await getPluginPage("brika-plugin-community");
-    expect(page?.detail.name).toBe("brika-plugin-community");
-    expect(page?.detail.downloadsWeekly).toBe(7);
-    expect(page?.readme).toContain("Community readme");
-  });
-
-  test("getPluginVersions resolves a non-@brika plugin from npm", async () => {
-    stubNpm();
-    expect((await getPluginVersions("brika-plugin-community"))?.[0]?.version).toBe("2.0.0");
-  });
-});
-
-describe("getDeveloperPage", () => {
-  test("builds a profile from the maintainer's plugins", async () => {
-    globalThis.fetch = ((input: string | URL | Request) => {
-      const url = typeof input === "string" ? input : input.toString();
-      if (url.includes("/-/v1/search")) {
-        return Promise.resolve(
-          json({
-            objects: [{ package: { name: "brika-plugin-community", version: "2.0.0" } }],
-            total: 1,
-          }),
-        );
-      }
-      if (url.includes("registry.npmjs.org")) return Promise.resolve(json(npmPackument));
-      return Promise.resolve(json({ error: "x" }, 404));
-    }) as typeof fetch;
-    const { profile } = await getDeveloperPage("octo");
-    expect(profile.id).toBe("octo");
-    expect(profile.pluginCount).toBeGreaterThanOrEqual(0);
   });
 });

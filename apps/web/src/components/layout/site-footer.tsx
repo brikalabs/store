@@ -1,6 +1,5 @@
 import { BrikaLogo } from "@brika/clay";
 import { Link } from "@tanstack/react-router";
-import { Box } from "lucide-react";
 import type { ReactNode } from "react";
 import { GithubIcon } from "@/components/clay/icons";
 
@@ -10,8 +9,8 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Product",
     links: [
-      { label: "Browse plugins", to: "/plugins" },
-      { label: "Trending", to: "/plugins" },
+      { label: "Browse plugins", to: "/packages" },
+      { label: "Trending", to: "/packages" },
       { label: "Categories" },
       { label: "Publish a plugin", to: "/dashboard" },
     ],
@@ -52,9 +51,6 @@ export function SiteFooter() {
             <div className="mt-0.5 flex gap-2">
               <FooterSocial href="https://github.com/brikalabs" label="GitHub">
                 <GithubIcon className="size-4" />
-              </FooterSocial>
-              <FooterSocial href="https://www.npmjs.com/search?q=keywords:brika" label="npm">
-                <Box className="size-4" />
               </FooterSocial>
             </div>
           </div>

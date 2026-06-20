@@ -1,25 +1,29 @@
-import { type PluginSummary, SearchResponse } from "@brika/registry-contract";
+import { PluginSummary } from "@brika/registry-contract";
 import { useEffect, useState } from "react";
+import { z } from "zod";
+
+/** The `GET /api/plugins/mine` payload: the catalog plugins under the user's owned scopes. */
+const MinePlugins = z.object({ plugins: z.array(PluginSummary) });
 
 /**
- * The plugins the signed-in developer maintains, from the `/v1/search` maintainer query.
- * Shared by the dashboard overview (for its stats) and the My plugins table so both read
- * the same source. Returns an empty list until the request resolves.
+ * The plugins the signed-in developer owns, from `/api/plugins/mine` - the catalog plugins
+ * published under scopes their organisations own (resolved server-side from the session, never
+ * from the client). Shared by the dashboard overview (for its stats) and the My plugins table
+ * so both read the same source. Returns an empty list until the request resolves.
  */
-export function useMyPlugins(login: string): PluginSummary[] {
+export function useMyPlugins(): PluginSummary[] {
   const [plugins, setPlugins] = useState<PluginSummary[]>([]);
   useEffect(() => {
     let active = true;
-    const query = encodeURIComponent(`maintainer:${login}`);
-    fetch(`/v1/search?q=${query}&limit=50`)
+    fetch("/api/plugins/mine")
       .then((res) => res.json())
       .then((json: unknown) => {
-        const parsed = SearchResponse.safeParse(json);
+        const parsed = MinePlugins.safeParse(json);
         if (active && parsed.success) setPlugins(parsed.data.plugins);
       });
     return () => {
       active = false;
     };
-  }, [login]);
+  }, []);
   return plugins;
 }

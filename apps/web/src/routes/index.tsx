@@ -69,8 +69,7 @@ function DirectionSpotlight({ plugins, total }: DirectionProps) {
               The marketplace for your Brika hub
             </h1>
             <p className="max-w-md text-lg text-muted-foreground leading-relaxed">
-              Discover, compare, and review plugins. Powered by npm, enriched with a community of
-              builders.
+              Discover, compare, and review plugins. A curated registry of verified, scoped plugins.
             </p>
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
@@ -82,7 +81,7 @@ function DirectionSpotlight({ plugins, total }: DirectionProps) {
                 Search the store
               </button>
               <Link
-                to="/plugins"
+                to="/packages"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-5 py-3 font-semibold transition-colors hover:bg-muted"
               >
                 Browse all
@@ -120,7 +119,7 @@ function DirectionSpotlight({ plugins, total }: DirectionProps) {
           {CAPABILITY_TILES.map((tile) => (
             <Link
               key={tile.key}
-              to="/plugins"
+              to="/packages"
               search={{ q: tile.key }}
               className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-brand"
             >
@@ -147,7 +146,7 @@ function DirectionSpotlight({ plugins, total }: DirectionProps) {
 function HeroCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
   return (
     <Link
-      to="/plugins/$"
+      to="/$"
       params={{ _splat: plugin.name }}
       className="group flex flex-col gap-4 rounded-[18px] border border-border bg-card p-6 shadow-[0_24px_50px_-24px_rgba(30,20,10,0.3)] transition-transform hover:-translate-y-1"
     >
@@ -206,7 +205,7 @@ function Rail({
         </h2>
         {seeAll ? (
           <Link
-            to="/plugins"
+            to="/packages"
             className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground"
           >
             See all
