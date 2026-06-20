@@ -51,6 +51,7 @@ import { Route as V1PluginsNameReadmeRouteImport } from './routes/v1.plugins.$na
 import { Route as V1PluginsNameCommentsRouteImport } from './routes/v1.plugins.$name.comments'
 import { Route as ApiScopesScopeMembersRouteImport } from './routes/api.scopes.$scope.members'
 import { Route as ApiScopesScopeDisplayNameRouteImport } from './routes/api.scopes.$scope.display-name'
+import { Route as ApiPluginsNameListingRouteImport } from './routes/api.plugins.$name.listing'
 import { Route as ApiAccountTokensHashRouteImport } from './routes/api.account.tokens.$hash'
 import { Route as ApiScopesScopeMembersMemberIdRouteImport } from './routes/api.scopes.$scope.members.$memberId'
 import { Route as V1PluginsNameVVersionChar91indexChar93RouteImport } from './routes/v1.plugins.$name.v.$version.[index]'
@@ -269,6 +270,11 @@ const ApiScopesScopeDisplayNameRoute =
     path: '/display-name',
     getParentRoute: () => ApiScopesScopeRoute,
   } as any)
+const ApiPluginsNameListingRoute = ApiPluginsNameListingRouteImport.update({
+  id: '/api/plugins/$name/listing',
+  path: '/api/plugins/$name/listing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAccountTokensHashRoute = ApiAccountTokensHashRouteImport.update({
   id: '/$hash',
   path: '/$hash',
@@ -343,6 +349,7 @@ export interface FileRoutesByFullPath {
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/dashboard/plugins/': typeof DashboardPluginsIndexRoute
   '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
+  '/api/plugins/$name/listing': typeof ApiPluginsNameListingRoute
   '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
   '/api/scopes/$scope/members': typeof ApiScopesScopeMembersRouteWithChildren
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
@@ -392,6 +399,7 @@ export interface FileRoutesByTo {
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/dashboard/plugins': typeof DashboardPluginsIndexRoute
   '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
+  '/api/plugins/$name/listing': typeof ApiPluginsNameListingRoute
   '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
   '/api/scopes/$scope/members': typeof ApiScopesScopeMembersRouteWithChildren
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
@@ -443,6 +451,7 @@ export interface FileRoutesById {
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/dashboard/plugins/': typeof DashboardPluginsIndexRoute
   '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
+  '/api/plugins/$name/listing': typeof ApiPluginsNameListingRoute
   '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
   '/api/scopes/$scope/members': typeof ApiScopesScopeMembersRouteWithChildren
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
@@ -495,6 +504,7 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name'
     | '/dashboard/plugins/'
     | '/api/account/tokens/$hash'
+    | '/api/plugins/$name/listing'
     | '/api/scopes/$scope/display-name'
     | '/api/scopes/$scope/members'
     | '/v1/plugins/$name/comments'
@@ -544,6 +554,7 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name'
     | '/dashboard/plugins'
     | '/api/account/tokens/$hash'
+    | '/api/plugins/$name/listing'
     | '/api/scopes/$scope/display-name'
     | '/api/scopes/$scope/members'
     | '/v1/plugins/$name/comments'
@@ -594,6 +605,7 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name'
     | '/dashboard/plugins/'
     | '/api/account/tokens/$hash'
+    | '/api/plugins/$name/listing'
     | '/api/scopes/$scope/display-name'
     | '/api/scopes/$scope/members'
     | '/v1/plugins/$name/comments'
@@ -635,6 +647,7 @@ export interface RootRouteChildren {
   ApiPluginsYankRoute: typeof ApiPluginsYankRoute
   V1DevelopersIdRoute: typeof V1DevelopersIdRoute
   V1PluginsNameRoute: typeof V1PluginsNameRouteWithChildren
+  ApiPluginsNameListingRoute: typeof ApiPluginsNameListingRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -933,6 +946,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiScopesScopeDisplayNameRouteImport
       parentRoute: typeof ApiScopesScopeRoute
     }
+    '/api/plugins/$name/listing': {
+      id: '/api/plugins/$name/listing'
+      path: '/api/plugins/$name/listing'
+      fullPath: '/api/plugins/$name/listing'
+      preLoaderRoute: typeof ApiPluginsNameListingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/account/tokens/$hash': {
       id: '/api/account/tokens/$hash'
       path: '/$hash'
@@ -1140,6 +1160,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPluginsYankRoute: ApiPluginsYankRoute,
   V1DevelopersIdRoute: V1DevelopersIdRoute,
   V1PluginsNameRoute: V1PluginsNameRouteWithChildren,
+  ApiPluginsNameListingRoute: ApiPluginsNameListingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
