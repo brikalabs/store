@@ -4,6 +4,25 @@ Two Cloudflare Workers: the **store** (`apps/web`) and the **registry**
 (`apps/registry`). They share one D1 database. These steps need a Cloudflare
 account and a GitHub OAuth app, so they are done by the operator, not in CI.
 
+## Continuous deployment (Cloudflare Workers Builds)
+
+Cloudflare auto-deploys each worker when `main` changes. Two settings make migrations run
+automatically as part of that deploy (without them, code can ship ahead of its schema — the
+drift that caused the earlier outage):
+
+1. **Deploy command = `bun run deploy`** (per worker, in its Workers Builds settings) — NOT a
+   bare `wrangler deploy`. The `deploy` script runs `db:migrate` (tracked `wrangler d1
+   migrations apply --remote`, idempotent) and only then `wrangler deploy`. So a pending
+   migration is applied before the new code goes live; if it fails, the deploy aborts and the
+   old code keeps serving (a loud failure, never silent drift).
+2. **`CLOUDFLARE_API_TOKEN` build secret with D1:Edit** (+ Workers Scripts:Edit) — the
+   auto-generated Workers Builds token has Workers/KV/R2/Routes but **not** D1, so the migrate
+   step would fail auth without a custom token set as a build variable.
+
+For a DESTRUCTIVE schema change, use the expand/contract split (ship an additive migration +
+deploy, then a later contractive migration) so the other worker on the shared D1 never reads a
+dropped column mid-deploy.
+
 # Store (store.brika.dev)
 
 TanStack Start SSR + the `/v1` API, one Worker.
@@ -57,8 +76,14 @@ For local development these live in `apps/web/.dev.vars` (gitignored).
 ## 5. Deploy
 
 ```sh
-bun run deploy              # vite build && wrangler deploy
+bun run deploy              # db:migrate (REMOTE) && vite build && wrangler deploy
 ```
+
+`deploy` applies any pending D1 migrations BEFORE shipping the code, so the schema can
+never lag the worker (the cause of the earlier drift outage). It's idempotent - already-
+applied migrations are tracked in `d1_migrations` and skipped. If the migration step fails,
+the deploy aborts and the old (working) code keeps serving. Configure Cloudflare Workers
+Builds to run `bun run deploy` (not a bare `wrangler deploy`) so auto-deploys migrate too.
 
 Attach the custom domain `store.brika.dev` to this Worker (declared as a route in
 `apps/web/wrangler.jsonc`). The registry is a separate Worker (below).
@@ -100,22 +125,25 @@ The D1 is shared with the store, so put the store's `database_id` into
 
 ## 2. Apply the registry schema
 
-The `reg_*` tables live in `packages/db`. Apply the migrations to the shared D1:
+The `reg_*` tables live in `packages/db` (the registry's `migrations_dir`). Apply them with
+tracked migrations - NOT a raw `d1 execute` loop, which writes schema without recording it in
+`d1_migrations` and was the cause of the earlier drift outage:
 
 ```sh
 cd apps/registry
-for f in ../../packages/db/drizzle/*.sql; do
-  wrangler d1 execute brika-store --remote --file "$f"
-done
+bun run db:migrate          # wrangler d1 migrations apply brika-store --remote (idempotent)
 ```
 
 ## 3. Deploy + attach the domain
 
 ```sh
-bun run --filter @brika/registry deploy
+bun run --filter @brika/registry deploy   # runs db:migrate, then wrangler deploy
 ```
 
-Attach `registry.brika.dev` to this Worker.
+Attach `registry.brika.dev` to this Worker. Because `deploy` migrates first, schema and code
+ship together; for a DESTRUCTIVE migration use the expand/contract split (additive migration +
+deploy, then a later contractive migration) so the other worker on the shared D1 never reads a
+dropped column mid-deploy.
 
 ## 4. GitHub OIDC trusted publishing
 
