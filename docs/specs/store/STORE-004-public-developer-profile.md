@@ -1,7 +1,7 @@
 ---
 id: STORE-004
 title: "Public developer profile"
-status: done
+status: gone
 area: store
 group: store
 test_mode: manual
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded/removed: the public developer page is retired.** The store is scope-centric: a publisher's public surface is its scope page (`/@scope`; see STORE-015) and, across scopes it owns, its organisation page (ORG-003). The npm-`maintainer`-keyed developer profile and its `/developers/:id` route (and the `/v1/developers/:id` data route) were deleted; author links now point at the scope page. Retained for history.
 
 `GET /developers/<id>` renders a maintainer's public profile: avatar, display name,
 verified badge, bio and links, aggregate stats, and a grid of the maintainer's

@@ -8,7 +8,7 @@ test_mode: manual
 traceability:
   code:
     - apps/web/src/routes/index.tsx
-    - apps/web/src/lib/registry.ts
+    - apps/web/src/lib/registry/registry.ts
   tests:
     - apps/web/e2e/store.spec.ts
 ---
@@ -17,7 +17,9 @@ traceability:
 
 The store landing page (`GET /`) loads a page of plugins server-side and presents
 discovery rails: a featured plugin, a featured rail, a trending rail, and a
-browse-by-capability section. It is the entry point into browse and detail.
+browse-by-capability section. It is the entry point into browse and detail. Every
+listed plugin is a verified, scoped plugin published to the Brika registry
+(`searchPlugins` -> `listRegistryPlugins`); npm is not a discovery source.
 
 ## Acceptance criteria
 
@@ -34,7 +36,7 @@ And the rendered HTML contains the marketplace headline and a total plugin count
 ```gherkin
 Given the home page is rendered
 When the visitor reads the hero
-Then there is a link to browse all plugins (/plugins)
+Then there is a link to browse all plugins (/packages)
 And there is a control to search the store
 ```
 

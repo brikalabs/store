@@ -1,7 +1,7 @@
 ---
 id: STORE-014
 title: "Scheduled npm sync (CRON prewarm)"
-status: todo
+status: gone
 area: store
 group: store
 test_mode: none
@@ -12,6 +12,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded/removed: there is no npm catalog to sync.** The storefront is registry-only, so there is no npm-derived catalog to prewarm; discovery reads the hosted registry catalog directly (see the deleted npm federation, STORE-009). Retained for history.
 
 A scheduled Worker job to periodically refresh the npm-derived catalog (packuments,
 download counts) so discovery is warm and fresh without waiting on first-request
