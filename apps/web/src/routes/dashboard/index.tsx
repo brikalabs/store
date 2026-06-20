@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Box, Check, Copy, ExternalLink, Rocket, ShieldAlert } from "lucide-react";
+import { ArrowRight, Box, Check, Copy, Rocket, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { useMyPlugins } from "@/hooks/use-my-plugins";
@@ -16,7 +16,7 @@ on:
     types: [published]
 permissions:
   contents: read
-  id-token: write # npm trusted publishing (OIDC)
+  id-token: write # Brika trusted publishing (tokenless OIDC)
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -25,7 +25,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bunx brika check --types
-      - run: npm publish --provenance --access public`;
+      - run: bunx brika publish`;
 
 function OverviewPage() {
   const { user } = Route.useRouteContext();
@@ -132,13 +132,14 @@ function PublishCard() {
       <ol className="flex list-decimal flex-col gap-2 pl-5 text-muted-foreground text-sm">
         <li>Push your plugin to a GitHub repository.</li>
         <li>
-          On npmjs.com, add a <span className="font-medium text-foreground">trusted publisher</span>{" "}
-          for the package, linked to that repo and workflow (tokenless OIDC).
+          In your organisation, add a{" "}
+          <span className="font-medium text-foreground">trusted publisher</span> for your scope,
+          linked to that repo and workflow (tokenless OIDC). Plugins publish to Brika, never npm.
         </li>
         <li>Add the workflow below as `.github/workflows/publish.yml`.</li>
         <li>
-          Cut a GitHub release. It publishes to npm with provenance, and the store reflects the new
-          version automatically.
+          Cut a GitHub release. It publishes to the Brika store with provenance, and the listing
+          updates automatically.
         </li>
       </ol>
       <div className="relative">
@@ -154,15 +155,13 @@ function PublishCard() {
           {copied ? <Check className="size-4 text-brand-ink" /> : <Copy className="size-4" />}
         </button>
       </div>
-      <a
-        href="https://docs.npmjs.com/trusted-publishers"
-        target="_blank"
-        rel="noreferrer"
+      <Link
+        to="/dashboard/orgs"
         className="inline-flex w-fit items-center gap-1 text-brand-ink text-sm hover:underline"
       >
-        npm trusted publishing docs
-        <ExternalLink className="size-3.5" />
-      </a>
+        Manage trusted publishers
+        <ArrowRight className="size-3.5" />
+      </Link>
     </div>
   );
 }
