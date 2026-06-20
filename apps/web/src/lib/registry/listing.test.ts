@@ -16,7 +16,7 @@ import { users } from "@/server/db/schema";
 /** In-memory store D1 with every shipped migration applied (sorted). */
 function makeDb(): Db {
   const sqlite = new Database(":memory:");
-  const dir = join(import.meta.dir, "../../drizzle");
+  const dir = join(import.meta.dir, "../../../drizzle");
   for (const file of readdirSync(dir)
     .filter((f) => f.endsWith(".sql"))
     .sort()) {

@@ -19,7 +19,7 @@ import { comments, plugins, reviews, users } from "@/server/db/schema";
  * exposes the same query API, so the production code runs unchanged here.
  */
 
-const MIGRATIONS_DIR = join(import.meta.dir, "../../drizzle");
+const MIGRATIONS_DIR = join(import.meta.dir, "../../../drizzle");
 const MIGRATIONS = ["0000_abandoned_bloodscream.sql", "0001_overrated_wild_child.sql"];
 
 function makeDb(): Db {
