@@ -87,7 +87,7 @@ function OperatorConsoleLink() {
   if (!operator) return null;
   return (
     <Link
-      to="/operator/orgs"
+      to="/operator/scopes"
       className="inline-flex w-fit items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-2.5 font-semibold text-foreground text-sm transition-colors hover:bg-amber-500/10"
     >
       <ShieldAlert className="size-4 text-amber-600" />
@@ -132,9 +132,9 @@ function PublishCard() {
       <ol className="flex list-decimal flex-col gap-2 pl-5 text-muted-foreground text-sm">
         <li>Push your plugin to a GitHub repository.</li>
         <li>
-          In your organisation, add a{" "}
-          <span className="font-medium text-foreground">trusted publisher</span> for your scope,
-          linked to that repo and workflow (tokenless OIDC). Plugins publish to Brika, never npm.
+          On your scope, add a{" "}
+          <span className="font-medium text-foreground">trusted publisher</span>, linked to that
+          repo and workflow (tokenless OIDC). Plugins publish to Brika, never npm.
         </li>
         <li>Add the workflow below as `.github/workflows/publish.yml`.</li>
         <li>
@@ -161,7 +161,7 @@ function PublishCard() {
         <span className="font-mono text-foreground">BRIKA_TOKEN</span> secret instead of using OIDC.
       </p>
       <Link
-        to="/dashboard/orgs"
+        to="/dashboard/scopes"
         className="inline-flex w-fit items-center gap-1 text-brand-ink text-sm hover:underline"
       >
         Manage trusted publishers

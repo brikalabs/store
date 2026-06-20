@@ -2,7 +2,7 @@ import { Button, Input } from "@brika/clay";
 import { type SyntheticEvent, useState } from "react";
 
 /**
- * The takedown/restore control shared by the org and package operator views. When active it
+ * The takedown/restore control shared by the scope and package operator views. When active it
  * shows a single "Restore" button; when not, a "Take down" button that reveals an inline
  * reason form (a deliberate two-step, so a destructive moderation action is never one click).
  * The parent owns the async call + busy state; this only collects the reason.

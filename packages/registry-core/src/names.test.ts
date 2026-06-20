@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isCanonicalName, isCanonicalOrgSlug, isCanonicalScope, scopeOf } from "./names";
+import { isCanonicalName, isCanonicalScope, scopeOf } from "./names";
 
 describe("scopeOf", () => {
   test("returns the @scope segment, or null when unscoped", () => {
@@ -24,23 +24,6 @@ describe("isCanonicalScope", () => {
     expect(isCanonicalScope(`@${"a".repeat(21)}`)).toBe(false); // 21 > 20
     expect(isCanonicalScope("brika")).toBe(false); // no @
     expect(isCanonicalScope("@brika/x")).toBe(false); // a scope is not a package name
-  });
-});
-
-describe("isCanonicalOrgSlug", () => {
-  test("accepts 2-20 lowercase letters/digits/hyphens, no leading @ or hyphen", () => {
-    expect(isCanonicalOrgSlug("brika")).toBe(true);
-    expect(isCanonicalOrgSlug("my-team")).toBe(true);
-    expect(isCanonicalOrgSlug("a1")).toBe(true);
-  });
-
-  test("rejects a leading @, too short, leading hyphen, uppercase, non-ASCII, too long", () => {
-    expect(isCanonicalOrgSlug("@brika")).toBe(false); // an org slug has no @
-    expect(isCanonicalOrgSlug("a")).toBe(false); // 1 char
-    expect(isCanonicalOrgSlug("-team")).toBe(false); // leading hyphen
-    expect(isCanonicalOrgSlug("Brika")).toBe(false); // uppercase
-    expect(isCanonicalOrgSlug("brіka")).toBe(false); // Cyrillic i
-    expect(isCanonicalOrgSlug("a".repeat(21))).toBe(false); // 21 > 20
   });
 });
 

@@ -4,17 +4,15 @@ import { HttpError } from "@brika/router";
 import {
   type Db,
   regDistTags,
-  regOrgMembers,
-  regOrgs,
   regPackages,
+  regScopeMembers,
   regScopes,
   regVersions,
 } from "@brika/store-db";
 import {
   D1MetadataWriter,
-  D1OrgMembers,
-  D1OrgScopes,
   D1OwnershipPolicy,
+  D1ScopeMembers,
   D1TrustedPublishers,
   issueToken,
 } from "@brika/store-db/adapters";
@@ -45,19 +43,18 @@ mock.module("cloudflare:workers", () => ({
 const { publish } = await import("./publish");
 const { deprecate, yank, takedown, restore } = await import("./manage");
 const {
-  createOrg,
+  createScope,
   deleteMember,
   listMembers,
   putMember,
   setDisplayName,
-  attachScope,
-  getOrg,
-  takedownOrg,
-  restoreOrg,
+  getScope,
+  takedownScope,
+  restoreScope,
   addTrustedPublisher,
   listTrustedPublishers,
   removeTrustedPublisher,
-} = await import("./org");
+} = await import("./scope");
 
 /** The status a handler yields, whether it returns a Response or throws an HttpError. */
 async function statusOf(run: Promise<Response>): Promise<number> {
@@ -82,13 +79,12 @@ function post(body: unknown, token?: string): Request {
   return new Request("http://localhost/", { method: "POST", headers, body: JSON.stringify(body) });
 }
 
-/** Attach the `@brika` scope to org `brika` with `owner` as its admin (for publish gates). */
-async function seedBrikaOrg(db: Db, owner: string): Promise<void> {
-  await db.insert(regOrgs).values({ slug: "brika" });
+/** Seed the `@brika` scope with `owner` as its admin (for publish gates). */
+async function seedBrikaScope(db: Db, owner: string): Promise<void> {
+  await db.insert(regScopes).values({ scope: "@brika" });
   await db
-    .insert(regOrgMembers)
-    .values({ orgSlug: "brika", provider: "github", memberId: owner, role: "admin" });
-  await db.insert(regScopes).values({ scope: "@brika", orgId: "brika" });
+    .insert(regScopeMembers)
+    .values({ scope: "@brika", provider: "github", memberId: owner, role: "admin" });
 }
 
 /** Seed the example package (shared harness) plus an owner token for the auth tests. */
@@ -130,10 +126,9 @@ describe("publish (auth + invariant + ownership gates)", () => {
     expect(await statusOf(publish({ body, req: post(body, token), ctx: services(db) }))).toBe(400);
   });
 
-  test("403 when the scope's org has a different member set", async () => {
-    // Scopes are attached to an org explicitly, never on publish; publishing to a scope
-    // owned by an org you are not a member of is forbidden.
-    await seedBrikaOrg(db, "octocat");
+  test("403 when the scope has a different member set", async () => {
+    // Publishing to a scope you are not a member of is forbidden.
+    await seedBrikaScope(db, "octocat");
     const token = await issueToken(db, "stranger");
     expect(
       await statusOf(
@@ -158,8 +153,8 @@ describe("publish (auth + invariant + ownership gates)", () => {
   });
 
   test("413 when the tarball is over the size limit", async () => {
-    // The scope must be attached and the publisher a member of its org to reach the size check.
-    await seedBrikaOrg(db, "octocat");
+    // The publisher must be a member of the scope to reach the size check.
+    await seedBrikaScope(db, "octocat");
     const token = await issueToken(db, "octocat");
     // A 1-byte cap rejects even the tiny 3-byte "AAAA" tarball.
     const ctx = {
@@ -168,11 +163,7 @@ describe("publish (auth + invariant + ownership gates)", () => {
         new D1MetadataWriter(db),
         new R2TarballWriter(fakeR2()),
         new SchemaManifestValidator(),
-        new D1OwnershipPolicy(
-          new D1OrgMembers(db),
-          new D1OrgScopes(db),
-          new D1TrustedPublishers(db),
-        ),
+        new D1OwnershipPolicy(new D1ScopeMembers(db), new D1TrustedPublishers(db)),
         { maxTarballBytes: 1 },
       ),
     };
@@ -182,65 +173,68 @@ describe("publish (auth + invariant + ownership gates)", () => {
   });
 });
 
-describe("createOrg (explicit org claim)", () => {
-  const params = { org: "team" };
+describe("createScope (explicit scope claim)", () => {
+  const params = { scope: "@team" };
 
   test("401 without a token", async () => {
-    expect(await statusOf(createOrg({ params, req: post(undefined), ctx: services(db) }))).toBe(
+    expect(await statusOf(createScope({ params, req: post(undefined), ctx: services(db) }))).toBe(
       401,
     );
   });
 
-  test("400 for a non-canonical org slug", async () => {
+  test("400 for a non-canonical scope", async () => {
     const token = await issueToken(db, "alice");
-    const bad = { org: "Team" }; // uppercase: rejected by the canonical-slug rule
+    const bad = { scope: "@Team" }; // uppercase: rejected by the canonical-scope rule
     expect(
-      await statusOf(createOrg({ params: bad, req: post(undefined, token), ctx: services(db) })),
+      await statusOf(createScope({ params: bad, req: post(undefined, token), ctx: services(db) })),
     ).toBe(400);
   });
 
-  test("201 creates the org and seeds the caller as its admin member", async () => {
+  test("201 creates the scope and seeds the caller as its admin member", async () => {
     const token = await issueToken(db, "alice");
-    const res = await createOrg({ params, req: post(undefined, token), ctx: services(db) });
+    const res = await createScope({ params, req: post(undefined, token), ctx: services(db) });
     expect(res.status).toBe(201);
-    const rows = await db.select().from(regOrgs).where(eq(regOrgs.slug, "team"));
-    expect(rows[0]).toMatchObject({ slug: "team", displayName: null });
-    const members = await db.select().from(regOrgMembers).where(eq(regOrgMembers.orgSlug, "team"));
+    const rows = await db.select().from(regScopes).where(eq(regScopes.scope, "@team"));
+    expect(rows[0]).toMatchObject({ scope: "@team", displayName: null });
+    const members = await db
+      .select()
+      .from(regScopeMembers)
+      .where(eq(regScopeMembers.scope, "@team"));
     expect(members).toEqual([
       expect.objectContaining({ provider: "github", memberId: "alice", role: "admin" }),
     ]);
   });
 
-  test("200 (idempotent) when the caller already administers the org", async () => {
+  test("200 (idempotent) when the caller already administers the scope", async () => {
     const token = await issueToken(db, "alice");
-    await createOrg({ params, req: post(undefined, token), ctx: services(db) });
-    const res = await createOrg({ params, req: post(undefined, token), ctx: services(db) });
+    await createScope({ params, req: post(undefined, token), ctx: services(db) });
+    const res = await createScope({ params, req: post(undefined, token), ctx: services(db) });
     expect(res.status).toBe(200);
   });
 
-  test("ORG-005-AC1: 429 once the per-account org cap is reached", async () => {
+  test("ORG-005-AC1: 429 once the per-account scope cap is reached", async () => {
     const ctx = services(db);
     const token = await issueToken(db, "hoarder");
-    // The default cap is REGISTRY_LIMITS.maxOrgsPerAccount (3); claim up to it, then over.
-    for (const org of ["s1", "s2", "s3"]) {
-      const res = await createOrg({ params: { org }, req: post(undefined, token), ctx });
+    // The default cap is REGISTRY_LIMITS.maxScopesPerAccount (3); claim up to it, then over.
+    for (const scope of ["@s1", "@s2", "@s3"]) {
+      const res = await createScope({ params: { scope }, req: post(undefined, token), ctx });
       expect(res.status).toBe(201);
     }
     expect(
-      await statusOf(createOrg({ params: { org: "s4" }, req: post(undefined, token), ctx })),
+      await statusOf(createScope({ params: { scope: "@s4" }, req: post(undefined, token), ctx })),
     ).toBe(429);
-    // the over-cap org was not created
-    expect(await db.select().from(regOrgs).where(eq(regOrgs.slug, "s4"))).toHaveLength(0);
+    // the over-cap scope was not created
+    expect(await db.select().from(regScopes).where(eq(regScopes.scope, "@s4"))).toHaveLength(0);
   });
 
-  test("409 when the org is already claimed by someone else", async () => {
-    await db.insert(regOrgs).values({ slug: "team" });
+  test("409 when the scope is already claimed by someone else", async () => {
+    await db.insert(regScopes).values({ scope: "@team" });
     await db
-      .insert(regOrgMembers)
-      .values({ orgSlug: "team", provider: "github", memberId: "alice", role: "admin" });
+      .insert(regScopeMembers)
+      .values({ scope: "@team", provider: "github", memberId: "alice", role: "admin" });
     const token = await issueToken(db, "mallory");
     expect(
-      await statusOf(createOrg({ params, req: post(undefined, token), ctx: services(db) })),
+      await statusOf(createScope({ params, req: post(undefined, token), ctx: services(db) })),
     ).toBe(409);
   });
 
@@ -248,31 +242,30 @@ describe("createOrg (explicit org claim)", () => {
     const alice = await issueToken(db, "alice");
     const mallory = await issueToken(db, "mallory");
     const [a, b] = await Promise.all([
-      statusOf(createOrg({ params, req: post(undefined, alice), ctx: services(db) })),
-      statusOf(createOrg({ params, req: post(undefined, mallory), ctx: services(db) })),
+      statusOf(createScope({ params, req: post(undefined, alice), ctx: services(db) })),
+      statusOf(createScope({ params, req: post(undefined, mallory), ctx: services(db) })),
     ]);
     expect([a, b].filter((s) => s === 201)).toHaveLength(1);
     expect([a, b].filter((s) => s === 409)).toHaveLength(1);
-    expect(await db.select().from(regOrgs).where(eq(regOrgs.slug, "team"))).toHaveLength(1);
+    expect(await db.select().from(regScopes).where(eq(regScopes.scope, "@team"))).toHaveLength(1);
   });
 });
 
-describe("org members (roles + invariants)", () => {
-  const org = "team";
-  const memberParams = (id: string) => ({ org, provider: "github", id });
-  const membersOf = () => db.select().from(regOrgMembers).where(eq(regOrgMembers.orgSlug, org));
+describe("scope members (roles + invariants)", () => {
+  const scope = "@team";
+  const memberParams = (id: string) => ({ scope, provider: "github", id });
+  const membersOf = () => db.select().from(regScopeMembers).where(eq(regScopeMembers.scope, scope));
 
-  /** Create org `team` with `adminLogin` as its admin, owning scope `@team`; return the token. */
-  async function seedOrgAdmin(adminLogin: string): Promise<string> {
+  /** Claim scope `@team` with `adminLogin` as its admin; return the token. */
+  async function seedScopeAdmin(adminLogin: string): Promise<string> {
     const token = await issueToken(db, adminLogin);
     const ctx = services(db);
-    await createOrg({ params: { org }, req: post(undefined, token), ctx });
-    await attachScope({ params: { org, scope: "@team" }, req: post(undefined, token), ctx });
+    await createScope({ params: { scope }, req: post(undefined, token), ctx });
     return token;
   }
 
   test("an admin adds a member; a non-admin cannot", async () => {
-    const alice = await seedOrgAdmin("alice");
+    const alice = await seedScopeAdmin("alice");
     const res = await putMember({
       params: memberParams("bob"),
       body: { role: "member" },
@@ -298,8 +291,8 @@ describe("org members (roles + invariants)", () => {
     ).toBe(403);
   });
 
-  test("a newly added member can publish under a scope the org owns", async () => {
-    const alice = await seedOrgAdmin("alice");
+  test("a newly added member can publish under the scope", async () => {
+    const alice = await seedScopeAdmin("alice");
     await putMember({
       params: memberParams("bob"),
       body: { role: "member" },
@@ -320,21 +313,21 @@ describe("org members (roles + invariants)", () => {
   });
 
   test("listMembers requires membership", async () => {
-    const alice = await seedOrgAdmin("alice");
+    const alice = await seedScopeAdmin("alice");
     expect(
-      (await listMembers({ params: { org }, req: post(undefined, alice), ctx: services(db) }))
+      (await listMembers({ params: { scope }, req: post(undefined, alice), ctx: services(db) }))
         .status,
     ).toBe(200);
     const stranger = await issueToken(db, "bob");
     expect(
       await statusOf(
-        listMembers({ params: { org }, req: post(undefined, stranger), ctx: services(db) }),
+        listMembers({ params: { scope }, req: post(undefined, stranger), ctx: services(db) }),
       ),
     ).toBe(403);
   });
 
   test("the last admin cannot be demoted or removed (409)", async () => {
-    const alice = await seedOrgAdmin("alice");
+    const alice = await seedScopeAdmin("alice");
     expect(
       await statusOf(
         putMember({
@@ -356,8 +349,8 @@ describe("org members (roles + invariants)", () => {
     ).toBe(409);
   });
 
-  test("concurrent demotions of two admins cannot leave the org with zero admins", async () => {
-    const alice = await seedOrgAdmin("alice");
+  test("concurrent demotions of two admins cannot leave the scope with zero admins", async () => {
+    const alice = await seedScopeAdmin("alice");
     await putMember({
       params: memberParams("bob"),
       body: { role: "admin" },
@@ -391,7 +384,7 @@ describe("org members (roles + invariants)", () => {
   });
 
   test("with a second admin, one admin can be removed", async () => {
-    const alice = await seedOrgAdmin("alice");
+    const alice = await seedScopeAdmin("alice");
     await putMember({
       params: memberParams("bob"),
       body: { role: "admin" },
@@ -408,72 +401,18 @@ describe("org members (roles + invariants)", () => {
   });
 });
 
-describe("attachScope (1:N org -> scopes)", () => {
-  /** Create org `team` admined by `login`; return the token. */
-  async function seedOrgAdmin(login: string): Promise<string> {
-    const token = await issueToken(db, login);
-    await createOrg({ params: { org: "team" }, req: post(undefined, token), ctx: services(db) });
-    return token;
-  }
-
-  test("an admin attaches a scope; a non-admin cannot (ORG-008)", async () => {
-    const alice = await seedOrgAdmin("alice");
-    const res = await attachScope({
-      params: { org: "team", scope: "@team" },
-      req: post(undefined, alice),
-      ctx: services(db),
-    });
-    expect(res.status).toBe(201);
-    expect(await db.select().from(regScopes).where(eq(regScopes.scope, "@team"))).toMatchObject([
-      { scope: "@team", orgId: "team" },
-    ]);
-
-    const bob = await issueToken(db, "bob"); // not a member
-    expect(
-      await statusOf(
-        attachScope({
-          params: { org: "team", scope: "@team2" },
-          req: post(undefined, bob),
-          ctx: services(db),
-        }),
-      ),
-    ).toBe(403);
-  });
-
-  test("ORG-002-AC3: a scope already owned by another org is refused (409)", async () => {
-    const alice = await seedOrgAdmin("alice");
-    await attachScope({
-      params: { org: "team", scope: "@shared" },
-      req: post(undefined, alice),
-      ctx: services(db),
-    });
-    const bob = await issueToken(db, "bob");
-    await createOrg({ params: { org: "other" }, req: post(undefined, bob), ctx: services(db) });
-    expect(
-      await statusOf(
-        attachScope({
-          params: { org: "other", scope: "@shared" },
-          req: post(undefined, bob),
-          ctx: services(db),
-        }),
-      ),
-    ).toBe(409);
-  });
-});
-
 describe("trusted publishers (PUB-016)", () => {
-  /** Create org `team` admined by `login` owning scope `@team`; return the admin token. */
+  /** Claim scope `@team` admined by `login`; return the admin token. */
   async function seedScope(login: string): Promise<string> {
     const token = await issueToken(db, login);
-    await createOrg({ params: { org: "team" }, req: post(undefined, token), ctx: services(db) });
-    await attachScope({
-      params: { org: "team", scope: "@team" },
+    await createScope({
+      params: { scope: "@team" },
       req: post(undefined, token),
       ctx: services(db),
     });
     return token;
   }
-  const params = { org: "team", scope: "@team" };
+  const params = { scope: "@team" };
   const binding = { provider: "github", repository: "acme/plugin-x", workflow: "publish.yml" };
 
   test("an admin adds, lists, and removes a binding", async () => {
@@ -637,16 +576,16 @@ describe("takedown / restore (operator-gated)", () => {
   });
 });
 
-describe("org takedown / restore (operator-gated, ORG-007)", () => {
-  const params = { org: "brika" };
+describe("scope takedown / restore (operator-gated, ORG-007)", () => {
+  const params = { scope: "@brika" };
   const asAdmin = (db: Db) => issueToken(db, "operator");
 
   test("ORG-007-AC2: 403 for a valid credential that is not a registry admin", async () => {
-    await seedBrikaOrg(db, "octocat"); // an org admin, but not a registry operator
+    await seedBrikaScope(db, "octocat"); // a scope admin, but not a registry operator
     const token = await issueToken(db, "octocat");
     expect(
       await statusOf(
-        takedownOrg({
+        takedownScope({
           params,
           body: { reason: "squat" },
           req: post(undefined, token),
@@ -656,37 +595,37 @@ describe("org takedown / restore (operator-gated, ORG-007)", () => {
     ).toBe(403);
   });
 
-  test("ORG-007-AC1: an operator takedown withdraws the org from public listings; restore re-exposes it", async () => {
-    await seedBrikaOrg(db, "octocat");
+  test("ORG-007-AC1: an operator takedown withdraws the scope from public listings; restore re-exposes it", async () => {
+    await seedBrikaScope(db, "octocat");
     const ctx = services(db);
     const token = await asAdmin(db);
 
-    expect((await getOrg({ params, ctx })).status).toBe(200);
+    expect((await getScope({ params, ctx })).status).toBe(200);
 
-    const res = await takedownOrg({
+    const res = await takedownScope({
       params,
       body: { reason: "name-squatting" },
       req: post(undefined, token),
       ctx,
     });
     expect(res.status).toBe(200);
-    // The public org page 404s, and the reason is recorded (audited) but never leaked there.
-    expect(await statusOf(getOrg({ params, ctx }))).toBe(404);
-    const taken = await db.select().from(regOrgs).where(eq(regOrgs.slug, "brika"));
+    // The public scope page 404s, and the reason is recorded (audited) but never leaked there.
+    expect(await statusOf(getScope({ params, ctx }))).toBe(404);
+    const taken = await db.select().from(regScopes).where(eq(regScopes.scope, "@brika"));
     expect(taken[0]?.takedown).toBe("name-squatting");
 
-    expect((await restoreOrg({ params, req: post(undefined, token), ctx })).status).toBe(200);
-    expect((await getOrg({ params, ctx })).status).toBe(200);
-    const restored = await db.select().from(regOrgs).where(eq(regOrgs.slug, "brika"));
+    expect((await restoreScope({ params, req: post(undefined, token), ctx })).status).toBe(200);
+    expect((await getScope({ params, ctx })).status).toBe(200);
+    const restored = await db.select().from(regScopes).where(eq(regScopes.scope, "@brika"));
     expect(restored[0]?.takedown).toBeNull();
   });
 
-  test("404 when taking down an org that does not exist", async () => {
+  test("404 when taking down a scope that does not exist", async () => {
     const token = await asAdmin(db);
     expect(
       await statusOf(
-        takedownOrg({
-          params: { org: "ghost" },
+        takedownScope({
+          params: { scope: "@ghost" },
           body: { reason: "x" },
           req: post(undefined, token),
           ctx: services(db),
@@ -825,33 +764,33 @@ describe("publish atomicity (commitVersion + transaction)", () => {
   });
 });
 
-describe("org publisher (verified attribution)", () => {
-  test("packument + catalog expose the owning org as the verified publisher", async () => {
+describe("scope publisher (verified attribution)", () => {
+  test("packument + catalog expose the owning scope as the verified publisher", async () => {
     await seedPackage(db, "brikalabs");
     const ctx = services(db);
 
     const packument = (await ctx.resolve.packument("@brika/x")) as {
       publisher?: { id: string; name: string; verified: boolean };
     };
-    // No display name yet -> falls back to the org slug.
-    expect(packument.publisher).toEqual({ id: "brika", name: "brika", verified: true });
+    // No display name yet -> falls back to the scope.
+    expect(packument.publisher).toEqual({ id: "@brika", name: "@brika", verified: true });
 
     const catalog = await (
       await handleCatalog(new Request("http://localhost/-/v1/packages"), ctx)
     ).json();
     expect(catalog.packages[0].publisher).toEqual({
-      id: "brika",
-      name: "brika",
+      id: "@brika",
+      name: "@brika",
       verified: true,
     });
   });
 
-  test("an org admin sets the display name; it becomes the verified publisher name", async () => {
+  test("a scope admin sets the display name; it becomes the verified publisher name", async () => {
     const { token } = await seedPackage(db, "brikalabs");
     const ctx = services(db);
 
     const res = await setDisplayName({
-      params: { org: "brika" },
+      params: { scope: "@brika" },
       body: { displayName: "Brika Labs" },
       req: post(undefined, token),
       ctx,
@@ -861,7 +800,7 @@ describe("org publisher (verified attribution)", () => {
     const packument = (await ctx.resolve.packument("@brika/x")) as {
       publisher?: { id: string; name: string; verified: boolean };
     };
-    expect(packument.publisher).toEqual({ id: "brika", name: "Brika Labs", verified: true });
+    expect(packument.publisher).toEqual({ id: "@brika", name: "Brika Labs", verified: true });
   });
 
   test("a non-admin cannot set the display name (403)", async () => {
@@ -869,7 +808,7 @@ describe("org publisher (verified attribution)", () => {
     const stranger = await issueToken(db, "intruder");
     const res = statusOf(
       setDisplayName({
-        params: { org: "brika" },
+        params: { scope: "@brika" },
         body: { displayName: "Pwned" },
         req: post(undefined, stranger),
         ctx: services(db),

@@ -1,9 +1,9 @@
 import {
   DeviceService,
   ManagementService,
-  OrgService,
   PublishService,
   ResolveService,
+  ScopeService,
 } from "@brika/registry-core";
 import type { Db } from "@brika/store-db";
 import {
@@ -14,11 +14,10 @@ import {
   D1DownloadStore,
   D1MetadataReader,
   D1MetadataWriter,
-  D1OrgDomains,
-  D1OrgMembers,
-  D1OrgScopes,
-  D1OrgStore,
   D1OwnershipPolicy,
+  D1ScopeDomains,
+  D1ScopeMembers,
+  D1ScopeStore,
   D1TokenStore,
   D1TrustedPublishers,
   HmacDomainChallenge,
@@ -51,16 +50,15 @@ export function buildServices(
   admins: ReadonlySet<string> = new Set(),
   domainSecret = "test-domain-secret",
 ) {
-  // The D1 implementations of the org membership + scope-ownership ports, built once and
-  // injected into the authorization policy (which depends on the ports, not these concrete
-  // adapters) and shared with the org controller. Publishing resolves scope -> owning org
-  // (orgScopes) -> membership (orgMembers).
-  const orgMembers = new D1OrgMembers(db);
-  const orgScopes = new D1OrgScopes(db);
+  // The D1 implementation of the scope membership port, built once and injected into the
+  // authorization policy (which depends on the port, not the concrete adapter) and shared
+  // with the scope controller. The scope IS the ownership entity (npm/JSR model), so
+  // publishing resolves the package's scope straight to its membership (scopeMembers).
+  const scopeMembers = new D1ScopeMembers(db);
   // Trusted-publisher bindings (PUB-016) authorize tokenless OIDC publishes; shared between
-  // the publish authorization policy and the org controller that manages the bindings.
+  // the publish authorization policy and the scope controller that manages the bindings.
   const trustedPublishers = new D1TrustedPublishers(db);
-  const ownership = new D1OwnershipPolicy(orgMembers, orgScopes, trustedPublishers);
+  const ownership = new D1OwnershipPolicy(scopeMembers, trustedPublishers);
   // The raw drizzle client (`db`) is deliberately NOT exposed on the returned graph:
   // every persistence + auth concern goes through a port below, so a controller cannot
   // reach the database directly. Adapters capture `db` here at construction.
@@ -88,12 +86,13 @@ export function buildServices(
     /** Post-publish management: deprecate, yank. */
     management: new ManagementService(new D1MetadataWriter(db), ownership),
     /**
-     * Org use cases: claim an org, members + roles, display name, profile (description,
-     * links, icon), attach/list scopes, and claim/verify domains (over the stores). The
-     * claim gate (ORG-006) defaults to allow-all in `OrgService` until a real identity
-     * verifier lands; domain verification resolves TXT records over DNS-over-HTTPS (ORG-010).
+     * Scope use cases (the scope IS the ownership entity): claim a scope, members + roles,
+     * display name, profile (description, links, icon), and claim/verify domains (over the
+     * stores). The claim gate (ORG-006) defaults to allow-all in `ScopeService` until a real
+     * identity verifier lands; domain verification resolves TXT records over DNS-over-HTTPS
+     * (ORG-010).
      */
-    orgs: new OrgService(new D1OrgStore(db), orgMembers, orgScopes, new D1OrgDomains(db), {
+    scopes: new ScopeService(new D1ScopeStore(db), scopeMembers, new D1ScopeDomains(db), {
       dnsResolver: new CloudflareDohResolver(),
       domainChallenge: new HmacDomainChallenge(domainSecret),
       trustedPublishers,

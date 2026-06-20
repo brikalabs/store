@@ -70,7 +70,7 @@ describe("markDeveloperVerified", () => {
 describe("ensurePluginCached", () => {
   const NAME = "@brika/plugin-demo";
   // The registry packument; the version manifest carries the Brika engine + display name,
-  // and the publisher (owning org) becomes the cached plugin's author/developer.
+  // and the publisher (the scope) becomes the cached plugin's author/developer.
   const packument = {
     name: NAME,
     "dist-tags": { latest: "1.0.0" },

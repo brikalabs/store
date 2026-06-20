@@ -19,8 +19,8 @@ function MyPluginsPage() {
         <div>
           <h1 className="font-bold font-heading text-2xl tracking-tight">My plugins</h1>
           <p className="mt-1 text-muted-foreground text-sm">
-            Plugins published under scopes your organisations own. Code &amp; versions come from the
-            published package.
+            Plugins published under scopes you own. Code &amp; versions come from the published
+            package.
           </p>
         </div>
 
