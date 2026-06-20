@@ -15,6 +15,7 @@ export { D1OrgMembers } from "./d1-org-members";
 export { D1OrgScopes } from "./d1-org-scopes";
 export { D1OrgStore } from "./d1-org-store";
 export { D1OwnershipPolicy } from "./d1-ownership";
+export { D1TrustedPublishers } from "./d1-trusted-publishers";
 export { CloudflareDohResolver } from "./doh-resolver";
 export { HmacDomainChallenge } from "./hmac-domain-challenge";
 export {

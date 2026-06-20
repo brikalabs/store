@@ -4,24 +4,34 @@ import {
   type OwnershipPolicy,
   type PublishIdentity,
   scopeOf,
+  type TrustedPublishers,
+  trustedPublisherMatches,
 } from "@brika/registry-core";
 
 /**
- * Membership-based publish authorization (1:N org model): a scope must be attached to an
- * organisation (see the org controller), and only MEMBERS of that org may publish under
- * it (any role; admins also manage the org). Publishing never claims a scope or org
- * implicitly. Anchored on the verified credential (OIDC `repository_owner` or a publish
- * token), so it cannot be spoofed. Resolves scope -> owning org (via {@link OrgScopes})
- * -> membership (via {@link OrgMembers}); the scope's `org_id` also tells "unattached
- * scope" apart from "not a member of the owning org".
+ * Publish authorization for the 1:N org model. A scope must be attached to an organisation,
+ * then authorization splits by credential type:
+ *
+ * - **OIDC (CI) publish** (`identity.repository` set): allowed only when a TRUSTED PUBLISHER
+ *   binding for the scope matches the token's repo + workflow (PUB-016, npm-style). Tokenless
+ *   and not gated on membership - the binding IS the grant, so an org admin authorizes a
+ *   specific repo/workflow without making the CI a member.
+ * - **Token publish** (`identity.repository` null, a human `brika` CLI login): allowed when
+ *   the identity is a MEMBER of the scope's owning org (any role).
+ *
+ * Anchored on the verified credential (OIDC `repository`/`workflow_ref` or the token subject),
+ * so neither path can be spoofed. Resolves scope -> owning org (via {@link OrgScopes}); the
+ * `org_id` also tells "unattached scope" apart from an authorization failure.
  */
 export class D1OwnershipPolicy implements OwnershipPolicy {
   readonly #members: OrgMembers;
   readonly #scopes: OrgScopes;
+  readonly #trusted: TrustedPublishers;
 
-  constructor(members: OrgMembers, scopes: OrgScopes) {
+  constructor(members: OrgMembers, scopes: OrgScopes, trusted: TrustedPublishers) {
     this.#members = members;
     this.#scopes = scopes;
+    this.#trusted = trusted;
   }
 
   async canPublish(
@@ -41,6 +51,17 @@ export class D1OwnershipPolicy implements OwnershipPolicy {
       };
     }
 
+    // CI (OIDC) publish: authorized by a trusted-publisher binding, not membership.
+    if (identity.repository !== null) {
+      const bindings = await this.#trusted.listForScope(scope);
+      if (bindings.some((b) => trustedPublisherMatches(b, identity))) return { ok: true };
+      return {
+        ok: false,
+        message: `no trusted publisher for ${identity.repository} is configured for ${scope}; add one in the org console`,
+      };
+    }
+
+    // Human token publish: org membership (any role).
     const member = { provider: identity.provider, id: identity.owner };
     if ((await this.#members.roleOf(org, member)) !== null) return { ok: true };
     return {
