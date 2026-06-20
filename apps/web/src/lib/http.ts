@@ -36,17 +36,16 @@ export function jsonError(status: number, message: string): Response {
 }
 
 /**
- * The one canonical mapping from a registry-core domain error code to its real HTTP status.
- * Every domain code IS an HTTP-semantic name, so a single exhaustive table covers them all
- * (`satisfies Record<…>` makes a new, unmapped code a compile error). `orgStatus` /
- * `manageStatus` are thin typed views over it for their respective result codes.
+ * The one table of real HTTP statuses. Domain error codes are HTTP-semantic names, so
+ * `orgStatus` / `manageStatus` just index this with their respective result codes (TS
+ * still rejects a code that isn't a key here).
  */
 const HTTP_STATUS = {
   forbidden: 403,
   not_found: 404,
   conflict: 409,
   too_many: 429,
-} satisfies Record<OrgErrorCode | ManageErrorCode, number>;
+} as const;
 
 export function orgStatus(code: OrgErrorCode): number {
   return HTTP_STATUS[code];
