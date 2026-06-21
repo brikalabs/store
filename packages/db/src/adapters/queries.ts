@@ -1,5 +1,5 @@
 import type { ScopeRole } from "@brika/registry-core";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import {
   regDistTags,
@@ -125,6 +125,42 @@ export async function listAllPackages(db: Db): Promise<OperatorPackage[]> {
     })
     .sort((a, b) => b.createdAt - a.createdAt)
     .map(({ createdAt: _createdAt, ...rest }) => rest);
+}
+
+/**
+ * Resolve a human display name for a GitHub login, for the CLI's `login`/`whoami`
+ * output. The account identity lives in the store's `users`/`user_profiles` tables,
+ * which are NOT part of this package's `reg_*` drizzle schema (they belong to the
+ * store web app), but they share the SAME D1 database the registry binds. Rather than
+ * take a cross-app drizzle dependency we read them with a single parameterized raw SQL
+ * query over the same client: `github_login -> users.login -> user_profiles.display_name`,
+ * falling back to `users.name`, then to null (the caller substitutes the login).
+ *
+ * Returns null when the login has no matching account, or has an account but neither a
+ * profile display name nor a `users.name` - the caller falls back to the github login.
+ * It is best-effort display enrichment, never an authorization input, so any read error
+ * (e.g. the store tables not present in a given database) resolves to null rather than
+ * throwing: the caller falls back to the github login.
+ */
+export async function resolveDisplayName(db: Db, githubLogin: string): Promise<string | null> {
+  let rows: Array<{ display_name: string | null; name: string | null }>;
+  try {
+    rows = await db.all<{ display_name: string | null; name: string | null }>(
+      sql`SELECT up.display_name AS display_name, u.name AS name
+          FROM users u
+          LEFT JOIN user_profiles up ON up.user_id = u.id
+          WHERE u.login = ${githubLogin}
+          LIMIT 1`,
+    );
+  } catch {
+    return null;
+  }
+  const row = rows[0];
+  if (row === undefined) return null;
+  const displayName = typeof row.display_name === "string" ? row.display_name.trim() : "";
+  if (displayName.length > 0) return displayName;
+  const name = typeof row.name === "string" ? row.name.trim() : "";
+  return name.length > 0 ? name : null;
 }
 
 /**

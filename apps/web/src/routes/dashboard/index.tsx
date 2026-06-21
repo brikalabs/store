@@ -40,12 +40,12 @@ function OverviewPage() {
   const verified = plugins.filter((p) => p.verified).length;
 
   return (
-    <AdminShell login={user.login} activeLabel="Overview">
+    <AdminShell id={user.id} name={user.name} activeLabel="Overview">
       <section className="flex flex-col gap-6">
         <div>
           <h1 className="font-bold font-heading text-2xl tracking-tight">Overview</h1>
           <p className="mt-1 text-muted-foreground text-sm">
-            Welcome back, {user.name ?? user.login}. Here's how your plugins are doing.
+            Welcome back, {user.name ?? "there"}. Here's how your plugins are doing.
           </p>
         </div>
 

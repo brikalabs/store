@@ -21,6 +21,7 @@ import {
   D1TokenStore,
   D1TrustedPublishers,
   HmacDomainChallenge,
+  resolveDisplayName,
 } from "@brika/store-db/adapters";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
 import { NoopTarballScanner } from "./adapters/noop-tarball-scanner";
@@ -107,6 +108,15 @@ export function buildServices(
     devices: new DeviceService(new D1DeviceStore(db)),
     /** Append-only audit log of publishes + management actions. */
     audit: new D1AuditLog(db),
+    /**
+     * Resolve a human display name for an authenticated GitHub login, for the CLI's
+     * `login`/`whoami` output. The account identity (`users`, `user_profiles`) lives in
+     * the store web app's tables, which are NOT part of the registry's `reg_*` drizzle
+     * schema but share the SAME bound D1 (`env.DB`); the resolver reads them with a single
+     * parameterized raw query over that client. Returns null when no display name exists,
+     * so the caller falls back to the github login.
+     */
+    resolveDisplayName: (githubLogin: string) => resolveDisplayName(db, githubLogin),
   } as const;
 }
 

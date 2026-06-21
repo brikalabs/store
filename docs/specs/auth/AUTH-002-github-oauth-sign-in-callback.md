@@ -1,7 +1,7 @@
 ---
 id: AUTH-002
 title: "GitHub OAuth sign-in: callback"
-status: done
+status: gone
 area: auth
 group: auth
 test_mode: unit
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded/removed:** replaced by BetterAuth's provider callback (`AUTH-010`, now `done`). The hand-rolled `GET /auth/github/callback` route (`apps/web/src/routes/auth.github.callback.ts`) was deleted; the provider callback is now `/api/auth/callback/github`, handled by BetterAuth (`AUTH-013`). Retained for history.
 
 `GET /auth/github/callback` finishes the flow: it validates the returned state against the
 state cookie, exchanges the code for a token, fetches the GitHub user, upserts the user row,

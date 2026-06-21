@@ -7,8 +7,8 @@ group: auth
 test_mode: none
 traceability:
   code:
-    - apps/web/src/routes/auth.me.ts
-    - apps/web/src/lib/auth.ts
+    - apps/web/src/routes/auth/me.ts
+    - apps/web/src/lib/auth/auth.ts:getCurrentUser
   tests: []
 ---
 
@@ -16,6 +16,10 @@ traceability:
 
 `GET /auth/me` returns the signed-in user (id, login, name, avatarUrl) or `null`. The response
 is never cached.
+
+> **Now BetterAuth-backed:** the route is retained as a convenience JSON shim, but the session
+> is resolved by `getCurrentUser` (`apps/web/src/lib/auth/auth.ts`) over the BetterAuth
+> DB-backed session (`AUTH-012`), not the old stateless cookie. The behaviour below is unchanged.
 
 ## Acceptance criteria
 

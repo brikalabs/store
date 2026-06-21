@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { findLocalD1 } from "../scripts/seed-lib";
 import { sessionCookie } from "./session";
 
 /**
@@ -9,7 +10,7 @@ import { sessionCookie } from "./session";
  */
 test("a scope admin adds and removes a trusted publisher for a scope", async ({ browser }) => {
   const context = await browser.newContext();
-  await context.addCookies([sessionCookie("u-e2e-bot")]);
+  await context.addCookies([await sessionCookie(findLocalD1(), "u-e2e-bot")]);
   const page = await context.newPage();
 
   await page.goto("/dashboard/scopes/@brika");

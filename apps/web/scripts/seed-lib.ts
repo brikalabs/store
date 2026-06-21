@@ -91,9 +91,12 @@ export function ensureScope(seed: ScopeSeed): void {
     [seed.scope, seed.owner],
   );
   const now = Math.floor(Date.now() / 1000);
+  // A BetterAuth `users` row (USER-001): `login` is the GitHub username the scope
+  // membership + session resolve against; `github_id` no longer exists (provider
+  // ids live in the `account` table now).
   db.run(
-    "INSERT OR REPLACE INTO users (id, github_id, login, name, created_at) VALUES (?, ?, ?, ?, ?)",
-    [`u-${seed.owner}`, 990_002, seed.owner, seed.owner, now],
+    "INSERT OR REPLACE INTO users (id, login, name, image, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)",
+    [`u-${seed.owner}`, seed.owner, seed.owner, null, now, now],
   );
   db.close();
   log(`ensured scope ${seed.scope} (admin ${seed.owner})`);

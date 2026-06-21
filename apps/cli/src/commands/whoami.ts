@@ -4,13 +4,15 @@ import { loadConfig } from "../lib/config";
 
 export const whoami = defineCommand({
   name: "whoami",
-  description: "Show the current login",
+  description: "Show the signed-in account",
   async handler() {
     const config = await loadConfig();
     if (config.token === undefined) {
       p.log.info("Not logged in.");
       return;
     }
-    p.log.info(`${config.githubLogin ?? "logged in"} (${config.registry})`);
+    // Prefer the human display name; fall back to the github login, then a neutral label.
+    const account = config.displayName ?? config.githubLogin ?? "logged in";
+    p.log.info(`${account} (${config.registry})`);
   },
 });

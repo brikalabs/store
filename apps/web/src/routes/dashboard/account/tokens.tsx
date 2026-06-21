@@ -64,7 +64,7 @@ function TokensPage() {
   }
 
   return (
-    <AdminShell login={user.login} activeLabel="API tokens">
+    <AdminShell id={user.id} name={user.name} activeLabel="API tokens">
       <header className="flex flex-col gap-1">
         <h1 className="font-bold font-heading text-2xl tracking-tight">API tokens</h1>
         <p className="text-muted-foreground text-sm">
@@ -100,7 +100,9 @@ function TokensPage() {
 
       <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-6">
         <div>
-          <div className="font-semibold text-foreground text-sm">Signed in as {user.login}</div>
+          <div className="font-semibold text-foreground text-sm">
+            Signed in as {user.name ?? "your account"}
+          </div>
           <div className="text-muted-foreground text-xs">End your session on this device.</div>
         </div>
         <a

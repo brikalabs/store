@@ -46,7 +46,7 @@ function ScopeDetailPage() {
     members?.find((m) => m.provider === "github" && m.id === user.login)?.role === "admin";
 
   return (
-    <AdminShell login={user.login} activeLabel="Scopes">
+    <AdminShell id={user.id} name={user.name} activeLabel="Scopes">
       <div>
         <Link
           to="/dashboard/scopes"

@@ -1,18 +1,16 @@
-import { eq } from "drizzle-orm";
-import { parseCookies, safeReturnPath } from "@/lib/auth/auth-cookies";
-import { signSession, verifySession } from "@/lib/auth/session";
+import { getAuth } from "@/server/auth";
 import type { Db } from "@/server/db/client";
-import { users } from "@/server/db/schema";
-import { vars } from "@/server/env";
 
 // Pure cookie/redirect helpers live in `./auth-cookies` (unit-tested there);
 // re-exported so callers keep importing them from `./auth`.
 export { parseCookies, safeReturnPath } from "@/lib/auth/auth-cookies";
 
-const SESSION_COOKIE = "brika_session";
-const STATE_COOKIE = "brika_oauth_state";
-const RETURN_COOKIE = "brika_oauth_return";
-
+/**
+ * The session identity the store works with everywhere downstream (console,
+ * operator gating, scope ownership, social tables). `login` is the GitHub
+ * username; `avatarUrl` resolves from BetterAuth's `image`. This shape is the
+ * stable contract - it is unchanged by the move to BetterAuth.
+ */
 export interface SessionUser {
   id: string;
   login: string;
@@ -20,52 +18,35 @@ export interface SessionUser {
   avatarUrl: string | null;
 }
 
+/**
+ * Resolve the BetterAuth-backed session for the request and map it to a
+ * `SessionUser`, or null when signed-out / the session row is expired or revoked
+ * (AUTH-012). The `db` parameter is kept for the call-site contract; BetterAuth
+ * reads its own bound D1 client, so it is intentionally unused here.
+ */
+export async function getCurrentUser(request: Request, _db: Db): Promise<SessionUser | null> {
+  const session = await getAuth().api.getSession({ headers: request.headers });
+  if (session === null) return null;
+  const user = session.user as {
+    id: string;
+    name?: string | null;
+    image?: string | null;
+    login?: string | null;
+  };
+  return {
+    id: user.id,
+    login: user.login ?? "",
+    name: user.name ?? null,
+    avatarUrl: user.image ?? null,
+  };
+}
+
+/**
+ * Just the signed-in user's account id (`users.id`), or null. Used by the public
+ * `/v1` routes to attach viewer-state (own votes/reviews) without needing the full
+ * profile. Backed by the same BetterAuth session as {@link getCurrentUser}.
+ */
 export async function getSessionUserId(request: Request): Promise<string | null> {
-  const token = parseCookies(request.headers.get("cookie"))[SESSION_COOKIE];
-  if (token === undefined) return null;
-  return verifySession(token, vars().SESSION_SECRET);
-}
-
-export async function getCurrentUser(request: Request, db: Db): Promise<SessionUser | null> {
-  const userId = await getSessionUserId(request);
-  if (userId === null) return null;
-  const rows = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  const row = rows[0];
-  if (row === undefined) return null;
-  return { id: row.id, login: row.login, name: row.name, avatarUrl: row.avatarUrl };
-}
-
-function attrs(secure: boolean): string {
-  return `HttpOnly; SameSite=Lax; Path=/${secure ? "; Secure" : ""}`;
-}
-
-export async function sessionCookie(userId: string, secure: boolean): Promise<string> {
-  const token = await signSession(userId, vars().SESSION_SECRET);
-  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; ${attrs(secure)}; Max-Age=2592000`;
-}
-
-export function clearSessionCookie(secure: boolean): string {
-  return `${SESSION_COOKIE}=; ${attrs(secure)}; Max-Age=0`;
-}
-
-export function stateCookie(state: string, secure: boolean): string {
-  return `${STATE_COOKIE}=${state}; ${attrs(secure)}; Max-Age=600`;
-}
-
-export function readOauthState(request: Request): string | undefined {
-  return parseCookies(request.headers.get("cookie"))[STATE_COOKIE];
-}
-
-/** Remember where to send the user after OAuth (e.g. back to `/device?code=…`). */
-export function returnCookie(path: string, secure: boolean): string {
-  return `${RETURN_COOKIE}=${encodeURIComponent(path)}; ${attrs(secure)}; Max-Age=600`;
-}
-
-/** The validated path saved by {@link returnCookie}, defaulting to `/`. */
-export function readReturnPath(request: Request): string {
-  return safeReturnPath(parseCookies(request.headers.get("cookie"))[RETURN_COOKIE]);
-}
-
-export function clearReturnCookie(secure: boolean): string {
-  return `${RETURN_COOKIE}=; ${attrs(secure)}; Max-Age=0`;
+  const session = await getAuth().api.getSession({ headers: request.headers });
+  return session?.user.id ?? null;
 }

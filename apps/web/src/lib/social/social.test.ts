@@ -20,7 +20,7 @@ import { comments, plugins, reviews, users } from "@/server/db/schema";
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../drizzle");
-const MIGRATIONS = ["0000_parched_sauron.sql"];
+const MIGRATIONS = ["0000_parched_sauron.sql", "0001_betterauth.sql"];
 
 function makeDb(): Db {
   const sqlite = new Database(":memory:");
@@ -41,8 +41,8 @@ async function seed(
 ): Promise<{ author: string; voter: string; reviewId: string; commentId: string }> {
   await db.insert(plugins).values({ name: PLUGIN, latestVersion: "0.1.0", brikaEngine: "^0.1.0" });
   await db.insert(users).values([
-    { id: "author", githubId: 1, login: "author" },
-    { id: "voter", githubId: 2, login: "voter" },
+    { id: "author", login: "author" },
+    { id: "voter", login: "voter" },
   ]);
   const reviewId = "rev-1";
   await db

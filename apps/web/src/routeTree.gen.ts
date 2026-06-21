@@ -21,6 +21,7 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as V1VerifiedRouteImport } from './routes/v1/verified'
 import { Route as V1SearchRouteImport } from './routes/v1/search'
 import { Route as V1RegistryRouteImport } from './routes/v1/registry'
+import { Route as UIdRouteImport } from './routes/u/$id'
 import { Route as OperatorScopesRouteImport } from './routes/operator/scopes'
 import { Route as OperatorPackagesRouteImport } from './routes/operator/packages'
 import { Route as OperatorAuditRouteImport } from './routes/operator/audit'
@@ -31,6 +32,7 @@ import { Route as LegalCookiesRouteImport } from './routes/legal/cookies'
 import { Route as LegalAcceptableUseRouteImport } from './routes/legal/acceptable-use'
 import { Route as DashboardScopesRouteImport } from './routes/dashboard/scopes'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
+import { Route as DashboardAccountsRouteImport } from './routes/dashboard/accounts'
 import { Route as AuthMeRouteImport } from './routes/auth/me'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
@@ -40,7 +42,6 @@ import { Route as V1PluginsNameRouteImport } from './routes/v1/plugins/$name'
 import { Route as DashboardScopesScopeRouteImport } from './routes/dashboard/scopes_/$scope'
 import { Route as DashboardPluginsSplatRouteImport } from './routes/dashboard/plugins/$'
 import { Route as DashboardAccountTokensRouteImport } from './routes/dashboard/account/tokens'
-import { Route as AuthGithubCallbackRouteImport } from './routes/auth/github/callback'
 import { Route as ApiScopesScopeRouteImport } from './routes/api/scopes/$scope'
 import { Route as ApiPluginsYankRouteImport } from './routes/api/plugins/yank'
 import { Route as ApiPluginsVersionsRouteImport } from './routes/api/plugins/versions'
@@ -50,6 +51,7 @@ import { Route as ApiOperatorScopesRouteImport } from './routes/api/operator/sco
 import { Route as ApiOperatorPackagesRouteImport } from './routes/api/operator/packages'
 import { Route as ApiOperatorAuditRouteImport } from './routes/api/operator/audit'
 import { Route as ApiDeviceApproveRouteImport } from './routes/api/device/approve'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAccountTokensRouteImport } from './routes/api/account/tokens'
 import { Route as ApiAccountProfileRouteImport } from './routes/api/account/profile'
 import { Route as V1PluginsNameVersionsRouteImport } from './routes/v1/plugins/$name/versions'
@@ -134,6 +136,11 @@ const V1RegistryRoute = V1RegistryRouteImport.update({
   path: '/v1/registry',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UIdRoute = UIdRouteImport.update({
+  id: '/u/$id',
+  path: '/u/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OperatorScopesRoute = OperatorScopesRouteImport.update({
   id: '/scopes',
   path: '/scopes',
@@ -184,6 +191,11 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAccountsRoute = DashboardAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const AuthMeRoute = AuthMeRouteImport.update({
   id: '/auth/me',
   path: '/auth/me',
@@ -229,11 +241,6 @@ const DashboardAccountTokensRoute = DashboardAccountTokensRouteImport.update({
   path: '/account/tokens',
   getParentRoute: () => DashboardRoute,
 } as any)
-const AuthGithubCallbackRoute = AuthGithubCallbackRouteImport.update({
-  id: '/callback',
-  path: '/callback',
-  getParentRoute: () => AuthGithubRoute,
-} as any)
 const ApiScopesScopeRoute = ApiScopesScopeRouteImport.update({
   id: '/$scope',
   path: '/$scope',
@@ -277,6 +284,11 @@ const ApiOperatorAuditRoute = ApiOperatorAuditRouteImport.update({
 const ApiDeviceApproveRoute = ApiDeviceApproveRouteImport.update({
   id: '/api/device/approve',
   path: '/api/device/approve',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAccountTokensRoute = ApiAccountTokensRouteImport.update({
@@ -414,9 +426,10 @@ export interface FileRoutesByFullPath {
   '/device': typeof DeviceRoute
   '/operator': typeof OperatorRouteWithChildren
   '/api/scopes': typeof ApiScopesRouteWithChildren
-  '/auth/github': typeof AuthGithubRouteWithChildren
+  '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/accounts': typeof DashboardAccountsRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/scopes': typeof DashboardScopesRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
@@ -427,6 +440,7 @@ export interface FileRoutesByFullPath {
   '/operator/audit': typeof OperatorAuditRoute
   '/operator/packages': typeof OperatorPackagesRoute
   '/operator/scopes': typeof OperatorScopesRoute
+  '/u/$id': typeof UIdRoute
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
@@ -436,6 +450,7 @@ export interface FileRoutesByFullPath {
   '/plugins/': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/device/approve': typeof ApiDeviceApproveRoute
   '/api/operator/audit': typeof ApiOperatorAuditRoute
   '/api/operator/packages': typeof ApiOperatorPackagesRouteWithChildren
@@ -445,7 +460,6 @@ export interface FileRoutesByFullPath {
   '/api/plugins/versions': typeof ApiPluginsVersionsRoute
   '/api/plugins/yank': typeof ApiPluginsYankRoute
   '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
-  '/auth/github/callback': typeof AuthGithubCallbackRoute
   '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/dashboard/scopes/$scope': typeof DashboardScopesScopeRoute
@@ -478,9 +492,10 @@ export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/device': typeof DeviceRoute
   '/api/scopes': typeof ApiScopesRouteWithChildren
-  '/auth/github': typeof AuthGithubRouteWithChildren
+  '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/accounts': typeof DashboardAccountsRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/scopes': typeof DashboardScopesRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
@@ -491,6 +506,7 @@ export interface FileRoutesByTo {
   '/operator/audit': typeof OperatorAuditRoute
   '/operator/packages': typeof OperatorPackagesRoute
   '/operator/scopes': typeof OperatorScopesRoute
+  '/u/$id': typeof UIdRoute
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
@@ -500,6 +516,7 @@ export interface FileRoutesByTo {
   '/plugins': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/device/approve': typeof ApiDeviceApproveRoute
   '/api/operator/audit': typeof ApiOperatorAuditRoute
   '/api/operator/packages': typeof ApiOperatorPackagesRouteWithChildren
@@ -509,7 +526,6 @@ export interface FileRoutesByTo {
   '/api/plugins/versions': typeof ApiPluginsVersionsRoute
   '/api/plugins/yank': typeof ApiPluginsYankRoute
   '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
-  '/auth/github/callback': typeof AuthGithubCallbackRoute
   '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/dashboard/scopes/$scope': typeof DashboardScopesScopeRoute
@@ -545,9 +561,10 @@ export interface FileRoutesById {
   '/device': typeof DeviceRoute
   '/operator': typeof OperatorRouteWithChildren
   '/api/scopes': typeof ApiScopesRouteWithChildren
-  '/auth/github': typeof AuthGithubRouteWithChildren
+  '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/accounts': typeof DashboardAccountsRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/scopes': typeof DashboardScopesRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
@@ -558,6 +575,7 @@ export interface FileRoutesById {
   '/operator/audit': typeof OperatorAuditRoute
   '/operator/packages': typeof OperatorPackagesRoute
   '/operator/scopes': typeof OperatorScopesRoute
+  '/u/$id': typeof UIdRoute
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
@@ -567,6 +585,7 @@ export interface FileRoutesById {
   '/plugins/': typeof PluginsIndexRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/device/approve': typeof ApiDeviceApproveRoute
   '/api/operator/audit': typeof ApiOperatorAuditRoute
   '/api/operator/packages': typeof ApiOperatorPackagesRouteWithChildren
@@ -576,7 +595,6 @@ export interface FileRoutesById {
   '/api/plugins/versions': typeof ApiPluginsVersionsRoute
   '/api/plugins/yank': typeof ApiPluginsYankRoute
   '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
-  '/auth/github/callback': typeof AuthGithubCallbackRoute
   '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
   '/dashboard/scopes_/$scope': typeof DashboardScopesScopeRoute
@@ -616,6 +634,7 @@ export interface FileRouteTypes {
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/accounts'
     | '/dashboard/profile'
     | '/dashboard/scopes'
     | '/legal/acceptable-use'
@@ -626,6 +645,7 @@ export interface FileRouteTypes {
     | '/operator/audit'
     | '/operator/packages'
     | '/operator/scopes'
+    | '/u/$id'
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
@@ -635,6 +655,7 @@ export interface FileRouteTypes {
     | '/plugins/'
     | '/api/account/profile'
     | '/api/account/tokens'
+    | '/api/auth/$'
     | '/api/device/approve'
     | '/api/operator/audit'
     | '/api/operator/packages'
@@ -644,7 +665,6 @@ export interface FileRouteTypes {
     | '/api/plugins/versions'
     | '/api/plugins/yank'
     | '/api/scopes/$scope'
-    | '/auth/github/callback'
     | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
     | '/dashboard/scopes/$scope'
@@ -680,6 +700,7 @@ export interface FileRouteTypes {
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/accounts'
     | '/dashboard/profile'
     | '/dashboard/scopes'
     | '/legal/acceptable-use'
@@ -690,6 +711,7 @@ export interface FileRouteTypes {
     | '/operator/audit'
     | '/operator/packages'
     | '/operator/scopes'
+    | '/u/$id'
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
@@ -699,6 +721,7 @@ export interface FileRouteTypes {
     | '/plugins'
     | '/api/account/profile'
     | '/api/account/tokens'
+    | '/api/auth/$'
     | '/api/device/approve'
     | '/api/operator/audit'
     | '/api/operator/packages'
@@ -708,7 +731,6 @@ export interface FileRouteTypes {
     | '/api/plugins/versions'
     | '/api/plugins/yank'
     | '/api/scopes/$scope'
-    | '/auth/github/callback'
     | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
     | '/dashboard/scopes/$scope'
@@ -746,6 +768,7 @@ export interface FileRouteTypes {
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/accounts'
     | '/dashboard/profile'
     | '/dashboard/scopes'
     | '/legal/acceptable-use'
@@ -756,6 +779,7 @@ export interface FileRouteTypes {
     | '/operator/audit'
     | '/operator/packages'
     | '/operator/scopes'
+    | '/u/$id'
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
@@ -765,6 +789,7 @@ export interface FileRouteTypes {
     | '/plugins/'
     | '/api/account/profile'
     | '/api/account/tokens'
+    | '/api/auth/$'
     | '/api/device/approve'
     | '/api/operator/audit'
     | '/api/operator/packages'
@@ -774,7 +799,6 @@ export interface FileRouteTypes {
     | '/api/plugins/versions'
     | '/api/plugins/yank'
     | '/api/scopes/$scope'
-    | '/auth/github/callback'
     | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
     | '/dashboard/scopes_/$scope'
@@ -810,7 +834,7 @@ export interface RootRouteChildren {
   DeviceRoute: typeof DeviceRoute
   OperatorRoute: typeof OperatorRouteWithChildren
   ApiScopesRoute: typeof ApiScopesRouteWithChildren
-  AuthGithubRoute: typeof AuthGithubRouteWithChildren
+  AuthGithubRoute: typeof AuthGithubRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   AuthMeRoute: typeof AuthMeRoute
   LegalAcceptableUseRoute: typeof LegalAcceptableUseRoute
@@ -818,6 +842,7 @@ export interface RootRouteChildren {
   LegalLicensesRoute: typeof LegalLicensesRoute
   LegalPrivacyRoute: typeof LegalPrivacyRoute
   LegalTermsRoute: typeof LegalTermsRoute
+  UIdRoute: typeof UIdRoute
   V1RegistryRoute: typeof V1RegistryRoute
   V1SearchRoute: typeof V1SearchRoute
   V1VerifiedRoute: typeof V1VerifiedRoute
@@ -825,6 +850,7 @@ export interface RootRouteChildren {
   PluginsIndexRoute: typeof PluginsIndexRoute
   ApiAccountProfileRoute: typeof ApiAccountProfileRoute
   ApiAccountTokensRoute: typeof ApiAccountTokensRouteWithChildren
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDeviceApproveRoute: typeof ApiDeviceApproveRoute
   ApiOperatorAuditRoute: typeof ApiOperatorAuditRoute
   ApiOperatorPackagesRoute: typeof ApiOperatorPackagesRouteWithChildren
@@ -922,6 +948,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1RegistryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/u/$id': {
+      id: '/u/$id'
+      path: '/u/$id'
+      fullPath: '/u/$id'
+      preLoaderRoute: typeof UIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/operator/scopes': {
       id: '/operator/scopes'
       path: '/scopes'
@@ -992,6 +1025,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/accounts': {
+      id: '/dashboard/accounts'
+      path: '/accounts'
+      fullPath: '/dashboard/accounts'
+      preLoaderRoute: typeof DashboardAccountsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/auth/me': {
       id: '/auth/me'
       path: '/auth/me'
@@ -1055,13 +1095,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAccountTokensRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/auth/github/callback': {
-      id: '/auth/github/callback'
-      path: '/callback'
-      fullPath: '/auth/github/callback'
-      preLoaderRoute: typeof AuthGithubCallbackRouteImport
-      parentRoute: typeof AuthGithubRoute
-    }
     '/api/scopes/$scope': {
       id: '/api/scopes/$scope'
       path: '/$scope'
@@ -1123,6 +1156,13 @@ declare module '@tanstack/react-router' {
       path: '/api/device/approve'
       fullPath: '/api/device/approve'
       preLoaderRoute: typeof ApiDeviceApproveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/account/tokens': {
@@ -1290,6 +1330,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface DashboardRouteChildren {
+  DashboardAccountsRoute: typeof DashboardAccountsRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardScopesRoute: typeof DashboardScopesRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -1300,6 +1341,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAccountsRoute: DashboardAccountsRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardScopesRoute: DashboardScopesRoute,
   DashboardIndexRoute: DashboardIndexRoute,
@@ -1376,18 +1418,6 @@ const ApiScopesRouteChildren: ApiScopesRouteChildren = {
 
 const ApiScopesRouteWithChildren = ApiScopesRoute._addFileChildren(
   ApiScopesRouteChildren,
-)
-
-interface AuthGithubRouteChildren {
-  AuthGithubCallbackRoute: typeof AuthGithubCallbackRoute
-}
-
-const AuthGithubRouteChildren: AuthGithubRouteChildren = {
-  AuthGithubCallbackRoute: AuthGithubCallbackRoute,
-}
-
-const AuthGithubRouteWithChildren = AuthGithubRoute._addFileChildren(
-  AuthGithubRouteChildren,
 )
 
 interface ApiAccountTokensRouteChildren {
@@ -1484,7 +1514,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeviceRoute: DeviceRoute,
   OperatorRoute: OperatorRouteWithChildren,
   ApiScopesRoute: ApiScopesRouteWithChildren,
-  AuthGithubRoute: AuthGithubRouteWithChildren,
+  AuthGithubRoute: AuthGithubRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   AuthMeRoute: AuthMeRoute,
   LegalAcceptableUseRoute: LegalAcceptableUseRoute,
@@ -1492,6 +1522,7 @@ const rootRouteChildren: RootRouteChildren = {
   LegalLicensesRoute: LegalLicensesRoute,
   LegalPrivacyRoute: LegalPrivacyRoute,
   LegalTermsRoute: LegalTermsRoute,
+  UIdRoute: UIdRoute,
   V1RegistryRoute: V1RegistryRoute,
   V1SearchRoute: V1SearchRoute,
   V1VerifiedRoute: V1VerifiedRoute,
@@ -1499,6 +1530,7 @@ const rootRouteChildren: RootRouteChildren = {
   PluginsIndexRoute: PluginsIndexRoute,
   ApiAccountProfileRoute: ApiAccountProfileRoute,
   ApiAccountTokensRoute: ApiAccountTokensRouteWithChildren,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDeviceApproveRoute: ApiDeviceApproveRoute,
   ApiOperatorAuditRoute: ApiOperatorAuditRoute,
   ApiOperatorPackagesRoute: ApiOperatorPackagesRouteWithChildren,

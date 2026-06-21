@@ -25,6 +25,7 @@ docs/specs/
   registry/            # REG-*, PUB-*, SCOPE-*, MANAGE-*, HARDEN-*
   console/             # CONSOLE-*
   org/                 # ORG-*
+  user/                # USER-*
 ```
 
 One file per spec: `docs/specs/<group>/<CODE>-<kebab-title>.md`.
@@ -40,7 +41,7 @@ setting `status: gone`, do not delete its file's code.
 | Acceptance criterion | `<AREA>-<NNN>-AC<n>` | `SCOPE-003-AC2` |
 
 Area prefixes: `AUTH`, `STORE`, `SOCIAL`, `REG`, `PUB`, `SCOPE`, `MANAGE`,
-`HARDEN`, `CONSOLE`, `ORG`.
+`HARDEN`, `CONSOLE`, `ORG`, `USER`.
 
 ## Spec file format
 

@@ -7,18 +7,22 @@ group: console
 test_mode: manual (verified in-browser)
 traceability:
   code:
-    - apps/web/src/routes/dashboard.profile.tsx
-    - apps/web/src/routes/api.account.profile.ts
+    - apps/web/src/routes/dashboard/profile.tsx
+    - apps/web/src/routes/api/account/profile.ts
+    - apps/web/src/lib/social/social.ts:updateUserProfile
   tests: []
 ---
 
 ## Description
 
-`/dashboard/profile` loads the developer's own account profile and lets them edit
-display name, bio, and website. Saves via `PUT /api/account/profile` (enforces
-SOCIAL profile rules), then reflects the persisted result. (The standalone public
-developer page was retired with the move to scope-centric publishing, see STORE-004;
-a publisher's public surface is now its scope page, `/@scope`.)
+`/dashboard/profile` loads the signed-in user's own **account** profile and lets them
+edit display name, bio, and website/links. It edits the account profile directly (the
+account is the first-class identity, `USER-001`), not a separate "developer" row.
+Saves via `PUT /api/account/profile` (enforces the profile rules), then reflects the
+persisted result. The profile is user-authored and never derived from npm (`USER-005`);
+the public surface for this profile is the account page `/u/:id` (`USER-002`). This is
+the console surface backing the account profile-editor behaviour in `USER-003`. (The
+old standalone npm-maintainer developer page was retired, see the gone `STORE-004`.)
 
 ## Acceptance criteria
 
@@ -38,8 +42,8 @@ Then on a 200 the editor updates to the persisted profile
 And a Saved confirmation is shown
 ```
 
-### CONSOLE-012-AC3 , Profile shows the public handle
+### CONSOLE-012-AC3 , Profile shows the public account page link
 ```gherkin
 Given the profile editor is rendered
-Then it shows the developer's public @<id> handle and avatar
+Then it shows a link to the account's public page /u/<accountId> and the avatar
 ```

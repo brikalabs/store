@@ -316,15 +316,26 @@ export const Comment = z.object({
 });
 export type Comment = z.infer<typeof Comment>;
 
-/** `GET /v1/developers/:id` */
-export const DeveloperProfile = z.object({
+/** One labelled external link on a public account profile. */
+export const ProfileLink = z.object({
+  label: z.string(),
+  url: z.url(),
+});
+export type ProfileLink = z.infer<typeof ProfileLink>;
+
+/**
+ * A Brika account's public profile (`GET /u/:id`). User-authored, NEVER derived
+ * from npm (USER-005): every field is the account's own. Keyed by the stable
+ * opaque account id (`users.id`), not a claimable handle (USER-002). `avatarUrl`
+ * carries the account's GitHub avatar (BetterAuth `users.image`); `displayName`
+ * overrides the GitHub name when set.
+ */
+export const UserProfile = z.object({
   id: z.string(),
   displayName: z.string().optional(),
   avatarUrl: z.url().optional(),
   bio: z.string().optional(),
   website: z.url().optional(),
-  githubLogin: z.string().optional(),
-  verified: z.boolean().default(false),
-  pluginCount: z.number().int().nonnegative().default(0),
+  links: z.array(ProfileLink).default([]),
 });
-export type DeveloperProfile = z.infer<typeof DeveloperProfile>;
+export type UserProfile = z.infer<typeof UserProfile>;

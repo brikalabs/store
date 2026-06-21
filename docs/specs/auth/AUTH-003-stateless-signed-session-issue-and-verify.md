@@ -1,7 +1,7 @@
 ---
 id: AUTH-003
 title: "Stateless signed session: issue and verify"
-status: done
+status: gone
 area: auth
 group: auth
 test_mode: unit
@@ -14,6 +14,8 @@ traceability:
 ---
 
 ## Description
+
+> **Superseded/removed:** replaced by BetterAuth DB-backed sessions (`AUTH-012`, now `done`); the stateless signed cookie gave way to a D1-stored `session` row. The stateless session helper (`apps/web/src/lib/session.ts`) was deleted. Retained for history.
 
 The session is stateless: the `brika_session` value is `<userId>.<hmac>`, where the HMAC is
 computed over the user id with `SESSION_SECRET` (HMAC-SHA-256). Verification recomputes the

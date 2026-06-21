@@ -29,7 +29,7 @@ test.describe
       browser,
     }) => {
       const context = await browser.newContext();
-      await context.addCookies([operatorCookie()]);
+      await context.addCookies([await operatorCookie()]);
       const page = await context.newPage();
 
       // The squatter scope is public before the takedown.
@@ -66,7 +66,7 @@ test.describe
       browser,
     }) => {
       const context = await browser.newContext();
-      await context.addCookies([operatorCookie()]);
+      await context.addCookies([await operatorCookie()]);
       const page = await context.newPage();
 
       await page.goto("/operator/packages");
