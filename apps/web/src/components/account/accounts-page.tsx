@@ -115,7 +115,7 @@ export function AccountsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {PROVIDERS.map((provider) => {
-            const connected = accounts.find((a) => a.providerId === provider.id) !== undefined;
+            const connected = accounts.some((a) => a.providerId === provider.id);
             return (
               <AccountRow
                 key={provider.id}

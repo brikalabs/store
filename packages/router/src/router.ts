@@ -152,7 +152,7 @@ const ROUTER_FILE = moduleFile(new Error("router module location probe").stack);
  * and is simply omitted when unavailable.
  */
 function callerSource(): string | undefined {
-  return callerFrame(new Error().stack, ROUTER_FILE);
+  return callerFrame(new Error("router caller probe").stack, ROUTER_FILE);
 }
 
 /** The validated type a schema yields (or `undefined` when a route declares none). */

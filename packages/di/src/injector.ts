@@ -208,9 +208,7 @@ export class Injector {
 
   /** The topmost ancestor (the root injector), where `providedIn: 'root'` factory tokens live. */
   #root(): Injector {
-    let injector: Injector = this;
-    while (injector.#parent !== undefined) injector = injector.#parent;
-    return injector;
+    return this.#parent === undefined ? this : this.#parent.#root();
   }
 
   #instantiate(token: ProviderToken<unknown>, build: () => unknown): unknown {
