@@ -10,22 +10,11 @@ import {
   ScopeService,
   type TokenStore,
 } from "@brika/registry-core";
-import type { Db } from "@brika/store-db";
+import { buildRegistryGraph, type Db } from "@brika/store-db";
 import {
-  CloudflareDohResolver,
-  D1AuditLog,
-  D1CatalogReader,
   D1DeviceStore,
   D1DownloadStore,
-  D1MetadataReader,
   D1MetadataWriter,
-  D1OwnershipPolicy,
-  D1ScopeDomains,
-  D1ScopeMembers,
-  D1ScopeStore,
-  D1TokenStore,
-  D1TrustedPublishers,
-  HmacDomainChallenge,
   resolveDisplayName,
 } from "@brika/store-db/adapters";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
@@ -53,32 +42,25 @@ export interface RegistryConfig {
 }
 
 /**
- * The registry's composition root as `@brika/di` providers (Angular's `provideX()` shape). Builds
- * the graph once from `config` - the shared adapters (`scopeMembers`, `ownership`) as locals reused
- * across services, as a hand-rolled factory would - and binds each result under its token, so a
- * handler `inject(ScopeService)` / `inject(Tokens)` and the rest is already wired. Domain services
- * bind under their own class; persistence adapters bind under their PORT token (the registry-core
- * interface), keeping controllers off the concrete `D1*` and the ORM. A test passes a fake db +
- * bucket and appends a later provider to override one binding.
+ * The registry's composition root as `@brika/di` providers (Angular's `provideX()` shape). The
+ * shared D1-backed services come from `buildRegistryGraph` (one place wires the adapters + service
+ * constructors for both apps); this adds the registry's own R2-backed resolve/publish, the device
+ * flow, downloads, and operator admins. Domain services bind under their own class; persistence
+ * ports bind under their PORT token (the registry-core interface), keeping controllers off the
+ * concrete `D1*` and the ORM. A test passes a fake db + bucket and appends a later provider.
  *
  * Rate limiting is intentionally NOT here: it is an inline edge concern on the routes that opt in.
  */
 export function provideRegistry(config: RegistryConfig): Provider[] {
   const { db, tarballs, baseUrl } = config;
-  // The scope IS the ownership entity: membership + trusted-publisher bindings, shared by the
-  // publish/management authorization policy and the scope service.
-  const scopeMembers = new D1ScopeMembers(db);
-  const trustedPublishers = new D1TrustedPublishers(db);
-  const ownership = new D1OwnershipPolicy(scopeMembers, trustedPublishers);
+  const g = buildRegistryGraph(db, { domainSecret: config.domainSecret ?? "test-domain-secret" });
 
   return [
     { provide: Admins, useValue: config.admins ?? new Set() },
     { provide: ResolveDisplayName, useValue: (login: string) => resolveDisplayName(db, login) },
     {
       provide: ResolveService,
-      useValue: new ResolveService(new D1MetadataReader(db), new R2TarballReader(tarballs), {
-        baseUrl,
-      }),
+      useValue: new ResolveService(g.metadata, new R2TarballReader(tarballs), { baseUrl }),
     },
     {
       provide: PublishService,
@@ -86,26 +68,16 @@ export function provideRegistry(config: RegistryConfig): Provider[] {
         new D1MetadataWriter(db),
         new R2TarballWriter(tarballs),
         new SchemaManifestValidator(),
-        ownership,
+        g.ownership,
         { scanner: new NoopTarballScanner() },
       ),
     },
-    {
-      provide: ManagementService,
-      useValue: new ManagementService(new D1MetadataWriter(db), ownership),
-    },
-    {
-      provide: ScopeService,
-      useValue: new ScopeService(new D1ScopeStore(db), scopeMembers, new D1ScopeDomains(db), {
-        dnsResolver: new CloudflareDohResolver(),
-        domainChallenge: new HmacDomainChallenge(config.domainSecret ?? "test-domain-secret"),
-        trustedPublishers,
-      }),
-    },
+    { provide: ManagementService, useValue: g.management },
+    { provide: ScopeService, useValue: g.scopes },
     { provide: DeviceService, useValue: new DeviceService(new D1DeviceStore(db)) },
-    { provide: Catalog, useValue: new D1CatalogReader(db) },
-    { provide: Tokens, useValue: new D1TokenStore(db) },
+    { provide: Catalog, useValue: g.catalog },
+    { provide: Tokens, useValue: g.tokens },
     { provide: Downloads, useValue: new D1DownloadStore(db) },
-    { provide: Audit, useValue: new D1AuditLog(db) },
+    { provide: Audit, useValue: g.audit },
   ];
 }

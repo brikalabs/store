@@ -1,22 +1,8 @@
 import { env } from "cloudflare:workers";
 import { inject, type Provider, token } from "@brika/di";
 import { ManagementService, ScopeService } from "@brika/registry-core";
-import { type Db, getDb } from "@brika/store-db";
-import {
-  CloudflareDohResolver,
-  D1AuditLog,
-  D1CatalogReader,
-  D1MetadataReader,
-  D1MetadataWriter,
-  D1OwnershipPolicy,
-  D1ScopeDomains,
-  D1ScopeMembers,
-  D1ScopeStore,
-  D1TokenStore,
-  D1TrustedPublishers,
-  HmacDomainChallenge,
-  listAllPackages,
-} from "@brika/store-db/adapters";
+import { buildRegistryGraph, type Db, getDb } from "@brika/store-db";
+import { listAllPackages } from "@brika/store-db/adapters";
 import { vars } from "@/server/env";
 
 /**
@@ -36,28 +22,18 @@ export function registryDb(): Db {
 }
 
 export function registryServices(db: Db = registryDb()) {
-  const members = new D1ScopeMembers(db);
-  const trustedPublishers = new D1TrustedPublishers(db);
-  const ownership = new D1OwnershipPolicy(members, trustedPublishers);
+  // The D1-backed registry graph SHARED with the registry worker (`@brika/store-db`), plus the one
+  // web-only read projection (listPackages). `members` exposes the membership port for the
+  // "scopes I belong to" read; the console reuses the registry domain in-process, not over HTTP.
+  const g = buildRegistryGraph(db, { domainSecret: vars().DOMAIN_VERIFY_SECRET });
   return {
-    /** Scope use cases: claim, members + roles, display name, profile, domains, publishers. */
-    scopes: new ScopeService(new D1ScopeStore(db), members, new D1ScopeDomains(db), {
-      dnsResolver: new CloudflareDohResolver(),
-      domainChallenge: new HmacDomainChallenge(vars().DOMAIN_VERIFY_SECRET),
-      trustedPublishers,
-    }),
-    /** The scope membership port directly, for the "scopes I belong to" read projection. */
-    members,
-    /** Post-publish management gated by scope membership: deprecate, yank. */
-    management: new ManagementService(new D1MetadataWriter(db), ownership),
-    /** Packument reader, for listing a package's versions with their flags. */
-    metadata: new D1MetadataReader(db),
-    /** Package catalog reader (`@brika/*` listing). */
-    catalog: new D1CatalogReader(db),
-    /** Publish-token store: issue/revoke for the account page. */
-    tokens: new D1TokenStore(db),
-    /** Audit log of console mutations: append (write) + recent (read, for the operator view). */
-    audit: new D1AuditLog(db),
+    scopes: g.scopes,
+    members: g.scopeMembers,
+    management: g.management,
+    metadata: g.metadata,
+    catalog: g.catalog,
+    tokens: g.tokens,
+    audit: g.audit,
     /** Operator directory of every package with moderation counts (incl. hidden versions). */
     listPackages: () => listAllPackages(db),
   } as const;

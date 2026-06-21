@@ -41,7 +41,7 @@ const DI_FILE = ((): string => {
  * `InjectionToken(server/services.ts:41:14)` instead of an unstable `token#N` - with no caller label.
  */
 function creationSite(): string | undefined {
-  for (const frame of (new Error().stack ?? "").split("\n")) {
+  for (const frame of (new Error("di token site").stack ?? "").split("\n")) {
     const loc = frameLocation(frame);
     if (loc === undefined || loc.includes("node:") || loc.includes("<anonymous>")) continue;
     if (DI_FILE !== "" && loc.includes(DI_FILE)) continue;

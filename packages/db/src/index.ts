@@ -1,4 +1,9 @@
 export { createClient, type Db, getDb } from "./client";
+export {
+  buildRegistryGraph,
+  type RegistryGraph,
+  type RegistryGraphOptions,
+} from "./registry-graph";
 export * as schema from "./schema";
 export {
   regAudit,
