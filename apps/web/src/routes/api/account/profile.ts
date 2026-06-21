@@ -28,8 +28,8 @@ export const Route = createFileRoute("/api/account/profile")({
     handlers: {
       GET: ({ request }) =>
         runHandler(async () => {
-          const db = inject(Database).orm;
-          const user = await getCurrentUser(request, db);
+          const _db = inject(Database).orm;
+          const user = await getCurrentUser(request);
           if (user === null) throw unauthorized("Sign in required");
           const profile = await inject(SocialService).getUserProfile(user.id);
           if (profile === null) throw unauthorized("Sign in required");
@@ -37,8 +37,8 @@ export const Route = createFileRoute("/api/account/profile")({
         }),
       PUT: ({ request }) =>
         runHandler(async () => {
-          const db = inject(Database).orm;
-          const user = await getCurrentUser(request, db);
+          const _db = inject(Database).orm;
+          const user = await getCurrentUser(request);
           if (user === null) throw unauthorized("Sign in required");
           const parsed = await readBody(request, ProfileInput, "Invalid profile");
           const social = inject(SocialService);

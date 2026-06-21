@@ -1,9 +1,7 @@
-import { env } from "cloudflare:workers";
 import { redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getCurrentUser, type SessionUser } from "@/lib/auth/auth";
-import { getDb } from "@/server/db/client";
 
 /**
  * Resolve the session user from the request cookie. A server function so the server-only
@@ -12,7 +10,7 @@ import { getDb } from "@/server/db/client";
  * splits this handler out of the client bundle and calls it over RPC.
  */
 export const fetchSessionUser = createServerFn().handler(async (): Promise<SessionUser | null> => {
-  return getCurrentUser(getRequest(), getDb(env.DB));
+  return getCurrentUser(getRequest());
 });
 
 /**

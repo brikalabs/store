@@ -1,10 +1,8 @@
-import { env } from "cloudflare:workers";
 import { isOperator } from "@brika/registry-core";
 import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getCurrentUser } from "@/lib/auth/auth";
-import { getDb } from "@/server/db/client";
 import { operatorAdmins } from "@/server/env";
 import { sessionIdentity } from "@/server/registry-identity";
 
@@ -17,7 +15,7 @@ import { sessionIdentity } from "@/server/registry-identity";
  */
 export const fetchOperator = createServerFn().handler(
   async (): Promise<{ login: string } | null> => {
-    const user = await getCurrentUser(getRequest(), getDb(env.DB));
+    const user = await getCurrentUser(getRequest());
     if (user === null || !isOperator(operatorAdmins(), sessionIdentity(user))) return null;
     return { login: user.login };
   },

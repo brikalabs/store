@@ -23,27 +23,20 @@ export function okOrThrow<R extends { readonly ok: true }>(
   return result;
 }
 
-/**
- * Parse untrusted input against a schema, or throw a 400 {@link HttpError}. The boundary
- * counterpart to {@link okOrThrow}: a service returns a typed result, but malformed input
- * never reaches the service - it is a client error, not a bug. Used where the framework does
- * not pre-validate the body (e.g. a TanStack handler reading `await request.json()`).
- */
-export function parseBody<T>(
-  schema: z.ZodType<T>,
-  value: unknown,
-  message = "Invalid request body",
-): T {
+/** Validate an already-read value against a schema, or throw a 400. Internal to {@link readBody}. */
+function validate<T>(schema: z.ZodType<T>, value: unknown, message: string): T {
   const parsed = schema.safeParse(value);
   if (!parsed.success) throw badRequest(message);
   return parsed.data;
 }
 
 /**
- * Read AND validate a JSON request body in one step: `await readBody(request, Schema, "...")`.
- * Folds the `await request.json()` that {@link parseBody} otherwise needs at every call site, and
- * makes malformed JSON a clean 400 too (a bare `request.json()` throws a `SyntaxError`, which would
- * otherwise surface as a 500). For a TanStack-style handler that parses the body itself.
+ * Read AND validate a JSON request body in one step: `await readBody(request, Schema, "...")`. The
+ * boundary counterpart to {@link okOrThrow} for input - a service returns a typed result, but
+ * malformed input never reaches it: it is a client error, not a bug. Malformed JSON is a clean 400
+ * too (a bare `request.json()` throws a `SyntaxError` that would otherwise surface as a 500). For a
+ * handler that parses the body itself (e.g. TanStack); the router's own `route.post({ body })` path
+ * validates against the route schema instead.
  */
 export async function readBody<T>(
   request: Request,
@@ -51,5 +44,5 @@ export async function readBody<T>(
   message = "Invalid request body",
 ): Promise<T> {
   const value: unknown = await request.json().catch(() => null);
-  return parseBody(schema, value, message);
+  return validate(schema, value, message);
 }

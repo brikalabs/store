@@ -1,11 +1,9 @@
 import { env } from "cloudflare:workers";
-import { inject } from "@brika/di";
 import { badRequest, readBody, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { approveDeviceCode } from "@/lib/auth/device-approval";
-import { Database } from "@/server/db/client";
 import { publicJson, runHandler } from "@/server/http";
 
 /**
@@ -22,7 +20,7 @@ export const Route = createFileRoute("/api/device/approve")({
     handlers: {
       POST: ({ request }) =>
         runHandler(async () => {
-          const user = await getCurrentUser(request, inject(Database).orm);
+          const user = await getCurrentUser(request);
           if (user === null) throw unauthorized("Sign in required");
 
           const parsed = await readBody(request, ApproveInput, "Invalid request");

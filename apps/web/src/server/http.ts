@@ -2,7 +2,6 @@ import { inject, runInContext } from "@brika/di";
 import { isOperator, type PublishIdentity } from "@brika/registry-core";
 import { forbidden, HttpError, json, reply, unauthorized } from "@brika/router";
 import { getCurrentUser, getSessionUserId, type SessionUser } from "@/lib/auth/auth";
-import { Database } from "@/server/db/client";
 import { operatorAdmins } from "@/server/env";
 import { webProviders } from "@/server/injector";
 import { sessionIdentity } from "@/server/registry-identity";
@@ -10,7 +9,7 @@ import { Audit } from "@/server/registry-services";
 
 /**
  * The TanStack-Start side of the shared HTTP toolkit. The generic primitives - `HttpError`
- * and its helpers, `reply`/`json`/`created`, `okOrThrow`, `parseBody` - come straight from
+ * and its helpers, `reply`/`json`/`created`, `okOrThrow`, `readBody` - come straight from
  * `@brika/router`, the SAME toolkit the registry's controllers use. This file is only the
  * thin framework adapter the registry gets from the router's own dispatch loop: a handler
  * runner that turns a thrown `HttpError` into a `Response`, plus the store's session-auth
@@ -28,7 +27,7 @@ export interface ConsoleContext {
 /**
  * Run a route handler body, turning a thrown {@link HttpError} into its JSON error response
  * (`no-store`). The framework counterpart to the registry router's catch: handler bodies use
- * the throwing helpers ({@link authed}, `okOrThrow`, `parseBody`, `notFound`, ...) and read
+ * the throwing helpers ({@link authed}, `okOrThrow`, `readBody`, `notFound`, ...) and read
  * top-to-bottom. Any non-`HttpError` throw is a real bug and surfaces as a 500.
  */
 export function runHandler(body: () => Promise<Response>): Promise<Response> {
@@ -65,7 +64,7 @@ export function runUser(
  * D1 binding). Used by every console route; pair with {@link runHandler}.
  */
 export async function authed(request: Request): Promise<ConsoleContext> {
-  const user = await getCurrentUser(request, inject(Database).orm);
+  const user = await getCurrentUser(request);
   if (user === null) throw unauthorized("Sign in required");
   return { user, identity: sessionIdentity(user) };
 }

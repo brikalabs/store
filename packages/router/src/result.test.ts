@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 import { HttpError } from "./errors";
-import { okOrThrow, parseBody, readBody } from "./result";
+import { okOrThrow, readBody } from "./result";
 
 describe("okOrThrow", () => {
   test("returns the success branch unchanged", () => {
@@ -17,25 +17,6 @@ describe("okOrThrow", () => {
       expect(error).toBeInstanceOf(HttpError);
       expect((error as HttpError).status).toBe(409);
       expect((error as HttpError).message).toBe("already exists");
-    }
-  });
-});
-
-describe("parseBody", () => {
-  const schema = z.object({ name: z.string() });
-
-  test("returns the parsed, typed value", () => {
-    expect(parseBody(schema, { name: "x" })).toEqual({ name: "x" });
-  });
-
-  test("throws a 400 HttpError with the given message on mismatch", () => {
-    try {
-      parseBody(schema, { name: 1 }, "Invalid name");
-      throw new Error("expected throw");
-    } catch (error) {
-      expect(error).toBeInstanceOf(HttpError);
-      expect((error as HttpError).status).toBe(400);
-      expect((error as HttpError).message).toBe("Invalid name");
     }
   });
 });
