@@ -12,12 +12,25 @@ import { describe, test } from "bun:test";
 const SOCIAL_SCHEMA = modules("@/server/db/schema");
 const RAW_ORM = modules("drizzle-orm");
 const D1_ADAPTERS = modules("@brika/store-db/adapters");
+/** The server's composition layer (repositories + services). `lib/` read models stay off it. */
+const SERVER_COMPOSITION = modules(
+  "@/server/stores",
+  "@/server/services",
+  "@/server/registry-services",
+);
 
 describe("apps/web layering", () => {
   test("routes + components never touch the ORM or the social tables (they go through a service)", () => {
     rule()
       .filesMatching("apps/web/src/routes", "apps/web/src/components")
       .mayNotImport(RAW_ORM, SOCIAL_SCHEMA)
+      .assert();
+  });
+
+  test("the shared lib layer is pure read-models/utils (no server stores/services, no inject())", () => {
+    rule()
+      .filesMatching("apps/web/src/lib")
+      .mayNotImport(SERVER_COMPOSITION)
       .assert();
   });
 
