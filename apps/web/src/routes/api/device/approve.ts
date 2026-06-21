@@ -1,10 +1,10 @@
-import { env } from "cloudflare:workers";
+import { inject } from "@brika/di";
 import { badRequest, readBody, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
-import { approveDeviceCode } from "@/lib/auth/device-approval";
 import { publicJson, runHandler } from "@/server/http";
+import { DeviceApprovalStore } from "@/server/stores/device-approval-store";
 
 /**
  * `POST /api/device/approve`: approve a pending registry device-authorization
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/device/approve")({
           const parsed = await readBody(request, ApproveInput, "Invalid request");
 
           const code = parsed.user_code.trim().toUpperCase();
-          if (!(await approveDeviceCode(env.DB, code, user.login))) {
+          if (!(await inject(DeviceApprovalStore).approve(code, user.login))) {
             throw badRequest("That code is invalid, expired, or already used");
           }
           return publicJson({ ok: true });

@@ -36,12 +36,7 @@ describe("apps/web layering", () => {
   test("the raw ORM is confined to the stores + the db client (not the wider app)", () => {
     rule()
       .filesMatching("apps/web/src")
-      .except(
-        "apps/web/src/server/stores",
-        "apps/web/src/server/db",
-        // BetterAuth's device-approval read is a known direct-ORM use, server-only.
-        "apps/web/src/lib/auth/device-approval.ts",
-      )
+      .except("apps/web/src/server/stores", "apps/web/src/server/db")
       .mayNotImport(RAW_ORM)
       .assert();
   });
