@@ -1,4 +1,5 @@
 import { badRequest, okOrThrow, reply } from "@brika/router";
+import { onRollback, transaction } from "@brika/tx";
 import { createFileRoute } from "@tanstack/react-router";
 import { authed, runHandler } from "@/server/http";
 import { registryServices } from "@/server/registry-services";
@@ -53,9 +54,17 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
           if (bytes.byteLength === 0) throw badRequest("Empty upload");
           if (bytes.byteLength > MAX_ICON_BYTES) throw badRequest("Logo exceeds 512 KiB");
 
+          // Stage the blob then commit the D1 pointer atomically: if the ownership-gated
+          // setIcon fails (e.g. not a scope member), the transaction rolls back and the
+          // onRollback compensation deletes the just-staged blob, so a rejected upload never
+          // leaves an orphaned object in R2.
           const key = `scope-icons/${params.scope}.${ext}`;
-          await serverContext().assets.put(key, bytes, type);
-          okOrThrow(await a.svc.scopes.setIcon(a.identity, params.scope, key));
+          const assets = serverContext().assets;
+          await transaction(async () => {
+            await assets.put(key, bytes, type);
+            onRollback(() => assets.delete(key));
+            okOrThrow(await a.svc.scopes.setIcon(a.identity, params.scope, key));
+          });
           await a.svc.audit.record({
             action: "scope_icon_set",
             packageName: params.scope,

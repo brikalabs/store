@@ -10,6 +10,8 @@ export interface BlobStore {
   get(key: string): Promise<Uint8Array | null>;
   /** Write an object, optionally tagging its content type for direct serving. */
   put(key: string, value: Uint8Array | string, contentType?: string): Promise<void>;
+  /** Remove an object by key (idempotent). Compensates a staged put when a transaction rolls back. */
+  delete(key: string): Promise<void>;
 }
 
 /** Cloudflare R2 adapter for {@link BlobStore}. */
@@ -28,5 +30,9 @@ export class CfR2BlobStore implements BlobStore {
 
   async put(key: string, value: Uint8Array | string, contentType?: string): Promise<void> {
     await this.#bucket.put(key, value, contentType ? { httpMetadata: { contentType } } : undefined);
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.#bucket.delete(key);
   }
 }
