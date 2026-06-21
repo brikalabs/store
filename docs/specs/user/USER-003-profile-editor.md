@@ -1,12 +1,17 @@
 ---
 id: USER-003
 title: "Account profile editor"
-status: todo
+status: done
 area: user
 group: user
-test_mode: none
+test_mode: manual
 traceability:
-  code: []
+  code:
+    - apps/web/src/routes/dashboard/profile.tsx
+    - apps/web/src/routes/api/account/profile.ts
+    - apps/web/src/lib/social/social.ts:getUserProfile
+    - apps/web/src/lib/social/social.ts:updateUserProfile
+    - packages/contract/src/index.ts:UserProfile
   tests: []
 ---
 

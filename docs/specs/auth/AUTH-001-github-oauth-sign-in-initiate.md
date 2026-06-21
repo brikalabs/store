@@ -1,7 +1,7 @@
 ---
 id: AUTH-001
 title: "GitHub OAuth sign-in: initiate"
-status: done
+status: gone
 area: auth
 group: auth
 test_mode: unit
@@ -15,7 +15,7 @@ traceability:
 
 ## Description
 
-> **Planned supersession:** replaced by BetterAuth multi-provider auth (provider-agnostic sign-in, see `AUTH-010`). Still `done` and accurate for current production; not retired until BetterAuth ships.
+> **Superseded/removed:** replaced by BetterAuth provider-agnostic sign-in (`AUTH-010`, now `done`). The hand-rolled `GET /auth/github` initiate route (`apps/web/src/routes/auth.github.ts`) was deleted; sign-in now goes through BetterAuth's `/api/auth/*` handler. Retained for history.
 
 `GET /auth/github` starts the Authorization Code flow: it mints a CSRF state, stashes a
 safe return path, sets both as short-lived cookies, and redirects to GitHub's authorize

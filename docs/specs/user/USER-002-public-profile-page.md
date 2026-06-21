@@ -1,12 +1,15 @@
 ---
 id: USER-002
 title: "Public profile page at /u/:id"
-status: todo
+status: done
 area: user
 group: user
-test_mode: none
+test_mode: manual
 traceability:
-  code: []
+  code:
+    - apps/web/src/routes/u/$id.tsx
+    - apps/web/src/lib/social/social.ts:getUserProfile
+    - apps/web/src/lib/social/social.ts:listReviewsByUser
   tests: []
 ---
 

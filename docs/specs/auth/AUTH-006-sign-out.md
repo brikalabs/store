@@ -7,8 +7,8 @@ group: auth
 test_mode: none
 traceability:
   code:
-    - apps/web/src/routes/auth.logout.ts
-    - apps/web/src/lib/auth.ts
+    - apps/web/src/routes/auth/logout.ts
+    - apps/web/src/server/auth.ts:getAuth
   tests: []
 ---
 
@@ -16,7 +16,9 @@ traceability:
 
 `GET /auth/logout` clears the session cookie and returns the user home.
 
-> **Note:** BetterAuth will absorb this into its sign-out endpoint, deleting the D1 `session` row (see `AUTH-012`), once multi-provider auth ships.
+> **Now BetterAuth-backed:** the route is retained as a GET shim (existing links keep working),
+> but it delegates to BetterAuth's `signOut`, which deletes the D1 `session` row and expires
+> the session cookie (`AUTH-012-AC4`). The behaviour below is unchanged.
 
 ## Acceptance criteria
 

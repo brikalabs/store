@@ -7,8 +7,9 @@ group: console
 test_mode: manual (verified in-browser)
 traceability:
   code:
-    - apps/web/src/routes/dashboard.profile.tsx
-    - apps/web/src/routes/api.account.profile.ts
+    - apps/web/src/routes/dashboard/profile.tsx
+    - apps/web/src/routes/api/account/profile.ts
+    - apps/web/src/lib/social/social.ts:updateUserProfile
   tests: []
 ---
 

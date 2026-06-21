@@ -12,6 +12,10 @@ traceability:
 
 ## Description
 
+> **Status: not yet implemented (follow-up).** BetterAuth core + first-class user profiles
+> shipped (Phases 1+2); the link/unlink console surface (and its auth-layer semantics in
+> `AUTH-011`) is a later phase.
+
 A signed-in user manages the provider identities linked to their account: they can link an
 additional provider (e.g. add Google to a GitHub-only account) and unlink one they no longer
 want, as long as at least one sign-in method remains. This is the console surface over the

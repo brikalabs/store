@@ -1,12 +1,15 @@
 ---
 id: AUTH-013
 title: "BetterAuth Workers/D1 configuration and migration"
-status: todo
+status: done
 area: auth
 group: auth
-test_mode: none
+test_mode: manual
 traceability:
-  code: []
+  code:
+    - apps/web/src/server/auth.ts:getAuth
+    - apps/web/drizzle/0001_betterauth.sql
+    - apps/web/drizzle/0002_user_profiles.sql
   tests: []
 ---
 
@@ -16,8 +19,14 @@ Running BetterAuth on Cloudflare Workers requires edge-specific configuration: t
 secret and per-provider client id/secret as Worker secrets, the D1 binding wired through the
 Drizzle adapter for session/account/user/verification storage, a configured trusted origin /
 base URL for CSRF protection, and a one-time migration that creates the BetterAuth tables.
-This replaces the `SESSION_SECRET` + `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` config that
-fed the hand-rolled flow (`AUTH-009`); the registry CLI/publish secrets are unaffected.
+`getAuth()` (`apps/web/src/server/auth.ts`) reads `BETTER_AUTH_URL` and sets it as both the
+`baseURL` and the sole `trustedOrigins` entry; the GitHub provider's callback is
+`<BETTER_AUTH_URL>/api/auth/callback/github`. The BetterAuth tables are provisioned by
+`apps/web/drizzle/0001_betterauth.sql`, and the user-profile table by
+`apps/web/drizzle/0002_user_profiles.sql` (migrations are applied manually and verified
+against live D1 after deploy, not auto-run on deploy). This replaces the `SESSION_SECRET` +
+`GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`-only config that fed the hand-rolled flow
+(`AUTH-009`); the registry CLI/publish secrets are unaffected.
 
 ## Acceptance criteria
 

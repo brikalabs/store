@@ -1,12 +1,17 @@
 ---
 id: USER-001
 title: "User account is the first-class identity"
-status: todo
+status: done
 area: user
 group: user
-test_mode: none
+test_mode: manual
 traceability:
-  code: []
+  code:
+    - apps/web/src/server/db/schema.ts:users
+    - apps/web/src/server/db/schema.ts:account
+    - apps/web/src/server/db/schema.ts:userProfiles
+    - apps/web/src/server/auth.ts:getAuth
+    - apps/web/drizzle/0001_betterauth.sql
   tests: []
 ---
 
@@ -15,9 +20,11 @@ traceability:
 The first-class identity is a Brika **user account** with a stable, opaque account id. It is
 NOT a GitHub user row keyed by `gh_<githubId>`. Provider identities (GitHub now; others later)
 link to the account (see `AUTH-011`); the account, not any single provider, is what owns
-scope memberships, authors reviews, and carries a profile. The retired `developers` table is
-folded into the account; there is no `pluginCount` column (published plugins are derived live
-from owned scopes, see `USER-002`).
+scope memberships, authors reviews, and carries a profile. The account is the BetterAuth-adapted
+`users` table with provider identities in `account` rows (`apps/web/src/server/db/schema.ts`);
+the profile lives in a separate `user_profiles` table (`userProfiles`). The retired
+`developers` table is folded into the account; there is no `pluginCount` column (published
+plugins are derived live from owned scopes, see `USER-002`).
 
 ## Acceptance criteria
 

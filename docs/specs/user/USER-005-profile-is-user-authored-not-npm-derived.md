@@ -1,12 +1,17 @@
 ---
 id: USER-005
 title: "Profile data is user-authored, never derived from npm"
-status: todo
+status: done
 area: user
 group: user
-test_mode: none
+test_mode: manual
 traceability:
-  code: []
+  code:
+    - apps/web/src/server/db/schema.ts:userProfiles
+    - apps/web/src/lib/social/social.ts:getUserProfile
+    - apps/web/src/lib/social/social.ts:updateUserProfile
+    - apps/web/drizzle/0002_user_profiles.sql
+    - packages/contract/src/index.ts:UserProfile
   tests: []
 ---
 
@@ -16,7 +21,8 @@ The account profile (display name, bio, avatar, links) is **user-authored** and 
 account. It is NEVER synthesised from npm `maintainer` data or any npm-derived base. This
 explicitly supersedes the retired npm-maintainer-derived profile (the gone `STORE-004`, whose
 profile overlaid D1 edits on an npm-derived base keyed by `maintainer:<id>`): there is no
-npm-derived base anymore, only the account's own fields.
+npm-derived base anymore, only the account's own fields, stored in the `user_profiles` table
+(`userProfiles`). The old `developers` table was dropped (`apps/web/drizzle/0002_user_profiles.sql`).
 
 ## Acceptance criteria
 

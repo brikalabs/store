@@ -1,21 +1,26 @@
 ---
 id: AUTH-010
 title: "Provider-agnostic sign-in via BetterAuth"
-status: todo
+status: done
 area: auth
 group: auth
-test_mode: none
+test_mode: manual
 traceability:
-  code: []
+  code:
+    - apps/web/src/server/auth.ts:getAuth
+    - apps/web/src/routes/api/auth/$.ts
   tests: []
 ---
 
 ## Description
 
 Console sign-in is provider-agnostic, served by BetterAuth's social-provider plugin on the
-Cloudflare Worker. GitHub ships first; additional providers (Google, GitLab, etc.) are added
-by configuration with no new bespoke route per provider. This supersedes the hand-rolled
-GitHub-only Authorization Code flow (`AUTH-001`/`AUTH-002`). The CLI device-authorization +
+Cloudflare Worker. GitHub ships first (live); additional providers (Google, GitLab, etc.) are
+added by configuration with no new bespoke route per provider. Every auth endpoint is mounted
+behind the single `/api/auth/*` handler (`apps/web/src/routes/api/auth/$.ts`); the BetterAuth
+instance and its GitHub social provider are built in `getAuth()`
+(`apps/web/src/server/auth.ts`). This supersedes the hand-rolled GitHub-only Authorization
+Code flow (`AUTH-001`/`AUTH-002`, now `gone`). The CLI device-authorization +
 publish-token / OIDC path (`AUTH-008`, `PUB-016`) is a separate registry concern and is NOT
 served by BetterAuth.
 

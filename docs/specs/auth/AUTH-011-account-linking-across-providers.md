@@ -12,6 +12,9 @@ traceability:
 
 ## Description
 
+> **Status: not yet implemented (follow-up).** BetterAuth core + first-class user profiles
+> shipped (Phases 1+2); cross-provider account linking is a later phase.
+
 One Brika account can carry multiple provider identities (e.g. GitHub and Google) via
 BetterAuth account linking. A new provider identity links to the existing account rather than
 minting a duplicate, and a signed-in user can link an additional provider to their current
