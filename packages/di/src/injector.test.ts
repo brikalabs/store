@@ -60,6 +60,23 @@ describe("providers", () => {
     const CONFIG = new InjectionToken<number>({ factory: () => 42 });
     expect(createInjector().get(CONFIG)).toBe(42);
   });
+
+  test("a default-factory token is a ROOT singleton: one instance shared by every child scope", () => {
+    let builds = 0;
+    const CONFIG = new InjectionToken<{ n: number }>({
+      factory: () => {
+        builds += 1;
+        return { n: builds };
+      },
+    });
+    const root = createInjector();
+    const childA = createInjector([], root);
+    const childB = createInjector([], root);
+    // First asked from a child, but built once at the root and shared - not one copy per scope.
+    expect(childA.get(CONFIG)).toBe(childB.get(CONFIG));
+    expect(root.get(CONFIG)).toBe(childA.get(CONFIG));
+    expect(builds).toBe(1);
+  });
 });
 
 describe("mock injection for tests", () => {

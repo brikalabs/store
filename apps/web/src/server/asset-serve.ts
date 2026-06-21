@@ -28,6 +28,9 @@ export async function streamBlob(key: string, ifNoneMatch: string | null): Promi
     "content-type": stored.contentType ?? "application/octet-stream",
     "content-length": String(stored.size),
     "cache-control": CACHE_CONTROL,
+    // Serve the stored type literally; never let a UA sniff a mislabelled blob into something
+    // executable on the asset origin (uploads are also magic-number validated at write time).
+    "x-content-type-options": "nosniff",
   });
   if (stored.etag !== undefined) headers.set("etag", stored.etag);
   return new Response(stored.body, { headers });

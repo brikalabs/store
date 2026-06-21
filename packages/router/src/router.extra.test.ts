@@ -77,6 +77,18 @@ describe("PUT and PATCH builders", () => {
   });
 });
 
+describe("optional-segment expansion", () => {
+  test("a sole optional with no prefix never registers an empty pattern (would bind '/')", () => {
+    const app = new Hono();
+    mount(app, [controller([route.get({ path: ":x?", handler: () => ({ ok: true }) })])], {
+      context: () => ({ tag: "ctx" }),
+    });
+    const patterns = routes(app).map((r) => r.pattern);
+    expect(patterns).not.toContain("");
+    expect(patterns.some((p) => p.includes(":x"))).toBe(true);
+  });
+});
+
 describe("bare route-list controller", () => {
   test("a plain array of routes mounts at the root with no prefix or middleware", async () => {
     const app = new Hono();

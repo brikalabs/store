@@ -1,8 +1,9 @@
 import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
-import { badRequest, okOrThrow, reply } from "@brika/router";
+import { badRequest, okOrThrow, readBytes, reply } from "@brika/router";
 import { onRollback, transaction } from "@brika/tx";
 import { createFileRoute } from "@tanstack/react-router";
+import { sniffImageMime } from "@/lib/image-format";
 import { ICON_TYPES, MAX_ICON_BYTES } from "@/lib/scope-icon";
 import { recordAudit, runAuthed, runHandler } from "@/server/http";
 import { BlobStore } from "@/server/ports/blob-store";
@@ -24,9 +25,11 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
           const type = request.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
           const ext = ICON_TYPES[type];
           if (ext === undefined) throw badRequest("Logo must be a PNG, JPEG, or WebP image");
-          const bytes = new Uint8Array(await request.arrayBuffer());
-          if (bytes.byteLength === 0) throw badRequest("Empty upload");
-          if (bytes.byteLength > MAX_ICON_BYTES) throw badRequest("Logo exceeds 512 KiB");
+          const bytes = await readBytes(request, MAX_ICON_BYTES, "Logo exceeds 512 KiB");
+          // Validate the FORMAT by magic number, not the declared content-type, and require the
+          // bytes to match the declared type - so a mislabelled or polyglot payload is rejected.
+          if (sniffImageMime(bytes) !== type)
+            throw badRequest("Logo content does not match its type");
 
           // Stage the blob then commit the D1 pointer atomically: if the ownership-gated
           // setIcon fails (e.g. not a scope member), the transaction rolls back and the

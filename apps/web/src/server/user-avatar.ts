@@ -1,6 +1,7 @@
 import { inject } from "@brika/di";
 import { badRequest } from "@brika/router";
 import { avatarUrlOf, MAX_AVATAR_BYTES, userAvatarKey } from "@/lib/avatar";
+import { sniffImageMime } from "@/lib/image-format";
 import { BlobStore } from "@/server/ports/blob-store";
 import { SocialService } from "@/server/services/social-service";
 
@@ -18,15 +19,18 @@ async function contentTag(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
  * served straight from the bucket's CDN (no worker hop). The client has already resized + WebP-encoded
  * it; this validates the result, puts it under the deterministic key, and records the public URL
  * (with a cache-busting tag) on the profile. Returns the stored URL.
+ *
+ * The size is bounded by the caller ({@link readBytes}); this validates the FORMAT by the bytes'
+ * magic number, not the client-declared `contentType`, so arbitrary bytes mislabelled `image/webp`
+ * (an HTML/SVG polyglot) cannot be stored and then served from the asset origin under an image type.
  */
 export async function uploadUserAvatar(
   userId: string,
   bytes: Uint8Array<ArrayBuffer>,
-  contentType: string,
 ): Promise<string | undefined> {
-  if (contentType !== "image/webp") throw badRequest("Avatar must be a WebP image");
   if (bytes.byteLength === 0) throw badRequest("Empty upload");
   if (bytes.byteLength > MAX_AVATAR_BYTES) throw badRequest("Avatar exceeds 512 KiB");
+  if (sniffImageMime(bytes) !== "image/webp") throw badRequest("Avatar must be a WebP image");
 
   const assets = inject(BlobStore);
   await assets.put(userAvatarKey(userId), bytes, "image/webp");

@@ -57,12 +57,13 @@ export class SocialService {
     return this.#comments.listForPlugin(pluginName, viewerId);
   }
 
+  /** Post a comment/reply; false when `parentId` targets a missing or cross-plugin parent. */
   addComment(
     pluginName: string,
     userId: string,
     body: string,
     parentId: string | null,
-  ): Promise<void> {
+  ): Promise<boolean> {
     return this.#comments.add(pluginName, userId, body, parentId);
   }
 

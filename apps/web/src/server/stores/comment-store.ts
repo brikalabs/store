@@ -52,18 +52,22 @@ export class CommentStore {
     ]);
 
     return rows.map((row) =>
+      // A deleted comment keeps its row for thread structure but reveals nothing about its author
+      // (no display name, no avatar) and carries no upvotes - only the `[deleted]` tombstone.
       Comment.parse({
         id: row.id,
         pluginName,
         parentId: row.parentId,
-        author: {
-          id: row.userId,
-          displayName: displayNameOf(row.profileDisplayName, row.name),
-          avatarUrl: avatarUrlOf(this.#blob, row.avatarVersion, row.userId, row.image),
-        },
+        author: row.deleted
+          ? { id: row.userId, displayName: "[deleted]", avatarUrl: undefined }
+          : {
+              id: row.userId,
+              displayName: displayNameOf(row.profileDisplayName, row.name),
+              avatarUrl: avatarUrlOf(this.#blob, row.avatarVersion, row.userId, row.image),
+            },
         body: row.deleted ? "[deleted]" : row.body,
-        upvotes: upvotes.get(row.id) ?? 0,
-        viewerUpvoted: voted.has(row.id),
+        upvotes: row.deleted ? 0 : (upvotes.get(row.id) ?? 0),
+        viewerUpvoted: row.deleted ? false : voted.has(row.id),
         createdAt: new Date(row.createdAt * 1000).toISOString(),
         edited: row.edited,
         deleted: row.deleted,
@@ -71,16 +75,30 @@ export class CommentStore {
     );
   }
 
-  /** Post a comment (or a reply when `parentId` is set). */
+  /**
+   * Post a comment (or a reply when `parentId` is set). A reply must target an existing comment on
+   * the SAME plugin (`parent_id` has no FK), so a client cannot thread under a missing or
+   * cross-plugin parent: returns false when the parent does not qualify (the route maps that to a
+   * 400), true once inserted.
+   */
   async add(
     pluginName: string,
     userId: string,
     body: string,
     parentId: string | null,
-  ): Promise<void> {
+  ): Promise<boolean> {
+    if (parentId !== null) {
+      const parent = await this.#db
+        .select({ id: comments.id })
+        .from(comments)
+        .where(and(eq(comments.id, parentId), eq(comments.pluginName, pluginName)))
+        .limit(1);
+      if (parent[0] === undefined) return false;
+    }
     await this.#db
       .insert(comments)
       .values({ id: crypto.randomUUID(), pluginName, userId, body, parentId });
+    return true;
   }
 
   /**
@@ -102,7 +120,12 @@ export class CommentStore {
       .where(and(eq(commentVotes.commentId, commentId), eq(commentVotes.userId, userId)))
       .limit(1);
     if (existing[0] === undefined) {
-      await this.#db.insert(commentVotes).values({ commentId, userId, value: 1 });
+      // onConflictDoNothing makes a concurrent double-click idempotent (one vote) instead of
+      // tripping the (user_id, comment_id) primary key with a 500 between the select and insert.
+      await this.#db
+        .insert(commentVotes)
+        .values({ commentId, userId, value: 1 })
+        .onConflictDoNothing();
     } else {
       await this.#db
         .delete(commentVotes)
@@ -111,13 +134,13 @@ export class CommentStore {
     return true;
   }
 
-  /** Upvote totals per comment for a plugin, keyed by comment id. */
+  /** Upvote totals per (non-deleted) comment for a plugin, keyed by comment id. */
   async #upvoteCounts(pluginName: string): Promise<Map<string, number>> {
     const rows = await this.#db
       .select({ commentId: commentVotes.commentId, count: sql<number>`count(*)` })
       .from(commentVotes)
       .innerJoin(comments, eq(commentVotes.commentId, comments.id))
-      .where(eq(comments.pluginName, pluginName))
+      .where(and(eq(comments.pluginName, pluginName), eq(comments.deleted, false)))
       .groupBy(commentVotes.commentId);
     return new Map(rows.map((row) => [row.commentId, row.count]));
   }

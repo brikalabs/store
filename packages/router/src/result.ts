@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { badRequest, httpError } from "./errors";
+import { badRequest, httpError, payloadTooLarge } from "./errors";
 
 /**
  * HTTP-boundary helpers shared by every handler, whatever framework owns the routing.
@@ -45,4 +45,25 @@ export async function readBody<T>(
 ): Promise<T> {
   const value: unknown = await request.json().catch(() => null);
   return validate(schema, value, message);
+}
+
+/**
+ * Read a binary upload body, bounded by `maxBytes`. The boundary counterpart to {@link readBody}
+ * for a raw byte payload (an avatar, a logo): it rejects an oversize body BEFORE buffering it, by
+ * the declared `Content-Length` (a `413`), so a huge upload cannot be pulled into worker memory
+ * first and rejected after. It then buffers, rejects an empty body (`400`), and re-checks the
+ * actual size (`413`) since `Content-Length` is client-supplied and may be absent or a lie. The
+ * caller still validates the bytes' FORMAT (e.g. by magic number) - this only bounds the size.
+ */
+export async function readBytes(
+  request: Request,
+  maxBytes: number,
+  tooLargeMessage = "Payload too large",
+): Promise<Uint8Array<ArrayBuffer>> {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) throw payloadTooLarge(tooLargeMessage);
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (bytes.byteLength === 0) throw badRequest("Empty upload");
+  if (bytes.byteLength > maxBytes) throw payloadTooLarge(tooLargeMessage);
+  return bytes;
 }

@@ -171,7 +171,12 @@ export class ReviewStore {
       .where(and(eq(reviewVotes.reviewId, reviewId), eq(reviewVotes.userId, userId)))
       .limit(1);
     if (existing[0] === undefined) {
-      await this.#db.insert(reviewVotes).values({ reviewId, userId, value: 1 });
+      // onConflictDoNothing makes a concurrent double-click idempotent (one vote) instead of
+      // tripping the (user_id, review_id) primary key with a 500 between the select and insert.
+      await this.#db
+        .insert(reviewVotes)
+        .values({ reviewId, userId, value: 1 })
+        .onConflictDoNothing();
     } else {
       await this.#db
         .delete(reviewVotes)

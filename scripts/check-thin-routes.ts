@@ -24,11 +24,14 @@ for (const path of new Glob(ROUTES_GLOB).scanSync(".")) {
   if (path.endsWith(GENERATED)) continue;
   const lines = readFileSync(path, "utf8").split("\n");
   const lineCount = lines.at(-1) === "" ? lines.length - 1 : lines.length;
-  const exports = lines.filter((line) => line.startsWith("export "));
+  // Match any export form, not just `export ` at column 0: catches an indented export, an
+  // `export{x}`/`export*` with no following space, and `export type`/`export default` - so a
+  // second export cannot slip back into a route past a text-prefix check.
+  const exports = lines.filter((line) => /^\s*export\b/.test(line));
   if (lineCount > MAX_LINES) {
     violations.push(`${path}: ${lineCount} lines (max ${MAX_LINES}) - extract UI/logic to a layer below`);
   }
-  if (exports.length !== 1 || !/^export const Route\b/.test(exports[0] ?? "")) {
+  if (exports.length !== 1 || !/^export const Route\b/.test(exports[0]?.trim() ?? "")) {
     const found = exports.map((line) => line.trim()).join("; ") || "none";
     violations.push(`${path}: must export only \`Route\` (found: ${found})`);
   }

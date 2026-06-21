@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { callerFrame, moduleFile } from "@brika/stack";
 
 /**
  * Angular-style functional DI, no decorators or reflection. You `inject(Token)` inside a class
@@ -17,38 +18,20 @@ export interface InjectionTokenOptions<T> {
   readonly description?: string;
 }
 
-/** Extract a `file:line:col` from one `Error.stack` frame (V8 `(path:1:2)` or `at path:1:2`). */
-function frameLocation(frame: string): string | undefined {
-  const inParens = /\(([^()]+)\)\s*$/.exec(frame);
-  const loc = inParens?.[1] ?? /\bat\s+(.+?)\s*$/.exec(frame)?.[1];
-  return loc?.replace(/^file:\/\//, "");
-}
-
 /** This module's own file (from a load-time stack), so token naming can skip its own frames. */
-const DI_FILE = ((): string => {
-  for (const frame of (new Error("di location probe").stack ?? "").split("\n")) {
-    const loc = frameLocation(frame);
-    if (loc !== undefined && !loc.includes("node:") && !loc.includes("<anonymous>")) {
-      return loc.replace(/:\d+(:\d+)?$/, "");
-    }
-  }
-  return "";
-})();
+const DI_FILE = moduleFile(new Error("di location probe").stack);
 
 /**
  * The first stack frame OUTSIDE this module: where `new InjectionToken()` / `token<T>()` was called.
  * Names a token by its declaration site, so a missing-provider error reads
  * `InjectionToken(server/services.ts:41:14)` instead of an unstable `token#N` - with no caller label.
+ * Shortened to the last two path segments so the label stays compact.
  */
 function creationSite(): string | undefined {
-  for (const frame of (new Error("di token site").stack ?? "").split("\n")) {
-    const loc = frameLocation(frame);
-    if (loc === undefined || loc.includes("node:") || loc.includes("<anonymous>")) continue;
-    if (DI_FILE !== "" && loc.includes(DI_FILE)) continue;
-    const parts = loc.split("/");
-    return parts.length > 2 ? parts.slice(-2).join("/") : loc;
-  }
-  return undefined;
+  const loc = callerFrame(new Error("di token site").stack, DI_FILE);
+  if (loc === undefined) return undefined;
+  const parts = loc.split("/");
+  return parts.length > 2 ? parts.slice(-2).join("/") : loc;
 }
 
 let tokenCounter = 0;
@@ -206,6 +189,11 @@ export class Injector {
     if (token instanceof InjectionToken) {
       const factory = token.factory;
       if (factory === undefined) throw new Error(`No provider for ${tokenName(token)}`);
+      // `providedIn: 'root'`: a default-factory token is an app-wide singleton, so build (and
+      // cache) it at the ROOT injector - not the child it was first asked from - and its own
+      // `inject()`ed deps resolve from the root too. One instance, shared by every scope.
+      const root = this.#root();
+      if (root !== this) return root.#resolve(token);
       return this.#instantiate(token, factory);
     }
     return this.#instantiate(token, () => construct(token));
@@ -216,6 +204,13 @@ export class Injector {
     if (this.#instances.has(token) || this.#providers.has(token)) return true;
     if (this.#parent === undefined) return false;
     return this.#parent.#canResolve(token);
+  }
+
+  /** The topmost ancestor (the root injector), where `providedIn: 'root'` factory tokens live. */
+  #root(): Injector {
+    let injector: Injector = this;
+    while (injector.#parent !== undefined) injector = injector.#parent;
+    return injector;
   }
 
   #instantiate(token: ProviderToken<unknown>, build: () => unknown): unknown {
@@ -241,7 +236,13 @@ export class Injector {
   }
 }
 
-/** Construct a concrete class token. Abstract tokens have no runtime constructor and throw. */
+/**
+ * Construct a concrete class token. A non-function token (an {@link InjectionToken}) has no
+ * constructor and throws here. Note `abstract` is erased at runtime, so an abstract class still
+ * has a callable constructor and would be `new`ed rather than rejected - so use an abstract class
+ * as a token only when you always provide a concrete `useClass`/`useExisting` for it; for a pure
+ * interface, prefer {@link token}, whose missing provider throws a clear "No provider" instead.
+ */
 function construct(token: ProviderToken<unknown>): unknown {
   if (typeof token !== "function") throw new Error(`Cannot construct ${tokenName(token)}`);
   // A `Type` is `abstract new`; only a concrete class reaches here, so recover the concrete signature.

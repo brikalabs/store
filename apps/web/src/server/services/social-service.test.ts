@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createInjector } from "@brika/di";
+import { eq } from "drizzle-orm";
 import { Database, type Db } from "@/server/db/client";
-import { plugins } from "@/server/db/schema";
+import { comments, plugins } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 import { SocialService } from "@/server/services/social-service";
 import { CommentStore } from "@/server/stores/comment-store";
@@ -248,10 +249,45 @@ describe("comments", () => {
     expect(top?.body).toBe("Top question");
     expect(top?.author.displayName).toBe("Asker");
 
-    await h.social.addComment("p", "u1", "A reply", top?.id ?? null);
+    const replied = await h.social.addComment("p", "u1", "A reply", top?.id ?? null);
+    expect(replied).toBe(true);
     const all = await h.social.listComments("p");
     expect(all).toHaveLength(2);
     expect(all.some((c) => c.parentId === top?.id)).toBe(true);
+  });
+
+  test("a reply to a missing or cross-plugin parent is rejected (false), and nothing is inserted", async () => {
+    await cachePlugin(h.db, "p");
+    await cachePlugin(h.db, "other");
+    await h.stores.users.upsert({ id: "u1", login: "asker" });
+    await h.social.addComment("other", "u1", "Elsewhere", null);
+    const parentElsewhere = (await h.social.listComments("other"))[0];
+
+    expect(await h.social.addComment("p", "u1", "Reply to nothing", "does-not-exist")).toBe(false);
+    expect(
+      await h.social.addComment("p", "u1", "Reply across plugins", parentElsewhere?.id ?? null),
+    ).toBe(false);
+    expect(await h.social.listComments("p")).toHaveLength(0);
+  });
+
+  test("a deleted comment is a tombstone: no author identity, no upvotes", async () => {
+    await cachePlugin(h.db, "p");
+    await h.stores.users.upsert({ id: "u1", login: "asker", name: "Asker" });
+    await h.stores.users.upsert({ id: "voter", login: "voter" });
+    await h.social.addComment("p", "u1", "Soon gone", null);
+    const posted = (await h.social.listComments("p"))[0];
+    await h.social.toggleCommentUpvote(posted?.id ?? "", "voter");
+    await h.db
+      .update(comments)
+      .set({ deleted: true })
+      .where(eq(comments.id, posted?.id ?? ""));
+
+    const after = (await h.social.listComments("p", "voter"))[0];
+    expect(after?.body).toBe("[deleted]");
+    expect(after?.author.displayName).toBe("[deleted]");
+    expect(after?.author.avatarUrl).toBeUndefined();
+    expect(after?.upvotes).toBe(0);
+    expect(after?.viewerUpvoted).toBe(false);
   });
 });
 

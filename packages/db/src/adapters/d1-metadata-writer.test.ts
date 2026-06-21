@@ -74,4 +74,34 @@ describe("D1MetadataWriter latest-tag maintenance", () => {
     await writer.setTakedown(NAME, "2.0.0", "dmca");
     expect(await latestTag(db)).toBe("1.0.0");
   });
+
+  test("ties on publishedAt resolve deterministically to the higher version", async () => {
+    // publishedAt is stored truncated to whole seconds, so a bulk/CI publish can tie. Two more
+    // versions share 2.0.0's second; yanking 2.0.0 must pick 1.5.0 (the highest of the tied,
+    // still-installable versions), never an arbitrary engine-ordered row.
+    await db.insert(regVersions).values([
+      {
+        name: NAME,
+        version: "1.4.0",
+        manifest: {},
+        integrity: "sha512-c",
+        shasum: "c",
+        size: 1,
+        publishedAt: 1_700_200,
+        yanked: false,
+      },
+      {
+        name: NAME,
+        version: "1.5.0",
+        manifest: {},
+        integrity: "sha512-d",
+        shasum: "d",
+        size: 1,
+        publishedAt: 1_700_200,
+        yanked: false,
+      },
+    ]);
+    await writer.setYanked(NAME, "2.0.0", true);
+    expect(await latestTag(db)).toBe("1.5.0");
+  });
 });

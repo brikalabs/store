@@ -5,6 +5,7 @@ export {
   HttpError,
   httpError,
   notFound,
+  payloadTooLarge,
   tooManyRequests,
   unauthorized,
 } from "./errors";
@@ -30,7 +31,7 @@ export {
   rateLimit,
 } from "./rate-limit";
 export { created, json, noContent, type ResponseInit, reply, text } from "./response";
-export { okOrThrow, readBody } from "./result";
+export { okOrThrow, readBody, readBytes } from "./result";
 export {
   type Controller,
   type ControllerConfig,

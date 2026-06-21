@@ -1,10 +1,8 @@
 import { inject } from "@brika/di";
-import { readBody, unauthorized } from "@brika/router";
+import { notFound, readBody } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/auth/auth";
-import { Database } from "@/server/db/client";
-import { publicJson, runHandler } from "@/server/http";
+import { publicJson, runUser } from "@/server/http";
 import { SocialService } from "@/server/services/social-service";
 
 const ProfileInput = z.object({
@@ -27,24 +25,18 @@ export const Route = createFileRoute("/api/account/profile")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runHandler(async () => {
-          const _db = inject(Database).orm;
-          const user = await getCurrentUser(request);
-          if (user === null) throw unauthorized("Sign in required");
-          const profile = await inject(SocialService).getUserProfile(user.id);
-          if (profile === null) throw unauthorized("Sign in required");
+        runUser(request, async (userId) => {
+          const profile = await inject(SocialService).getUserProfile(userId);
+          if (profile === null) throw notFound();
           return publicJson(profile);
         }),
       PUT: ({ request }) =>
-        runHandler(async () => {
-          const _db = inject(Database).orm;
-          const user = await getCurrentUser(request);
-          if (user === null) throw unauthorized("Sign in required");
+        runUser(request, async (userId) => {
           const parsed = await readBody(request, ProfileInput, "Invalid profile");
           const social = inject(SocialService);
-          await social.updateUserProfile(user.id, parsed);
-          const profile = await social.getUserProfile(user.id);
-          if (profile === null) throw unauthorized("Sign in required");
+          await social.updateUserProfile(userId, parsed);
+          const profile = await social.getUserProfile(userId);
+          if (profile === null) throw notFound();
           return publicJson(profile);
         }),
     },

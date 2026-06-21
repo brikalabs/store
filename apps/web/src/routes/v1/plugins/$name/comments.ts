@@ -1,5 +1,5 @@
 import { inject } from "@brika/di";
-import { notFound, readBody } from "@brika/router";
+import { badRequest, notFound, readBody } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth/auth";
@@ -25,7 +25,13 @@ export const Route = createFileRoute("/v1/plugins/$name/comments")({
           const parsed = await readBody(request, CommentInput, "Invalid comment");
           const social = inject(SocialService);
           if (!(await social.ensurePluginCached(params.name))) throw notFound();
-          await social.addComment(params.name, userId, parsed.body, parsed.parentId ?? null);
+          const posted = await social.addComment(
+            params.name,
+            userId,
+            parsed.body,
+            parsed.parentId ?? null,
+          );
+          if (!posted) throw badRequest("Reply to an unknown comment");
           return publicJson(await social.listComments(params.name, userId));
         }),
     },
