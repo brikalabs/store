@@ -6,11 +6,24 @@
  * V8 frame parsing lives in one place rather than copied into each.
  */
 
-/** Extract a `file:line:col` from one stack frame (V8 `(path:1:2)` or `at path:1:2`). */
+/**
+ * Extract a `file:line:col` from one stack frame (V8 `at fn (path:1:2)` or `at path:1:2`).
+ * String-scanned rather than regex-matched - the parenthesized/`at ` forms are unambiguous, and
+ * avoiding a backtracking regex keeps it linear on any frame text.
+ */
 export function frameLocation(frame: string): string | undefined {
-  const inParens = /\(([^()]+)\)\s*$/.exec(frame);
-  const loc = inParens?.[1] ?? /\bat\s+(.+?)\s*$/.exec(frame)?.[1];
-  return loc?.replace(/^file:\/\//, "");
+  const trimmed = frame.trim();
+  if (trimmed.endsWith(")")) {
+    const open = trimmed.lastIndexOf("(");
+    if (open !== -1) return stripFileScheme(trimmed.slice(open + 1, -1));
+  }
+  if (trimmed.startsWith("at ")) return stripFileScheme(trimmed.slice(3).trim());
+  return undefined;
+}
+
+/** Drop a leading `file://` from a location, leaving a plain path. */
+function stripFileScheme(loc: string): string {
+  return loc.startsWith("file://") ? loc.slice(7) : loc;
 }
 
 /**
