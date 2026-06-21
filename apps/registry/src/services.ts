@@ -132,10 +132,9 @@ export function buildServices(
 export type Services = ReturnType<typeof buildServices>;
 
 /** Operator admins as a DI token (a `Set` has no class to be its own token). */
-export const Admins = token<ReadonlySet<string>>("Admins");
+export const Admins = token<ReadonlySet<string>>();
 /** Display-name resolver as a DI token (a function, no class). */
-export const ResolveDisplayName =
-  token<(githubLogin: string) => Promise<string | null>>("ResolveDisplayName");
+export const ResolveDisplayName = token<(githubLogin: string) => Promise<string | null>>();
 
 /**
  * The persistence ports as DI tokens, so a handler `inject(Tokens)` etc. depends on the
@@ -143,10 +142,10 @@ export const ResolveDisplayName =
  * ORM. The composition root binds each token to its D1 instance below; the domain services
  * (`ResolveService`, `ScopeService`, ...) are injected by their own class, as they are the domain.
  */
-export const Tokens = token<TokenStore>("TokenStore");
-export const Catalog = token<CatalogReader>("CatalogReader");
-export const Downloads = token<DownloadStore>("DownloadStore");
-export const Audit = token<AuditLog>("AuditLog");
+export const Tokens = token<TokenStore>();
+export const Catalog = token<CatalogReader>();
+export const Downloads = token<DownloadStore>();
+export const Audit = token<AuditLog>();
 
 /**
  * Expose a built {@link Services} graph as `@brika/di` providers, so a handler resolves a

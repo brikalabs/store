@@ -77,8 +77,8 @@ const ACTIVE = new AsyncLocalStorage<Injector>();
  * An interface has no runtime identity to inject by; this is the minimal token that gives it one
  * without an abstract class.
  */
-export function token<T>(description?: string): InjectionToken<T> {
-  return new InjectionToken<T>(description === undefined ? {} : { description });
+export function token<T>(): InjectionToken<T> {
+  return new InjectionToken<T>();
 }
 
 /** True when called inside an injection context (a provider build, or {@link runInInjectionContext}). */
