@@ -1,7 +1,7 @@
 import { inject, runInContext } from "@brika/di";
 import { isOperator, type PublishIdentity } from "@brika/registry-core";
 import { forbidden, HttpError, json, reply, unauthorized } from "@brika/router";
-import { getCurrentUser, type SessionUser } from "@/lib/auth/auth";
+import { getCurrentUser, getSessionUserId, type SessionUser } from "@/lib/auth/auth";
 import { Database } from "@/server/db/client";
 import { operatorAdmins } from "@/server/env";
 import { webProviders } from "@/server/injector";
@@ -41,6 +41,23 @@ export function runHandler(body: () => Promise<Response>): Promise<Response> {
 /** A public, cacheable JSON read (the `/v1` contract surface). Mutations use `reply` (no-store). */
 export function publicJson(data: unknown, maxAgeSeconds = 300): Response {
   return json(data, { headers: { "cache-control": `public, max-age=${maxAgeSeconds}` } });
+}
+
+/**
+ * Run a `/v1` handler that requires a signed-in user (but not the registry console identity):
+ * resolve the session user id or throw 401, then run the body in the DI context. The social
+ * mutations (post a review/comment, vote) use this. A read that only PROJECTS the viewer keeps
+ * calling `getSessionUserId` directly, since a null viewer is allowed there.
+ */
+export function runUser(
+  request: Request,
+  body: (userId: string) => Promise<Response>,
+): Promise<Response> {
+  return runHandler(async () => {
+    const userId = await getSessionUserId(request);
+    if (userId === null) throw unauthorized("Sign in required");
+    return body(userId);
+  });
 }
 
 /**

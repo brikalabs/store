@@ -1,9 +1,9 @@
 import { inject } from "@brika/di";
-import { notFound, readBody, unauthorized } from "@brika/router";
+import { notFound, readBody } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth/auth";
-import { publicJson, runHandler } from "@/server/http";
+import { publicJson, runHandler, runUser } from "@/server/http";
 import { SocialService } from "@/server/services/social-service";
 
 const CommentInput = z.object({
@@ -21,9 +21,7 @@ export const Route = createFileRoute("/v1/plugins/$name/comments")({
           return publicJson(await inject(SocialService).listComments(params.name, viewerId));
         }),
       POST: ({ request, params }) =>
-        runHandler(async () => {
-          const userId = await getSessionUserId(request);
-          if (userId === null) throw unauthorized("Sign in required");
+        runUser(request, async (userId) => {
           const parsed = await readBody(request, CommentInput, "Invalid comment");
           const social = inject(SocialService);
           if (!(await social.ensurePluginCached(params.name))) throw notFound();
