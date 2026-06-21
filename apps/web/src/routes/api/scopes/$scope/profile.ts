@@ -1,8 +1,8 @@
 import { scopeDescriptionSchema, scopeLinksSchema } from "@brika/registry-core";
+import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate } from "@/lib/http";
-import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
+import { authed, runHandler } from "@/server/http";
 
 const Body = z.object({
   description: scopeDescriptionSchema.nullable(),
@@ -14,10 +14,10 @@ export const Route = createFileRoute("/api/scopes/$scope/profile")({
   server: {
     handlers: {
       PUT: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const parsed = parseBody(Body, await request.json(), "Invalid description or links");
-          const result = unwrap(
+          const result = okOrThrow(
             await a.svc.scopes.setProfile(a.identity, params.scope, {
               description: parsed.description,
               links: parsed.links,
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/api/scopes/$scope/profile")({
             actor: a.identity,
             detail: { links: parsed.links.length },
           });
-          return jsonPrivate({ ok: true, scope: params.scope, profile: result.profile });
+          return reply({ ok: true, scope: params.scope, profile: result.profile });
         }),
     },
   },

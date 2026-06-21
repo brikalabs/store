@@ -1,7 +1,7 @@
+import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate } from "@/lib/http";
-import { operatorAuthed, parseBody, runJson, unwrap } from "@/server/console-api";
+import { operatorAuthed, runHandler } from "@/server/http";
 
 const Body = z.object({
   name: z.string().min(1),
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/api/operator/packages/takedown")({
   server: {
     handlers: {
       POST: ({ request }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await operatorAuthed(request);
           const parsed = parseBody(
             Body,
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/operator/packages/takedown")({
             "name, version and reason are required",
           );
           const { name, version, reason } = parsed;
-          unwrap(await a.svc.management.takedown(name, version, reason));
+          okOrThrow(await a.svc.management.takedown(name, version, reason));
           await a.svc.audit.record({
             action: "takedown",
             packageName: name,
@@ -34,7 +34,7 @@ export const Route = createFileRoute("/api/operator/packages/takedown")({
             actor: a.identity,
             detail: { reason },
           });
-          return jsonPrivate({ ok: true, name, version, takedown: reason });
+          return reply({ ok: true, name, version, takedown: reason });
         }),
     },
   },

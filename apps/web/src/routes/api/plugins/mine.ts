@@ -1,11 +1,11 @@
 import type { PluginListingStatus, PluginSummary } from "@brika/registry-contract";
 import { type MetadataReader, type PackageVersion, scopeOf } from "@brika/registry-core";
+import { reply } from "@brika/router";
 import { listPackageNamesForScopes, listScopesForMember } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonPrivate } from "@/lib/http";
 import { searchPlugins } from "@/lib/registry/registry";
 import { Manifest, manifestToSummary } from "@/lib/registry/registry-source";
-import { authed, runJson } from "@/server/console-api";
+import { authed, runHandler } from "@/server/http";
 import { registryDb } from "@/server/registry-services";
 
 /**
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/plugins/mine")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
 
           // The scopes the user owns, the hosted catalog (rich summaries for listed packages),
@@ -59,7 +59,7 @@ export const Route = createFileRoute("/api/plugins/mine")({
                 (a.displayName ?? a.name).localeCompare(b.displayName ?? b.name),
             );
 
-          return jsonPrivate({ plugins });
+          return reply({ plugins });
         }),
     },
   },

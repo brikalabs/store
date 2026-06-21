@@ -1,7 +1,7 @@
+import { notFound, reply } from "@brika/router";
 import { revokeTokenByHash } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonNotFound, jsonPrivate } from "@/lib/http";
-import { authed, runJson } from "@/server/console-api";
+import { authed, runHandler } from "@/server/http";
 import { registryDb } from "@/server/registry-services";
 
 /**
@@ -13,7 +13,7 @@ export const Route = createFileRoute("/api/account/tokens/$hash")({
   server: {
     handlers: {
       DELETE: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const removed = await revokeTokenByHash(
             registryDb(),
@@ -21,8 +21,8 @@ export const Route = createFileRoute("/api/account/tokens/$hash")({
             a.user.login,
             params.hash,
           );
-          if (!removed) return jsonNotFound();
-          return jsonPrivate({ ok: true });
+          if (!removed) throw notFound();
+          return reply({ ok: true });
         }),
     },
   },

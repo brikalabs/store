@@ -1,7 +1,7 @@
 import { isCanonicalScope } from "@brika/registry-core";
+import { badRequest, httpError, okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonBadRequest, jsonError, jsonPrivate } from "@/lib/http";
-import { authed, runJson, unwrap } from "@/server/console-api";
+import { authed, runHandler } from "@/server/http";
 
 /**
  * `GET /api/scopes/:scope` - the scope's editable profile (display name, description, links,
@@ -13,11 +13,11 @@ export const Route = createFileRoute("/api/scopes/$scope")({
   server: {
     handlers: {
       GET: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const info = await a.svc.scopes.getPublic(params.scope);
-          if (info === null) return jsonError(404, `scope ${params.scope} does not exist`);
-          return jsonPrivate({
+          if (info === null) throw httpError(404, `scope ${params.scope} does not exist`);
+          return reply({
             scope: info.scope,
             displayName: info.displayName,
             description: info.description,
@@ -26,15 +26,15 @@ export const Route = createFileRoute("/api/scopes/$scope")({
           });
         }),
       PUT: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const { scope } = params;
           if (!isCanonicalScope(scope)) {
-            return jsonBadRequest(
+            throw badRequest(
               "Scope must be '@' + 2-20 lowercase letters, digits or hyphens, not starting with a hyphen",
             );
           }
-          const result = unwrap(await a.svc.scopes.claim(a.identity, scope));
+          const result = okOrThrow(await a.svc.scopes.claim(a.identity, scope));
           if (result.created) {
             await a.svc.audit.record({
               action: "scope_create",
@@ -44,10 +44,7 @@ export const Route = createFileRoute("/api/scopes/$scope")({
               detail: null,
             });
           }
-          return jsonPrivate(
-            { ok: true, scope, created: result.created },
-            result.created ? 201 : 200,
-          );
+          return reply({ ok: true, scope, created: result.created }, result.created ? 201 : 200);
         }),
     },
   },

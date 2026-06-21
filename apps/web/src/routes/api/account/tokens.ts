@@ -1,7 +1,7 @@
+import { reply } from "@brika/router";
 import { listSubjectTokens } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonPrivate } from "@/lib/http";
-import { authed, runJson } from "@/server/console-api";
+import { authed, runHandler } from "@/server/http";
 import { registryDb } from "@/server/registry-services";
 
 /**
@@ -12,16 +12,16 @@ export const Route = createFileRoute("/api/account/tokens")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const tokens = await listSubjectTokens(registryDb(), "github", a.user.login);
-          return jsonPrivate({ tokens });
+          return reply({ tokens });
         }),
       POST: ({ request }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const token = await a.svc.tokens.issue(a.user.login);
-          return jsonPrivate({ token }, 201);
+          return reply({ token }, 201);
         }),
     },
   },

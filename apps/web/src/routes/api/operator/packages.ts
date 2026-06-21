@@ -1,6 +1,6 @@
+import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonPrivate } from "@/lib/http";
-import { operatorAuthed, runJson } from "@/server/console-api";
+import { operatorAuthed, runHandler } from "@/server/http";
 
 /**
  * `GET /api/operator/packages` - every package with moderation counts (taken-down/yanked
@@ -10,9 +10,9 @@ export const Route = createFileRoute("/api/operator/packages")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await operatorAuthed(request);
-          return jsonPrivate({ packages: await a.svc.listPackages() });
+          return reply({ packages: await a.svc.listPackages() });
         }),
     },
   },

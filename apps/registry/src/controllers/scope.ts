@@ -6,11 +6,10 @@ import {
   scopeDomainSchema,
   scopeLinksSchema,
 } from "@brika/registry-core";
-import { badRequest, httpError, rateLimit, reply } from "@brika/router";
+import { badRequest, httpError, okOrThrow, rateLimit, reply } from "@brika/router";
 import { z } from "zod";
 import { cf } from "../adapters/cf-rate-limiter";
 import { principal, requireAdmin, requireWrite } from "../auth";
-import { okOrThrow } from "../http/result";
 import { controller, route } from "../http/router";
 
 import type { Services } from "../services";

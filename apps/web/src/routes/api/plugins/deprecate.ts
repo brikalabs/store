@@ -1,7 +1,7 @@
+import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate } from "@/lib/http";
-import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
+import { authed, runHandler } from "@/server/http";
 
 const Body = z.object({
   name: z.string().min(1),
@@ -15,11 +15,11 @@ export const Route = createFileRoute("/api/plugins/deprecate")({
   server: {
     handlers: {
       POST: ({ request }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const parsed = parseBody(Body, await request.json(), "Invalid deprecate request");
           const { name, version, message } = parsed;
-          unwrap(await a.svc.management.deprecate(a.identity, name, version, message));
+          okOrThrow(await a.svc.management.deprecate(a.identity, name, version, message));
           await a.svc.audit.record({
             action: "deprecate",
             packageName: name,
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/plugins/deprecate")({
             actor: a.identity,
             detail: { message },
           });
-          return jsonPrivate({ ok: true, name, version, deprecated: message });
+          return reply({ ok: true, name, version, deprecated: message });
         }),
     },
   },

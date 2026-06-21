@@ -1,8 +1,9 @@
+import { badRequest, notFound, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth/auth";
-import { jsonBadRequest, jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
 import { ensurePluginCached, listReviews, upsertReview } from "@/lib/social/social";
+import { publicJson, runHandler } from "@/server/http";
 import { serverContext } from "@/server/server-context";
 
 const ReviewInput = z.object({
@@ -16,21 +17,23 @@ const ReviewInput = z.object({
 export const Route = createFileRoute("/v1/plugins/$name/reviews")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
-        const viewerId = await getSessionUserId(request);
-        return jsonOk(await listReviews(serverContext().db, params.name, viewerId));
-      },
-      POST: async ({ request, params }) => {
-        const userId = await getSessionUserId(request);
-        if (userId === null) return jsonUnauthorized();
-        const body: unknown = await request.json();
-        const parsed = ReviewInput.safeParse(body);
-        if (!parsed.success) return jsonBadRequest("Invalid review");
-        const database = serverContext().db;
-        if (!(await ensurePluginCached(database, params.name))) return jsonNotFound();
-        await upsertReview(database, params.name, userId, parsed.data);
-        return jsonOk(await listReviews(database, params.name, userId));
-      },
+      GET: ({ request, params }) =>
+        runHandler(async () => {
+          const viewerId = await getSessionUserId(request);
+          return publicJson(await listReviews(serverContext().db, params.name, viewerId));
+        }),
+      POST: ({ request, params }) =>
+        runHandler(async () => {
+          const userId = await getSessionUserId(request);
+          if (userId === null) throw unauthorized("Sign in required");
+          const body: unknown = await request.json();
+          const parsed = ReviewInput.safeParse(body);
+          if (!parsed.success) throw badRequest("Invalid review");
+          const database = serverContext().db;
+          if (!(await ensurePluginCached(database, params.name))) throw notFound();
+          await upsertReview(database, params.name, userId, parsed.data);
+          return publicJson(await listReviews(database, params.name, userId));
+        }),
     },
   },
 });

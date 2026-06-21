@@ -1,8 +1,8 @@
 import { domainChallengeHost, scopeDomainSchema } from "@brika/registry-core";
+import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate } from "@/lib/http";
-import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
+import { authed, runHandler } from "@/server/http";
 
 const DomainBody = z.object({ domain: scopeDomainSchema });
 
@@ -17,9 +17,9 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
   server: {
     handlers: {
       GET: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
-          const result = unwrap(await a.svc.scopes.listDomains(a.identity, params.scope));
+          const result = okOrThrow(await a.svc.scopes.listDomains(a.identity, params.scope));
           // Surface the (derived) TXT host + value each pending domain must publish.
           const domains = await Promise.all(
             result.domains.map(async (d) => ({
@@ -28,14 +28,14 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
               txt: await a.svc.scopes.domainChallenge(params.scope, d.domain),
             })),
           );
-          return jsonPrivate({ scope: params.scope, domains });
+          return reply({ scope: params.scope, domains });
         }),
       PUT: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
           const { domain } = parsed;
-          const result = unwrap(await a.svc.scopes.addDomain(a.identity, params.scope, domain));
+          const result = okOrThrow(await a.svc.scopes.addDomain(a.identity, params.scope, domain));
           await a.svc.audit.record({
             action: "scope_domain_add",
             packageName: params.scope,
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
             actor: a.identity,
             detail: { domain },
           });
-          return jsonPrivate(
+          return reply(
             {
               ok: true,
               domain: result.domain,
@@ -54,10 +54,10 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
           );
         }),
       POST: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
-          const result = unwrap(
+          const result = okOrThrow(
             await a.svc.scopes.verifyDomain(a.identity, params.scope, parsed.domain),
           );
           if (result.verified) {
@@ -69,13 +69,13 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
               detail: { domain: parsed.domain },
             });
           }
-          return jsonPrivate({ ok: true, domain: result.domain, verified: result.verified });
+          return reply({ ok: true, domain: result.domain, verified: result.verified });
         }),
       DELETE: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
-          unwrap(await a.svc.scopes.removeDomain(a.identity, params.scope, parsed.domain));
+          okOrThrow(await a.svc.scopes.removeDomain(a.identity, params.scope, parsed.domain));
           await a.svc.audit.record({
             action: "scope_domain_remove",
             packageName: params.scope,
@@ -83,7 +83,7 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
             actor: a.identity,
             detail: { domain: parsed.domain },
           });
-          return jsonPrivate({ ok: true, removed: parsed.domain });
+          return reply({ ok: true, removed: parsed.domain });
         }),
     },
   },

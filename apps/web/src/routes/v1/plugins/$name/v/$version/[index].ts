@@ -1,7 +1,8 @@
+import { notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonNotFound, jsonOk } from "@/lib/http";
 import { getRegistryFileList } from "@/lib/registry/registry-assets";
 import { isRegistryName } from "@/lib/registry/registry-source";
+import { publicJson, runHandler } from "@/server/http";
 import { serverContext } from "@/server/server-context";
 
 /**
@@ -14,13 +15,14 @@ import { serverContext } from "@/server/server-context";
 export const Route = createFileRoute("/v1/plugins/$name/v/$version/index")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
-        const name = decodeURIComponent(params.name);
-        if (!isRegistryName(name)) return jsonNotFound();
-        const index = await getRegistryFileList(serverContext().assets, name, params.version);
-        if (index === null) return jsonNotFound();
-        return jsonOk(index);
-      },
+      GET: ({ params }) =>
+        runHandler(async () => {
+          const name = decodeURIComponent(params.name);
+          if (!isRegistryName(name)) throw notFound();
+          const index = await getRegistryFileList(serverContext().assets, name, params.version);
+          if (index === null) throw notFound();
+          return publicJson(index);
+        }),
     },
   },
 });

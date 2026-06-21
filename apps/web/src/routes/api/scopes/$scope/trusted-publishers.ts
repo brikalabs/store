@@ -1,7 +1,7 @@
+import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate } from "@/lib/http";
-import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
+import { authed, runHandler } from "@/server/http";
 
 /**
  * Trusted-publisher bindings for a scope (PUB-016), admin-gated by the ScopeService.
@@ -21,18 +21,18 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
   server: {
     handlers: {
       GET: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
-          const { publishers } = unwrap(
+          const { publishers } = okOrThrow(
             await a.svc.scopes.listTrustedPublishers(a.identity, params.scope),
           );
-          return jsonPrivate({ scope: params.scope, publishers });
+          return reply({ scope: params.scope, publishers });
         }),
       PUT: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
-          const { publisher } = unwrap(
+          const { publisher } = okOrThrow(
             await a.svc.scopes.addTrustedPublisher(a.identity, params.scope, binding),
           );
           await a.svc.audit.record({
@@ -42,13 +42,13 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
             actor: a.identity,
             detail: binding,
           });
-          return jsonPrivate({ ok: true, publisher }, 201);
+          return reply({ ok: true, publisher }, 201);
         }),
       DELETE: ({ request, params }) =>
-        runJson(async () => {
+        runHandler(async () => {
           const a = await authed(request);
           const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
-          const { removed } = unwrap(
+          const { removed } = okOrThrow(
             await a.svc.scopes.removeTrustedPublisher(a.identity, params.scope, binding),
           );
           await a.svc.audit.record({
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
             actor: a.identity,
             detail: binding,
           });
-          return jsonPrivate({ ok: true, removed });
+          return reply({ ok: true, removed });
         }),
     },
   },

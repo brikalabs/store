@@ -1,8 +1,9 @@
+import { badRequest, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
-import { jsonBadRequest, jsonOk, jsonUnauthorized } from "@/lib/http";
 import { getUserProfile, updateUserProfile } from "@/lib/social/social";
+import { publicJson, runHandler } from "@/server/http";
 import { serverContext } from "@/server/server-context";
 
 const ProfileInput = z.object({
@@ -24,25 +25,27 @@ const ProfileInput = z.object({
 export const Route = createFileRoute("/api/account/profile")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        const { db } = serverContext();
-        const user = await getCurrentUser(request, db);
-        if (user === null) return jsonUnauthorized();
-        const profile = await getUserProfile(db, user.id);
-        if (profile === null) return jsonUnauthorized();
-        return jsonOk(profile);
-      },
-      PUT: async ({ request }) => {
-        const { db } = serverContext();
-        const user = await getCurrentUser(request, db);
-        if (user === null) return jsonUnauthorized();
-        const parsed = ProfileInput.safeParse(await request.json());
-        if (!parsed.success) return jsonBadRequest("Invalid profile");
-        await updateUserProfile(db, user.id, parsed.data);
-        const profile = await getUserProfile(db, user.id);
-        if (profile === null) return jsonUnauthorized();
-        return jsonOk(profile);
-      },
+      GET: ({ request }) =>
+        runHandler(async () => {
+          const { db } = serverContext();
+          const user = await getCurrentUser(request, db);
+          if (user === null) throw unauthorized("Sign in required");
+          const profile = await getUserProfile(db, user.id);
+          if (profile === null) throw unauthorized("Sign in required");
+          return publicJson(profile);
+        }),
+      PUT: ({ request }) =>
+        runHandler(async () => {
+          const { db } = serverContext();
+          const user = await getCurrentUser(request, db);
+          if (user === null) throw unauthorized("Sign in required");
+          const parsed = ProfileInput.safeParse(await request.json());
+          if (!parsed.success) throw badRequest("Invalid profile");
+          await updateUserProfile(db, user.id, parsed.data);
+          const profile = await getUserProfile(db, user.id);
+          if (profile === null) throw unauthorized("Sign in required");
+          return publicJson(profile);
+        }),
     },
   },
 });

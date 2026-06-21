@@ -1,8 +1,9 @@
+import { badRequest, notFound, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth/auth";
-import { jsonBadRequest, jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
 import { addComment, ensurePluginCached, listComments } from "@/lib/social/social";
+import { publicJson, runHandler } from "@/server/http";
 import { serverContext } from "@/server/server-context";
 
 const CommentInput = z.object({
@@ -14,27 +15,29 @@ const CommentInput = z.object({
 export const Route = createFileRoute("/v1/plugins/$name/comments")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
-        const viewerId = await getSessionUserId(request);
-        return jsonOk(await listComments(serverContext().db, params.name, viewerId));
-      },
-      POST: async ({ request, params }) => {
-        const userId = await getSessionUserId(request);
-        if (userId === null) return jsonUnauthorized();
-        const body: unknown = await request.json();
-        const parsed = CommentInput.safeParse(body);
-        if (!parsed.success) return jsonBadRequest("Invalid comment");
-        const database = serverContext().db;
-        if (!(await ensurePluginCached(database, params.name))) return jsonNotFound();
-        await addComment(
-          database,
-          params.name,
-          userId,
-          parsed.data.body,
-          parsed.data.parentId ?? null,
-        );
-        return jsonOk(await listComments(database, params.name, userId));
-      },
+      GET: ({ request, params }) =>
+        runHandler(async () => {
+          const viewerId = await getSessionUserId(request);
+          return publicJson(await listComments(serverContext().db, params.name, viewerId));
+        }),
+      POST: ({ request, params }) =>
+        runHandler(async () => {
+          const userId = await getSessionUserId(request);
+          if (userId === null) throw unauthorized("Sign in required");
+          const body: unknown = await request.json();
+          const parsed = CommentInput.safeParse(body);
+          if (!parsed.success) throw badRequest("Invalid comment");
+          const database = serverContext().db;
+          if (!(await ensurePluginCached(database, params.name))) throw notFound();
+          await addComment(
+            database,
+            params.name,
+            userId,
+            parsed.data.body,
+            parsed.data.parentId ?? null,
+          );
+          return publicJson(await listComments(database, params.name, userId));
+        }),
     },
   },
 });
