@@ -1,17 +1,19 @@
 import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
+import { notFound } from "@brika/router";
 import { CONTENT_TYPE_BY_EXT } from "@/lib/scope-icon";
 import { BlobStore } from "@/server/blob-store";
 
 /**
- * Stream a scope's uploaded logo from R2 (ORG-009 GET). Returns a 404 `Response` when the scope
- * has no icon pointer or the staged blob is gone. Keeps the R2 read off the route handler.
+ * Stream a scope's uploaded logo from R2 (ORG-009 GET). Throws `notFound()` (a 404, mapped by
+ * `runHandler`) when the scope has no icon pointer or the staged blob is gone, exactly as a
+ * registry controller signals a miss. Keeps the R2 read off the route handler.
  */
 export async function streamScopeIcon(scope: string): Promise<Response> {
   const iconKey = await inject(ScopeService).iconKeyOf(scope);
-  if (iconKey === null) return new Response("Not found", { status: 404 });
+  if (iconKey === null) throw notFound();
   const stored = await inject(BlobStore).get(iconKey);
-  if (stored === null) return new Response("Not found", { status: 404 });
+  if (stored === null) throw notFound();
   const ext = iconKey.split(".").pop() ?? "";
   // Copy into a fresh ArrayBuffer-backed view so the body type is concrete.
   const body = new Uint8Array(stored.byteLength);
