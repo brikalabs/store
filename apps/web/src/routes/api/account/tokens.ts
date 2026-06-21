@@ -1,8 +1,9 @@
+import { inject } from "@brika/di";
 import { reply } from "@brika/router";
 import { listSubjectTokens } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
 import { authed, runHandler } from "@/server/http";
-import { registryDb } from "@/server/registry-services";
+import { REG_DB } from "@/server/tokens";
 
 /**
  * `GET  /api/account/tokens` - the signed-in user's publish tokens (metadata only; the
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/api/account/tokens")({
       GET: ({ request }) =>
         runHandler(async () => {
           const a = await authed(request);
-          const tokens = await listSubjectTokens(registryDb(), "github", a.user.login);
+          const tokens = await listSubjectTokens(inject(REG_DB), "github", a.user.login);
           return reply({ tokens });
         }),
       POST: ({ request }) =>

@@ -1,8 +1,10 @@
 import { InjectionToken, inject } from "@brika/di";
+import type { Db as RegDb } from "@brika/store-db";
 import type { BlobStore } from "@/server/blob-store";
 import { CfR2BlobStore } from "@/server/blob-store";
 import type { Db } from "@/server/db/client";
 import { getDb } from "@/server/db/client";
+import type { RegistryServices } from "@/server/registry-services";
 
 /**
  * The DI tokens for the request-scoped bindings. ENV is the ONLY thing the framework adapter
@@ -22,3 +24,13 @@ export const DB = new InjectionToken<Db>({ factory: () => getDb(inject(ENV).DB) 
 export const ASSETS = new InjectionToken<BlobStore>({
   factory: () => new CfR2BlobStore(inject(ENV).ASSETS),
 });
+
+/**
+ * The `reg_*` drizzle client (same shared D1 as {@link DB}, typed with the registry schema).
+ * Provided by {@link webInjector} via `useFactory` so `@brika/registry-core` stays a pure
+ * package (no `@brika/di` import there); a handler reads it with `inject(REG_DB)`.
+ */
+export const REG_DB = new InjectionToken<RegDb>();
+
+/** The web app's D1-backed registry service graph (scopes/members/management/.../audit). */
+export const REGISTRY = new InjectionToken<RegistryServices>();
