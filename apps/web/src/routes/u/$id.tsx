@@ -5,10 +5,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
 import { MessageSquare, Star } from "lucide-react";
-import { LinkIcon } from "@/components/clay/link-icon";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { Stars } from "@/components/clay/stars";
 import { NotFoundPage } from "@/components/feedback/error-pages";
+import { ProfileLinks } from "@/components/plugin/profile-links";
 import { ShowcaseCard, Stat } from "@/components/plugin/showcase-card";
 import { formatCount } from "@/lib/format";
 import { searchPlugins } from "@/lib/registry/registry";
@@ -99,36 +99,14 @@ function UserProfileView({ page }: Readonly<{ page: UserPage }>) {
           {profile.bio !== undefined && profile.bio.length > 0 ? (
             <p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">{profile.bio}</p>
           ) : null}
-          {profile.website !== undefined || profile.links.length > 0 ? (
-            <ul className="mt-3.5 flex flex-wrap items-center gap-2">
-              {profile.website === undefined ? null : (
-                <li key={`website:${profile.website}`}>
-                  <a
-                    href={profile.website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 font-medium text-foreground text-sm transition-colors hover:bg-muted"
-                  >
-                    <LinkIcon url={profile.website} className="size-4 text-muted-foreground" />
-                    Website
-                  </a>
-                </li>
-              )}
-              {profile.links.map((link) => (
-                <li key={`${link.label}:${link.url}`}>
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 font-medium text-foreground text-sm transition-colors hover:bg-muted"
-                  >
-                    <LinkIcon url={link.url} className="size-4 text-muted-foreground" />
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <ProfileLinks
+            links={[
+              ...(profile.website === undefined
+                ? []
+                : [{ label: "Website", url: profile.website }]),
+              ...profile.links,
+            ]}
+          />
         </div>
         <div className="flex gap-2.5">
           <Stat value={String(plugins.length)} label="plugins" />

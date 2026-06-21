@@ -1,6 +1,6 @@
 import { Globe, ShieldCheck } from "lucide-react";
-import { LinkIcon } from "@/components/clay/link-icon";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { ProfileLinks } from "@/components/plugin/profile-links";
 import { ShowcaseCard, Stat } from "@/components/plugin/showcase-card";
 import { formatCount } from "@/lib/format";
 import type { ScopePage } from "@/lib/registry/registry";
@@ -45,23 +45,7 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
           {description !== null && description.length > 0 ? (
             <p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">{description}</p>
           ) : null}
-          {links.length > 0 ? (
-            <ul className="mt-3.5 flex flex-wrap items-center gap-2">
-              {links.map((link) => (
-                <li key={`${link.label}:${link.url}`}>
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 font-medium text-foreground text-sm transition-colors hover:bg-muted"
-                  >
-                    <LinkIcon url={link.url} className="size-4 text-muted-foreground" />
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <ProfileLinks links={links} />
           {verifiedDomains.length > 0 ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {verifiedDomains.map((domain) => (
