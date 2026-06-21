@@ -1,6 +1,6 @@
 import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
-import { okOrThrow, parseBody, reply } from "@brika/router";
+import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { recordAudit, runOperator } from "@/server/http";
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/operator/scopes/$scope/takedown")({
     handlers: {
       POST: ({ request, params }) =>
         runOperator(request, async (a) => {
-          const parsed = parseBody(Body, await request.json(), "A takedown reason is required");
+          const parsed = await readBody(request, Body, "A takedown reason is required");
           okOrThrow(await inject(ScopeService).takedown(params.scope, parsed.reason));
           await recordAudit(a, {
             action: "scope_takedown",

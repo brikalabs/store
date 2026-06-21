@@ -1,5 +1,5 @@
 import { inject } from "@brika/di";
-import { badRequest, notFound, unauthorized } from "@brika/router";
+import { notFound, readBody, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth/auth";
@@ -26,11 +26,10 @@ export const Route = createFileRoute("/v1/plugins/$name/reviews")({
         runHandler(async () => {
           const userId = await getSessionUserId(request);
           if (userId === null) throw unauthorized("Sign in required");
-          const parsed = ReviewInput.safeParse(await request.json());
-          if (!parsed.success) throw badRequest("Invalid review");
+          const parsed = await readBody(request, ReviewInput, "Invalid review");
           const social = inject(SocialService);
           if (!(await social.ensurePluginCached(params.name))) throw notFound();
-          await social.submitReview(params.name, userId, parsed.data);
+          await social.submitReview(params.name, userId, parsed);
           return publicJson(await social.listReviews(params.name, userId));
         }),
     },

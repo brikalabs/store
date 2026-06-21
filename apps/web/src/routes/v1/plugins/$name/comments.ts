@@ -1,5 +1,5 @@
 import { inject } from "@brika/di";
-import { badRequest, notFound, unauthorized } from "@brika/router";
+import { notFound, readBody, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth/auth";
@@ -24,16 +24,10 @@ export const Route = createFileRoute("/v1/plugins/$name/comments")({
         runHandler(async () => {
           const userId = await getSessionUserId(request);
           if (userId === null) throw unauthorized("Sign in required");
-          const parsed = CommentInput.safeParse(await request.json());
-          if (!parsed.success) throw badRequest("Invalid comment");
+          const parsed = await readBody(request, CommentInput, "Invalid comment");
           const social = inject(SocialService);
           if (!(await social.ensurePluginCached(params.name))) throw notFound();
-          await social.addComment(
-            params.name,
-            userId,
-            parsed.data.body,
-            parsed.data.parentId ?? null,
-          );
+          await social.addComment(params.name, userId, parsed.body, parsed.parentId ?? null);
           return publicJson(await social.listComments(params.name, userId));
         }),
     },

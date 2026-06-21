@@ -1,6 +1,6 @@
 import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
-import { okOrThrow, parseBody, reply } from "@brika/router";
+import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { recordAudit, runAuthed } from "@/server/http";
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
         }),
       PUT: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
+          const binding = await readBody(request, Body, "Invalid trusted publisher");
           const { publisher } = okOrThrow(
             await inject(ScopeService).addTrustedPublisher(a.identity, params.scope, binding),
           );
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
         }),
       DELETE: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
+          const binding = await readBody(request, Body, "Invalid trusted publisher");
           const { removed } = okOrThrow(
             await inject(ScopeService).removeTrustedPublisher(a.identity, params.scope, binding),
           );

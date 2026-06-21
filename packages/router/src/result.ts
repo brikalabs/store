@@ -38,3 +38,18 @@ export function parseBody<T>(
   if (!parsed.success) throw badRequest(message);
   return parsed.data;
 }
+
+/**
+ * Read AND validate a JSON request body in one step: `await readBody(request, Schema, "...")`.
+ * Folds the `await request.json()` that {@link parseBody} otherwise needs at every call site, and
+ * makes malformed JSON a clean 400 too (a bare `request.json()` throws a `SyntaxError`, which would
+ * otherwise surface as a 500). For a TanStack-style handler that parses the body itself.
+ */
+export async function readBody<T>(
+  request: Request,
+  schema: z.ZodType<T>,
+  message = "Invalid request body",
+): Promise<T> {
+  const value: unknown = await request.json().catch(() => null);
+  return parseBody(schema, value, message);
+}

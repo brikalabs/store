@@ -1,6 +1,6 @@
 import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
-import { okOrThrow, parseBody, reply } from "@brika/router";
+import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { recordAudit, runAuthed } from "@/server/http";
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/scopes/$scope/members")({
         }),
       PUT: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const parsed = parseBody(PutBody, await request.json(), "Invalid member or role");
+          const parsed = await readBody(request, PutBody, "Invalid member or role");
           const target = { provider: "github", id: parsed.memberId };
           const result = okOrThrow(
             await inject(ScopeService).setMember(a.identity, params.scope, target, parsed.role),

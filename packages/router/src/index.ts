@@ -30,7 +30,7 @@ export {
   rateLimit,
 } from "./rate-limit";
 export { created, json, noContent, type ResponseInit, reply, text } from "./response";
-export { okOrThrow, parseBody } from "./result";
+export { okOrThrow, parseBody, readBody } from "./result";
 export {
   type Controller,
   type ControllerConfig,

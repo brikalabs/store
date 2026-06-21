@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { inject } from "@brika/di";
-import { badRequest, unauthorized } from "@brika/router";
+import { badRequest, readBody, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
@@ -25,11 +25,9 @@ export const Route = createFileRoute("/api/device/approve")({
           const user = await getCurrentUser(request, inject(Database).orm);
           if (user === null) throw unauthorized("Sign in required");
 
-          const raw: unknown = await request.json().catch(() => null);
-          const parsed = ApproveInput.safeParse(raw);
-          if (!parsed.success) throw badRequest("Invalid request");
+          const parsed = await readBody(request, ApproveInput, "Invalid request");
 
-          const code = parsed.data.user_code.trim().toUpperCase();
+          const code = parsed.user_code.trim().toUpperCase();
           if (!(await approveDeviceCode(env.DB, code, user.login))) {
             throw badRequest("That code is invalid, expired, or already used");
           }

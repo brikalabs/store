@@ -1,5 +1,5 @@
 import { inject } from "@brika/di";
-import { badRequest, unauthorized } from "@brika/router";
+import { readBody, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
@@ -40,10 +40,9 @@ export const Route = createFileRoute("/api/account/profile")({
           const db = inject(Database).orm;
           const user = await getCurrentUser(request, db);
           if (user === null) throw unauthorized("Sign in required");
-          const parsed = ProfileInput.safeParse(await request.json());
-          if (!parsed.success) throw badRequest("Invalid profile");
+          const parsed = await readBody(request, ProfileInput, "Invalid profile");
           const social = inject(SocialService);
-          await social.updateUserProfile(user.id, parsed.data);
+          await social.updateUserProfile(user.id, parsed);
           const profile = await social.getUserProfile(user.id);
           if (profile === null) throw unauthorized("Sign in required");
           return publicJson(profile);
