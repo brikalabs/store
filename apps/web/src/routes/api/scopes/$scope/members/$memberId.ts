@@ -1,26 +1,43 @@
 import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
-import { okOrThrow, reply } from "@brika/router";
+import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { recordAudit, runAuthed } from "@/server/http";
 
+const RoleBody = z.object({ role: z.enum(["admin", "member"]) });
+
 /**
- * `DELETE /api/scopes/:scope/members/:memberId` - remove a member (admin only). The domain
- * refuses removing the scope's last admin (409) and 404s a non-member.
+ * `PUT    /api/scopes/:scope/members/:memberId` - change an existing member's role by account id
+ * (admin only); the domain refuses demoting the last admin (409).
+ * `DELETE /api/scopes/:scope/members/:memberId` - remove a member by account id (admin only). The
+ * domain refuses removing the scope's last admin (409) and 404s a non-member.
  */
 export const Route = createFileRoute("/api/scopes/$scope/members/$memberId")({
   server: {
     handlers: {
+      PUT: ({ request, params }) =>
+        runAuthed(request, async (a) => {
+          const { role } = await readBody(request, RoleBody, "Invalid role");
+          const result = okOrThrow(
+            await inject(ScopeService).setMember(a.identity, params.scope, params.memberId, role),
+          );
+          await recordAudit(a, {
+            action: "scope_member_set",
+            packageName: params.scope,
+            detail: { userId: params.memberId, role },
+          });
+          return reply({ ok: true, scope: params.scope, member: result.member });
+        }),
       DELETE: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const target = { provider: "github", id: params.memberId };
           const result = okOrThrow(
-            await inject(ScopeService).removeMember(a.identity, params.scope, target),
+            await inject(ScopeService).removeMember(a.identity, params.scope, params.memberId),
           );
           await recordAudit(a, {
             action: "scope_member_remove",
             packageName: params.scope,
-            detail: target,
+            detail: { userId: params.memberId },
           });
           return reply({ ok: true, scope: params.scope, removed: result.removed });
         }),

@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -20,12 +20,14 @@ import * as schema from "./db/schema";
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, "../../drizzle");
-const MIGRATIONS = ["0000_parched_sauron.sql", "0001_betterauth.sql", "0002_user_profiles.sql"];
 const SECRET = "dev-only-secret-not-for-production";
 
 function makeDb() {
   const sqlite = new Database(":memory:");
-  for (const file of MIGRATIONS) {
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
+  for (const file of files) {
     for (const statement of readFileSync(join(MIGRATIONS_DIR, file), "utf8").split(
       "--> statement-breakpoint",
     )) {
@@ -43,12 +45,7 @@ function makeAuth(db: ReturnType<typeof drizzle>) {
     secret: SECRET,
     baseURL: "http://localhost:3000",
     trustedOrigins: ["http://localhost:3000"],
-    user: {
-      modelName: "users",
-      additionalFields: {
-        login: { type: "string", required: false, input: false },
-      },
-    },
+    user: { modelName: "users" },
   });
 }
 
@@ -59,8 +56,8 @@ describe("mintBetterAuthSession", () => {
 
     const now = Math.floor(Date.now() / 1000);
     sqlite.run(
-      "INSERT INTO users (id, login, name, email_verified, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)",
-      ["u-test", "octocat", "Octo Cat", now, now],
+      "INSERT INTO users (id, name, email_verified, created_at, updated_at) VALUES (?, ?, 0, ?, ?)",
+      ["u-test", "Octo Cat", now, now],
     );
 
     // Forge the session against the SAME in-memory db (the sqlite handle).
@@ -83,8 +80,8 @@ describe("mintBetterAuthSession", () => {
     const auth = makeAuth(db);
     const now = Math.floor(Date.now() / 1000);
     sqlite.run(
-      "INSERT INTO users (id, login, email_verified, created_at, updated_at) VALUES (?, ?, 0, ?, ?)",
-      ["u-test", "octocat", now, now],
+      "INSERT INTO users (id, email_verified, created_at, updated_at) VALUES (?, 0, ?, ?)",
+      ["u-test", now, now],
     );
 
     const { name, value } = await mintBetterAuthSession(sqlite, {

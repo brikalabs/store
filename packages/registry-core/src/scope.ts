@@ -1,6 +1,6 @@
 import { HttpStatus } from "./http-status";
 import { REGISTRY_LIMITS } from "./limits";
-import type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
+import type { ScopeMember, ScopeMembers, ScopeRole } from "./membership";
 import type { ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 import type {
@@ -131,7 +131,8 @@ export class ScopeService {
     identity: PublishIdentity,
     scope: string,
   ): Promise<ScopeResult<{ created: boolean; scope: string }>> {
-    const me: MemberRef = { provider: identity.provider, id: identity.owner };
+    const me = identity.userId;
+    if (me === null) return refuse(HttpStatus.FORBIDDEN, "a CI credential cannot claim a scope");
 
     // Identity-tied claim gate (ORG-006 seam). Allow-all by default.
     const verified = await this.#verifier.verify(identity, scope);
@@ -172,43 +173,40 @@ export class ScopeService {
   async setMember(
     identity: PublishIdentity,
     scope: string,
-    target: MemberRef,
+    targetUserId: string,
     role: ScopeRole,
   ): Promise<ScopeResult<{ member: ScopeMember }>> {
     const gate = await this.#requireAdmin(identity, scope);
     if (!gate.ok) return gate;
 
-    const current = await this.#members.roleOf(scope, target);
+    const current = await this.#members.roleOf(scope, targetUserId);
     if (current === "admin" && role === "member") {
-      if (!(await this.#members.demoteFromAdmin(scope, target))) {
+      if (!(await this.#members.demoteFromAdmin(scope, targetUserId))) {
         return refuse(HttpStatus.CONFLICT, `scope ${scope} must keep at least one admin`);
       }
     } else {
-      await this.#members.upsert(scope, target, role);
+      await this.#members.upsert(scope, targetUserId, role);
     }
-    return { ok: true, member: { ...target, role } };
+    return { ok: true, member: { userId: targetUserId, role } };
   }
 
   /** Remove a member (admin only); never removes the last admin. */
   async removeMember(
     identity: PublishIdentity,
     scope: string,
-    target: MemberRef,
-  ): Promise<ScopeResult<{ removed: MemberRef }>> {
+    targetUserId: string,
+  ): Promise<ScopeResult<{ removed: string }>> {
     const gate = await this.#requireAdmin(identity, scope);
     if (!gate.ok) return gate;
 
-    const role = await this.#members.roleOf(scope, target);
+    const role = await this.#members.roleOf(scope, targetUserId);
     if (role === null) {
-      return refuse(
-        HttpStatus.NOT_FOUND,
-        `${target.provider}:${target.id} is not a member of ${scope}`,
-      );
+      return refuse(HttpStatus.NOT_FOUND, `${targetUserId} is not a member of ${scope}`);
     }
-    if (!(await this.#members.remove(scope, target))) {
+    if (!(await this.#members.remove(scope, targetUserId))) {
       return refuse(HttpStatus.CONFLICT, `scope ${scope} must keep at least one admin`);
     }
-    return { ok: true, removed: target };
+    return { ok: true, removed: targetUserId };
   }
 
   /** Set the verified-publisher display name (admin only); null clears it. */
@@ -447,7 +445,7 @@ export class ScopeService {
   /** Idempotent re-claim: success when the caller is already a member, else a conflict. */
   async #reclaim(
     scope: string,
-    me: MemberRef,
+    me: string,
   ): Promise<ScopeResult<{ created: boolean; scope: string }>> {
     const role = await this.#members.roleOf(scope, me);
     return role === null
@@ -460,10 +458,8 @@ export class ScopeService {
     identity: PublishIdentity,
     scope: string,
   ): Promise<{ ok: true; role: ScopeRole } | { ok: false; status: number; message: string }> {
-    const role = await this.#members.roleOf(scope, {
-      provider: identity.provider,
-      id: identity.owner,
-    });
+    const role =
+      identity.userId === null ? null : await this.#members.roleOf(scope, identity.userId);
     if (role !== null) return { ok: true, role };
     const exists = (await this.#scopes.get(scope)) !== null;
     return exists

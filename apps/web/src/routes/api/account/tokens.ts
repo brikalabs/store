@@ -14,12 +14,12 @@ export const Route = createFileRoute("/api/account/tokens")({
     handlers: {
       GET: ({ request }) =>
         runAuthed(request, async (a) => {
-          const tokens = await inject(PublishTokenStore).listSubjectTokens("github", a.user.login);
+          const tokens = await inject(PublishTokenStore).listSubjectTokens(a.user.id);
           return reply({ tokens });
         }),
       POST: ({ request }) =>
         runAuthed(request, async (a) => {
-          const token = await inject(Tokens).issue(a.user.login);
+          const token = await inject(Tokens).issue(a.user.id);
           return reply({ token }, 201);
         }),
     },

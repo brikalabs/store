@@ -16,10 +16,10 @@ import {
  *   binding for the scope matches the token's repo + workflow (PUB-016, npm-style). Tokenless
  *   and not gated on membership - the binding IS the grant, so a scope admin authorizes a
  *   specific repo/workflow without making the CI a member.
- * - **Token publish** (`identity.repository` null, a human `brika` CLI login): allowed when
- *   the identity is a MEMBER of the scope (any role).
+ * - **Token publish** (`identity.repository` null, a human `brika` CLI account): allowed when
+ *   the account (`identity.userId`) is a MEMBER of the scope (any role).
  *
- * Anchored on the verified credential (OIDC `repository`/`workflow_ref` or the token subject),
+ * Anchored on the verified credential (OIDC `repository`/`workflow_ref` or the token's account),
  * so neither path can be spoofed. Membership is resolved directly against the scope (via
  * {@link ScopeMembers}); "unclaimed scope" is told apart from an authorization failure by the
  * absence of any member.
@@ -53,8 +53,9 @@ export class D1OwnershipPolicy implements OwnershipPolicy {
     }
 
     // Human token publish: scope membership (any role).
-    const member = { provider: identity.provider, id: identity.owner };
-    if ((await this.#members.roleOf(scope, member)) !== null) return { ok: true };
+    if (identity.userId !== null && (await this.#members.roleOf(scope, identity.userId)) !== null) {
+      return { ok: true };
+    }
     return {
       ok: false,
       message: `you are not a member of scope ${scope}`,

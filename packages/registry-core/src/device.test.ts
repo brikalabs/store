@@ -7,7 +7,7 @@ function fakeStore(seed: DeviceGrant[] = []): DeviceStore & { grants: Map<string
   return {
     grants,
     async create(grant) {
-      grants.set(grant.deviceCode, { ...grant, githubLogin: null, approved: false });
+      grants.set(grant.deviceCode, { ...grant, userId: null, approved: false });
     },
     async find(deviceCode) {
       return grants.get(deviceCode) ?? null;
@@ -54,7 +54,7 @@ describe("DeviceService.redeem", () => {
       {
         deviceCode: "d",
         userCode: "u",
-        githubLogin: null,
+        userId: null,
         approved: false,
         expiresAt: FIXED_NOW + 60,
       },
@@ -70,7 +70,7 @@ describe("DeviceService.redeem", () => {
       {
         deviceCode: "d",
         userCode: "u",
-        githubLogin: "octocat",
+        userId: "octocat",
         approved: true,
         expiresAt: FIXED_NOW - 1,
       },
@@ -85,13 +85,13 @@ describe("DeviceService.redeem", () => {
       {
         deviceCode: "d",
         userCode: "u",
-        githubLogin: "octocat",
+        userId: "octocat",
         approved: true,
         expiresAt: FIXED_NOW + 60,
       },
     ]);
     const result = await new DeviceService(store, options).redeem("d");
-    expect(result).toEqual({ ok: true, githubLogin: "octocat" });
+    expect(result).toEqual({ ok: true, userId: "octocat" });
     expect(store.grants.has("d")).toBe(false);
   });
 });

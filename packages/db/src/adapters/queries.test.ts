@@ -14,7 +14,7 @@ import {
   listAllPackages,
   listScopesForMember,
   listSubjectTokens,
-  resolveDisplayName,
+  resolveActor,
   revokeTokenByHash,
 } from "./queries";
 
@@ -26,8 +26,8 @@ beforeEach(() => {
 async function scope(name: string, displayName: string | null = null) {
   await db.insert(regScopes).values({ scope: name, displayName });
 }
-async function member(scopeName: string, memberId: string, role: "admin" | "member") {
-  await db.insert(regScopeMembers).values({ scope: scopeName, memberId, role });
+async function member(scopeName: string, userId: string, role: "admin" | "member") {
+  await db.insert(regScopeMembers).values({ scope: scopeName, userId, role });
 }
 
 describe("listScopesForMember", () => {
@@ -39,7 +39,7 @@ describe("listScopesForMember", () => {
     await member("@acme-labs", "alice", "member");
     await member("@beta", "bob", "admin");
 
-    const result = await listScopesForMember(db, "github", "alice");
+    const result = await listScopesForMember(db, "alice");
     expect(result).toEqual([
       { scope: "@acme", role: "admin", displayName: "Acme Inc" },
       { scope: "@acme-labs", role: "member", displayName: null },
@@ -49,7 +49,7 @@ describe("listScopesForMember", () => {
   test("is empty for a non-member", async () => {
     await scope("@acme");
     await member("@acme", "alice", "admin");
-    expect(await listScopesForMember(db, "github", "nobody")).toEqual([]);
+    expect(await listScopesForMember(db, "nobody")).toEqual([]);
   });
 });
 
@@ -112,22 +112,22 @@ describe("listAllPackages (operator directory)", () => {
 });
 
 describe("listSubjectTokens / revokeTokenByHash", () => {
-  async function token(hash: string, subject: string, createdAt: number) {
+  async function token(hash: string, userId: string, createdAt: number) {
     await db.insert(regTokens).values({
       tokenHash: hash,
-      subject,
+      userId,
       createdAt,
       expiresAt: createdAt + 1000,
       lastUsedAt: null,
     });
   }
 
-  test("lists a subject's tokens newest first, metadata only", async () => {
+  test("lists an account's tokens newest first, metadata only", async () => {
     await token("hash-old", "alice", 100);
     await token("hash-new", "alice", 200);
     await token("hash-bob", "bob", 150);
 
-    const result = await listSubjectTokens(db, "github", "alice");
+    const result = await listSubjectTokens(db, "alice");
     expect(result.map((t) => t.tokenHash)).toEqual(["hash-new", "hash-old"]);
     expect(result[0]).toEqual({
       tokenHash: "hash-new",
@@ -139,68 +139,65 @@ describe("listSubjectTokens / revokeTokenByHash", () => {
 
   test("revoke removes the caller's own token", async () => {
     await token("hash-a", "alice", 100);
-    expect(await revokeTokenByHash(db, "github", "alice", "hash-a")).toBe(true);
-    expect(await listSubjectTokens(db, "github", "alice")).toEqual([]);
+    expect(await revokeTokenByHash(db, "alice", "hash-a")).toBe(true);
+    expect(await listSubjectTokens(db, "alice")).toEqual([]);
   });
 
-  test("revoke refuses another subject's token (returns false, leaves it)", async () => {
+  test("revoke refuses another account's token (returns false, leaves it)", async () => {
     await token("hash-bob", "bob", 100);
-    expect(await revokeTokenByHash(db, "github", "alice", "hash-bob")).toBe(false);
-    expect(await listSubjectTokens(db, "github", "bob")).toHaveLength(1);
+    expect(await revokeTokenByHash(db, "alice", "hash-bob")).toBe(false);
+    expect(await listSubjectTokens(db, "bob")).toHaveLength(1);
   });
 
   test("revoke returns false for an unknown token", async () => {
-    expect(await revokeTokenByHash(db, "github", "alice", "nope")).toBe(false);
+    expect(await revokeTokenByHash(db, "alice", "nope")).toBe(false);
   });
 });
 
-describe("resolveDisplayName", () => {
-  // The store's `users`/`user_profiles` tables are NOT in this package's `reg_*`
-  // schema (they belong to the web app) but live in the SAME D1, so the resolver
-  // reads them with raw SQL. Create them by hand here to exercise that path.
+describe("resolveActor", () => {
+  // The store's `users` table is NOT in this package's `reg_*` schema (it belongs to the
+  // web app) but lives in the SAME D1, so the resolver reads it with raw SQL. Create the
+  // merged shape (profile columns folded onto `users`) by hand here to exercise that path.
   beforeEach(async () => {
-    await db.run(sql`CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT, login TEXT)`);
-    await db.run(sql`CREATE TABLE user_profiles (user_id TEXT PRIMARY KEY, display_name TEXT)`);
+    await db.run(
+      sql`CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT, display_name TEXT, image TEXT)`,
+    );
   });
 
-  async function user(id: string, login: string, name: string | null) {
-    await db.run(sql`INSERT INTO users (id, name, login) VALUES (${id}, ${name}, ${login})`);
-  }
-  async function profile(userId: string, displayName: string | null) {
+  async function user(
+    id: string,
+    fields: { name?: string | null; displayName?: string | null; image?: string | null },
+  ) {
     await db.run(
-      sql`INSERT INTO user_profiles (user_id, display_name) VALUES (${userId}, ${displayName})`,
+      sql`INSERT INTO users (id, name, display_name, image)
+          VALUES (${id}, ${fields.name ?? null}, ${fields.displayName ?? null}, ${fields.image ?? null})`,
     );
   }
 
-  test("prefers the profile display name", async () => {
-    await user("u1", "octocat", "Mona Lisa");
-    await profile("u1", "Mona the Octocat");
-    expect(await resolveDisplayName(db, "octocat")).toBe("Mona the Octocat");
+  test("prefers the profile display name, and returns the provider image as the avatar", async () => {
+    await user("u1", { name: "Mona Lisa", displayName: "Mona the Octocat", image: "https://i/x" });
+    expect(await resolveActor(db, "u1")).toEqual({
+      displayName: "Mona the Octocat",
+      avatarUrl: "https://i/x",
+    });
   });
 
-  test("falls back to users.name when no profile display name", async () => {
-    await user("u1", "octocat", "Mona Lisa");
-    await profile("u1", null);
-    expect(await resolveDisplayName(db, "octocat")).toBe("Mona Lisa");
+  test("falls back to users.name when no display name", async () => {
+    await user("u1", { name: "Mona Lisa" });
+    expect(await resolveActor(db, "u1")).toEqual({ displayName: "Mona Lisa", avatarUrl: null });
   });
 
-  test("falls back to users.name when there is no profile row at all", async () => {
-    await user("u1", "octocat", "Mona Lisa");
-    expect(await resolveDisplayName(db, "octocat")).toBe("Mona Lisa");
+  test("returns nulls when the account has neither a display name nor a name", async () => {
+    await user("u1", {});
+    expect(await resolveActor(db, "u1")).toEqual({ displayName: null, avatarUrl: null });
   });
 
-  test("returns null when the account has neither a display name nor a name", async () => {
-    await user("u1", "octocat", null);
-    expect(await resolveDisplayName(db, "octocat")).toBeNull();
-  });
-
-  test("returns null for an unknown login", async () => {
-    expect(await resolveDisplayName(db, "ghost")).toBeNull();
+  test("returns nulls for an unknown id", async () => {
+    expect(await resolveActor(db, "ghost")).toEqual({ displayName: null, avatarUrl: null });
   });
 
   test("treats a whitespace-only display name as absent", async () => {
-    await user("u1", "octocat", "Mona Lisa");
-    await profile("u1", "   ");
-    expect(await resolveDisplayName(db, "octocat")).toBe("Mona Lisa");
+    await user("u1", { name: "Mona Lisa", displayName: "   " });
+    expect(await resolveActor(db, "u1")).toEqual({ displayName: "Mona Lisa", avatarUrl: null });
   });
 });

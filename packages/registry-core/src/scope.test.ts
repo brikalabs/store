@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
+import type { ScopeMember, ScopeMembers, ScopeRole } from "./membership";
 import type { ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 import {
@@ -100,9 +100,6 @@ class FakeScopeDomains implements ScopeDomains {
 
 class FakeScopeMembers implements ScopeMembers {
   readonly byScope = new Map<string, Map<string, ScopeMember>>();
-  #key(m: MemberRef): string {
-    return `${m.provider} ${m.id}`;
-  }
   #scope(scope: string): Map<string, ScopeMember> {
     const existing = this.byScope.get(scope);
     if (existing) return existing;
@@ -113,36 +110,35 @@ class FakeScopeMembers implements ScopeMembers {
   #admins(scope: string): number {
     return [...this.#scope(scope).values()].filter((m) => m.role === "admin").length;
   }
-  async roleOf(scope: string, member: MemberRef): Promise<ScopeRole | null> {
-    return this.#scope(scope).get(this.#key(member))?.role ?? null;
+  async roleOf(scope: string, userId: string): Promise<ScopeRole | null> {
+    return this.#scope(scope).get(userId)?.role ?? null;
   }
   async list(scope: string): Promise<ScopeMember[]> {
     return [...this.#scope(scope).values()];
   }
-  async upsert(scope: string, member: MemberRef, role: ScopeRole): Promise<void> {
-    this.#scope(scope).set(this.#key(member), { ...member, role });
+  async upsert(scope: string, userId: string, role: ScopeRole): Promise<void> {
+    this.#scope(scope).set(userId, { userId, role });
   }
-  async demoteFromAdmin(scope: string, member: MemberRef): Promise<boolean> {
-    const current = this.#scope(scope).get(this.#key(member));
+  async demoteFromAdmin(scope: string, userId: string): Promise<boolean> {
+    const current = this.#scope(scope).get(userId);
     if (current?.role !== "admin" || this.#admins(scope) <= 1) return false;
-    this.#scope(scope).set(this.#key(member), { ...member, role: "member" });
+    this.#scope(scope).set(userId, { userId, role: "member" });
     return true;
   }
-  async remove(scope: string, member: MemberRef): Promise<boolean> {
-    const current = this.#scope(scope).get(this.#key(member));
+  async remove(scope: string, userId: string): Promise<boolean> {
+    const current = this.#scope(scope).get(userId);
     if (current === undefined) return false;
     if (current.role === "admin" && this.#admins(scope) <= 1) return false;
-    this.#scope(scope).delete(this.#key(member));
+    this.#scope(scope).delete(userId);
     return true;
   }
-  async countScopesAdminedBy(member: MemberRef): Promise<number> {
-    return [...this.byScope.values()].filter((m) => m.get(this.#key(member))?.role === "admin")
-      .length;
+  async countScopesAdminedBy(userId: string): Promise<number> {
+    return [...this.byScope.values()].filter((m) => m.get(userId)?.role === "admin").length;
   }
 }
 
-const gh = (owner: string): PublishIdentity => ({ provider: "github", owner, repository: null });
-const ref = (id: string): MemberRef => ({ provider: "github", id });
+const gh = (userId: string): PublishIdentity => ({ userId, provider: null, repository: null });
+const ref = (id: string): string => id;
 
 class FakeTrustedPublishers implements TrustedPublishers {
   readonly rows: TrustedPublisher[] = [];
@@ -288,7 +284,7 @@ describe("last-admin invariant", () => {
     expect(await service.removeMember(gh("alice"), "@team", ref("alice"))).toMatchObject({
       ok: true,
     });
-    expect((await members.list("@team")).map((m) => m.id)).toEqual(["bob"]);
+    expect((await members.list("@team")).map((m) => m.userId)).toEqual(["bob"]);
   });
 
   test("removing a non-member is not_found", async () => {

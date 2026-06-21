@@ -2,18 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { ManagementService, type VersionManager } from "./manage";
 import type { OwnershipPolicy, PublishIdentity } from "./publish";
 
-const OWNER: PublishIdentity = {
-  provider: "github",
-  owner: "brikalabs",
-  repository: "brikalabs/store",
-};
-const STRANGER: PublishIdentity = { provider: "github", owner: "someone-else", repository: null };
+const OWNER: PublishIdentity = { userId: "brikalabs", provider: null, repository: null };
+const STRANGER: PublishIdentity = { userId: "someone-else", provider: null, repository: null };
 
 function allowOwner(): OwnershipPolicy {
   return {
     canPublish: (identity) =>
       Promise.resolve(
-        identity.owner === "brikalabs"
+        identity.userId === "brikalabs"
           ? { ok: true }
           : { ok: false, message: "scope @brika is owned by brikalabs" },
       ),

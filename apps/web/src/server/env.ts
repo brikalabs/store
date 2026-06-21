@@ -28,10 +28,10 @@ export const vars = defineEnv(
     // match the registry worker's DOMAIN_VERIFY_SECRET and stay stable. Security comes from
     // DNS control, not secrecy, so a dev default is fine; set a shared value in production.
     DOMAIN_VERIFY_SECRET: z.string().min(1).default("brika-dev-domain-verify-secret"),
-    // Comma-separated operator allowlist gating the /operator console (provider-qualified
-    // `provider:owner`, e.g. `github:octocat`; a bare entry defaults to `github`). MUST match
-    // the registry worker's REGISTRY_ADMINS so the console and the takedown endpoints agree on
-    // who is an operator. Empty -> no operators, so the console is unreachable until set.
+    // Comma-separated operator allowlist gating the /operator console (Brika account ids,
+    // `users.id`). MUST match the registry worker's REGISTRY_ADMINS so the console and the
+    // takedown endpoints agree on who is an operator. Empty -> no operators, so the console is
+    // unreachable until set.
     REGISTRY_ADMINS: z.string().default(""),
     // Public base URL of the ASSETS R2 bucket, used to build public object URLs for directly-served
     // assets like uploaded user avatars. Set it to the bucket's managed r2.dev URL (enable public
@@ -45,7 +45,7 @@ export const vars = defineEnv(
 
 export type Vars = ReturnType<typeof vars>;
 
-/** The operator allowlist (provider-qualified keys), derived from `REGISTRY_ADMINS`. */
+/** The operator allowlist (Brika account ids), derived from `REGISTRY_ADMINS`. */
 export function operatorAdmins(): ReadonlySet<string> {
   return parseOperatorAdmins(vars().REGISTRY_ADMINS);
 }

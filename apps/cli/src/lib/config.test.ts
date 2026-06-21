@@ -34,7 +34,7 @@ test("defaults when no config file exists", async () => {
 });
 
 test("round-trips a saved token", async () => {
-  await saveConfig({ registry: "https://registry.brika.dev", token: "brika_x", githubLogin: "me" });
+  await saveConfig({ registry: "https://registry.brika.dev", token: "brika_x", userId: "usr_1" });
   const config = await loadConfig();
   expect(config.token).toBe("brika_x");
 });

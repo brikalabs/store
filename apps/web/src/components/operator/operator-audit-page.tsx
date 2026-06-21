@@ -1,12 +1,20 @@
 import { useEffect, useState } from "react";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { OperatorShell } from "@/components/operator/operator-shell";
+
+/** The acting principal, snapshotted at write time (mirrors `@brika/registry-core`'s `Actor`). */
+interface Actor {
+  id: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
 
 interface AuditEntry {
   id: string;
   action: string;
   target: string | null;
   version: string | null;
-  actor: string | null;
+  actor: Actor | null;
   detail: Record<string, unknown> | null;
   at: string;
 }
@@ -14,6 +22,26 @@ interface AuditEntry {
 /** A takedown/removal action reads as destructive; everything else is neutral. */
 function isDestructive(action: string): boolean {
   return action.includes("takedown") || action.includes("remove") || action === "yank";
+}
+
+/**
+ * The actor as snapshotted on the row: a human shows their avatar + display name; a CI/OIDC
+ * publish (no account) shows its `owner/repo` (carried in `displayName`); an empty row shows `·`.
+ */
+function ActorCell({ actor }: { readonly actor: Actor | null }) {
+  const label = actor?.displayName ?? actor?.id ?? null;
+  if (label === null) return <span className="text-muted-foreground text-xs">·</span>;
+  return (
+    <span className="flex items-center gap-2 text-sm">
+      <GradientAvatar
+        seed={actor?.id ?? label}
+        label={label}
+        imageUrl={actor?.avatarUrl}
+        size={20}
+      />
+      <span className="truncate">{label}</span>
+    </span>
+  );
 }
 
 export function OperatorAuditPage() {
@@ -68,7 +96,9 @@ export function OperatorAuditPage() {
                     <span className="text-muted-foreground">@{e.version}</span>
                   )}
                 </td>
-                <td className="px-4 py-2 font-mono text-xs">{e.actor ?? "·"}</td>
+                <td className="px-4 py-2">
+                  <ActorCell actor={e.actor} />
+                </td>
                 <td className="max-w-xs truncate px-4 py-2 text-muted-foreground text-xs">
                   {e.detail === null ? "·" : JSON.stringify(e.detail)}
                 </td>

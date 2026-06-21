@@ -11,14 +11,14 @@ describe("D1AuditLog.recent (operator audit view)", () => {
       action: "org_takedown",
       packageName: "squatter",
       version: null,
-      actor: { provider: "github", owner: "operator", repository: null },
+      actor: { userId: "operator", provider: null, repository: null },
       detail: { reason: "name-squatting" },
     });
     await log.record({
       action: "takedown",
       packageName: "@brika/x",
       version: "1.0.0",
-      actor: { provider: "github", owner: "operator", repository: null },
+      actor: { userId: "operator", provider: null, repository: null },
       detail: null,
     });
 
@@ -29,7 +29,7 @@ describe("D1AuditLog.recent (operator audit view)", () => {
     expect(takedown).toMatchObject({
       target: "squatter",
       version: null,
-      actor: "operator",
+      actor: { id: "operator", displayName: null, avatarUrl: null },
       detail: { reason: "name-squatting" },
     });
     expect(typeof takedown?.at).toBe("string");
@@ -47,7 +47,7 @@ describe("D1AuditLog.recent (operator audit view)", () => {
         action: "publish",
         packageName: `@brika/p${i}`,
         version: "1.0.0",
-        actor: { provider: "github", owner: "octocat", repository: null },
+        actor: { userId: "octocat", provider: null, repository: null },
       });
     }
     expect(await log.recent(3)).toHaveLength(3);
@@ -74,7 +74,7 @@ describe("D1AuditLog.record", () => {
           action: "publish",
           packageName: "@brika/x",
           version: "1.0.0",
-          actor: { owner: "octocat", repository: null },
+          actor: { userId: null, provider: null, repository: null },
         }),
       ).resolves.toBeUndefined();
     } finally {

@@ -17,10 +17,10 @@ GITHUB_REDIRECT_URI=http://localhost:3000/auth/github/callback
 # without it the schema default is the prod URL and local sign-in (callback + CSRF) breaks.
 BETTER_AUTH_URL=http://localhost:3000
 
-# Operator allowlist for the /operator console (comma-separated provider:owner; a bare entry
-# defaults to github). Must match the registry worker's REGISTRY_ADMINS. Empty -> no operators.
+# Operator allowlist for the /operator console (comma-separated Brika account ids, `users.id`).
+# Must match the registry worker's REGISTRY_ADMINS. Empty -> no operators.
 # The operator e2e (e2e/operator.spec.ts) requires this exact value:
-REGISTRY_ADMINS=github:e2e-operator
+REGISTRY_ADMINS=u-operator
 
 # Shared HMAC secret for stateless org domain-verification (ORG-010). Must match the registry
 # worker's DOMAIN_VERIFY_SECRET. Has a dev default, so optional locally.

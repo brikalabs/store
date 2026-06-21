@@ -4,7 +4,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { avatarUrlOf } from "@/lib/avatar";
 import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
-import { reviews, reviewVotes, userProfiles, users } from "@/server/db/schema";
+import { reviews, reviewVotes, users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 import { votedIds } from "@/server/stores/voted-ids";
 
@@ -18,9 +18,9 @@ export interface ReviewInput {
 
 /**
  * Repository for `reviews` (+ the `review_votes` helpful tally). Read methods project a review
- * into the {@link Review} contract, joining `users`/`user_profiles` to resolve the author's one
- * display name and avatar. The rating denormalization on the `plugins` row is a separate
- * concern, recomputed by {@link PluginStore} after a write (orchestrated by the service).
+ * into the {@link Review} contract, joining `users` to resolve the author's one display name and
+ * avatar. The rating denormalization on the `plugins` row is a separate concern, recomputed by
+ * {@link PluginStore} after a write (orchestrated by the service).
  */
 export class ReviewStore {
   readonly #db = inject(Database).orm;
@@ -40,13 +40,12 @@ export class ReviewStore {
         edited: reviews.edited,
         userId: users.id,
         name: users.name,
-        profileDisplayName: userProfiles.displayName,
+        profileDisplayName: users.displayName,
         image: users.image,
-        avatarVersion: userProfiles.avatarVersion,
+        avatarVersion: users.avatarVersion,
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.userId, users.id))
-      .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
       .where(eq(reviews.pluginName, pluginName))
       .orderBy(desc(reviews.createdAt));
 
@@ -94,13 +93,12 @@ export class ReviewStore {
         edited: reviews.edited,
         authorId: users.id,
         name: users.name,
-        profileDisplayName: userProfiles.displayName,
+        profileDisplayName: users.displayName,
         image: users.image,
-        avatarVersion: userProfiles.avatarVersion,
+        avatarVersion: users.avatarVersion,
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.userId, users.id))
-      .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
       .where(eq(reviews.userId, userId))
       .orderBy(desc(reviews.createdAt));
 

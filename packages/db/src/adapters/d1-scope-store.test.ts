@@ -80,10 +80,10 @@ describe("D1ScopeMembers.countScopesAdminedBy", () => {
     await store.claim("@a");
     await store.claim("@b");
     await store.claim("@c");
-    await members.upsert("@a", { provider: "github", id: "alice" }, "admin");
-    await members.upsert("@b", { provider: "github", id: "alice" }, "admin");
-    await members.upsert("@c", { provider: "github", id: "alice" }, "member"); // not admin
-    expect(await members.countScopesAdminedBy({ provider: "github", id: "alice" })).toBe(2);
-    expect(await members.countScopesAdminedBy({ provider: "github", id: "nobody" })).toBe(0);
+    await members.upsert("@a", "alice", "admin");
+    await members.upsert("@b", "alice", "admin");
+    await members.upsert("@c", "alice", "member"); // not admin
+    expect(await members.countScopesAdminedBy("alice")).toBe(2);
+    expect(await members.countScopesAdminedBy("nobody")).toBe(0);
   });
 });

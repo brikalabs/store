@@ -158,7 +158,7 @@ describe("handleDeviceToken", () => {
     const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await db
       .update(regDeviceAuth)
-      .set({ approved: true, githubLogin: "octocat" })
+      .set({ approved: true, userId: "octocat" })
       .where(eq(regDeviceAuth.deviceCode, issued.deviceCode));
 
     const res = await run(ctx, () =>
@@ -167,7 +167,7 @@ describe("handleDeviceToken", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.token_type).toBe("bearer");
-    expect(body.github_login).toBe("octocat");
+    expect(body.user_id).toBe("octocat");
     expect(body.access_token).toMatch(/^brika_/);
     // No store `users` row in this harness, so the display name resolves to null and the
     // CLI falls back to the github login.
@@ -190,7 +190,7 @@ describe("handleWhoami", () => {
     const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await db
       .update(regDeviceAuth)
-      .set({ approved: true, githubLogin: "octocat" })
+      .set({ approved: true, userId: "octocat" })
       .where(eq(regDeviceAuth.deviceCode, issued.deviceCode));
     const tokenBody = await (
       await run(ctx, () => handleDeviceToken(tokenRequest({ device_code: issued.deviceCode })))
@@ -203,7 +203,7 @@ describe("handleWhoami", () => {
     const res = await run(ctx, () => handleWhoami(req));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.github_login).toBe("octocat");
+    expect(body.user_id).toBe("octocat");
     // No store `users` row in this harness, so the display name resolves to null.
     expect(body.display_name).toBeNull();
   });
@@ -221,7 +221,7 @@ describe("handleRevoke", () => {
     const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await db
       .update(regDeviceAuth)
-      .set({ approved: true, githubLogin: "octocat" })
+      .set({ approved: true, userId: "octocat" })
       .where(eq(regDeviceAuth.deviceCode, issued.deviceCode));
     const tokenBody = await (
       await run(ctx, () => handleDeviceToken(tokenRequest({ device_code: issued.deviceCode })))

@@ -13,13 +13,11 @@ import { sessionIdentity } from "@/server/registry-identity";
  * `beforeLoad` executes on the client during navigation (the Start plugin splits this out
  * of the client bundle and calls it over RPC), exactly like `fetchSessionUser`.
  */
-export const fetchOperator = createServerFn().handler(
-  async (): Promise<{ login: string } | null> => {
-    const user = await getCurrentUser(getRequest());
-    if (user === null || !isOperator(operatorAdmins(), sessionIdentity(user))) return null;
-    return { login: user.login };
-  },
-);
+export const fetchOperator = createServerFn().handler(async (): Promise<{ id: string } | null> => {
+  const user = await getCurrentUser(getRequest());
+  if (user === null || !isOperator(operatorAdmins(), sessionIdentity(user))) return null;
+  return { id: user.id };
+});
 
 /** Whether the current session is a registry operator (drives the dashboard's console link). */
 export const fetchIsOperator = createServerFn().handler(
@@ -32,7 +30,7 @@ export const fetchIsOperator = createServerFn().handler(
  * than redirect-to-login or 403 so the console's existence is not advertised to
  * non-operators - it is a moderation surface, not a public feature.
  */
-export async function requireOperator(): Promise<{ login: string }> {
+export async function requireOperator(): Promise<{ id: string }> {
   const operator = await fetchOperator();
   if (operator === null) throw notFound();
   return operator;

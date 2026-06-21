@@ -14,8 +14,8 @@ const oidc = (
   workflowRef?: string,
   provider = "github",
 ): PublishIdentity => ({
+  userId: null,
   provider,
-  owner: repository?.split("/")[0] ?? "x",
   repository,
   provenance: workflowRef === undefined ? undefined : { repository: repository ?? "", workflowRef },
 });

@@ -5,7 +5,6 @@ import { z } from "zod";
 
 const CurrentUser = z.object({
   id: z.string(),
-  login: z.string(),
   name: z.string().nullable(),
   avatarUrl: z.string().nullable(),
 });

@@ -11,7 +11,7 @@ CREATE TABLE `reg_audit` (
 CREATE TABLE `reg_device_auth` (
 	`device_code` text PRIMARY KEY NOT NULL,
 	`user_code` text NOT NULL,
-	`github_login` text,
+	`user_id` text,
 	`approved` integer DEFAULT false NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	`expires_at` integer NOT NULL
@@ -52,11 +52,10 @@ CREATE TABLE `reg_scope_domains` (
 --> statement-breakpoint
 CREATE TABLE `reg_scope_members` (
 	`scope` text NOT NULL,
-	`provider` text DEFAULT 'github' NOT NULL,
-	`member_id` text NOT NULL,
+	`user_id` text NOT NULL,
 	`role` text DEFAULT 'member' NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
-	PRIMARY KEY(`scope`, `provider`, `member_id`),
+	PRIMARY KEY(`scope`, `user_id`),
 	FOREIGN KEY (`scope`) REFERENCES `reg_scopes`(`scope`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
@@ -72,8 +71,7 @@ CREATE TABLE `reg_scopes` (
 --> statement-breakpoint
 CREATE TABLE `reg_tokens` (
 	`token_hash` text PRIMARY KEY NOT NULL,
-	`provider` text DEFAULT 'github' NOT NULL,
-	`github_login` text NOT NULL,
+	`user_id` text NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	`expires_at` integer NOT NULL,
 	`last_used_at` integer

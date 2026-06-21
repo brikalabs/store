@@ -24,8 +24,8 @@ import { Audit } from "../services";
  *   PUT    /-/scope/:scope                          claim a scope (caller becomes admin)
  *   GET    /-/scope/:scope                          public scope info (unauthenticated)
  *   GET    /-/scope/:scope/members                  list members (any member)
- *   PUT    /-/scope/:scope/member/:provider/:id     add or re-role a member (admin)
- *   DELETE /-/scope/:scope/member/:provider/:id     remove a member (admin)
+ *   PUT    /-/scope/:scope/member/:userId           add or re-role a member (admin)
+ *   DELETE /-/scope/:scope/member/:userId           remove a member (admin)
  *   POST   /-/scope/:scope/display-name             set the publisher label (admin)
  *   PUT    /-/scope/:scope/profile                  set the description + links (admin)
  *   GET    /-/scope/:scope/domains                  list claimed domains (any member)
@@ -112,39 +112,37 @@ export async function listMembers({
 
 const MemberBody = z.object({ role: z.enum(["admin", "member"]) });
 
-/** `PUT /-/scope/:scope/member/:provider/:id` - add or re-role a member (admin). */
+/** `PUT /-/scope/:scope/member/:userId` - add or re-role a member by account id (admin). */
 export async function putMember({
   params,
   body,
   req,
 }: {
-  readonly params: { readonly scope: string; readonly provider: string; readonly id: string };
+  readonly params: { readonly scope: string; readonly userId: string };
   readonly body: z.infer<typeof MemberBody>;
   readonly req: Request;
 }): Promise<Response> {
-  const { scope, provider, id } = params;
+  const { scope, userId } = params;
   const identity = await requireWrite(req);
   const result = okOrThrow(
-    await inject(ScopeService).setMember(identity, scope, { provider, id }, body.role),
+    await inject(ScopeService).setMember(identity, scope, userId, body.role),
   );
-  await auditScope("scope_member_set", scope, identity, { provider, id, role: body.role });
+  await auditScope("scope_member_set", scope, identity, { userId, role: body.role });
   return reply({ ok: true, scope, member: result.member }, 200);
 }
 
-/** `DELETE /-/scope/:scope/member/:provider/:id` - remove a member (admin). */
+/** `DELETE /-/scope/:scope/member/:userId` - remove a member by account id (admin). */
 export async function deleteMember({
   params,
   req,
 }: {
-  readonly params: { readonly scope: string; readonly provider: string; readonly id: string };
+  readonly params: { readonly scope: string; readonly userId: string };
   readonly req: Request;
 }): Promise<Response> {
-  const { scope, provider, id } = params;
+  const { scope, userId } = params;
   const identity = await requireWrite(req);
-  const result = okOrThrow(
-    await inject(ScopeService).removeMember(identity, scope, { provider, id }),
-  );
-  await auditScope("scope_member_remove", scope, identity, { provider, id });
+  const result = okOrThrow(await inject(ScopeService).removeMember(identity, scope, userId));
+  await auditScope("scope_member_remove", scope, identity, { userId });
   return reply({ ok: true, scope, removed: result.removed }, 200);
 }
 
@@ -386,8 +384,8 @@ export const scopeController = controller({
     // Public, unauthenticated scope info for the storefront's `/scope/:scope` page (ORG-003).
     route.get({ path: "/:scope", handler: getScope }),
     route.get({ path: "/:scope/members", handler: listMembers }),
-    route.put({ path: "/:scope/member/:provider/:id", body: MemberBody, handler: putMember }),
-    route.delete({ path: "/:scope/member/:provider/:id", handler: deleteMember }),
+    route.put({ path: "/:scope/member/:userId", body: MemberBody, handler: putMember }),
+    route.delete({ path: "/:scope/member/:userId", handler: deleteMember }),
     route.post({ path: "/:scope/display-name", body: DisplayNameBody, handler: setDisplayName }),
     route.put({ path: "/:scope/profile", body: scopeProfileSchema, handler: setProfile }),
     route.get({ path: "/:scope/domains", handler: listDomains }),

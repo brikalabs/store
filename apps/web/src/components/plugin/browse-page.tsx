@@ -88,7 +88,12 @@ function ScopeHitRow({ hit }: Readonly<{ hit: ScopeHit }>) {
       params={{ _splat: hit.scope }}
       className="group flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 transition-colors hover:border-brand"
     >
-      <GradientAvatar seed={hit.scope} label={hit.name} size={52} />
+      <GradientAvatar
+        seed={hit.scope}
+        label={hit.name}
+        imageUrl={`/api/scopes/${encodeURIComponent(hit.scope)}/icon`}
+        size={52}
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="font-bold font-heading text-foreground">{hit.name}</span>

@@ -15,9 +15,9 @@ import { RegistryDatabase } from "@/server/registry-services";
 export class ScopeMembershipStore {
   readonly #db = inject(RegistryDatabase).orm;
 
-  /** The scopes `provider:memberId` belongs to, each with the member's role. */
-  listScopesForMember(provider: string, memberId: string): Promise<MemberScope[]> {
-    return listScopesForMember(this.#db, provider, memberId);
+  /** The scopes the account `userId` belongs to, each with the member's role. */
+  listScopesForMember(userId: string): Promise<MemberScope[]> {
+    return listScopesForMember(this.#db, userId);
   }
 
   /** The package names owned by any of `scopes`. */

@@ -1,3 +1,4 @@
+import type { Actor } from "@brika/registry-core";
 import { sql } from "drizzle-orm";
 import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -84,10 +85,10 @@ export const regScopes = sqliteTable("reg_scopes", {
 });
 
 /**
- * Scope membership and roles. A scope can have several members; each is a provider-
- * qualified identity with a role: `admin` (manage members + everything a member can) or
- * `member` (publish under the scope). The scope creator is seeded as the first admin.
- * Publishing is gated on scope membership.
+ * Scope membership and roles. A scope can have several members; each is a Brika account with a
+ * role: `admin` (manage members + everything a member can) or `member` (publish under the
+ * scope). The scope creator is seeded as the first admin. Publishing is gated on scope
+ * membership.
  */
 export const regScopeMembers = sqliteTable(
   "reg_scope_members",
@@ -95,15 +96,13 @@ export const regScopeMembers = sqliteTable(
     scope: text("scope")
       .notNull()
       .references(() => regScopes.scope, { onDelete: "cascade" }),
-    /** Identity provider of the member (e.g. `github`). */
-    provider: text("provider").notNull().default("github"),
-    /** Member id within the provider (e.g. a GitHub login). */
-    memberId: text("member_id").notNull(),
+    /** Brika account id of the member. */
+    userId: text("user_id").notNull(),
     /** `admin` or `member`. */
     role: text("role").notNull().default("member"),
     createdAt: integer("created_at").notNull().default(epoch),
   },
-  (t) => [primaryKey({ columns: [t.scope, t.provider, t.memberId] })],
+  (t) => [primaryKey({ columns: [t.scope, t.userId] })],
 );
 
 /**
@@ -174,7 +173,8 @@ export const regAudit = sqliteTable("reg_audit", {
   action: text("action").notNull(),
   packageName: text("package_name"),
   version: text("version"),
-  actor: text("actor"),
+  /** The acting principal, snapshotted at write time (account id + display name + avatar). */
+  actor: text("actor", { mode: "json" }).$type<Actor>(),
   detail: text("detail", { mode: "json" }).$type<Record<string, unknown>>(),
   at: integer("at").notNull().default(epoch),
 });
@@ -183,8 +183,8 @@ export const regAudit = sqliteTable("reg_audit", {
 export const regDeviceAuth = sqliteTable("reg_device_auth", {
   deviceCode: text("device_code").primaryKey(),
   userCode: text("user_code").notNull().unique(),
-  /** Set when the user approves the device on store.brika.dev. */
-  githubLogin: text("github_login"),
+  /** Brika account id set when the user approves the device on store.brika.dev. */
+  userId: text("user_id"),
   approved: integer("approved", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at").notNull().default(epoch),
   expiresAt: integer("expires_at").notNull(),
@@ -193,10 +193,8 @@ export const regDeviceAuth = sqliteTable("reg_device_auth", {
 /** Issued publish tokens (only the SHA-256 hash is stored). */
 export const regTokens = sqliteTable("reg_tokens", {
   tokenHash: text("token_hash").primaryKey(),
-  /** Identity provider of the token's principal (e.g. `github`). */
-  provider: text("provider").notNull().default("github"),
-  /** Principal id within the provider (keeps the legacy `github_login` column name). */
-  subject: text("github_login").notNull(),
+  /** Brika account id the token was issued to. */
+  userId: text("user_id").notNull(),
   createdAt: integer("created_at").notNull().default(epoch),
   expiresAt: integer("expires_at").notNull(),
   lastUsedAt: integer("last_used_at"),

@@ -61,8 +61,8 @@ export async function authenticateWrite(
   const ci = await verifyCiOidc(token);
   if (ci !== null) {
     return {
+      userId: null,
       provider: ci.provider,
-      owner: ci.owner,
       repository: ci.repository,
       // Provenance is the verified CI build context (it cannot be forged).
       provenance: {
@@ -77,7 +77,7 @@ export async function authenticateWrite(
 
   const tokenUser = await tokens.verify(token);
   if (tokenUser !== null) {
-    return { provider: tokenUser.provider, owner: tokenUser.subject, repository: null };
+    return { userId: tokenUser.userId, provider: null, repository: null };
   }
 
   return null;
@@ -117,18 +117,16 @@ export function requireWrite(
  */
 export const principal: RateLimitKey<void> = async ({ req }) => {
   const identity = await requireWrite(req);
-  return identity.repository ?? identity.owner;
+  return identity.repository ?? identity.userId ?? "unknown";
 };
 
 /**
  * Authenticate an operator admin for takedown/restore: a valid write credential
- * (OIDC or token) whose provider-qualified identity is in the `admins` allowlist (the
- * controller passes it from `REGISTRY_ADMINS`, as `provider:owner` keys). Throws `401`
- * when no credential validates, `403` when it validates but is not an admin. Matching
- * the full `provider:owner` (not the bare owner) keeps the check correct once a second
- * identity provider exists, so a `gitlab` user cannot inherit a `github` admin's slot.
- * Admin is a registry-operator role, deliberately separate from (and overriding) scope
- * ownership. The allowlist is a parameter so this stays free of the env import.
+ * (OIDC or token) whose account id is in the `admins` allowlist (the controller passes it
+ * from `REGISTRY_ADMINS`, a list of account ids). Throws `401` when no credential validates,
+ * `403` when it validates but is not an admin. A CI/OIDC credential has no account id, so it
+ * can never be an operator. Admin is a registry-operator role, deliberately separate from (and
+ * overriding) scope ownership. The allowlist is a parameter so this stays free of the env import.
  */
 export async function requireAdmin(
   request: Request,

@@ -38,8 +38,7 @@ export function ScopeDetailPage() {
     void loadMembers();
   }, [loadMembers]);
 
-  const isAdmin =
-    members?.find((m) => m.provider === "github" && m.id === user.login)?.role === "admin";
+  const isAdmin = members?.find((m) => m.userId === user.id)?.role === "admin";
 
   return (
     <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="Scopes">

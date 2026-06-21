@@ -21,12 +21,12 @@ const RegistryUrl = z.url();
 const ConfigSchema = z.object({
   registry: RegistryUrl.default(DEFAULT_REGISTRY),
   token: z.string().optional(),
-  // GitHub login, kept for internal use (it is what scope ownership + the operator
+  // Brika account id, kept for internal use (it is what scope ownership + the operator
   // allowlist key on); the user-facing identity is `displayName` below.
-  githubLogin: z.string().optional(),
+  userId: z.string().optional(),
   // Human display name resolved by the registry from the account profile, shown by
   // `whoami`/`login`. Optional: an account with no profile/name has none, and the CLI
-  // falls back to the github login.
+  // falls back to the account id.
   displayName: z.string().optional(),
 });
 

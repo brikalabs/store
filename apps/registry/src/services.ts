@@ -15,17 +15,17 @@ import {
   D1DeviceStore,
   D1DownloadStore,
   D1MetadataWriter,
-  resolveDisplayName,
+  resolveActor,
 } from "@brika/store-db/adapters";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
 import { NoopTarballScanner } from "./adapters/noop-tarball-scanner";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { R2TarballWriter } from "./adapters/r2-tarball-writer";
 
-/** Operator admins (`provider:owner` keys) for takedown/restore. */
+/** Operator admins (account ids) for takedown/restore. */
 export const Admins = token<ReadonlySet<string>>();
-/** Display-name resolver for the CLI's login/whoami (reads the web app's user tables on the same D1). */
-export const ResolveDisplayName = token<(githubLogin: string) => Promise<string | null>>();
+/** Display-name resolver for the CLI's login/whoami (reads the web app's `users` table on the same D1). */
+export const ResolveDisplayName = token<(userId: string) => Promise<string | null>>();
 // Persistence ports as tokens, so a handler depends on the registry-core interface, not the D1 class.
 export const Tokens = token<TokenStore>();
 export const Catalog = token<CatalogReader>();
@@ -57,7 +57,10 @@ export function provideRegistry(config: RegistryConfig): Provider[] {
 
   return [
     { provide: Admins, useValue: config.admins ?? new Set() },
-    { provide: ResolveDisplayName, useValue: (login: string) => resolveDisplayName(db, login) },
+    {
+      provide: ResolveDisplayName,
+      useValue: (userId: string) => resolveActor(db, userId).then((a) => a.displayName),
+    },
     {
       provide: ResolveService,
       useValue: new ResolveService(g.metadata, new R2TarballReader(tarballs), { baseUrl }),

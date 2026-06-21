@@ -1,15 +1,26 @@
-import { Kbd, KbdGroup } from "@brika/clay";
+import {
+  Command,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  Kbd,
+  KbdGroup,
+} from "@brika/clay";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Search } from "lucide-react";
-import { type SyntheticEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
 import { useSearch } from "@/components/layout/search-context";
 import { usePluginSearch } from "@/hooks/use-plugin-search";
 
 /**
- * The header search: a normal text input (type and press Enter to search), with
- * a live results dropdown for quick navigation. ⌘K focuses it. It mirrors the
- * active query when you're on the search page.
+ * The header search: a live text field (type and press Enter to search) with a
+ * keyboard-navigable results dropdown built on Clay's Command (cmdk). ⌘K focuses
+ * it; ↑/↓ move through results, Enter opens the highlighted one, Esc closes.
+ * The first row ("Search for …") is highlighted by default, so a plain Enter
+ * still takes you to the full results page. It mirrors the active query when
+ * you're on the search page.
  */
 export function HeaderSearch() {
   const { inputRef } = useSearch();
@@ -17,6 +28,13 @@ export function HeaderSearch() {
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
   const { plugins, scopes } = usePluginSearch(value);
+
+  // ⌘ on macOS, Ctrl elsewhere. Starts false so SSR and the first client render
+  // agree (no hydration mismatch), then flips after mount on Macs.
+  const [isMac, setIsMac] = useState(false);
+  useEffect(() => {
+    setIsMac(/Mac/i.test(navigator.userAgent));
+  }, []);
 
   // Mirror the active query from the URL (e.g. /plugins?q=ai).
   const urlQuery = useRouterState({
@@ -29,30 +47,34 @@ export function HeaderSearch() {
     setValue(urlQuery);
   }, [urlQuery]);
 
-  function submit(event: SyntheticEvent) {
-    event.preventDefault();
-    const next = value.trim();
-    setOpen(false);
-    inputRef.current?.blur();
-    navigate({ to: "/plugins", search: next.length > 0 ? { q: next } : {} });
-  }
-
   function go(action: () => void) {
     setOpen(false);
     inputRef.current?.blur();
     action();
   }
 
-  const showResults = open && value.trim().length > 0 && (plugins.length > 0 || scopes.length > 0);
+  function goSearch() {
+    const next = value.trim();
+    go(() => navigate({ to: "/plugins", search: next.length > 0 ? { q: next } : {} }));
+  }
+
+  const showResults = open && value.trim().length > 0;
 
   return (
-    <form onSubmit={submit} className="relative hidden max-w-md flex-1 sm:block">
-      <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
-      <input
+    // cmdk owns ↑/↓/Enter via the root's keydown; shouldFilter is off because
+    // usePluginSearch already filtered server-side. Styling overrides Clay's
+    // command-surface defaults back into the header's pill look.
+    <Command
+      label="Search plugins and scopes"
+      shouldFilter={false}
+      loop
+      className="relative hidden h-auto max-w-md flex-1 flex-col overflow-visible rounded-xl border border-border bg-muted/50 shadow-none backdrop-blur-none transition-colors focus-within:border-brand/40 focus-within:bg-card sm:flex [&_[data-slot=command-input-wrapper]]:border-b-0 [&_[data-slot=command-input-wrapper]]:px-3"
+    >
+      <CommandInput
         ref={inputRef}
         value={value}
-        onChange={(event) => {
-          setValue(event.target.value);
+        onValueChange={(next) => {
+          setValue(next);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
@@ -61,31 +83,43 @@ export function HeaderSearch() {
           if (event.key === "Escape") {
             setOpen(false);
             inputRef.current?.blur();
+            return;
+          }
+          // If nothing is highlighted yet (e.g. Enter pressed in the same frame
+          // as typing, before cmdk selects a row), fall back to the search page.
+          // Otherwise cmdk handles Enter and opens the highlighted result.
+          if (event.key === "Enter") {
+            const root = event.currentTarget.closest("[data-slot=command]");
+            if (!root?.querySelector('[aria-selected="true"]')) goSearch();
           }
         }}
         placeholder="Search plugins and scopes…"
-        aria-label="Search plugins and scopes"
-        className="h-10 w-full rounded-xl border border-border bg-muted/50 pr-16 pl-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/40 focus:bg-card"
+        className="pr-16"
       />
-      <KbdGroup className="-translate-y-1/2 absolute top-1/2 right-3">
-        <Kbd>⌘</Kbd>
+      <KbdGroup className="-translate-y-1/2 absolute top-1/2 right-3 z-10">
+        <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
         <Kbd>K</Kbd>
       </KbdGroup>
 
       {showResults ? (
-        <div className="absolute top-full left-0 z-50 mt-2 max-h-[60vh] w-full overflow-auto rounded-xl border border-border bg-popover shadow-2xl">
+        <CommandList className="absolute top-full left-0 z-50 mt-2 max-h-[60vh] w-full rounded-xl border border-border bg-popover p-1.5 shadow-2xl">
+          <CommandItem
+            value={`search:${value}`}
+            onSelect={goSearch}
+            className="gap-2.5 px-2 py-2 text-muted-foreground"
+          >
+            <Search className="size-4" />
+            <span className="truncate text-foreground">Search for “{value.trim()}”</span>
+          </CommandItem>
+
           {plugins.length > 0 ? (
-            <div className="p-1.5">
-              <div className="px-2 py-1 font-semibold text-muted-foreground text-xs">Plugins</div>
+            <CommandGroup heading="Plugins">
               {plugins.slice(0, 6).map((plugin) => (
-                <button
+                <CommandItem
                   key={plugin.name}
-                  type="button"
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    go(() => navigate({ to: "/$", params: { _splat: plugin.name } }));
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
+                  value={`plugin:${plugin.name}`}
+                  onSelect={() => go(() => navigate({ to: "/$", params: { _splat: plugin.name } }))}
+                  className="gap-2.5 px-2 py-2"
                 >
                   <PluginIcon
                     name={plugin.name}
@@ -97,34 +131,36 @@ export function HeaderSearch() {
                   <span className="ml-auto truncate text-muted-foreground text-xs">
                     {plugin.name}
                   </span>
-                </button>
+                </CommandItem>
               ))}
-            </div>
+            </CommandGroup>
           ) : null}
+
           {scopes.length > 0 ? (
-            <div className="border-border border-t p-1.5">
-              <div className="px-2 py-1 font-semibold text-muted-foreground text-xs">Scopes</div>
+            <CommandGroup heading="Scopes">
               {scopes.map((scope) => (
-                <button
+                <CommandItem
                   key={scope.scope}
-                  type="button"
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    go(() => navigate({ to: "/$", params: { _splat: scope.scope } }));
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
+                  value={`scope:${scope.scope}`}
+                  onSelect={() => go(() => navigate({ to: "/$", params: { _splat: scope.scope } }))}
+                  className="gap-2.5 px-2 py-2"
                 >
-                  <GradientAvatar seed={scope.scope} label={scope.name} size={22} />
+                  <GradientAvatar
+                    seed={scope.scope}
+                    label={scope.name}
+                    imageUrl={`/api/scopes/${encodeURIComponent(scope.scope)}/icon`}
+                    size={22}
+                  />
                   <span className="font-medium">{scope.name}</span>
                   <span className="ml-auto truncate font-mono text-muted-foreground text-xs">
                     {scope.scope}
                   </span>
-                </button>
+                </CommandItem>
               ))}
-            </div>
+            </CommandGroup>
           ) : null}
-        </div>
+        </CommandList>
       ) : null}
-    </form>
+    </Command>
   );
 }

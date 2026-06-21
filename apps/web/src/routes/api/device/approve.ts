@@ -9,7 +9,7 @@ import { DeviceApprovalStore } from "@/server/stores/device-approval-store";
 /**
  * `POST /api/device/approve`: approve a pending registry device-authorization
  * (RFC 8628) so `brika auth login` can mint a publish token. The user must be
- * signed in; their GitHub login is bound to the device. The approval write goes
+ * signed in; their Brika account id is bound to the device. The approval write goes
  * through the registry's typed schema (`@brika/store-db`) into the shared
  * `reg_device_auth` table.
  */
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/device/approve")({
           const parsed = await readBody(request, ApproveInput, "Invalid request");
 
           const code = parsed.user_code.trim().toUpperCase();
-          if (!(await inject(DeviceApprovalStore).approve(code, user.login))) {
+          if (!(await inject(DeviceApprovalStore).approve(code, user.id))) {
             throw badRequest("That code is invalid, expired, or already used");
           }
           return publicJson({ ok: true });

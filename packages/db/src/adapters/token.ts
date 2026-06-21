@@ -31,12 +31,12 @@ function base64Url(bytes: Uint8Array): string {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
-export async function issueToken(db: Db, subject: string, provider = "github"): Promise<string> {
+export async function issueToken(db: Db, userId: string): Promise<string> {
   const token = `${TOKEN_PREFIX}${base64Url(crypto.getRandomValues(new Uint8Array(32)))}`;
   const now = Math.floor(Date.now() / 1000);
   await db
     .insert(regTokens)
-    .values({ tokenHash: await hashToken(token), provider, subject, expiresAt: now + TTL_SECONDS });
+    .values({ tokenHash: await hashToken(token), userId, expiresAt: now + TTL_SECONDS });
   return token;
 }
 
@@ -46,10 +46,7 @@ export async function revokeToken(db: Db, token: string): Promise<void> {
   await db.delete(regTokens).where(eq(regTokens.tokenHash, await hashToken(token)));
 }
 
-export async function verifyToken(
-  db: Db,
-  token: string,
-): Promise<{ provider: string; subject: string } | null> {
+export async function verifyToken(db: Db, token: string): Promise<{ userId: string } | null> {
   if (!token.startsWith(TOKEN_PREFIX)) return null;
   const rows = await db
     .select()
@@ -58,7 +55,7 @@ export async function verifyToken(
     .limit(1);
   const row = rows[0];
   if (row === undefined || row.expiresAt <= Math.floor(Date.now() / 1000)) return null;
-  return { provider: row.provider, subject: row.subject };
+  return { userId: row.userId };
 }
 
 /**
@@ -73,8 +70,8 @@ export class D1TokenStore implements TokenStore {
     this.#db = db;
   }
 
-  issue(subject: string, provider = "github"): Promise<string> {
-    return issueToken(this.#db, subject, provider);
+  issue(userId: string): Promise<string> {
+    return issueToken(this.#db, userId);
   }
 
   verify(token: string): Promise<TokenPrincipal | null> {

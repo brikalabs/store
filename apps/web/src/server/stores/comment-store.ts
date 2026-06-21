@@ -4,15 +4,14 @@ import { and, eq, sql } from "drizzle-orm";
 import { avatarUrlOf } from "@/lib/avatar";
 import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
-import { comments, commentVotes, userProfiles, users } from "@/server/db/schema";
+import { comments, commentVotes, users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 import { votedIds } from "@/server/stores/voted-ids";
 
 /**
  * Repository for `comments` (+ the `comment_votes` upvote tally). Reads project a comment into
- * the {@link Comment} contract, joining `users`/`user_profiles` for the author's display name
- * and avatar; a deleted comment keeps its row (for thread structure) but its body reads as
- * `[deleted]`.
+ * the {@link Comment} contract, joining `users` for the author's display name and avatar; a
+ * deleted comment keeps its row (for thread structure) but its body reads as `[deleted]`.
  */
 export class CommentStore {
   readonly #db = inject(Database).orm;
@@ -30,13 +29,12 @@ export class CommentStore {
         deleted: comments.deleted,
         userId: users.id,
         name: users.name,
-        profileDisplayName: userProfiles.displayName,
+        profileDisplayName: users.displayName,
         image: users.image,
-        avatarVersion: userProfiles.avatarVersion,
+        avatarVersion: users.avatarVersion,
       })
       .from(comments)
       .innerJoin(users, eq(comments.userId, users.id))
-      .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
       .where(eq(comments.pluginName, pluginName))
       .orderBy(comments.createdAt);
 

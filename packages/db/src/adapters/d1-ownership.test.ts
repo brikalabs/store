@@ -9,8 +9,8 @@ import { D1TrustedPublishers } from "./d1-trusted-publishers";
 
 /** An OIDC (CI) publish identity: carries the repo + workflow_ref the registry verified. */
 const oidc = (repository: string, workflowRef: string): PublishIdentity => ({
+  userId: null,
   provider: "github",
-  owner: repository.split("/")[0] ?? repository,
   repository,
   provenance: { repository, workflowRef },
 });
@@ -22,7 +22,7 @@ const oidc = (repository: string, workflowRef: string): PublishIdentity => ({
  * publisher binding instead of membership.
  */
 
-const gh = (owner: string): PublishIdentity => ({ provider: "github", owner, repository: null });
+const gh = (userId: string): PublishIdentity => ({ userId, provider: null, repository: null });
 
 /**
  * Seed a `scope`, with `members` as its members (role defaults to admin).
@@ -30,16 +30,11 @@ const gh = (owner: string): PublishIdentity => ({ provider: "github", owner, rep
 async function seedScope(
   db: Db,
   scope: string,
-  members: ReadonlyArray<{ provider?: string; id: string; role?: "admin" | "member" }>,
+  members: ReadonlyArray<{ id: string; role?: "admin" | "member" }>,
 ): Promise<void> {
   await db.insert(regScopes).values({ scope });
   for (const m of members) {
-    await db.insert(regScopeMembers).values({
-      scope,
-      provider: m.provider ?? "github",
-      memberId: m.id,
-      role: m.role ?? "admin",
-    });
+    await db.insert(regScopeMembers).values({ scope, userId: m.id, role: m.role ?? "admin" });
   }
 }
 
@@ -75,12 +70,9 @@ describe("D1OwnershipPolicy.canPublish", () => {
     if (!stranger.ok) expect(stranger.message).toContain("not a member");
   });
 
-  test("a different provider with the same id is not the same member", async () => {
+  test("a different account id is not a member", async () => {
     await seedScope(db, "@team", [{ id: "alice", role: "admin" }]);
-    const other = await policy.canPublish(
-      { provider: "gitlab", owner: "alice", repository: null },
-      "@team/b",
-    );
+    const other = await policy.canPublish(gh("alice-different-account"), "@team/b");
     expect(other.ok).toBe(false);
   });
 

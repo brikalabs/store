@@ -44,15 +44,15 @@ export const login = defineCommand({
 
     const spin = p.spinner();
     spin.start("Waiting for approval");
-    const { token, githubLogin, displayName } = await client
+    const { token, userId, displayName } = await client
       .waitForToken(device)
       .catch((error: unknown) => {
         spin.stop("Login failed");
         throw error;
       });
 
-    await saveConfig({ registry, token, githubLogin, displayName: displayName ?? undefined });
-    spin.stop(`Logged in as ${displayName ?? githubLogin}`);
+    await saveConfig({ registry, token, userId, displayName: displayName ?? undefined });
+    spin.stop(`Logged in as ${displayName ?? userId}`);
     p.outro("Done.");
   },
 });

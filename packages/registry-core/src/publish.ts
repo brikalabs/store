@@ -4,13 +4,18 @@ import { isCanonicalName, scopeOf } from "./names";
 import { tarballPath } from "./packument";
 import type { PackageVersion, Provenance } from "./types";
 
-/** Who is publishing, derived from a verified OIDC token or a session token. */
+/**
+ * Who is publishing, derived from a verified OIDC token or a session token. A publish is
+ * EITHER a human (a Brika `userId`, from a CLI/console token) OR CI (an OIDC `provider` +
+ * `repository`); exactly one of `userId` / `repository` is set. There is no GitHub-login
+ * owner: a human is identified by the provider-agnostic Brika account id.
+ */
 export interface PublishIdentity {
-  /** Identity provider this principal belongs to (e.g. `"github"`). */
-  readonly provider: string;
-  /** Owner id within the provider (org/user that is publishing). */
-  readonly owner: string;
-  /** `owner/repo` the publish ran from (OIDC), or null for a local token publish. */
+  /** Brika account id for a human token publish; null for a CI/OIDC publish. */
+  readonly userId: string | null;
+  /** OIDC provider (`github`/`gitlab`) for a CI publish; null for a human token publish. */
+  readonly provider: string | null;
+  /** `owner/repo` the publish ran from (OIDC), or null for a human token publish. */
   readonly repository: string | null;
   /** CI build provenance from the verified OIDC token; absent for local publishes. */
   readonly provenance?: Provenance;

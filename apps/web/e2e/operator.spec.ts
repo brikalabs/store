@@ -3,7 +3,7 @@ import { operatorCookie } from "./operator-session";
 
 /**
  * The operator console, end to end. The `/operator` section is gated on the
- * `REGISTRY_ADMINS` allowlist (set to `github:e2e-operator` in playwright.config.ts) and is
+ * `REGISTRY_ADMINS` allowlist (set to `u-operator` in playwright.config.ts) and is
  * hidden from everyone else. These assert the gate (a non-operator cannot reach it) and the
  * ORG-007 takedown flow (withdraw a squatted scope from public listings, then restore it).
  *
@@ -11,7 +11,7 @@ import { operatorCookie } from "./operator-session";
  * `@brika` so this never disturbs the storefront's public listings. Run serially so the
  * take-down / restore steps observe each other's state.
  *
- * Requires `.dev.vars` to set `REGISTRY_ADMINS=github:e2e-operator` (and the pinned
+ * Requires `.dev.vars` to set `REGISTRY_ADMINS=u-operator` (and the pinned
  * `SESSION_SECRET`); see .dev.vars.example. The worker reads those, not the process env.
  */
 test.describe

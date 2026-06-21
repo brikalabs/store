@@ -7,9 +7,13 @@
  * Prerequisites: the registry + web workers are running and the local D1 has the
  * registry schema (`bun run db:setup:local`). Then, from `apps/web`:
  *
- *   bun run seed                       # publish under @brika, owner `brika-seed`
- *   BRIKA_SEED_OWNER=<my-login> bun run seed   # own them as yourself (manage in the console)
+ *   bun run seed                        # publish under @brika, owner account `u-brika-seed`
+ *   BRIKA_SEED_OWNER=<handle> bun run seed   # owner account `u-<handle>`
  *   BRIKA_REGISTRY=http://localhost:8787 bun run seed
+ *
+ * The owner handle yields a synthetic dev account id `u-<handle>` (identity is the account id,
+ * not a GitHub login). To manage these scopes as your REAL signed-in account, add yourself by
+ * email from the scope console after signing in once.
  *
  * Idempotent: re-running re-publishes nothing already present (409 is treated as success).
  */

@@ -1,4 +1,4 @@
-import { cn } from "@brika/clay";
+import { Avatar, AvatarFallback, AvatarImage, cn } from "@brika/clay";
 import { Box, Boxes, Code, FileText, Layers, type LucideIcon, Zap } from "lucide-react";
 import { gradientCss, gradientFor } from "./gradients";
 
@@ -51,44 +51,43 @@ export function PluginIcon({
   className?: string;
 }>) {
   const radius = Math.round(size * 0.26);
-
-  if (iconUrl) {
-    return (
-      <img
-        src={iconUrl}
-        alt=""
-        loading="lazy"
-        width={size}
-        height={size}
-        className={cn("shrink-0 border border-border object-cover", className)}
-        style={{ width: size, height: size, borderRadius: radius }}
-      />
-    );
-  }
-
   const Glyph = glyphFor(capabilities);
+  // Clay's Avatar (Radix) shows the icon only once it LOADS, so a missing/404/broken icon never
+  // shows the browser's broken-image glyph - it falls back to the gradient + capability tile.
+  // Each child carries the squircle radius (no Root overflow-hidden) so the tile's drop shadow
+  // is not clipped.
   return (
-    <span
+    <Avatar
       data-slot="plugin-icon"
-      className={cn("inline-flex shrink-0 items-center justify-center text-white", className)}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: radius,
-        background: gradientCss(gradientFor(name)),
-        boxShadow: TILE_SHADOW,
-      }}
+      className={cn("shrink-0", className)}
+      style={{ width: size, height: size }}
     >
-      <Glyph size={Math.round(size * 0.5)} strokeWidth={1.8} />
-    </span>
+      {iconUrl ? (
+        <AvatarImage
+          src={iconUrl}
+          alt=""
+          className="border border-border object-cover"
+          style={{ borderRadius: radius }}
+        />
+      ) : null}
+      <AvatarFallback
+        className="text-white"
+        style={{
+          borderRadius: radius,
+          background: gradientCss(gradientFor(name)),
+          boxShadow: TILE_SHADOW,
+        }}
+      >
+        <Glyph size={Math.round(size * 0.5)} strokeWidth={1.8} />
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
 /**
- * Gradient initials tile, used for user/author/scope avatars. When `imageUrl` is
- * given (a GitHub avatar from `users.image`, a scope icon, ...), the real image
- * renders over the gradient; the gradient + initials stay underneath so a missing
- * or failed-to-load image (empty `alt`, so no broken-image glyph) degrades to them.
+ * Gradient initials tile, used for user/author/scope avatars. When `imageUrl` is given (a GitHub
+ * avatar from `users.image`, a scope icon, ...) it shows once loaded; a missing or failed-to-load
+ * image degrades to the gradient + initials with no broken-image glyph (clay's Avatar handles it).
  */
 export function GradientAvatar({
   seed,
@@ -108,32 +107,38 @@ export function GradientAvatar({
       .replace(/[^a-zA-Z0-9]/g, "")
       .slice(0, 2)
       .toUpperCase() || "?";
+  // Clay's Avatar (Radix) renders the image only once it LOADS; a missing/404/broken image never
+  // shows the browser's broken-image glyph - it stays on the fallback (the brand gradient tile +
+  // initials). A proportional squircle (radius = 26% of size) carried on each child - not the Root
+  // - so every avatar reads the same shape at any size (matching the plugin-icon tiles), clay's
+  // near-circular `rounded-avatar` is overridden, and the tile's drop shadow is not clipped.
+  const radius = Math.round(size * 0.26);
   return (
-    <span
+    <Avatar
       data-slot="gradient-avatar"
-      className={cn(
-        "relative inline-flex shrink-0 items-center justify-center overflow-hidden font-bold font-heading text-white leading-none",
-        className,
-      )}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: Math.round(size * 0.26),
-        fontSize: Math.round(size * 0.36),
-        background: gradientCss(gradientFor(seed)),
-        boxShadow: TILE_SHADOW,
-      }}
+      className={cn("shrink-0", className)}
+      style={{ width: size, height: size }}
     >
-      {initials}
       {imageUrl ? (
-        <img
+        <AvatarImage
           src={imageUrl}
           alt=""
-          loading="lazy"
-          className="absolute inset-0 size-full object-cover"
+          className="object-cover"
+          style={{ borderRadius: radius }}
         />
       ) : null}
-    </span>
+      <AvatarFallback
+        className="font-bold font-heading text-white leading-none"
+        style={{
+          borderRadius: radius,
+          fontSize: Math.round(size * 0.36),
+          background: gradientCss(gradientFor(seed)),
+          boxShadow: TILE_SHADOW,
+        }}
+      >
+        {initials}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 

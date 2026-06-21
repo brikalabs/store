@@ -1,4 +1,4 @@
-import type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "@brika/registry-core";
+import type { ScopeMember, ScopeMembers, ScopeRole } from "@brika/registry-core";
 import { and, countDistinct, eq, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { regScopeMembers } from "../schema";
@@ -22,18 +22,12 @@ export class D1ScopeMembers implements ScopeMembers {
     this.#db = db;
   }
 
-  /** This identity's role in the scope, or null when it is not a member. */
-  async roleOf(scope: string, member: MemberRef): Promise<ScopeRole | null> {
+  /** This account's role in the scope, or null when it is not a member. */
+  async roleOf(scope: string, userId: string): Promise<ScopeRole | null> {
     const rows = await this.#db
       .select({ role: regScopeMembers.role })
       .from(regScopeMembers)
-      .where(
-        and(
-          eq(regScopeMembers.scope, scope),
-          eq(regScopeMembers.provider, member.provider),
-          eq(regScopeMembers.memberId, member.id),
-        ),
-      )
+      .where(and(eq(regScopeMembers.scope, scope), eq(regScopeMembers.userId, userId)))
       .limit(1);
     const role = rows[0]?.role;
     return role === undefined ? null : toRole(role);
@@ -46,19 +40,18 @@ export class D1ScopeMembers implements ScopeMembers {
       .from(regScopeMembers)
       .where(eq(regScopeMembers.scope, scope));
     return rows.map((row) => ({
-      provider: row.provider,
-      id: row.memberId,
+      userId: row.userId,
       role: toRole(row.role),
     }));
   }
 
   /** Add a member or change an existing member's role (no last-admin guard - see below). */
-  async upsert(scope: string, member: MemberRef, role: ScopeRole): Promise<void> {
+  async upsert(scope: string, userId: string, role: ScopeRole): Promise<void> {
     await this.#db
       .insert(regScopeMembers)
-      .values({ scope, provider: member.provider, memberId: member.id, role })
+      .values({ scope, userId, role })
       .onConflictDoUpdate({
-        target: [regScopeMembers.scope, regScopeMembers.provider, regScopeMembers.memberId],
+        target: [regScopeMembers.scope, regScopeMembers.userId],
         set: { role },
       });
   }
@@ -72,20 +65,19 @@ export class D1ScopeMembers implements ScopeMembers {
    * has a single writer), and the second sees the post-first count and is refused - the
    * read-then-write TOCTOU that a separate count() would have is gone.
    */
-  async demoteFromAdmin(scope: string, member: MemberRef): Promise<boolean> {
+  async demoteFromAdmin(scope: string, userId: string): Promise<boolean> {
     await this.#db
       .update(regScopeMembers)
       .set({ role: "member" })
       .where(
         and(
           eq(regScopeMembers.scope, scope),
-          eq(regScopeMembers.provider, member.provider),
-          eq(regScopeMembers.memberId, member.id),
+          eq(regScopeMembers.userId, userId),
           eq(regScopeMembers.role, "admin"),
           this.#moreThanOneAdmin(scope),
         ),
       );
-    return (await this.roleOf(scope, member)) === "member";
+    return (await this.roleOf(scope, userId)) === "member";
   }
 
   /**
@@ -93,32 +85,25 @@ export class D1ScopeMembers implements ScopeMembers {
    * removed, false when it was refused to keep the invariant. Same atomic guard as
    * {@link demoteFromAdmin}: non-admins are always removable; the last admin is not.
    */
-  async remove(scope: string, member: MemberRef): Promise<boolean> {
+  async remove(scope: string, userId: string): Promise<boolean> {
     await this.#db
       .delete(regScopeMembers)
       .where(
         and(
           eq(regScopeMembers.scope, scope),
-          eq(regScopeMembers.provider, member.provider),
-          eq(regScopeMembers.memberId, member.id),
+          eq(regScopeMembers.userId, userId),
           sql`(${regScopeMembers.role} <> 'admin' or ${this.#moreThanOneAdmin(scope)})`,
         ),
       );
-    return (await this.roleOf(scope, member)) === null;
+    return (await this.roleOf(scope, userId)) === null;
   }
 
-  /** How many distinct scopes this identity is an admin of (the per-account scope cap). */
-  async countScopesAdminedBy(member: MemberRef): Promise<number> {
+  /** How many distinct scopes this account is an admin of (the per-account scope cap). */
+  async countScopesAdminedBy(userId: string): Promise<number> {
     const rows = await this.#db
       .select({ n: countDistinct(regScopeMembers.scope) })
       .from(regScopeMembers)
-      .where(
-        and(
-          eq(regScopeMembers.provider, member.provider),
-          eq(regScopeMembers.memberId, member.id),
-          eq(regScopeMembers.role, "admin"),
-        ),
-      );
+      .where(and(eq(regScopeMembers.userId, userId), eq(regScopeMembers.role, "admin")));
     return rows[0]?.n ?? 0;
   }
 

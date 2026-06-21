@@ -27,15 +27,11 @@ export interface MemberScope {
 }
 
 /**
- * Every scope `(provider, memberId)` can manage: the scopes they are a member of, sorted by
- * scope. Used by the storefront to decide whether the signed-in user owns a package's scope
- * (publishing is gated on scope membership).
+ * Every scope a `userId` can manage: the scopes they are a member of, sorted by scope. Used by
+ * the storefront to decide whether the signed-in account owns a package's scope (publishing is
+ * gated on scope membership).
  */
-export async function listScopesForMember(
-  db: Db,
-  provider: string,
-  memberId: string,
-): Promise<MemberScope[]> {
+export async function listScopesForMember(db: Db, userId: string): Promise<MemberScope[]> {
   const rows = await db
     .select({
       scope: regScopeMembers.scope,
@@ -44,7 +40,7 @@ export async function listScopesForMember(
     })
     .from(regScopeMembers)
     .innerJoin(regScopes, eq(regScopes.scope, regScopeMembers.scope))
-    .where(and(eq(regScopeMembers.provider, provider), eq(regScopeMembers.memberId, memberId)))
+    .where(eq(regScopeMembers.userId, userId))
     .orderBy(regScopeMembers.scope);
   return rows.map((row) => ({
     scope: row.scope,
@@ -143,39 +139,37 @@ export async function listAllPackages(db: Db): Promise<OperatorPackage[]> {
 }
 
 /**
- * Resolve a human display name for a GitHub login, for the CLI's `login`/`whoami`
- * output. The account identity lives in the store's `users`/`user_profiles` tables,
- * which are NOT part of this package's `reg_*` drizzle schema (they belong to the
- * store web app), but they share the SAME D1 database the registry binds. Rather than
- * take a cross-app drizzle dependency we read them with a single parameterized raw SQL
- * query over the same client: `github_login -> users.login -> user_profiles.display_name`,
- * falling back to `users.name`, then to null (the caller substitutes the login).
+ * Resolve an account's display name + avatar by its Brika `userId`, for the audit-log actor
+ * snapshot and the CLI's `whoami` output. The account lives in the store's `users` table, which
+ * is NOT part of this package's `reg_*` drizzle schema (it belongs to the store web app) but
+ * shares the SAME D1 database the registry binds. Rather than take a cross-app drizzle
+ * dependency we read it with a single parameterized raw SQL query over the same client:
+ * `display_name -> name`, then the provider `image` for the avatar.
  *
- * Returns null when the login has no matching account, or has an account but neither a
- * profile display name nor a `users.name` - the caller falls back to the github login.
- * It is best-effort display enrichment, never an authorization input, so any read error
- * (e.g. the store tables not present in a given database) resolves to null rather than
- * throwing: the caller falls back to the github login.
+ * Best-effort display enrichment, never an authorization input, so any read error (e.g. the
+ * store table not present in a given database) resolves to all-nulls rather than throwing.
+ *
+ * ponytail: avatar is the provider `image`; the uploaded-avatar URL (built from
+ * `avatar_version` + the assets base) is web-only, so the audit log shows the provider avatar.
  */
-export async function resolveDisplayName(db: Db, githubLogin: string): Promise<string | null> {
-  let rows: Array<{ display_name: string | null; name: string | null }>;
+export async function resolveActor(
+  db: Db,
+  userId: string,
+): Promise<{ displayName: string | null; avatarUrl: string | null }> {
+  let rows: Array<{ display_name: string | null; name: string | null; image: string | null }>;
   try {
-    rows = await db.all<{ display_name: string | null; name: string | null }>(
-      sql`SELECT up.display_name AS display_name, u.name AS name
-          FROM users u
-          LEFT JOIN user_profiles up ON up.user_id = u.id
-          WHERE u.login = ${githubLogin}
-          LIMIT 1`,
+    rows = await db.all<{ display_name: string | null; name: string | null; image: string | null }>(
+      sql`SELECT display_name, name, image FROM users WHERE id = ${userId} LIMIT 1`,
     );
   } catch {
-    return null;
+    return { displayName: null, avatarUrl: null };
   }
   const row = rows[0];
-  if (row === undefined) return null;
-  const displayName = typeof row.display_name === "string" ? row.display_name.trim() : "";
-  if (displayName.length > 0) return displayName;
+  if (row === undefined) return { displayName: null, avatarUrl: null };
+  const display = typeof row.display_name === "string" ? row.display_name.trim() : "";
   const name = typeof row.name === "string" ? row.name.trim() : "";
-  return name.length > 0 ? name : null;
+  const image = typeof row.image === "string" && row.image.length > 0 ? row.image : null;
+  return { displayName: display || name || null, avatarUrl: image };
 }
 
 /**
@@ -190,12 +184,8 @@ export interface SubjectToken {
   readonly lastUsedAt: number | null;
 }
 
-/** A subject's publish tokens, newest first. */
-export async function listSubjectTokens(
-  db: Db,
-  provider: string,
-  subject: string,
-): Promise<SubjectToken[]> {
+/** An account's publish tokens, newest first. */
+export async function listSubjectTokens(db: Db, userId: string): Promise<SubjectToken[]> {
   return db
     .select({
       tokenHash: regTokens.tokenHash,
@@ -204,31 +194,24 @@ export async function listSubjectTokens(
       lastUsedAt: regTokens.lastUsedAt,
     })
     .from(regTokens)
-    .where(and(eq(regTokens.provider, provider), eq(regTokens.subject, subject)))
+    .where(eq(regTokens.userId, userId))
     .orderBy(desc(regTokens.createdAt));
 }
 
 /**
- * Revoke a token by its hash, but only when it belongs to `(provider, subject)` - one
- * user can never revoke another's token. Returns false when no such token is owned by the
- * caller (the route maps that to 404), true when it was removed.
+ * Revoke a token by its hash, but only when it belongs to `userId` - one account can never
+ * revoke another's token. Returns false when no such token is owned by the caller (the route
+ * maps that to 404), true when it was removed.
  */
 export async function revokeTokenByHash(
   db: Db,
-  provider: string,
-  subject: string,
+  userId: string,
   tokenHash: string,
 ): Promise<boolean> {
   const owned = await db
     .select({ hash: regTokens.tokenHash })
     .from(regTokens)
-    .where(
-      and(
-        eq(regTokens.tokenHash, tokenHash),
-        eq(regTokens.provider, provider),
-        eq(regTokens.subject, subject),
-      ),
-    )
+    .where(and(eq(regTokens.tokenHash, tokenHash), eq(regTokens.userId, userId)))
     .limit(1);
   if (owned.length === 0) return false;
   await db.delete(regTokens).where(eq(regTokens.tokenHash, tokenHash));

@@ -75,7 +75,7 @@ function services(db: Db): Provider[] {
     db,
     tarballs: fakeR2(),
     baseUrl: "http://localhost:8787",
-    admins: new Set(["github:operator"]),
+    admins: new Set(["operator"]),
   });
 }
 
@@ -98,9 +98,7 @@ function post(body: unknown, token?: string): Request {
 /** Seed the `@brika` scope with `owner` as its admin (for publish gates). */
 async function seedBrikaScope(db: Db, owner: string): Promise<void> {
   await db.insert(regScopes).values({ scope: "@brika" });
-  await db
-    .insert(regScopeMembers)
-    .values({ scope: "@brika", provider: "github", memberId: owner, role: "admin" });
+  await db.insert(regScopeMembers).values({ scope: "@brika", userId: owner, role: "admin" });
 }
 
 /** Seed the example package (shared harness) plus an owner token for the auth tests. */
@@ -226,9 +224,7 @@ describe("createScope (explicit scope claim)", () => {
       .select()
       .from(regScopeMembers)
       .where(eq(regScopeMembers.scope, "@team"));
-    expect(members).toEqual([
-      expect.objectContaining({ provider: "github", memberId: "alice", role: "admin" }),
-    ]);
+    expect(members).toEqual([expect.objectContaining({ userId: "alice", role: "admin" })]);
   });
 
   test("200 (idempotent) when the caller already administers the scope", async () => {
@@ -260,9 +256,7 @@ describe("createScope (explicit scope claim)", () => {
 
   test("409 when the scope is already claimed by someone else", async () => {
     await db.insert(regScopes).values({ scope: "@team" });
-    await db
-      .insert(regScopeMembers)
-      .values({ scope: "@team", provider: "github", memberId: "alice", role: "admin" });
+    await db.insert(regScopeMembers).values({ scope: "@team", userId: "alice", role: "admin" });
     const token = await issueToken(db, "mallory");
     expect(
       await statusOf(run(services(db), () => createScope({ params, req: post(undefined, token) }))),
@@ -284,7 +278,7 @@ describe("createScope (explicit scope claim)", () => {
 
 describe("scope members (roles + invariants)", () => {
   const scope = "@team";
-  const memberParams = (id: string) => ({ scope, provider: "github", id });
+  const memberParams = (id: string) => ({ scope, userId: id });
   const membersOf = () => db.select().from(regScopeMembers).where(eq(regScopeMembers.scope, scope));
 
   /** Claim scope `@team` with `adminLogin` as its admin; return the token. */
@@ -304,7 +298,7 @@ describe("scope members (roles + invariants)", () => {
       }),
     );
     expect(res.status).toBe(200);
-    expect((await membersOf()).map((m) => m.memberId).sort((a, b) => a.localeCompare(b))).toEqual([
+    expect((await membersOf()).map((m) => m.userId).sort((a, b) => a.localeCompare(b))).toEqual([
       "alice",
       "bob",
     ]);
@@ -440,7 +434,7 @@ describe("scope members (roles + invariants)", () => {
       }),
     );
     expect(res.status).toBe(200);
-    expect((await membersOf()).map((m) => m.memberId)).toEqual(["bob"]);
+    expect((await membersOf()).map((m) => m.userId)).toEqual(["bob"]);
   });
 });
 

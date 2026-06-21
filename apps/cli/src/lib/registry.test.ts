@@ -27,25 +27,25 @@ describe("RegistryClient", () => {
     expect((await client.requestDeviceCode()).user_code).toBe("U-1");
   });
 
-  test("waitForToken returns the issued token, login, and display name once approved", async () => {
+  test("waitForToken returns the issued token, account id, and display name once approved", async () => {
     const client = new RegistryClient("https://r.test", {
       fetch: async () =>
-        json({ access_token: "brika_x", github_login: "me", display_name: "Me Myself" }),
+        json({ access_token: "brika_x", user_id: "usr_1", display_name: "Me Myself" }),
     });
     expect(await client.waitForToken(device)).toEqual({
       token: "brika_x",
-      githubLogin: "me",
+      userId: "usr_1",
       displayName: "Me Myself",
     });
   });
 
   test("waitForToken defaults the display name to null when the registry omits it", async () => {
     const client = new RegistryClient("https://r.test", {
-      fetch: async () => json({ access_token: "brika_x", github_login: "me" }),
+      fetch: async () => json({ access_token: "brika_x", user_id: "usr_1" }),
     });
     expect(await client.waitForToken(device)).toEqual({
       token: "brika_x",
-      githubLogin: "me",
+      userId: "usr_1",
       displayName: null,
     });
   });
@@ -171,11 +171,11 @@ describe("RegistryClient", () => {
     const client = new RegistryClient("https://r.test", {
       fetch: async (input, init) => {
         calls.push({ url: String(input), method: init?.method });
-        return json({ ok: true, members: [{ provider: "github", id: "alice", role: "admin" }] });
+        return json({ ok: true, members: [{ userId: "usr_alice", role: "admin" }] });
       },
     });
     const members = await client.listScopeMembers("t", "@brika");
-    expect(members).toEqual([{ provider: "github", id: "alice", role: "admin" }]);
+    expect(members).toEqual([{ userId: "usr_alice", role: "admin" }]);
     expect(calls[0]?.url).toBe("https://r.test/-/scope/%40brika/members");
     expect(calls[0]?.method).toBe("GET");
   });
@@ -190,8 +190,8 @@ describe("RegistryClient", () => {
         return json({ ok: true });
       },
     });
-    await client.setScopeMember("t", "@brika", { provider: "github", id: "alice" }, "admin");
-    expect(calls[0]?.url).toBe("https://r.test/-/scope/%40brika/member/github/alice");
+    await client.setScopeMember("t", "@brika", "usr_alice", "admin");
+    expect(calls[0]?.url).toBe("https://r.test/-/scope/%40brika/member/usr_alice");
     expect(calls[0]?.method).toBe("PUT");
     expect(sent).toEqual({ role: "admin" });
   });
@@ -204,14 +204,14 @@ describe("RegistryClient", () => {
         return json({ ok: true });
       },
     });
-    await ok.removeScopeMember("t", "@brika", { provider: "github", id: "alice" });
+    await ok.removeScopeMember("t", "@brika", "usr_alice");
     expect(calls[0]?.method).toBe("DELETE");
 
     const denied = new RegistryClient("https://r.test", {
       fetch: async () => json({ error: "must keep at least one admin", code: "conflict" }, 409),
     });
-    await expect(
-      denied.removeScopeMember("t", "@brika", { provider: "github", id: "alice" }),
-    ).rejects.toBeInstanceOf(CliError);
+    await expect(denied.removeScopeMember("t", "@brika", "usr_alice")).rejects.toBeInstanceOf(
+      CliError,
+    );
   });
 });

@@ -14,7 +14,7 @@ const CATALOG_SCAN = 200;
  * Returns null for an unknown id so the route 404s. Server-side composition over the social service
  * + the scope-membership store, which is why it lives in `server/` (not the pure `lib/` read models).
  *
- * The published plugins are derived by OWNERSHIP, never npm: the account's GitHub login -> its scope
+ * The published plugins are derived by OWNERSHIP, never npm: the account id -> its scope
  * memberships -> the catalog plugins under those scopes (the same ownership filter `getScopePage`
  * applies). Reviews are the social reviews the account authored.
  */
@@ -23,9 +23,8 @@ export async function resolveUserPage(id: string): Promise<UserPage | null> {
   const profile = await social.getUserProfile(id);
   if (profile === null) return null;
 
-  const login = await social.findUserLogin(id);
   const [scopes, { plugins: catalog }, reviews] = await Promise.all([
-    login ? inject(ScopeMembershipStore).listScopesForMember("github", login) : Promise.resolve([]),
+    inject(ScopeMembershipStore).listScopesForMember(id),
     searchPlugins(undefined, CATALOG_SCAN, 0),
     social.listReviewsByUser(id),
   ]);

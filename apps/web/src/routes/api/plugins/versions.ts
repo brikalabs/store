@@ -24,10 +24,7 @@ export const Route = createFileRoute("/api/plugins/versions")({
           if (record === null) throw notFound();
 
           const scope = scopeOf(name);
-          const myScopes = await inject(ScopeMembershipStore).listScopesForMember(
-            "github",
-            a.user.login,
-          );
+          const myScopes = await inject(ScopeMembershipStore).listScopesForMember(a.user.id);
           const canManage = scope !== null && myScopes.some((s) => s.scope === scope);
 
           return reply({
