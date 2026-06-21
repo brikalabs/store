@@ -9,24 +9,29 @@ import { token } from "@brika/di";
  * implementing this, with no change to the call sites.
  */
 export interface BlobStore {
-  /** Read an object's bytes by key, or null when it is absent. For small objects you parse. */
-  get(key: string): Promise<Uint8Array | null>;
-  /** Open an object for streaming by key, or null when absent. For serving bytes straight to a
-   *  `Response` without buffering them into memory. */
-  getStream(key: string): Promise<BlobStream | null>;
+  /** Open an object by key, or null when absent. The result carries its metadata and gives the body
+   *  either as a stream (serve it straight to a `Response`) or buffered (`bytes()`, to parse). */
+  get(key: string): Promise<BlobObject | null>;
   /** Write an object, optionally tagging its content type for direct serving. */
   put(key: string, value: Uint8Array | string, contentType?: string): Promise<void>;
   /** Remove an object by key (idempotent). Compensates a staged put when a transaction rolls back. */
   delete(key: string): Promise<void>;
 }
 
-/** An object opened for streaming: the body plus the metadata needed to serve it without buffering. */
-export interface BlobStream {
-  readonly body: ReadableStream<Uint8Array>;
+/**
+ * An object read from the store: its metadata plus the body. Mirrors a Cloudflare R2 object. The
+ * body is a single stream, so consume it ONCE - either `body` (stream to a `Response`, no buffering)
+ * OR `bytes()` (buffer into memory to parse), not both.
+ */
+export interface BlobObject {
   /** Byte length, for a `Content-Length` header. */
   readonly size: number;
   /** The content type stored with the object, if any. */
   readonly contentType?: string;
+  /** The body as a stream - pipe it straight to a `Response` without buffering. */
+  readonly body: ReadableStream<Uint8Array>;
+  /** The body buffered into memory - for a small object you parse (e.g. the JSON file index). */
+  bytes(): Promise<Uint8Array>;
 }
 
 /** The DI token for the {@link BlobStore} port (merged with the interface: `inject(BlobStore)`). */

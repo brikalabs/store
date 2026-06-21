@@ -11,7 +11,7 @@ import { BlobStore } from "@/server/ports/blob-store";
 export async function streamScopeIcon(scope: string): Promise<Response> {
   const iconKey = await inject(ScopeService).iconKeyOf(scope);
   if (iconKey === null) throw notFound();
-  const stored = await inject(BlobStore).getStream(iconKey);
+  const stored = await inject(BlobStore).get(iconKey);
   if (stored === null) throw notFound();
   // Pipe R2's body straight to the Response (no buffering), with the content type stored at upload.
   return new Response(stored.body, {

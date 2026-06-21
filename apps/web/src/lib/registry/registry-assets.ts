@@ -122,7 +122,9 @@ export async function getRegistryFileList(
 ): Promise<PluginFileIndex | null> {
   const key = cacheKey(name, version, "__index.json");
   const cached = await assets.get(key);
-  if (cached !== null) return JSON.parse(new TextDecoder().decode(cached)) as PluginFileIndex;
+  if (cached !== null) {
+    return JSON.parse(new TextDecoder().decode(await cached.bytes())) as PluginFileIndex;
+  }
 
   const res = await fetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
   if (!res.ok) return null;
@@ -170,7 +172,8 @@ export async function getRegistryAsset(
   const key = cacheKey(name, version, path);
   const cached = await assets.get(key);
   if (cached !== null) {
-    return { bytes: cached, contentType: fileContentType(path, isBinaryContent(cached)) };
+    const bytes = await cached.bytes();
+    return { bytes, contentType: fileContentType(path, isBinaryContent(bytes)) };
   }
 
   const bytes = await extractFromTarball(name, version, path);
