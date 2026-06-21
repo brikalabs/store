@@ -1,0 +1,175 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
+/**
+ * Angular-style functional DI, no decorators or reflection. You `inject(Token)` inside a class
+ * the injector builds (a field initializer / constructor) or anywhere within
+ * {@link runInInjectionContext}; the active injector resolves the token to a lazily-built,
+ * cached singleton. The injection context is an `AsyncLocalStorage`, so it survives `await`s -
+ * a request handler can `inject()` before and after awaiting. One injector definition serves
+ * both the hono and the tanstack app.
+ */
+
+/** A DI key for something with no class to name it: an interface, a binding, a config value. */
+export class InjectionToken<T> {
+  /** Phantom: keeps `T` attached to the token for inference. Never read at runtime. */
+  declare readonly _type: T;
+  constructor(
+    readonly description: string,
+    /** A default provider (like Angular's `providedIn: 'root'` factory), used when nothing else provides it. */
+    readonly options?: { readonly factory: () => T },
+  ) {}
+  toString(): string {
+    return `InjectionToken(${this.description})`;
+  }
+}
+
+/** A class usable as its own token, e.g. `inject(ReviewStore)`. Abstract classes are allowed as tokens. */
+export type Type<T> = (abstract new (...args: never[]) => T) & { readonly name: string };
+/** Anything you can `inject()`: a class or an {@link InjectionToken}. */
+export type ProviderToken<T> = Type<T> | InjectionToken<T>;
+
+export interface ValueProvider<T> {
+  readonly provide: ProviderToken<T>;
+  readonly useValue: T;
+}
+export interface FactoryProvider<T> {
+  readonly provide: ProviderToken<T>;
+  readonly useFactory: () => T;
+}
+export interface ClassProvider<T> {
+  readonly provide: ProviderToken<T>;
+  readonly useClass: new () => T;
+}
+export interface ExistingProvider<T> {
+  readonly provide: ProviderToken<T>;
+  /** Alias: `provide` resolves to whatever `useExisting` resolves to. */
+  readonly useExisting: ProviderToken<T>;
+}
+/** A bare class is shorthand for `{ provide: Class, useClass: Class }`. */
+export type Provider<T = unknown> =
+  | (new () => T)
+  | ValueProvider<T>
+  | FactoryProvider<T>
+  | ClassProvider<T>
+  | ExistingProvider<T>;
+
+const ACTIVE = new AsyncLocalStorage<Injector>();
+
+/** True when called inside an injection context (a provider build, or {@link runInInjectionContext}). */
+export function isInInjectionContext(): boolean {
+  return ACTIVE.getStore() !== undefined;
+}
+
+/**
+ * Resolve a dependency from the active injector. Call it in a field initializer / constructor of
+ * an injector-built class, or anywhere within {@link runInInjectionContext}. Throws when there is
+ * no active context (so a forgotten `runInInjectionContext` fails loudly, not silently).
+ */
+export function inject<T>(token: ProviderToken<T>): T {
+  const injector = ACTIVE.getStore();
+  if (injector === undefined) {
+    throw new Error(`inject(${tokenName(token)}) called outside an injection context`);
+  }
+  return injector.get(token);
+}
+
+/** Run `fn` with `injector` active, so `inject()` inside it (and its awaits) resolves against it. */
+export function runInInjectionContext<R>(injector: Injector, fn: () => R): R {
+  return ACTIVE.run(injector, fn);
+}
+
+function tokenName(token: ProviderToken<unknown>): string {
+  return token instanceof InjectionToken ? token.toString() : token.name;
+}
+
+function providerKey(provider: Provider): ProviderToken<unknown> {
+  return typeof provider === "function" ? provider : provider.provide;
+}
+
+/**
+ * A hierarchical injector. Every token resolves once and is cached - a singleton within this
+ * injector. A child delegates unknown tokens to its parent, so app-wide singletons live in a
+ * root injector while request-scoped values (the db, the session) live in a per-request child.
+ * An unregistered concrete class auto-resolves where the lookup bottoms out (its `inject()`ed
+ * deps still come from the active scope), like Angular's `providedIn: 'root'`.
+ */
+export class Injector {
+  readonly #providers = new Map<ProviderToken<unknown>, Provider>();
+  readonly #instances = new Map<ProviderToken<unknown>, unknown>();
+  readonly #resolving = new Set<ProviderToken<unknown>>();
+  readonly #parent: Injector | undefined;
+
+  constructor(providers: readonly Provider[] = [], parent?: Injector) {
+    this.#parent = parent;
+    for (const provider of providers) this.#providers.set(providerKey(provider), provider);
+    this.#instances.set(Injector, this); // `inject(Injector)` yields the injector itself
+  }
+
+  get<T>(token: ProviderToken<T>): T {
+    // The single typed boundary of a heterogeneous container: the maps are keyed by erased
+    // tokens, so the value is recovered as `T` here (the provider's type guarantees it).
+    return this.#resolve(token) as T;
+  }
+
+  #resolve(token: ProviderToken<unknown>): unknown {
+    if (this.#instances.has(token)) return this.#instances.get(token);
+    const provider = this.#providers.get(token);
+    if (provider !== undefined) return this.#instantiate(token, () => this.#build(provider));
+    // An explicit provider/instance up the chain wins, and resolves in ITS scope (so a parent's
+    // singleton stays one instance). Otherwise the token is auto-resolved HERE - the originating
+    // injector - so an unregistered store/service is created in the scope it was asked from and
+    // its `inject()`ed deps come from that scope (e.g. the request's db), not the root.
+    const parent = this.#parent;
+    if (parent !== undefined) {
+      if (parent.#canResolve(token)) return parent.#resolve(token);
+    }
+    if (token instanceof InjectionToken) {
+      const factory = token.options?.factory;
+      if (factory === undefined) throw new Error(`No provider for ${tokenName(token)}`);
+      return this.#instantiate(token, factory);
+    }
+    return this.#instantiate(token, () => construct(token));
+  }
+
+  /** Whether this injector or an ancestor explicitly provides (or has already built) `token`. */
+  #canResolve(token: ProviderToken<unknown>): boolean {
+    if (this.#instances.has(token) || this.#providers.has(token)) return true;
+    if (this.#parent === undefined) return false;
+    return this.#parent.#canResolve(token);
+  }
+
+  #instantiate(token: ProviderToken<unknown>, build: () => unknown): unknown {
+    if (this.#resolving.has(token)) {
+      throw new Error(`Circular dependency resolving ${tokenName(token)}`);
+    }
+    this.#resolving.add(token);
+    try {
+      const value = ACTIVE.run(this, build);
+      this.#instances.set(token, value);
+      return value;
+    } finally {
+      this.#resolving.delete(token);
+    }
+  }
+
+  #build(provider: Provider): unknown {
+    if (typeof provider === "function") return construct(provider);
+    if ("useValue" in provider) return provider.useValue;
+    if ("useFactory" in provider) return provider.useFactory();
+    if ("useClass" in provider) return new provider.useClass();
+    return this.#resolve(provider.useExisting);
+  }
+}
+
+/** Construct a concrete class token. Abstract tokens have no runtime constructor and throw. */
+function construct(token: ProviderToken<unknown>): unknown {
+  if (typeof token !== "function") throw new Error(`Cannot construct ${tokenName(token)}`);
+  // A `Type` is `abstract new`; only a concrete class reaches here, so recover the concrete signature.
+  const Ctor = token as unknown as new () => unknown;
+  return new Ctor();
+}
+
+/** Create an {@link Injector} from a provider list, optionally as a child of `parent`. */
+export function createInjector(providers: readonly Provider[] = [], parent?: Injector): Injector {
+  return new Injector(providers, parent);
+}
