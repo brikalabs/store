@@ -7,22 +7,22 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import {
   addComment,
   ensurePluginCached,
-  getDeveloperProfile,
   getRatingSummary,
+  getUserProfile,
   listComments,
   listReviews,
-  markDeveloperVerified,
-  updateDeveloperProfile,
+  listReviewsByUser,
+  updateUserProfile,
   upsertReview,
   upsertUser,
 } from "@/lib/social/social";
 import type { Db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
-import { developers, plugins, users } from "@/server/db/schema";
+import { plugins, users } from "@/server/db/schema";
 
 /** In-memory SQLite from the shipped migrations (see social.test.ts). */
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../drizzle");
-const MIGRATIONS = ["0000_parched_sauron.sql", "0001_betterauth.sql"];
+const MIGRATIONS = ["0000_parched_sauron.sql", "0001_betterauth.sql", "0002_user_profiles.sql"];
 
 function makeDb(): Db {
   const sqlite = new Database(":memory:");
@@ -54,16 +54,6 @@ describe("upsertUser", () => {
     const rows = await db.select().from(users).where(eq(users.id, "u1"));
     expect(rows[0]?.login).toBe("octocat");
     expect(rows[0]?.name).toBe("Octo");
-  });
-});
-
-describe("markDeveloperVerified", () => {
-  test("sets verified + githubLogin on an existing developer", async () => {
-    await db.insert(developers).values({ id: "octo" });
-    await markDeveloperVerified(db, "octo");
-    const rows = await db.select().from(developers).where(eq(developers.id, "octo"));
-    expect(rows[0]?.verified).toBe(true);
-    expect(rows[0]?.githubLogin).toBe("octo");
   });
 });
 
@@ -169,19 +159,56 @@ describe("comments", () => {
   });
 });
 
-describe("developer profile", () => {
-  test("defaults to the id, then reflects updates", async () => {
-    const initial = await getDeveloperProfile(db, "octo");
-    expect(initial.displayName).toBe("octo");
+describe("user profile", () => {
+  test("unknown account id is null", async () => {
+    expect(await getUserProfile(db, "nobody")).toBeNull();
+  });
 
-    await updateDeveloperProfile(db, "octo", {
+  test("falls back to the GitHub name + avatar until edited, then reflects updates", async () => {
+    await upsertUser(db, {
+      id: "u1",
+      login: "octo",
+      name: "Octo",
+      avatarUrl: "https://avatars.example/octo.png",
+    });
+
+    // Unset profile: display name falls back to the user's GitHub name, avatar to
+    // the GitHub image, bio/website absent (never back-filled from npm).
+    const initial = await getUserProfile(db, "u1");
+    expect(initial?.displayName).toBe("Octo");
+    expect(initial?.avatarUrl).toBe("https://avatars.example/octo.png");
+    expect(initial?.bio).toBeUndefined();
+    expect(initial?.links).toEqual([]);
+
+    await updateUserProfile(db, "u1", {
       displayName: "Octo Cat",
       bio: "Hi",
       website: "https://o.dev",
+      links: [{ label: "GitHub", url: "https://github.com/octo" }],
     });
-    const updated = await getDeveloperProfile(db, "octo");
-    expect(updated.displayName).toBe("Octo Cat");
-    expect(updated.bio).toBe("Hi");
-    expect(updated.website).toBe("https://o.dev");
+    const updated = await getUserProfile(db, "u1");
+    expect(updated?.displayName).toBe("Octo Cat");
+    expect(updated?.bio).toBe("Hi");
+    expect(updated?.website).toBe("https://o.dev");
+    expect(updated?.links).toEqual([{ label: "GitHub", url: "https://github.com/octo" }]);
+    // The avatar still comes from the GitHub image, not the profile row.
+    expect(updated?.avatarUrl).toBe("https://avatars.example/octo.png");
+  });
+});
+
+describe("listReviewsByUser", () => {
+  test("returns the account's reviews, newest first, with the plugin name", async () => {
+    await db.insert(plugins).values({ name: "p1", latestVersion: "1.0.0", brikaEngine: "^0.1.0" });
+    await db.insert(plugins).values({ name: "p2", latestVersion: "1.0.0", brikaEngine: "^0.1.0" });
+    await upsertUser(db, { id: "u1", login: "a", name: "A" });
+    await upsertUser(db, { id: "u2", login: "b" });
+    await upsertReview(db, "p1", "u1", { rating: 5, body: "great" });
+    await upsertReview(db, "p2", "u1", { rating: 3, title: "ok", body: "fine" });
+    await upsertReview(db, "p1", "u2", { rating: 1, body: "nope" });
+
+    const mine = await listReviewsByUser(db, "u1");
+    expect(mine).toHaveLength(2);
+    expect(mine.every((r) => r.author.id === "u1")).toBe(true);
+    expect(new Set(mine.map((r) => r.pluginName))).toEqual(new Set(["p1", "p2"]));
   });
 });

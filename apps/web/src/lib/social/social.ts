@@ -1,9 +1,9 @@
 import {
   type Comment,
   Comment as CommentSchema,
-  DeveloperProfile,
   type RatingSummary,
   Review,
+  UserProfile,
 } from "@brika/registry-contract";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getPluginPage } from "@/lib/registry/registry";
@@ -11,10 +11,10 @@ import type { Db } from "@/server/db/client";
 import {
   comments,
   commentVotes,
-  developers,
   plugins,
   reviews,
   reviewVotes,
+  userProfiles,
   users,
 } from "@/server/db/schema";
 
@@ -40,17 +40,6 @@ export async function upsertUser(
       target: users.id,
       set: { login: user.login, name: user.name, image: user.avatarUrl },
     });
-}
-
-/**
- * Verified-author heuristic: an npm maintainer id equal to the GitHub login is
- * marked verified once that GitHub user signs in.
- */
-export async function markDeveloperVerified(database: Db, githubLogin: string): Promise<void> {
-  await database
-    .update(developers)
-    .set({ verified: true, githubLogin })
-    .where(eq(developers.id, githubLogin));
 }
 
 /**
@@ -88,12 +77,6 @@ export async function ensurePluginCached(database: Db, name: string): Promise<bo
     })
     .onConflictDoNothing();
 
-  if (detail.author !== undefined) {
-    await database
-      .insert(developers)
-      .values({ id: detail.author.id, displayName: detail.author.name ?? detail.author.id })
-      .onConflictDoNothing();
-  }
   return true;
 }
 
@@ -379,32 +362,112 @@ export async function addComment(
     .values({ id: crypto.randomUUID(), pluginName, userId, body, parentId });
 }
 
-/** The editable developer profile (defaults to the npm-derived values). */
-export async function getDeveloperProfile(database: Db, id: string): Promise<DeveloperProfile> {
-  const rows = await database.select().from(developers).where(eq(developers.id, id)).limit(1);
+/**
+ * The account's public profile (USER-002/005), keyed by the opaque account id
+ * (`users.id`). User-authored and never derived from npm: the editable fields
+ * (displayName/bio/website/links) come from the `user_profiles` row when present;
+ * `displayName` falls back to the GitHub `name`, the avatar always comes from the
+ * GitHub `image` on the `users` row. Returns null for an unknown id so the public
+ * page 404s.
+ */
+export async function getUserProfile(database: Db, id: string): Promise<UserProfile | null> {
+  const rows = await database
+    .select({
+      id: users.id,
+      name: users.name,
+      image: users.image,
+      displayName: userProfiles.displayName,
+      bio: userProfiles.bio,
+      website: userProfiles.website,
+      links: userProfiles.links,
+    })
+    .from(users)
+    .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
+    .where(eq(users.id, id))
+    .limit(1);
   const row = rows[0];
-  return DeveloperProfile.parse({
-    id,
-    displayName: row?.displayName ?? id,
-    avatarUrl: row?.avatarUrl ?? undefined,
-    bio: row?.bio ?? undefined,
-    website: row?.website ?? undefined,
-    githubLogin: row?.githubLogin ?? undefined,
-    verified: row?.verified ?? false,
-    pluginCount: row?.pluginCount ?? 0,
+  if (row === undefined) return null;
+  return UserProfile.parse({
+    id: row.id,
+    displayName: row.displayName ?? row.name ?? undefined,
+    avatarUrl: row.image ?? undefined,
+    bio: row.bio ?? undefined,
+    website: row.website ?? undefined,
+    links: row.links ?? [],
   });
 }
 
-export async function updateDeveloperProfile(
+/**
+ * Upsert the signed-in account's own user-authored profile fields (USER-003). A
+ * user only ever writes their own row (the caller passes the session `users.id`).
+ * Unset fields are stored as-is (empty, not back-filled from npm, USER-005).
+ */
+export async function updateUserProfile(
   database: Db,
   id: string,
-  fields: { displayName?: string; bio?: string; website?: string },
+  fields: {
+    displayName?: string;
+    bio?: string;
+    website?: string;
+    links?: { label: string; url: string }[];
+  },
 ): Promise<void> {
+  const values = {
+    displayName: fields.displayName ?? null,
+    bio: fields.bio ?? null,
+    website: fields.website ?? null,
+    links: fields.links ?? [],
+  };
   await database
-    .insert(developers)
-    .values({ id, displayName: fields.displayName, bio: fields.bio, website: fields.website })
-    .onConflictDoUpdate({
-      target: developers.id,
-      set: { displayName: fields.displayName, bio: fields.bio, website: fields.website },
-    });
+    .insert(userProfiles)
+    .values({ userId: id, ...values })
+    .onConflictDoUpdate({ target: userProfiles.userId, set: values });
+}
+
+/**
+ * Every review authored by an account (USER-002), newest first, joined to the
+ * plugin's display name for linking. Used by the public profile page.
+ */
+export async function listReviewsByUser(database: Db, userId: string): Promise<Review[]> {
+  const rows = await database
+    .select({
+      id: reviews.id,
+      pluginName: reviews.pluginName,
+      rating: reviews.rating,
+      title: reviews.title,
+      body: reviews.body,
+      versionReviewed: reviews.versionReviewed,
+      helpfulCount: reviews.helpfulCount,
+      createdAt: reviews.createdAt,
+      edited: reviews.edited,
+      authorId: users.id,
+      login: users.login,
+      name: users.name,
+      avatarUrl: users.image,
+    })
+    .from(reviews)
+    .innerJoin(users, eq(reviews.userId, users.id))
+    .where(eq(reviews.userId, userId))
+    .orderBy(desc(reviews.createdAt));
+
+  return rows.map((row) =>
+    Review.parse({
+      id: row.id,
+      pluginName: row.pluginName,
+      author: {
+        id: row.authorId,
+        login: row.login,
+        name: row.name ?? undefined,
+        avatarUrl: row.avatarUrl ?? undefined,
+      },
+      rating: row.rating,
+      title: row.title ?? undefined,
+      body: row.body,
+      versionReviewed: row.versionReviewed ?? undefined,
+      helpfulCount: row.helpfulCount,
+      viewerVotedHelpful: false,
+      createdAt: new Date(row.createdAt * 1000).toISOString(),
+      edited: row.edited,
+    }),
+  );
 }

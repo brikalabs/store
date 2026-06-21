@@ -21,6 +21,7 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as V1VerifiedRouteImport } from './routes/v1/verified'
 import { Route as V1SearchRouteImport } from './routes/v1/search'
 import { Route as V1RegistryRouteImport } from './routes/v1/registry'
+import { Route as UIdRouteImport } from './routes/u/$id'
 import { Route as OperatorScopesRouteImport } from './routes/operator/scopes'
 import { Route as OperatorPackagesRouteImport } from './routes/operator/packages'
 import { Route as OperatorAuditRouteImport } from './routes/operator/audit'
@@ -132,6 +133,11 @@ const V1SearchRoute = V1SearchRouteImport.update({
 const V1RegistryRoute = V1RegistryRouteImport.update({
   id: '/v1/registry',
   path: '/v1/registry',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UIdRoute = UIdRouteImport.update({
+  id: '/u/$id',
+  path: '/u/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperatorScopesRoute = OperatorScopesRouteImport.update({
@@ -427,6 +433,7 @@ export interface FileRoutesByFullPath {
   '/operator/audit': typeof OperatorAuditRoute
   '/operator/packages': typeof OperatorPackagesRoute
   '/operator/scopes': typeof OperatorScopesRoute
+  '/u/$id': typeof UIdRoute
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
@@ -491,6 +498,7 @@ export interface FileRoutesByTo {
   '/operator/audit': typeof OperatorAuditRoute
   '/operator/packages': typeof OperatorPackagesRoute
   '/operator/scopes': typeof OperatorScopesRoute
+  '/u/$id': typeof UIdRoute
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
@@ -558,6 +566,7 @@ export interface FileRoutesById {
   '/operator/audit': typeof OperatorAuditRoute
   '/operator/packages': typeof OperatorPackagesRoute
   '/operator/scopes': typeof OperatorScopesRoute
+  '/u/$id': typeof UIdRoute
   '/v1/registry': typeof V1RegistryRoute
   '/v1/search': typeof V1SearchRoute
   '/v1/verified': typeof V1VerifiedRoute
@@ -626,6 +635,7 @@ export interface FileRouteTypes {
     | '/operator/audit'
     | '/operator/packages'
     | '/operator/scopes'
+    | '/u/$id'
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
@@ -690,6 +700,7 @@ export interface FileRouteTypes {
     | '/operator/audit'
     | '/operator/packages'
     | '/operator/scopes'
+    | '/u/$id'
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
@@ -756,6 +767,7 @@ export interface FileRouteTypes {
     | '/operator/audit'
     | '/operator/packages'
     | '/operator/scopes'
+    | '/u/$id'
     | '/v1/registry'
     | '/v1/search'
     | '/v1/verified'
@@ -818,6 +830,7 @@ export interface RootRouteChildren {
   LegalLicensesRoute: typeof LegalLicensesRoute
   LegalPrivacyRoute: typeof LegalPrivacyRoute
   LegalTermsRoute: typeof LegalTermsRoute
+  UIdRoute: typeof UIdRoute
   V1RegistryRoute: typeof V1RegistryRoute
   V1SearchRoute: typeof V1SearchRoute
   V1VerifiedRoute: typeof V1VerifiedRoute
@@ -921,6 +934,13 @@ declare module '@tanstack/react-router' {
       path: '/v1/registry'
       fullPath: '/v1/registry'
       preLoaderRoute: typeof V1RegistryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/u/$id': {
+      id: '/u/$id'
+      path: '/u/$id'
+      fullPath: '/u/$id'
+      preLoaderRoute: typeof UIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operator/scopes': {
@@ -1481,6 +1501,7 @@ const rootRouteChildren: RootRouteChildren = {
   LegalLicensesRoute: LegalLicensesRoute,
   LegalPrivacyRoute: LegalPrivacyRoute,
   LegalTermsRoute: LegalTermsRoute,
+  UIdRoute: UIdRoute,
   V1RegistryRoute: V1RegistryRoute,
   V1SearchRoute: V1SearchRoute,
   V1VerifiedRoute: V1VerifiedRoute,

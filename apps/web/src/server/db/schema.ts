@@ -11,8 +11,8 @@ import {
 
 /**
  * The relational mirror of npm plus the social layer. npm stays the source of
- * truth for code; these tables are a cache (plugins, versions, developers) and
- * the data the store owns (users, reviews, comments, votes, reports).
+ * truth for code; these tables are a cache (plugins, versions) and the data the
+ * store owns (users, user profiles, reviews, comments, votes, reports).
  */
 
 const epoch = sql`(unixepoch())`;
@@ -70,18 +70,6 @@ export const pluginVersions = sqliteTable(
   (t) => [primaryKey({ columns: [t.pluginName, t.version] })],
 );
 
-/** Derived from npm for every publisher; no claim flow. */
-export const developers = sqliteTable("developers", {
-  id: text("id").primaryKey(),
-  displayName: text("display_name"),
-  avatarUrl: text("avatar_url"),
-  bio: text("bio"),
-  website: text("website"),
-  githubLogin: text("github_login"),
-  verified: integer("verified", { mode: "boolean" }).notNull().default(false),
-  pluginCount: integer("plugin_count").notNull().default(0),
-});
-
 /**
  * The first-class Brika account (USER-001). Backs BetterAuth's `user` model via
  * `modelName: "users"`, so the SQL table keeps the name `users` and `users.id`
@@ -104,6 +92,28 @@ export const users = sqliteTable("users", {
   login: text("login"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(epoch),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(epoch),
+});
+
+/**
+ * The user-authored account profile (USER-003/005), keyed 1:1 to a `users` row.
+ * The account is the first-class identity (USER-001), so the profile lives in its
+ * own table to keep the BetterAuth `users` table clean. Every field is authored by
+ * the account holder and NEVER derived from npm: `displayName` overrides the GitHub
+ * name, `links` is a labelled list. The avatar is not stored here — it comes from
+ * the GitHub avatar on `users.image`. A missing row means an unset profile (all
+ * fields default to empty), so reads fall back to the `users` row.
+ */
+export const userProfiles = sqliteTable("user_profiles", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  displayName: text("display_name"),
+  bio: text("bio"),
+  website: text("website"),
+  links: text("links", { mode: "json" })
+    .$type<{ label: string; url: string }[]>()
+    .notNull()
+    .default(sql`'[]'`),
 });
 
 /** BetterAuth `session` model: DB-backed sessions in D1 (AUTH-012). */
