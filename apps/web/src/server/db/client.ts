@@ -1,6 +1,4 @@
-import { inject } from "@brika/di";
 import { createClient } from "@brika/store-db";
-import { Bindings } from "@/server/bindings";
 import * as schema from "./schema";
 
 /**
@@ -15,11 +13,11 @@ export function getDb(d1: D1Database) {
 export type Db = ReturnType<typeof getDb>;
 
 /**
- * Auto-building DI wrapper around the store-schema drizzle client: a store reads
- * `readonly #db = inject(Database).orm`. It self-resolves from {@link Bindings} (the one
- * value the composition root provides), so no token registration is needed; a unit test
+ * The store-schema drizzle client as an injectable: a store reads `inject(Database).orm`.
+ * Plain class (no binding read here, so it stays test-safe); the composition root provides it
+ * from the request's D1 (`useFactory: () => new Database(getDb(env.DB))`), and a unit test
  * overrides it with `{ provide: Database, useValue: { orm: inMemoryDb } }`.
  */
 export class Database {
-  readonly orm = getDb(inject(Bindings).DB);
+  constructor(readonly orm: Db) {}
 }

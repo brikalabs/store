@@ -10,6 +10,7 @@ export {
   isInInjectionContext,
   type Provider,
   type ProviderToken,
+  runInContext,
   runInInjectionContext,
   type Type,
   type ValueProvider,

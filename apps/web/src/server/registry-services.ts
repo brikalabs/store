@@ -17,7 +17,6 @@ import {
   HmacDomainChallenge,
   listAllPackages,
 } from "@brika/store-db/adapters";
-import { Bindings } from "@/server/bindings";
 import { vars } from "@/server/env";
 
 /**
@@ -67,13 +66,13 @@ export function registryServices(db: Db = registryDb()) {
 export type RegistryServices = ReturnType<typeof registryServices>;
 
 /**
- * Auto-building DI wrapper around the `reg_*` drizzle client. Mirrors {@link Database} (it
- * derives from {@link Bindings}, not the `cloudflare:workers` import, so it stays test-safe
- * and consistent), but is typed with the registry schema via `@brika/store-db`'s {@link getDb}.
- * A handler reaches the graph through {@link Registry}, not this directly.
+ * The `reg_*` drizzle client as an injectable. Mirrors {@link Database} but typed with the
+ * registry schema via `@brika/store-db`'s {@link getDb}. Plain class (test-safe); the
+ * composition root provides it from the request's D1. A handler reaches the graph through
+ * {@link Registry}, not this directly.
  */
 export class RegistryDatabase {
-  readonly orm = getDb(inject(Bindings).DB);
+  constructor(readonly orm: Db) {}
 }
 
 /**

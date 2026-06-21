@@ -1,21 +1,19 @@
 import { env } from "cloudflare:workers";
-import { createInjector, type Injector } from "@brika/di";
-import { Bindings } from "@/server/bindings";
+import type { Provider } from "@brika/di";
 import { BlobStore, CfR2BlobStore } from "@/server/blob-store";
+import { Database, getDb } from "@/server/db/client";
+import { RegistryDatabase, registryDb } from "@/server/registry-services";
 
 /**
- * A fresh per-request injector for the web app. {@link Bindings} (the Cloudflare bindings for
- * this request) is the ONLY value the composition root hands in; everything else self-builds.
- * The store side auto-resolves from `Bindings`: `Database`/`RegistryDatabase` build their drizzle
- * client from `inject(Bindings).DB`, the `reg_*` graph (`Registry`) wires over `RegistryDatabase`,
- * and every store + `SocialService` auto-resolves (a concrete class is its own provider). The one
- * interface->impl binding is `BlobStore`: an abstract class has no constructor to auto-build, so
- * `inject(BlobStore)` is mapped to `CfR2BlobStore` here. A handler just `inject(...)` the class it
- * needs and the whole graph builds lazily in this scope.
+ * The web app's per-request DI seam, as plain data: the few values that come from the runtime,
+ * each provided on its own (no grouping). This is the ONLY place `cloudflare:workers` `env` is
+ * read; the store/db/blob classes stay binding-free and test-safe. Everything else self-builds:
+ * stores + `SocialService` + `Registry` are concrete classes that `inject(...)` these and so
+ * auto-resolve. Code never builds an injector by hand - `runHandler` and the server-function
+ * loaders pass this to `runInContext(webProviders, ...)`, then it is all `inject(...)`.
  */
-export function webInjector(): Injector {
-  return createInjector([
-    { provide: Bindings, useValue: env },
-    { provide: BlobStore, useClass: CfR2BlobStore },
-  ]);
-}
+export const webProviders: readonly Provider[] = [
+  { provide: Database, useFactory: () => new Database(getDb(env.DB)) },
+  { provide: RegistryDatabase, useFactory: () => new RegistryDatabase(registryDb()) },
+  { provide: BlobStore, useFactory: () => new CfR2BlobStore(env.ASSETS) },
+];

@@ -1,12 +1,9 @@
-import { inject } from "@brika/di";
-import { Bindings } from "@/server/bindings";
-
 /**
  * Object-storage port for the store's mirrored assets (extracted tarball files,
  * the file index). The store reads/writes blobs by key; it does not care whether
  * they live in Cloudflare R2, S3, or a local disk. An abstract class so it is both
  * the interface AND the DI token: a call site does `inject(BlobStore)` and the
- * injector resolves it to {@link CfR2BlobStore} (bound once in `webInjector`).
+ * injector resolves it to {@link CfR2BlobStore} (bound once in `webProviders`).
  * A different host is a new class extending this, with no change to the call sites.
  */
 export abstract class BlobStore {
@@ -18,9 +15,14 @@ export abstract class BlobStore {
   abstract delete(key: string): Promise<void>;
 }
 
-/** Cloudflare R2 adapter for {@link BlobStore}. Reads its bucket from {@link Bindings}. */
+/** Cloudflare R2 adapter for {@link BlobStore}. The composition root passes the request's bucket. */
 export class CfR2BlobStore extends BlobStore {
-  readonly #bucket = inject(Bindings).ASSETS;
+  readonly #bucket: R2Bucket;
+
+  constructor(bucket: R2Bucket) {
+    super();
+    this.#bucket = bucket;
+  }
 
   async get(key: string): Promise<Uint8Array | null> {
     const object = await this.#bucket.get(key);

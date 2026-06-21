@@ -185,3 +185,13 @@ function construct(token: ProviderToken<unknown>): unknown {
 export function createInjector(providers: readonly Provider[] = [], parent?: Injector): Injector {
   return new Injector(providers, parent);
 }
+
+/**
+ * Create a fresh injector from `providers` and run `fn` inside it - the one-liner a framework
+ * adapter (a request handler, a server function) uses so application code never touches
+ * `createInjector`/`runInInjectionContext` itself: it just `inject()`s. `providers` is normally
+ * the single runtime seam (e.g. the request bindings); everything else self-builds.
+ */
+export function runInContext<R>(providers: readonly Provider[], fn: () => R): R {
+  return runInInjectionContext(createInjector(providers), fn);
+}
