@@ -3,8 +3,8 @@ import type { PluginSummary, Review, UserProfile } from "@brika/registry-contrac
 import { scopeOf } from "@brika/registry-core";
 import { listScopesForMember } from "@brika/store-db/adapters";
 import { searchPlugins } from "@/lib/registry/registry";
+import { RegistryDatabase } from "@/server/registry-services";
 import { SocialService } from "@/server/services/social-service";
-import { REG_DB } from "@/server/tokens";
 
 export interface UserPage {
   readonly profile: UserProfile;
@@ -32,7 +32,9 @@ export async function resolveUserPage(id: string): Promise<UserPage | null> {
 
   const login = await social.findUserLogin(id);
   const [scopes, { plugins: catalog }, reviews] = await Promise.all([
-    login ? listScopesForMember(inject(REG_DB), "github", login) : Promise.resolve([]),
+    login
+      ? listScopesForMember(inject(RegistryDatabase).orm, "github", login)
+      : Promise.resolve([]),
     searchPlugins(undefined, CATALOG_SCAN, 0),
     social.listReviewsByUser(id),
   ]);

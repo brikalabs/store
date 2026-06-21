@@ -2,9 +2,9 @@ import { inject } from "@brika/di";
 import { Comment } from "@brika/registry-contract";
 import { and, eq, sql } from "drizzle-orm";
 import { displayNameOf } from "@/lib/display-name";
+import { Database } from "@/server/db/client";
 import { comments, commentVotes, userProfiles, users } from "@/server/db/schema";
 import { votedIds } from "@/server/stores/voted-ids";
-import { DB } from "@/server/tokens";
 
 /**
  * Repository for `comments` (+ the `comment_votes` upvote tally). Reads project a comment into
@@ -13,7 +13,7 @@ import { DB } from "@/server/tokens";
  * `[deleted]`.
  */
 export class CommentStore {
-  readonly #db = inject(DB);
+  readonly #db = inject(Database).orm;
 
   /** Every comment of a plugin, oldest first, with upvote totals + the viewer's vote state. */
   async listForPlugin(pluginName: string, viewerId: string | null = null): Promise<Comment[]> {

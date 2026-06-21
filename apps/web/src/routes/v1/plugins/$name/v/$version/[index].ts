@@ -1,9 +1,10 @@
+import { inject } from "@brika/di";
 import { notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { getRegistryFileList } from "@/lib/registry/registry-assets";
 import { isRegistryName } from "@/lib/registry/registry-source";
+import { BlobStore } from "@/server/blob-store";
 import { publicJson, runHandler } from "@/server/http";
-import { serverContext } from "@/server/server-context";
 
 /**
  * `GET /v1/plugins/:name/v/:version/index` - the published file index (JSON),
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/v1/plugins/$name/v/$version/index")({
         runHandler(async () => {
           const name = decodeURIComponent(params.name);
           if (!isRegistryName(name)) throw notFound();
-          const index = await getRegistryFileList(serverContext().assets, name, params.version);
+          const index = await getRegistryFileList(inject(BlobStore), name, params.version);
           if (index === null) throw notFound();
           return publicJson(index);
         }),

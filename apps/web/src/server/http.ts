@@ -2,11 +2,11 @@ import { inject, runInInjectionContext } from "@brika/di";
 import { isOperator, type PublishIdentity } from "@brika/registry-core";
 import { forbidden, HttpError, json, reply, unauthorized } from "@brika/router";
 import { getCurrentUser, type SessionUser } from "@/lib/auth/auth";
+import { Database } from "@/server/db/client";
 import { operatorAdmins } from "@/server/env";
 import { webInjector } from "@/server/injector";
 import { sessionIdentity } from "@/server/registry-identity";
-import type { RegistryServices } from "@/server/registry-services";
-import { DB, REGISTRY } from "@/server/tokens";
+import { Registry, type RegistryServices } from "@/server/registry-services";
 
 /**
  * The TanStack-Start side of the shared HTTP toolkit. The generic primitives - `HttpError`
@@ -48,9 +48,9 @@ export function publicJson(data: unknown, maxAgeSeconds = 300): Response {
  * D1 binding). Used by every console route; pair with {@link runHandler}.
  */
 export async function authed(request: Request): Promise<ConsoleContext> {
-  const user = await getCurrentUser(request, inject(DB));
+  const user = await getCurrentUser(request, inject(Database).orm);
   if (user === null) throw unauthorized("Sign in required");
-  return { user, identity: sessionIdentity(user), svc: inject(REGISTRY) };
+  return { user, identity: sessionIdentity(user), svc: inject(Registry).graph };
 }
 
 /**

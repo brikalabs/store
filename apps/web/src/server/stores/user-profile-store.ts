@@ -2,8 +2,8 @@ import { inject } from "@brika/di";
 import { UserProfile } from "@brika/registry-contract";
 import { eq } from "drizzle-orm";
 import { displayNameOf } from "@/lib/display-name";
+import { Database } from "@/server/db/client";
 import { userProfiles, users } from "@/server/db/schema";
-import { DB } from "@/server/tokens";
 
 /**
  * Repository for the user-authored public profile (`user_profiles`, USER-002/003/005), keyed
@@ -12,7 +12,7 @@ import { DB } from "@/server/tokens";
  * the GitHub `name` (never npm-derived). Reads join `users` to resolve those fallbacks.
  */
 export class UserProfileStore {
-  readonly #db = inject(DB);
+  readonly #db = inject(Database).orm;
 
   /** The account's public profile by opaque account id, or null when the account is unknown. */
   async get(id: string): Promise<UserProfile | null> {

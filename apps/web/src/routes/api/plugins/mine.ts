@@ -7,7 +7,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { resolveOwnedPlugins } from "@/lib/registry/owned-plugins";
 import { searchPlugins } from "@/lib/registry/registry";
 import { authed, runHandler } from "@/server/http";
-import { REG_DB } from "@/server/tokens";
+import { RegistryDatabase } from "@/server/registry-services";
 
 /**
  * `GET /api/plugins/mine` - every plugin published under a scope the signed-in user owns (scope
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/api/plugins/mine")({
           // These reads are independent, so overlap them; the catalog is bounded, so one capped
           // scan covers it.
           const [myScopes, catalog] = await Promise.all([
-            listScopesForMember(inject(REG_DB), "github", a.user.login),
+            listScopesForMember(inject(RegistryDatabase).orm, "github", a.user.login),
             searchPlugins(undefined, 200, 0),
           ]);
           const owned = new Set(myScopes.map((s) => s.scope));
@@ -46,7 +46,9 @@ export const Route = createFileRoute("/api/plugins/mine")({
             }
           }
 
-          const ownedNames = await listPackageNamesForScopes(inject(REG_DB), [...owned]);
+          const ownedNames = await listPackageNamesForScopes(inject(RegistryDatabase).orm, [
+            ...owned,
+          ]);
           const plugins = await resolveOwnedPlugins(
             a.svc.metadata,
             ownedNames,

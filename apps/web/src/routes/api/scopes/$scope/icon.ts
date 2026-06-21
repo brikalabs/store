@@ -1,10 +1,11 @@
+import { inject } from "@brika/di";
 import { badRequest, okOrThrow, reply } from "@brika/router";
 import { onRollback, transaction } from "@brika/tx";
 import { createFileRoute } from "@tanstack/react-router";
 import { ICON_TYPES, MAX_ICON_BYTES } from "@/lib/scope-icon";
+import { BlobStore } from "@/server/blob-store";
 import { authed, runHandler } from "@/server/http";
 import { streamScopeIcon } from "@/server/scope-icon";
-import { serverContext } from "@/server/server-context";
 
 /**
  * Scope logo (ORG-009):
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
           // onRollback compensation deletes the just-staged blob, so a rejected upload never
           // leaves an orphaned object in R2.
           const key = `scope-icons/${params.scope}.${ext}`;
-          const assets = serverContext().assets;
+          const assets = inject(BlobStore);
           await transaction(async () => {
             await assets.put(key, bytes, type);
             onRollback(() => assets.delete(key));

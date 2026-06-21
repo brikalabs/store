@@ -3,9 +3,9 @@ import { badRequest, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
+import { Database } from "@/server/db/client";
 import { publicJson, runHandler } from "@/server/http";
 import { SocialService } from "@/server/services/social-service";
-import { DB } from "@/server/tokens";
 
 const ProfileInput = z.object({
   displayName: z.string().max(80).optional(),
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/account/profile")({
     handlers: {
       GET: ({ request }) =>
         runHandler(async () => {
-          const db = inject(DB);
+          const db = inject(Database).orm;
           const user = await getCurrentUser(request, db);
           if (user === null) throw unauthorized("Sign in required");
           const profile = await inject(SocialService).getUserProfile(user.id);
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/api/account/profile")({
         }),
       PUT: ({ request }) =>
         runHandler(async () => {
-          const db = inject(DB);
+          const db = inject(Database).orm;
           const user = await getCurrentUser(request, db);
           if (user === null) throw unauthorized("Sign in required");
           const parsed = ProfileInput.safeParse(await request.json());

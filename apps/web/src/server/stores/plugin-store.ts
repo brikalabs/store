@@ -1,8 +1,8 @@
 import { inject } from "@brika/di";
 import type { PluginDetail, RatingSummary } from "@brika/registry-contract";
 import { eq, sql } from "drizzle-orm";
+import { Database } from "@/server/db/client";
 import { plugins, reviews } from "@/server/db/schema";
-import { DB } from "@/server/tokens";
 
 /**
  * Repository for the `plugins` cache table - the relational mirror of a published package that
@@ -12,7 +12,7 @@ import { DB } from "@/server/tokens";
  * is orchestration and lives in {@link SocialService}, not here - this store is pure SQL.
  */
 export class PluginStore {
-  readonly #db = inject(DB);
+  readonly #db = inject(Database).orm;
 
   /** Whether a cache row already exists for this package. */
   async exists(name: string): Promise<boolean> {

@@ -1,11 +1,12 @@
 import { env } from "cloudflare:workers";
+import { inject } from "@brika/di";
 import { badRequest, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { approveDeviceCode } from "@/lib/auth/device-approval";
+import { Database } from "@/server/db/client";
 import { publicJson, runHandler } from "@/server/http";
-import { serverContext } from "@/server/server-context";
 
 /**
  * `POST /api/device/approve`: approve a pending registry device-authorization
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/api/device/approve")({
     handlers: {
       POST: ({ request }) =>
         runHandler(async () => {
-          const user = await getCurrentUser(request, serverContext().db);
+          const user = await getCurrentUser(request, inject(Database).orm);
           if (user === null) throw unauthorized("Sign in required");
 
           const raw: unknown = await request.json().catch(() => null);

@@ -1,6 +1,7 @@
+import { env } from "cloudflare:workers";
 import { createFileRoute } from "@tanstack/react-router";
 import { getCurrentUser } from "@/lib/auth/auth";
-import { serverContext } from "@/server/server-context";
+import { getDb } from "@/server/db/client";
 
 /** `GET /auth/me`: the signed-in user (or null). Never cached. */
 export const Route = createFileRoute("/auth/me")({
@@ -8,7 +9,7 @@ export const Route = createFileRoute("/auth/me")({
     handlers: {
       GET: async ({ request }) =>
         Response.json(
-          { user: await getCurrentUser(request, serverContext().db) },
+          { user: await getCurrentUser(request, getDb(env.DB)) },
           { headers: { "cache-control": "no-store" } },
         ),
     },

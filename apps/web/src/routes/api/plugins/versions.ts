@@ -4,7 +4,7 @@ import { badRequest, notFound, reply } from "@brika/router";
 import { listScopesForMember } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
 import { authed, runHandler } from "@/server/http";
-import { REG_DB } from "@/server/tokens";
+import { RegistryDatabase } from "@/server/registry-services";
 
 /**
  * `GET /api/plugins/versions?name=<encoded>` - a registry-hosted package's versions with
@@ -25,7 +25,11 @@ export const Route = createFileRoute("/api/plugins/versions")({
           if (record === null) throw notFound();
 
           const scope = scopeOf(name);
-          const myScopes = await listScopesForMember(inject(REG_DB), "github", a.user.login);
+          const myScopes = await listScopesForMember(
+            inject(RegistryDatabase).orm,
+            "github",
+            a.user.login,
+          );
           const canManage = scope !== null && myScopes.some((s) => s.scope === scope);
 
           return reply({

@@ -3,7 +3,7 @@ import { reply } from "@brika/router";
 import { listSubjectTokens } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
 import { authed, runHandler } from "@/server/http";
-import { REG_DB } from "@/server/tokens";
+import { RegistryDatabase } from "@/server/registry-services";
 
 /**
  * `GET  /api/account/tokens` - the signed-in user's publish tokens (metadata only; the
@@ -15,7 +15,11 @@ export const Route = createFileRoute("/api/account/tokens")({
       GET: ({ request }) =>
         runHandler(async () => {
           const a = await authed(request);
-          const tokens = await listSubjectTokens(inject(REG_DB), "github", a.user.login);
+          const tokens = await listSubjectTokens(
+            inject(RegistryDatabase).orm,
+            "github",
+            a.user.login,
+          );
           return reply({ tokens });
         }),
       POST: ({ request }) =>

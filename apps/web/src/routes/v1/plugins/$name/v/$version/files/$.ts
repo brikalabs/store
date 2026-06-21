@@ -1,9 +1,10 @@
+import { inject } from "@brika/di";
 import { badRequest, notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { getRegistryAsset } from "@/lib/registry/registry-assets";
 import { isRegistryName, isSafeAssetPath } from "@/lib/registry/registry-source";
+import { BlobStore } from "@/server/blob-store";
 import { runHandler } from "@/server/http";
-import { serverContext } from "@/server/server-context";
 
 /**
  * `GET /v1/plugins/:name/v/:version/files/<path>` - serve a single file bundled
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/v1/plugins/$name/v/$version/files/$")({
           const path = params._splat ?? "";
           if (!isSafeAssetPath(path)) throw badRequest("invalid asset path");
 
-          const asset = await getRegistryAsset(serverContext().assets, name, params.version, path);
+          const asset = await getRegistryAsset(inject(BlobStore), name, params.version, path);
           if (asset === null) throw notFound();
 
           // Copy into a fresh ArrayBuffer-backed view so the body type is concrete

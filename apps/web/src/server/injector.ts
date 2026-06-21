@@ -1,22 +1,21 @@
 import { env } from "cloudflare:workers";
-import { createInjector, type Injector, inject } from "@brika/di";
-import { registryDb, registryServices } from "@/server/registry-services";
-import { ENV, REG_DB, REGISTRY } from "@/server/tokens";
+import { createInjector, type Injector } from "@brika/di";
+import { Bindings } from "@/server/bindings";
+import { BlobStore, CfR2BlobStore } from "@/server/blob-store";
 
 /**
- * A fresh per-request injector for the web app. ENV is the ONLY binding declared here - the
- * Cloudflare bindings for this request. The store side self-wires: DB and ASSETS resolve from
- * ENV via their token default factories, and every store + {@link SocialService} auto-resolves
- * (a concrete class is its own provider). The `reg_*` graph can't self-wire from a token default
- * factory - `@brika/registry-core` is a PURE package and must not import `@brika/di` - so it's
- * provided here via `useFactory`: REG_DB builds the registry drizzle client and REGISTRY wires
- * the service graph over it. So a handler just `inject(REGISTRY)`/`inject(REG_DB)` and the whole
- * graph is built lazily in this scope.
+ * A fresh per-request injector for the web app. {@link Bindings} (the Cloudflare bindings for
+ * this request) is the ONLY value the composition root hands in; everything else self-builds.
+ * The store side auto-resolves from `Bindings`: `Database`/`RegistryDatabase` build their drizzle
+ * client from `inject(Bindings).DB`, the `reg_*` graph (`Registry`) wires over `RegistryDatabase`,
+ * and every store + `SocialService` auto-resolves (a concrete class is its own provider). The one
+ * interface->impl binding is `BlobStore`: an abstract class has no constructor to auto-build, so
+ * `inject(BlobStore)` is mapped to `CfR2BlobStore` here. A handler just `inject(...)` the class it
+ * needs and the whole graph builds lazily in this scope.
  */
 export function webInjector(): Injector {
   return createInjector([
-    { provide: ENV, useValue: env },
-    { provide: REG_DB, useFactory: () => registryDb() },
-    { provide: REGISTRY, useFactory: () => registryServices(inject(REG_DB)) },
+    { provide: Bindings, useValue: env },
+    { provide: BlobStore, useClass: CfR2BlobStore },
   ]);
 }

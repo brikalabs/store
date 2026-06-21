@@ -2,9 +2,9 @@ import { inject } from "@brika/di";
 import { Review } from "@brika/registry-contract";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { displayNameOf } from "@/lib/display-name";
+import { Database } from "@/server/db/client";
 import { reviews, reviewVotes, userProfiles, users } from "@/server/db/schema";
 import { votedIds } from "@/server/stores/voted-ids";
-import { DB } from "@/server/tokens";
 
 /** A new or edited review's content (the rating + text the author submits). */
 export interface ReviewInput {
@@ -21,7 +21,7 @@ export interface ReviewInput {
  * concern, recomputed by {@link PluginStore} after a write (orchestrated by the service).
  */
 export class ReviewStore {
-  readonly #db = inject(DB);
+  readonly #db = inject(Database).orm;
 
   /** Every review of a plugin, newest first, with the viewer's helpful-vote state. */
   async listForPlugin(pluginName: string, viewerId: string | null = null): Promise<Review[]> {

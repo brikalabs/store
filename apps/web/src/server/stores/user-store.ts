@@ -1,7 +1,7 @@
 import { inject } from "@brika/di";
 import { eq } from "drizzle-orm";
+import { Database } from "@/server/db/client";
 import { users } from "@/server/db/schema";
-import { DB } from "@/server/tokens";
 
 /**
  * Repository for the `users` table (the first-class Brika account). Sign-in does NOT go through
@@ -10,7 +10,7 @@ import { DB } from "@/server/tokens";
  * SQL lives; callers go through {@link SocialService}.
  */
 export class UserStore {
-  readonly #db = inject(DB);
+  readonly #db = inject(Database).orm;
 
   /**
    * Insert or update an account row. `name` is always stored (falling back to `login`) so a

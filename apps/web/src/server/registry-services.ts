@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { inject } from "@brika/di";
 import { ManagementService, ScopeService } from "@brika/registry-core";
 import { type Db, getDb } from "@brika/store-db";
 import {
@@ -16,6 +17,7 @@ import {
   HmacDomainChallenge,
   listAllPackages,
 } from "@brika/store-db/adapters";
+import { Bindings } from "@/server/bindings";
 import { vars } from "@/server/env";
 
 /**
@@ -63,3 +65,22 @@ export function registryServices(db: Db = registryDb()) {
 }
 
 export type RegistryServices = ReturnType<typeof registryServices>;
+
+/**
+ * Auto-building DI wrapper around the `reg_*` drizzle client. Mirrors {@link Database} (it
+ * derives from {@link Bindings}, not the `cloudflare:workers` import, so it stays test-safe
+ * and consistent), but is typed with the registry schema via `@brika/store-db`'s {@link getDb}.
+ * A handler reaches the graph through {@link Registry}, not this directly.
+ */
+export class RegistryDatabase {
+  readonly orm = getDb(inject(Bindings).DB);
+}
+
+/**
+ * The web app's D1-backed registry service graph, wired over {@link RegistryDatabase}. A handler
+ * reads `inject(Registry).graph`. `@brika/registry-core` stays a PURE package (no `@brika/di`):
+ * the DI seam lives only in this `inject()` field, not in the graph wiring itself.
+ */
+export class Registry {
+  readonly graph = registryServices(inject(RegistryDatabase).orm);
+}
