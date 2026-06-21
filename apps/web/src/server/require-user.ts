@@ -17,15 +17,16 @@ export const fetchSessionUser = createServerFn().handler(async (): Promise<Sessi
 });
 
 /**
- * `beforeLoad` guard for console routes: returns the signed-in user, or throws a redirect
- * to GitHub OAuth carrying `?return=` so the user lands back here after sign-in
- * (`auth.github.ts` honors it). Runs before any client render, so there is no `LoginCard`
- * flash. `redirect` is isomorphic; only `fetchSessionUser` touches server-only modules.
+ * `beforeLoad` guard for console routes: returns the signed-in user, or throws a redirect to the
+ * provider-agnostic `/login` page carrying `?return=` so the user lands back here after sign-in.
+ * The page lists the configured providers (BetterAuth `socialProviders`); the guard never picks one,
+ * so adding a provider needs no change here. `redirect` is isomorphic; only `fetchSessionUser`
+ * touches server-only modules.
  */
 export async function requireUser(returnTo: string): Promise<SessionUser> {
   const user = await fetchSessionUser();
   if (user === null) {
-    throw redirect({ href: `/auth/github?return=${encodeURIComponent(returnTo)}` });
+    throw redirect({ to: "/login", search: { return: returnTo } });
   }
   return user;
 }

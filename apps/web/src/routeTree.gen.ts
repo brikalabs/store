@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as OperatorRouteImport } from './routes/operator'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DeviceRouteImport } from './routes/device'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as SplatRouteImport } from './routes/$'
@@ -80,6 +81,11 @@ import { Route as V1PluginsNameVVersionFilesSplatRouteImport } from './routes/v1
 const OperatorRoute = OperatorRouteImport.update({
   id: '/operator',
   path: '/operator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeviceRoute = DeviceRouteImport.update({
@@ -430,6 +436,7 @@ export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/device': typeof DeviceRoute
+  '/login': typeof LoginRoute
   '/operator': typeof OperatorRouteWithChildren
   '/api/scopes': typeof ApiScopesRouteWithChildren
   '/auth/github': typeof AuthGithubRoute
@@ -498,6 +505,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/device': typeof DeviceRoute
+  '/login': typeof LoginRoute
   '/api/scopes': typeof ApiScopesRouteWithChildren
   '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -567,6 +575,7 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/device': typeof DeviceRoute
+  '/login': typeof LoginRoute
   '/operator': typeof OperatorRouteWithChildren
   '/api/scopes': typeof ApiScopesRouteWithChildren
   '/auth/github': typeof AuthGithubRoute
@@ -638,6 +647,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/dashboard'
     | '/device'
+    | '/login'
     | '/operator'
     | '/api/scopes'
     | '/auth/github'
@@ -706,6 +716,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/device'
+    | '/login'
     | '/api/scopes'
     | '/auth/github'
     | '/auth/logout'
@@ -774,6 +785,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/dashboard'
     | '/device'
+    | '/login'
     | '/operator'
     | '/api/scopes'
     | '/auth/github'
@@ -844,6 +856,7 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   DeviceRoute: typeof DeviceRoute
+  LoginRoute: typeof LoginRoute
   OperatorRoute: typeof OperatorRouteWithChildren
   ApiScopesRoute: typeof ApiScopesRouteWithChildren
   AuthGithubRoute: typeof AuthGithubRoute
@@ -882,6 +895,13 @@ declare module '@tanstack/react-router' {
       path: '/operator'
       fullPath: '/operator'
       preLoaderRoute: typeof OperatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/device': {
@@ -1532,6 +1552,7 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   DashboardRoute: DashboardRouteWithChildren,
   DeviceRoute: DeviceRoute,
+  LoginRoute: LoginRoute,
   OperatorRoute: OperatorRouteWithChildren,
   ApiScopesRoute: ApiScopesRouteWithChildren,
   AuthGithubRoute: AuthGithubRoute,

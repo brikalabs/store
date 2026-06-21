@@ -1,13 +1,31 @@
 import { BrikaLogo } from "@brika/clay";
-import { Link } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { ChevronLeft, ShieldCheck } from "lucide-react";
+import type { ComponentType } from "react";
 import { GithubIcon } from "@/components/clay/icons";
 
 /**
- * Developer sign-in screen: a centered card on the warm ember wash. GitHub is
- * the only identity provider (it verifies npm package ownership).
+ * The identity providers offered on the sign-in screen, in order. Each maps to a `/auth/<id>` route
+ * that starts BetterAuth's social sign-in for that provider. Add a provider here (plus its `/auth/<id>`
+ * start route + a BetterAuth `socialProviders` entry) to surface it - the card renders the list.
+ */
+const PROVIDERS: ReadonlyArray<{
+  id: string;
+  label: string;
+  Icon: ComponentType<{ className?: string }>;
+}> = [{ id: "github", label: "Continue with GitHub", Icon: GithubIcon }];
+
+const route = getRouteApi("/login");
+
+/**
+ * Developer sign-in screen: a centered card on the warm ember wash, listing the configured identity
+ * providers. The `return` search param (set by `requireUser`) is carried through to the chosen
+ * provider so the user lands back where they were after sign-in.
  */
 export function LoginCard() {
+  const { return: returnTo } = route.useSearch();
+  const back = encodeURIComponent(returnTo ?? "/dashboard");
+
   return (
     <main className="hero-surface flex min-h-[calc(100dvh-4rem)] items-center justify-center px-6 py-16">
       <div className="flex w-full max-w-[404px] flex-col items-center gap-5 rounded-[18px] border border-border bg-card p-9 shadow-[0_24px_50px_-24px_rgba(30,20,10,0.28)]">
@@ -21,17 +39,20 @@ export function LoginCard() {
           </p>
         </div>
 
-        <a
-          href="/auth/github"
-          className="flex h-[50px] w-full items-center justify-center gap-2.5 rounded-xl bg-foreground font-semibold text-background transition-opacity hover:opacity-90"
-        >
-          <GithubIcon className="size-5" />
-          Continue with GitHub
-        </a>
+        {PROVIDERS.map(({ id, label, Icon }) => (
+          <a
+            key={id}
+            href={`/auth/${id}?return=${back}`}
+            className="flex h-[50px] w-full items-center justify-center gap-2.5 rounded-xl bg-foreground font-semibold text-background transition-opacity hover:opacity-90"
+          >
+            <Icon className="size-5" />
+            {label}
+          </a>
+        ))}
 
         <div className="flex w-full items-start gap-2.5 rounded-xl border border-border bg-muted/50 px-3.5 py-3 text-muted-foreground text-xs leading-relaxed">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand-ink" />
-          We use GitHub only to verify you own the npm package. The store never touches your code.
+          We use your provider only to verify your identity. The store never touches your code.
         </div>
 
         <div className="h-px w-full bg-border" />
