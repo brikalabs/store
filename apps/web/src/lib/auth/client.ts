@@ -16,7 +16,7 @@ const ORIGIN = (import.meta.env?.VITE_BETTER_AUTH_URL as string | undefined)?.re
 
 function authBaseUrl(): string {
   if (ORIGIN !== undefined) return `${ORIGIN}/api/auth`;
-  if (typeof globalThis.window !== "undefined") return `${globalThis.location.origin}/api/auth`;
+  if (globalThis.window !== undefined) return `${globalThis.location.origin}/api/auth`;
   return "http://localhost/api/auth";
 }
 
