@@ -1,8 +1,7 @@
 import { inject } from "@brika/di";
-import { ScopeService } from "@brika/registry-core";
+import { ScopeService, trustedPublisherSchema } from "@brika/registry-core";
 import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
 import { recordAudit, runAuthed } from "@/server/http";
 
 /**
@@ -11,14 +10,6 @@ import { recordAudit, runAuthed } from "@/server/http";
  *   PUT    /api/scopes/:scope/trusted-publishers   add    { provider, repository, workflow }
  *   DELETE /api/scopes/:scope/trusted-publishers   remove { provider, repository, workflow }
  */
-const Body = z.object({
-  provider: z.enum(["github", "gitlab"]),
-  repository: z.string().regex(/^[^\s/]+(?:\/[^\s/]+)+$/, "repository must be 'owner/repo'"),
-  workflow: z
-    .string()
-    .regex(/^[\w.-]+\.ya?ml$/, "workflow must be a workflow filename, e.g. publish.yml"),
-});
-
 export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
   server: {
     handlers: {
@@ -31,7 +22,11 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
         }),
       PUT: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const binding = await readBody(request, Body, "Invalid trusted publisher");
+          const binding = await readBody(
+            request,
+            trustedPublisherSchema,
+            "Invalid trusted publisher",
+          );
           const { publisher } = okOrThrow(
             await inject(ScopeService).addTrustedPublisher(a.identity, params.scope, binding),
           );
@@ -44,7 +39,11 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
         }),
       DELETE: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const binding = await readBody(request, Body, "Invalid trusted publisher");
+          const binding = await readBody(
+            request,
+            trustedPublisherSchema,
+            "Invalid trusted publisher",
+          );
           const { removed } = okOrThrow(
             await inject(ScopeService).removeTrustedPublisher(a.identity, params.scope, binding),
           );

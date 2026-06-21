@@ -8,7 +8,13 @@ export {
   registerAttestationProvider,
   TransparencyEntry,
 } from "./attestation";
-export type { AuditEntry, AuditLog, AuditReader, AuditRecord } from "./audit";
+export {
+  type AuditEntry,
+  type AuditLog,
+  type AuditReader,
+  type AuditRecord,
+  auditEntry,
+} from "./audit";
 export type { CatalogEntry, CatalogReader } from "./catalog";
 export {
   type DeviceGrant,
@@ -72,6 +78,7 @@ export {
   scopeDomainSchema,
   scopeLinkSchema,
   scopeLinksSchema,
+  scopeProfileSchema,
 } from "./profile";
 export {
   type CommitVersionInput,
@@ -109,5 +116,6 @@ export {
   type TrustedPublisher,
   type TrustedPublishers,
   trustedPublisherMatches,
+  trustedPublisherSchema,
 } from "./trusted-publishers";
 export { type PackageRecord, PackageVersion, Provenance, type ScopePublisher } from "./types";

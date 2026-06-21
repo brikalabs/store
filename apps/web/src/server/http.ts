@@ -1,5 +1,5 @@
 import { inject, runInContext } from "@brika/di";
-import { isOperator, type PublishIdentity } from "@brika/registry-core";
+import { auditEntry, isOperator, type PublishIdentity } from "@brika/registry-core";
 import { forbidden, HttpError, json, reply, unauthorized } from "@brika/router";
 import { getCurrentUser, getSessionUserId, type SessionUser } from "@/lib/auth/auth";
 import { operatorAdmins } from "@/server/env";
@@ -95,7 +95,7 @@ export function recordAudit(
     readonly detail?: Record<string, unknown> | null;
   },
 ): Promise<void> {
-  return inject(Audit).record({ version: null, detail: null, ...entry, actor: ctx.identity });
+  return inject(Audit).record(auditEntry(ctx.identity, entry));
 }
 
 /**

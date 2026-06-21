@@ -1,13 +1,14 @@
 import { inject } from "@brika/di";
 import {
+  auditEntry,
   displayNameSchema,
   domainChallengeHost,
   isCanonicalScope,
   type PublishIdentity,
   ScopeService,
-  scopeDescriptionSchema,
   scopeDomainSchema,
-  scopeLinksSchema,
+  scopeProfileSchema,
+  trustedPublisherSchema,
 } from "@brika/registry-core";
 import { badRequest, httpError, okOrThrow, rateLimit, reply } from "@brika/router";
 import { z } from "zod";
@@ -53,7 +54,7 @@ function auditScope(
   actor: PublishIdentity,
   detail: Record<string, unknown> | null = null,
 ): Promise<void> {
-  return inject(Audit).record({ action, packageName: scope, version: null, actor, detail });
+  return inject(Audit).record(auditEntry(actor, { action, packageName: scope, detail }));
 }
 
 /**
@@ -169,11 +170,6 @@ export async function setDisplayName({
   return reply({ ok: true, scope, displayName: body.displayName }, 200);
 }
 
-const ProfileBody = z.object({
-  description: scopeDescriptionSchema.nullable(),
-  links: scopeLinksSchema,
-});
-
 /** `PUT /-/scope/:scope/profile` - set the description + links (admin; ORG-009). */
 export async function setProfile({
   params,
@@ -181,7 +177,7 @@ export async function setProfile({
   req,
 }: {
   readonly params: { readonly scope: string };
-  readonly body: z.infer<typeof ProfileBody>;
+  readonly body: z.infer<typeof scopeProfileSchema>;
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
@@ -285,17 +281,6 @@ export async function deleteDomain({
   return reply({ ok: true, scope, removed: domain }, 200);
 }
 
-// A trusted-publisher binding (PUB-016): provider + project + the workflow/config filename
-// allowed to publish under the scope via OIDC. Validated here so a malformed binding never
-// reaches the store (and so it can actually match a real OIDC ref claim).
-const TrustedPublisherBody = z.object({
-  provider: z.enum(["github", "gitlab"]),
-  repository: z.string().regex(/^[^\s/]+(?:\/[^\s/]+)+$/, "repository must be 'owner/repo'"),
-  workflow: z
-    .string()
-    .regex(/^[\w.-]+\.ya?ml$/, "workflow must be a workflow filename, e.g. publish.yml"),
-});
-
 /** `GET /-/scope/:scope/trusted-publishers` - list bindings (admin; PUB-016). */
 export async function listTrustedPublishers({
   params,
@@ -317,7 +302,7 @@ export async function addTrustedPublisher({
   req,
 }: {
   readonly params: { readonly scope: string };
-  readonly body: z.infer<typeof TrustedPublisherBody>;
+  readonly body: z.infer<typeof trustedPublisherSchema>;
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
@@ -334,7 +319,7 @@ export async function removeTrustedPublisher({
   req,
 }: {
   readonly params: { readonly scope: string };
-  readonly body: z.infer<typeof TrustedPublisherBody>;
+  readonly body: z.infer<typeof trustedPublisherSchema>;
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
@@ -404,7 +389,7 @@ export const scopeController = controller({
     route.put({ path: "/:scope/member/:provider/:id", body: MemberBody, handler: putMember }),
     route.delete({ path: "/:scope/member/:provider/:id", handler: deleteMember }),
     route.post({ path: "/:scope/display-name", body: DisplayNameBody, handler: setDisplayName }),
-    route.put({ path: "/:scope/profile", body: ProfileBody, handler: setProfile }),
+    route.put({ path: "/:scope/profile", body: scopeProfileSchema, handler: setProfile }),
     route.get({ path: "/:scope/domains", handler: listDomains }),
     route.put({ path: "/:scope/domain/:domain", handler: addDomain }),
     route.post({ path: "/:scope/domain/:domain/verify", handler: verifyDomain }),
@@ -414,12 +399,12 @@ export const scopeController = controller({
     route.get({ path: "/:scope/trusted-publishers", handler: listTrustedPublishers }),
     route.put({
       path: "/:scope/trusted-publishers",
-      body: TrustedPublisherBody,
+      body: trustedPublisherSchema,
       handler: addTrustedPublisher,
     }),
     route.delete({
       path: "/:scope/trusted-publishers",
-      body: TrustedPublisherBody,
+      body: trustedPublisherSchema,
       handler: removeTrustedPublisher,
     }),
     // Operator-only (REGISTRY_ADMINS), not scope membership: takedown/restore a squatted scope.

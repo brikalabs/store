@@ -1,14 +1,8 @@
 import { inject } from "@brika/di";
-import { ScopeService, scopeDescriptionSchema, scopeLinksSchema } from "@brika/registry-core";
+import { ScopeService, scopeProfileSchema } from "@brika/registry-core";
 import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
 import { recordAudit, runAuthed } from "@/server/http";
-
-const Body = z.object({
-  description: scopeDescriptionSchema.nullable(),
-  links: scopeLinksSchema,
-});
 
 /** `PUT /api/scopes/:scope/profile` - set the scope's description + links (admin only; ORG-009). */
 export const Route = createFileRoute("/api/scopes/$scope/profile")({
@@ -16,7 +10,11 @@ export const Route = createFileRoute("/api/scopes/$scope/profile")({
     handlers: {
       PUT: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const parsed = await readBody(request, Body, "Invalid description or links");
+          const parsed = await readBody(
+            request,
+            scopeProfileSchema,
+            "Invalid description or links",
+          );
           const result = okOrThrow(
             await inject(ScopeService).setProfile(a.identity, params.scope, {
               description: parsed.description,
