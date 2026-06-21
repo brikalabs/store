@@ -99,7 +99,7 @@ export const users = sqliteTable("users", {
  * The account is the first-class identity (USER-001), so the profile lives in its
  * own table to keep the BetterAuth `users` table clean. Every field is authored by
  * the account holder and NEVER derived from npm: `displayName` overrides the GitHub
- * name, `links` is a labelled list. The avatar is not stored here — it comes from
+ * name, `links` is a labelled list. The avatar is not stored here - it comes from
  * the GitHub avatar on `users.image`. A missing row means an unset profile (all
  * fields default to empty), so reads fall back to the `users` row.
  */

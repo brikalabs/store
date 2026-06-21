@@ -19,8 +19,8 @@ import {
 } from "@/server/db/schema";
 
 /**
- * Upsert a user row directly. Sign-in no longer goes through here — BetterAuth
- * creates/updates the `users` row on GitHub sign-in — but seeds and tests still
+ * Upsert a user row directly. Sign-in no longer goes through here - BetterAuth
+ * creates/updates the `users` row on GitHub sign-in - but seeds and tests still
  * insert users directly with a `login` (and now map the old `avatarUrl` to the
  * BetterAuth `image` column).
  */

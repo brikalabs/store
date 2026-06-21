@@ -9,7 +9,7 @@ export { parseCookies, safeReturnPath } from "@/lib/auth/auth-cookies";
  * The session identity the store works with everywhere downstream (console,
  * operator gating, scope ownership, social tables). `login` is the GitHub
  * username; `avatarUrl` resolves from BetterAuth's `image`. This shape is the
- * stable contract — it is unchanged by the move to BetterAuth.
+ * stable contract - it is unchanged by the move to BetterAuth.
  */
 export interface SessionUser {
   id: string;
