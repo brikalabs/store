@@ -89,21 +89,31 @@ silently rotting.
 
 ## Composition root (wiring)
 
-- **No DI container.** Dependencies are wired by hand in a per-request
-  composition root (`apps/registry/src/services.ts` `buildServices`, the web
-  `serverContext()`), then passed to handlers as a typed object. Handlers never
-  reach for the ambient `env`; the composition root is the single place bindings
-  are read. This keeps wiring explicit and handlers testable with fakes, with no
-  runtime/bundle cost on the Worker isolate.
-- **One source per service: the factory.** `Services` is
-  `ReturnType<typeof buildServices>`, inferred from the returned object, so adding
-  a service is a single entry in that object (its type flows into every handler);
-  there is no parallel interface to keep in sync.
-- **Why not a container** (tsyringe / Inversify / Awilix): evaluated and rejected.
-  On a stateless Worker isolate a container buys nothing the composition root does
-  not (the graph is built per request regardless), while costing reflect-metadata
-  cold-start (tsyringe), runtime resolution and ~37 transitive deps (Awilix), and
-  a second wiring to keep in sync. A typed factory is simpler and strictly safer.
+Two styles coexist, both with the bindings read in one per-request place and handlers
+testable with fakes. The registry uses a typed factory; the web uses `@brika/di`.
+
+- **Registry: a typed factory.** `apps/registry/src/services.ts` `buildServices` returns a
+  plain object; `Services` is `ReturnType<typeof buildServices>`, inferred, so adding a
+  service is one entry (its type flows into every controller, no parallel interface). The
+  graph is passed to controllers as `ctx`; tests pass a mock object of the same shape.
+- **Web: functional DI (`@brika/di`).** `apps/web` uses `inject(Token)` (Angular's functional
+  style). A class is its own token and auto-resolves with zero registration; non-class
+  bindings are `InjectionToken`s, often self-providing via a `providedIn: 'root'`-style
+  default factory, so `webInjector()` declares only the request `ENV`. `runHandler` runs the
+  body in the per-request injection context (`AsyncLocalStorage`, so it survives `await`s, as
+  in `@brika/tx`). A handler `inject(SocialService)` and the graph builds itself, lazily and
+  request-scoped. Tests override one token with a mock; the rest stays real.
+- **The pure core is never `inject()`ed.** `@brika/registry-core` may import only `zod` /
+  `node:` / relative paths (enforced). Its services stay constructor-injected and are wired
+  into the web's injector via `useFactory` (`{ provide: REGISTRY, useFactory: () =>
+  registryServices(inject(REG_DB)) }`), so the app gets `inject()` DX with no framework
+  dependency in the hexagon center.
+- **`@brika/di` is not a "DI container."** It is a ~150-line typed primitive: functional
+  `inject()`, hierarchical injectors, lazy memoized singletons. No decorators, no
+  `reflect-metadata`, no string-keyed registry. The heavy containers stay rejected
+  (tsyringe's reflect-metadata cold-start, Awilix's runtime resolution + ~37 transitive
+  deps). `@brika/di` adds none of that: it is field-injection ergonomics + one-line mock
+  overrides over the same explicit, per-request, zero-reflection wiring.
 
 ## Style
 
