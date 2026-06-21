@@ -1,7 +1,10 @@
+import { inject } from "@brika/di";
+import { ScopeService } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { runAuthed } from "@/server/http";
+import { Audit } from "@/server/registry-services";
 
 const PutBody = z.object({
   memberId: z.string().min(1),
@@ -18,7 +21,9 @@ export const Route = createFileRoute("/api/scopes/$scope/members")({
     handlers: {
       GET: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const result = okOrThrow(await a.svc.scopes.listMembers(a.identity, params.scope));
+          const result = okOrThrow(
+            await inject(ScopeService).listMembers(a.identity, params.scope),
+          );
           return reply({ scope: params.scope, members: result.members });
         }),
       PUT: ({ request, params }) =>
@@ -26,9 +31,9 @@ export const Route = createFileRoute("/api/scopes/$scope/members")({
           const parsed = parseBody(PutBody, await request.json(), "Invalid member or role");
           const target = { provider: "github", id: parsed.memberId };
           const result = okOrThrow(
-            await a.svc.scopes.setMember(a.identity, params.scope, target, parsed.role),
+            await inject(ScopeService).setMember(a.identity, params.scope, target, parsed.role),
           );
-          await a.svc.audit.record({
+          await inject(Audit).record({
             action: "scope_member_set",
             packageName: params.scope,
             version: null,

@@ -3,6 +3,7 @@ import { scopeOf } from "@brika/registry-core";
 import { badRequest, notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runAuthed } from "@/server/http";
+import { Metadata } from "@/server/registry-services";
 import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/api/plugins/versions")({
           const name = new URL(request.url).searchParams.get("name");
           if (name === null || name === "") throw badRequest("Missing package name");
 
-          const record = await a.svc.metadata.getPackage(name);
+          const record = await inject(Metadata).getPackage(name);
           if (record === null) throw notFound();
 
           const scope = scopeOf(name);

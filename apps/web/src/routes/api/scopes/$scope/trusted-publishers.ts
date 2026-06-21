@@ -1,7 +1,10 @@
+import { inject } from "@brika/di";
+import { ScopeService } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { runAuthed } from "@/server/http";
+import { Audit } from "@/server/registry-services";
 
 /**
  * Trusted-publisher bindings for a scope (PUB-016), admin-gated by the ScopeService.
@@ -23,7 +26,7 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
       GET: ({ request, params }) =>
         runAuthed(request, async (a) => {
           const { publishers } = okOrThrow(
-            await a.svc.scopes.listTrustedPublishers(a.identity, params.scope),
+            await inject(ScopeService).listTrustedPublishers(a.identity, params.scope),
           );
           return reply({ scope: params.scope, publishers });
         }),
@@ -31,9 +34,9 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
         runAuthed(request, async (a) => {
           const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
           const { publisher } = okOrThrow(
-            await a.svc.scopes.addTrustedPublisher(a.identity, params.scope, binding),
+            await inject(ScopeService).addTrustedPublisher(a.identity, params.scope, binding),
           );
-          await a.svc.audit.record({
+          await inject(Audit).record({
             action: "scope_trusted_publisher_add",
             packageName: params.scope,
             version: null,
@@ -46,9 +49,9 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
         runAuthed(request, async (a) => {
           const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
           const { removed } = okOrThrow(
-            await a.svc.scopes.removeTrustedPublisher(a.identity, params.scope, binding),
+            await inject(ScopeService).removeTrustedPublisher(a.identity, params.scope, binding),
           );
-          await a.svc.audit.record({
+          await inject(Audit).record({
             action: "scope_trusted_publisher_remove",
             packageName: params.scope,
             version: null,

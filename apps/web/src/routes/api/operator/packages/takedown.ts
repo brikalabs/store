@@ -1,7 +1,10 @@
+import { inject } from "@brika/di";
+import { ManagementService } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { runOperator } from "@/server/http";
+import { Audit } from "@/server/registry-services";
 
 const Body = z.object({
   name: z.string().min(1),
@@ -25,8 +28,8 @@ export const Route = createFileRoute("/api/operator/packages/takedown")({
             "name, version and reason are required",
           );
           const { name, version, reason } = parsed;
-          okOrThrow(await a.svc.management.takedown(name, version, reason));
-          await a.svc.audit.record({
+          okOrThrow(await inject(ManagementService).takedown(name, version, reason));
+          await inject(Audit).record({
             action: "takedown",
             packageName: name,
             version,

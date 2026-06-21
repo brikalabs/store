@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { resolveOwnedPlugins } from "@/lib/registry/owned-plugins";
 import { searchPlugins } from "@/lib/registry/registry";
 import { runAuthed } from "@/server/http";
+import { Metadata } from "@/server/registry-services";
 import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
@@ -46,7 +47,7 @@ export const Route = createFileRoute("/api/plugins/mine")({
 
           const ownedNames = await membership.listPackageNamesForScopes([...owned]);
           const plugins = await resolveOwnedPlugins(
-            a.svc.metadata,
+            inject(Metadata),
             ownedNames,
             scopeName,
             catalogByName,

@@ -1,8 +1,10 @@
-import { domainChallengeHost } from "@brika/registry-core";
+import { inject } from "@brika/di";
+import { domainChallengeHost, ScopeService } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { DomainBody, shapeDomains } from "@/lib/scope-domains";
 import { runAuthed } from "@/server/http";
+import { Audit } from "@/server/registry-services";
 
 /**
  * Scope domain claims (ORG-010), all admin-gated except the member-readable list:
@@ -16,15 +18,17 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
     handlers: {
       GET: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const result = okOrThrow(await a.svc.scopes.listDomains(a.identity, params.scope));
-          const domains = await shapeDomains(a.svc.scopes, params.scope, result.domains);
+          const scopes = inject(ScopeService);
+          const result = okOrThrow(await scopes.listDomains(a.identity, params.scope));
+          const domains = await shapeDomains(scopes, params.scope, result.domains);
           return reply({ scope: params.scope, domains });
         }),
       PUT: ({ request, params }) =>
         runAuthed(request, async (a) => {
+          const scopes = inject(ScopeService);
           const { domain } = parseBody(DomainBody, await request.json(), "Invalid domain");
-          const result = okOrThrow(await a.svc.scopes.addDomain(a.identity, params.scope, domain));
-          await a.svc.audit.record({
+          const result = okOrThrow(await scopes.addDomain(a.identity, params.scope, domain));
+          await inject(Audit).record({
             action: "scope_domain_add",
             packageName: params.scope,
             version: null,
@@ -36,33 +40,33 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
               ok: true,
               domain: result.domain,
               host: domainChallengeHost(domain),
-              txt: await a.svc.scopes.domainChallenge(params.scope, domain),
+              txt: await scopes.domainChallenge(params.scope, domain),
             },
             201,
           );
         }),
       POST: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
-          const result = okOrThrow(
-            await a.svc.scopes.verifyDomain(a.identity, params.scope, parsed.domain),
-          );
+          const scopes = inject(ScopeService);
+          const { domain } = parseBody(DomainBody, await request.json(), "Invalid domain");
+          const result = okOrThrow(await scopes.verifyDomain(a.identity, params.scope, domain));
           if (result.verified) {
-            await a.svc.audit.record({
+            await inject(Audit).record({
               action: "scope_domain_verified",
               packageName: params.scope,
               version: null,
               actor: a.identity,
-              detail: { domain: parsed.domain },
+              detail: { domain },
             });
           }
           return reply({ ok: true, domain: result.domain, verified: result.verified });
         }),
       DELETE: ({ request, params }) =>
         runAuthed(request, async (a) => {
+          const scopes = inject(ScopeService);
           const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
-          okOrThrow(await a.svc.scopes.removeDomain(a.identity, params.scope, parsed.domain));
-          await a.svc.audit.record({
+          okOrThrow(await scopes.removeDomain(a.identity, params.scope, parsed.domain));
+          await inject(Audit).record({
             action: "scope_domain_remove",
             packageName: params.scope,
             version: null,

@@ -6,7 +6,6 @@ import { Database } from "@/server/db/client";
 import { operatorAdmins } from "@/server/env";
 import { webProviders } from "@/server/injector";
 import { sessionIdentity } from "@/server/registry-identity";
-import { Registry, type RegistryServices } from "@/server/registry-services";
 
 /**
  * The TanStack-Start side of the shared HTTP toolkit. The generic primitives - `HttpError`
@@ -18,11 +17,11 @@ import { Registry, type RegistryServices } from "@/server/registry-services";
  * service -> serialize, no per-step guard).
  */
 
-/** The authenticated context a console route handler runs in. */
+/** The authenticated context a console route handler runs in. The registry services are not
+ *  threaded here: a handler `inject(ScopeService)` / `inject(Audit)` / ... directly. */
 export interface ConsoleContext {
   readonly user: SessionUser;
   readonly identity: PublishIdentity;
-  readonly svc: RegistryServices;
 }
 
 /**
@@ -50,7 +49,7 @@ export function publicJson(data: unknown, maxAgeSeconds = 300): Response {
 export async function authed(request: Request): Promise<ConsoleContext> {
   const user = await getCurrentUser(request, inject(Database).orm);
   if (user === null) throw unauthorized("Sign in required");
-  return { user, identity: sessionIdentity(user), svc: inject(Registry).graph };
+  return { user, identity: sessionIdentity(user) };
 }
 
 /**

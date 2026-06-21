@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { inject } from "@brika/di";
+import { inject, type Provider, token } from "@brika/di";
 import { ManagementService, ScopeService } from "@brika/registry-core";
 import { type Db, getDb } from "@brika/store-db";
 import {
@@ -76,10 +76,30 @@ export class RegistryDatabase {
 }
 
 /**
- * The web app's D1-backed registry service graph, wired over {@link RegistryDatabase}. A handler
- * reads `inject(Registry).graph`. `@brika/registry-core` stays a PURE package (no `@brika/di`):
- * the DI seam lives only in this `inject()` field, not in the graph wiring itself.
+ * The reg_* graph, built once per request and shared (di memoizes it). Internal: a handler injects
+ * the individual services below, never this whole graph.
  */
-export class Registry {
-  readonly graph = registryServices(inject(RegistryDatabase).orm);
-}
+const Graph = token<RegistryServices>();
+
+// The registry services as individual DI tokens, so a handler `inject(ScopeService)` /
+// `inject(Audit)` exactly what it needs. `scopes`/`management` ARE the `@brika/registry-core`
+// classes (import them from there); the rest are value tokens over the graph members.
+export const Audit = token<RegistryServices["audit"]>();
+export const Metadata = token<RegistryServices["metadata"]>();
+export const Tokens = token<RegistryServices["tokens"]>();
+export const ListPackages = token<RegistryServices["listPackages"]>();
+
+/**
+ * Providers for the reg_* graph: build it once (from {@link RegistryDatabase}), then expose each
+ * member under its token. `injector.ts` spreads these into `webProviders`. `@brika/registry-core`
+ * stays PURE (no `@brika/di`): the DI seam lives only in these factories, not in the graph wiring.
+ */
+export const registryProviders: Provider[] = [
+  { provide: Graph, useFactory: () => registryServices(inject(RegistryDatabase).orm) },
+  { provide: ScopeService, useFactory: () => inject(Graph).scopes },
+  { provide: ManagementService, useFactory: () => inject(Graph).management },
+  { provide: Audit, useFactory: () => inject(Graph).audit },
+  { provide: Metadata, useFactory: () => inject(Graph).metadata },
+  { provide: Tokens, useFactory: () => inject(Graph).tokens },
+  { provide: ListPackages, useFactory: () => inject(Graph).listPackages },
+];

@@ -1,3 +1,5 @@
+import { inject } from "@brika/di";
+import { ScopeService } from "@brika/registry-core";
 import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runOperator } from "@/server/http";
@@ -10,8 +12,8 @@ export const Route = createFileRoute("/api/operator/scopes")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runOperator(request, async (a) => {
-          const scopes = (await a.svc.scopes.listForOperator()).map((s) => ({
+        runOperator(request, async () => {
+          const scopes = (await inject(ScopeService).listForOperator()).map((s) => ({
             scope: s.scope,
             displayName: s.displayName,
             takedown: s.takedown,

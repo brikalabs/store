@@ -1,6 +1,9 @@
+import { inject } from "@brika/di";
+import { ScopeService } from "@brika/registry-core";
 import { okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runAuthed } from "@/server/http";
+import { Audit } from "@/server/registry-services";
 
 /**
  * `DELETE /api/scopes/:scope/members/:memberId` - remove a member (admin only). The domain
@@ -13,9 +16,9 @@ export const Route = createFileRoute("/api/scopes/$scope/members/$memberId")({
         runAuthed(request, async (a) => {
           const target = { provider: "github", id: params.memberId };
           const result = okOrThrow(
-            await a.svc.scopes.removeMember(a.identity, params.scope, target),
+            await inject(ScopeService).removeMember(a.identity, params.scope, target),
           );
-          await a.svc.audit.record({
+          await inject(Audit).record({
             action: "scope_member_remove",
             packageName: params.scope,
             version: null,

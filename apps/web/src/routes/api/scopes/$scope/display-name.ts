@@ -1,8 +1,10 @@
-import { displayNameSchema } from "@brika/registry-core";
+import { inject } from "@brika/di";
+import { displayNameSchema, ScopeService } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { runAuthed } from "@/server/http";
+import { Audit } from "@/server/registry-services";
 
 const Body = z.object({ displayName: displayNameSchema.nullable() });
 
@@ -14,9 +16,9 @@ export const Route = createFileRoute("/api/scopes/$scope/display-name")({
         runAuthed(request, async (a) => {
           const parsed = parseBody(Body, await request.json(), "Invalid display name");
           const result = okOrThrow(
-            await a.svc.scopes.setDisplayName(a.identity, params.scope, parsed.displayName),
+            await inject(ScopeService).setDisplayName(a.identity, params.scope, parsed.displayName),
           );
-          await a.svc.audit.record({
+          await inject(Audit).record({
             action: "scope_display_name",
             packageName: params.scope,
             version: null,

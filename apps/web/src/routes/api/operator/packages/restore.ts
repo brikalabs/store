@@ -1,7 +1,10 @@
+import { inject } from "@brika/di";
+import { ManagementService } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { runOperator } from "@/server/http";
+import { Audit } from "@/server/registry-services";
 
 const Body = z.object({ name: z.string().min(1), version: z.string().min(1) });
 
@@ -13,8 +16,8 @@ export const Route = createFileRoute("/api/operator/packages/restore")({
         runOperator(request, async (a) => {
           const parsed = parseBody(Body, await request.json(), "name and version are required");
           const { name, version } = parsed;
-          okOrThrow(await a.svc.management.restore(name, version));
-          await a.svc.audit.record({
+          okOrThrow(await inject(ManagementService).restore(name, version));
+          await inject(Audit).record({
             action: "restore",
             packageName: name,
             version,

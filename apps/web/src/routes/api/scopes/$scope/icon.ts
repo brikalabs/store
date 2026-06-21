@@ -1,10 +1,12 @@
 import { inject } from "@brika/di";
+import { ScopeService } from "@brika/registry-core";
 import { badRequest, okOrThrow, reply } from "@brika/router";
 import { onRollback, transaction } from "@brika/tx";
 import { createFileRoute } from "@tanstack/react-router";
 import { ICON_TYPES, MAX_ICON_BYTES } from "@/lib/scope-icon";
 import { BlobStore } from "@/server/blob-store";
 import { runAuthed, runHandler } from "@/server/http";
+import { Audit } from "@/server/registry-services";
 import { streamScopeIcon } from "@/server/scope-icon";
 
 /**
@@ -35,9 +37,9 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
           await transaction(async () => {
             await assets.put(key, bytes, type);
             onRollback(() => assets.delete(key));
-            okOrThrow(await a.svc.scopes.setIcon(a.identity, params.scope, key));
+            okOrThrow(await inject(ScopeService).setIcon(a.identity, params.scope, key));
           });
-          await a.svc.audit.record({
+          await inject(Audit).record({
             action: "scope_icon_set",
             packageName: params.scope,
             version: null,
@@ -48,8 +50,8 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
         }),
       DELETE: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          okOrThrow(await a.svc.scopes.setIcon(a.identity, params.scope, null));
-          await a.svc.audit.record({
+          okOrThrow(await inject(ScopeService).setIcon(a.identity, params.scope, null));
+          await inject(Audit).record({
             action: "scope_icon_set",
             packageName: params.scope,
             version: null,

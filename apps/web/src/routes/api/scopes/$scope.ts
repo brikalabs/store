@@ -1,7 +1,9 @@
-import { isCanonicalScope } from "@brika/registry-core";
+import { inject } from "@brika/di";
+import { isCanonicalScope, ScopeService } from "@brika/registry-core";
 import { badRequest, httpError, okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runAuthed } from "@/server/http";
+import { Audit } from "@/server/registry-services";
 
 /**
  * `GET /api/scopes/:scope` - the scope's editable profile (display name, description, links,
@@ -13,8 +15,8 @@ export const Route = createFileRoute("/api/scopes/$scope")({
   server: {
     handlers: {
       GET: ({ request, params }) =>
-        runAuthed(request, async (a) => {
-          const info = await a.svc.scopes.getPublic(params.scope);
+        runAuthed(request, async () => {
+          const info = await inject(ScopeService).getPublic(params.scope);
           if (info === null) throw httpError(404, `scope ${params.scope} does not exist`);
           return reply({
             scope: info.scope,
@@ -32,9 +34,9 @@ export const Route = createFileRoute("/api/scopes/$scope")({
               "Scope must be '@' + 2-20 lowercase letters, digits or hyphens, not starting with a hyphen",
             );
           }
-          const result = okOrThrow(await a.svc.scopes.claim(a.identity, scope));
+          const result = okOrThrow(await inject(ScopeService).claim(a.identity, scope));
           if (result.created) {
-            await a.svc.audit.record({
+            await inject(Audit).record({
               action: "scope_create",
               packageName: scope,
               version: null,
