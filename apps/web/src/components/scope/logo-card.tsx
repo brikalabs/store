@@ -1,5 +1,6 @@
 import { Trash2, Upload } from "lucide-react";
 import { type ChangeEvent, useState } from "react";
+import { toResizedWebp } from "@/lib/icon-resize";
 import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
 
 /** Upload / clear the scope's logo (raster image stored in R2, shown on the public page). */
@@ -12,14 +13,21 @@ export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
     event.target.value = "";
     if (file === undefined) return;
     setBusy(true);
-    const res = await fetch(scopePath(scope, "/icon"), {
-      method: "POST",
-      headers: { "content-type": file.type },
-      body: file,
-    });
-    setBusy(false);
-    if (res.ok) setBust((n) => n + 1);
-    else onError(await readError(res));
+    try {
+      // Downscale + WebP-encode in the browser so a big source photo uploads as a small logo.
+      const webp = await toResizedWebp(file);
+      const res = await fetch(scopePath(scope, "/icon"), {
+        method: "POST",
+        headers: { "content-type": "image/webp" },
+        body: webp,
+      });
+      if (res.ok) setBust((n) => n + 1);
+      else onError(await readError(res));
+    } catch {
+      onError("That image could not be processed. Try a PNG, JPEG, or WebP.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function clear() {
@@ -34,8 +42,8 @@ export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
     <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-6">
       <h2 className="font-bold font-heading text-lg tracking-tight">Logo</h2>
       <p className="text-muted-foreground text-sm">
-        A PNG, JPEG, or WebP up to 512 KiB, shown on your public scope page. Without one, a
-        generated avatar is used.
+        Any image, shown on your public scope page. It is resized and converted to WebP in your
+        browser before upload, so pick whatever you like. Without one, a generated avatar is used.
       </p>
       <div className="flex items-center gap-4">
         <img
@@ -52,7 +60,7 @@ export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
           {busy ? "Uploading…" : "Upload"}
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/*"
             className="hidden"
             onChange={upload}
             disabled={busy}
