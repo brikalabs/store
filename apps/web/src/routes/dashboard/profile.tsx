@@ -70,12 +70,24 @@ function ProfileEditor({
   const [displayName, setDisplayName] = useState(profile.displayName ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [website, setWebsite] = useState(profile.website ?? "");
-  const [links, setLinks] = useState<{ label: string; url: string }[]>(profile.links);
+  // Rows carry a stable client id so React keys (and edits) are identity-based,
+  // not positional. The id is transient - it is stripped before the row is saved.
+  const [links, setLinks] = useState<{ id: string; label: string; url: string }[]>(() =>
+    profile.links.map((link) => ({ ...link, id: crypto.randomUUID() })),
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  function setLink(index: number, patch: Partial<{ label: string; url: string }>) {
-    setLinks((prev) => prev.map((link, i) => (i === index ? { ...link, ...patch } : link)));
+  function setLink(id: string, patch: Partial<{ label: string; url: string }>) {
+    setLinks((prev) => prev.map((link) => (link.id === id ? { ...link, ...patch } : link)));
+  }
+
+  function removeLink(id: string) {
+    setLinks((prev) => prev.filter((link) => link.id !== id));
+  }
+
+  function addLink() {
+    setLinks((prev) => [...prev, { id: crypto.randomUUID(), label: "", url: "" }]);
   }
 
   async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
@@ -101,7 +113,7 @@ function ProfileEditor({
       const parsed = UserProfileSchema.safeParse(await res.json());
       if (parsed.success) {
         onSaved(parsed.data);
-        setLinks(parsed.data.links);
+        setLinks(parsed.data.links.map((link) => ({ ...link, id: crypto.randomUUID() })));
         setSaved(true);
       }
     }
@@ -162,26 +174,25 @@ function ProfileEditor({
 
         <div className="flex flex-col gap-2 text-sm">
           <span className="font-semibold text-foreground">Links</span>
-          {links.map((link, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional and editable
-            <div key={index} className="flex items-center gap-2">
+          {links.map((link) => (
+            <div key={link.id} className="flex items-center gap-2">
               <Input
                 placeholder="Label"
                 value={link.label}
-                onChange={(event) => setLink(index, { label: event.target.value })}
+                onChange={(event) => setLink(link.id, { label: event.target.value })}
                 className="w-1/3"
               />
               <Input
                 type="url"
                 placeholder="https://"
                 value={link.url}
-                onChange={(event) => setLink(index, { url: event.target.value })}
+                onChange={(event) => setLink(link.id, { url: event.target.value })}
                 className="flex-1"
               />
               <button
                 type="button"
                 aria-label="Remove link"
-                onClick={() => setLinks((prev) => prev.filter((_, i) => i !== index))}
+                onClick={() => removeLink(link.id)}
                 className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted"
               >
                 <X className="size-4" />
@@ -191,7 +202,7 @@ function ProfileEditor({
           {links.length < 8 ? (
             <button
               type="button"
-              onClick={() => setLinks((prev) => [...prev, { label: "", url: "" }])}
+              onClick={addLink}
               className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-border border-dashed px-3 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted"
             >
               <Plus className="size-4" />

@@ -101,7 +101,7 @@ function UserProfileView({ page }: Readonly<{ page: UserPage }>) {
           ) : null}
           {profile.website !== undefined || profile.links.length > 0 ? (
             <ul className="mt-3.5 flex flex-wrap items-center gap-2">
-              {profile.website !== undefined ? (
+              {profile.website === undefined ? null : (
                 <li key={`website:${profile.website}`}>
                   <a
                     href={profile.website}
@@ -113,7 +113,7 @@ function UserProfileView({ page }: Readonly<{ page: UserPage }>) {
                     Website
                   </a>
                 </li>
-              ) : null}
+              )}
               {profile.links.map((link) => (
                 <li key={`${link.label}:${link.url}`}>
                   <a
@@ -192,12 +192,12 @@ function ReviewRow({ review }: Readonly<{ review: Review }>) {
           </span>
         ) : null}
       </div>
-      {review.title !== undefined ? (
+      {review.title === undefined ? null : (
         <h3 className="flex items-center gap-1.5 font-semibold text-foreground">
           <Star className="size-3.5 text-amber-500" />
           {review.title}
         </h3>
-      ) : null}
+      )}
       <p className="text-muted-foreground text-sm leading-relaxed">{review.body}</p>
     </article>
   );
