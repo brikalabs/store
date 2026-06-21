@@ -7,13 +7,13 @@ import { AvatarPicker } from "@/components/profile/avatar-picker";
 export function ProfileEditor({
   profile,
   onSaved,
-  avatarUrl,
 }: Readonly<{
   profile: UserProfile;
   onSaved: (next: UserProfile) => void;
-  avatarUrl?: string;
 }>) {
-  const [avatar, setAvatar] = useState(avatarUrl);
+  // Seed from the profile's RESOLVED avatar (uploaded ?? provider), not the session image - so a
+  // reload reflects an uploaded avatar instead of reverting to the GitHub one.
+  const [avatar, setAvatar] = useState(profile.avatarUrl);
   const [displayName, setDisplayName] = useState(profile.displayName ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [website, setWebsite] = useState(profile.website ?? "");

@@ -45,11 +45,7 @@ export function ProfilePage() {
       {profile === null ? (
         <div className="h-72 animate-pulse rounded-2xl bg-muted" />
       ) : (
-        <ProfileEditor
-          profile={profile}
-          onSaved={setProfile}
-          avatarUrl={user.avatarUrl ?? undefined}
-        />
+        <ProfileEditor profile={profile} onSaved={setProfile} />
       )}
     </AdminShell>
   );
