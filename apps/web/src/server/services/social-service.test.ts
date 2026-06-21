@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { createInjector } from "@brika/di";
 import type { Db } from "@/server/db/client";
 import { plugins } from "@/server/db/schema";
 import { SocialService } from "@/server/services/social-service";
@@ -8,6 +9,7 @@ import { ReviewStore } from "@/server/stores/review-store";
 import { makeStoreDb } from "@/server/stores/test-harness";
 import { UserProfileStore } from "@/server/stores/user-profile-store";
 import { UserStore } from "@/server/stores/user-store";
+import { DB } from "@/server/tokens";
 
 /**
  * Behavioural tests for the social use cases, against a real in-memory SQLite. They go through
@@ -19,14 +21,19 @@ import { UserStore } from "@/server/stores/user-store";
 
 function build() {
   const db = makeStoreDb();
-  const stores = {
-    users: new UserStore(db),
-    profiles: new UserProfileStore(db),
-    reviews: new ReviewStore(db),
-    comments: new CommentStore(db),
-    plugins: new PluginStore(db),
+  const injector = createInjector([{ provide: DB, useValue: db }]);
+  return {
+    db,
+    injector,
+    social: injector.get(SocialService),
+    stores: {
+      users: injector.get(UserStore),
+      profiles: injector.get(UserProfileStore),
+      reviews: injector.get(ReviewStore),
+      comments: injector.get(CommentStore),
+      plugins: injector.get(PluginStore),
+    },
   };
-  return { db, social: new SocialService(stores), stores };
 }
 
 type Harness = ReturnType<typeof build>;

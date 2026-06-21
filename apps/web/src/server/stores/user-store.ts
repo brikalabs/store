@@ -1,6 +1,7 @@
+import { inject } from "@brika/di";
 import { eq } from "drizzle-orm";
-import type { Db } from "@/server/db/client";
 import { users } from "@/server/db/schema";
+import { DB } from "@/server/tokens";
 
 /**
  * Repository for the `users` table (the first-class Brika account). Sign-in does NOT go through
@@ -9,7 +10,7 @@ import { users } from "@/server/db/schema";
  * SQL lives; callers go through {@link SocialService}.
  */
 export class UserStore {
-  constructor(private readonly db: Db) {}
+  readonly #db = inject(DB);
 
   /**
    * Insert or update an account row. `name` is always stored (falling back to `login`) so a
@@ -23,7 +24,7 @@ export class UserStore {
     avatarUrl?: string;
   }): Promise<void> {
     const name = user.name ?? user.login;
-    await this.db
+    await this.#db
       .insert(users)
       .values({ id: user.id, login: user.login, name, image: user.avatarUrl })
       .onConflictDoUpdate({
@@ -34,7 +35,7 @@ export class UserStore {
 
   /** The account's GitHub login (the scope-ownership / publish identity), or null if unknown. */
   async findLogin(id: string): Promise<string | null> {
-    const rows = await this.db
+    const rows = await this.#db
       .select({ login: users.login })
       .from(users)
       .where(eq(users.id, id))

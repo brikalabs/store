@@ -1,10 +1,11 @@
+import { inject } from "@brika/di";
 import { badRequest, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { publicJson, runHandler } from "@/server/http";
-import { serverContext } from "@/server/server-context";
-import { socialService } from "@/server/social";
+import { SocialService } from "@/server/services/social-service";
+import { DB } from "@/server/tokens";
 
 const ProfileInput = z.object({
   displayName: z.string().max(80).optional(),
@@ -27,21 +28,21 @@ export const Route = createFileRoute("/api/account/profile")({
     handlers: {
       GET: ({ request }) =>
         runHandler(async () => {
-          const { db } = serverContext();
+          const db = inject(DB);
           const user = await getCurrentUser(request, db);
           if (user === null) throw unauthorized("Sign in required");
-          const profile = await socialService(db).getUserProfile(user.id);
+          const profile = await inject(SocialService).getUserProfile(user.id);
           if (profile === null) throw unauthorized("Sign in required");
           return publicJson(profile);
         }),
       PUT: ({ request }) =>
         runHandler(async () => {
-          const { db } = serverContext();
+          const db = inject(DB);
           const user = await getCurrentUser(request, db);
           if (user === null) throw unauthorized("Sign in required");
           const parsed = ProfileInput.safeParse(await request.json());
           if (!parsed.success) throw badRequest("Invalid profile");
-          const social = socialService(db);
+          const social = inject(SocialService);
           await social.updateUserProfile(user.id, parsed.data);
           const profile = await social.getUserProfile(user.id);
           if (profile === null) throw unauthorized("Sign in required");

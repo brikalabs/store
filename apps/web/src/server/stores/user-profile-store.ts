@@ -1,8 +1,9 @@
+import { inject } from "@brika/di";
 import { UserProfile } from "@brika/registry-contract";
 import { eq } from "drizzle-orm";
 import { displayNameOf } from "@/lib/display-name";
-import type { Db } from "@/server/db/client";
 import { userProfiles, users } from "@/server/db/schema";
+import { DB } from "@/server/tokens";
 
 /**
  * Repository for the user-authored public profile (`user_profiles`, USER-002/003/005), keyed
@@ -11,11 +12,11 @@ import { userProfiles, users } from "@/server/db/schema";
  * the GitHub `name` (never npm-derived). Reads join `users` to resolve those fallbacks.
  */
 export class UserProfileStore {
-  constructor(private readonly db: Db) {}
+  readonly #db = inject(DB);
 
   /** The account's public profile by opaque account id, or null when the account is unknown. */
   async get(id: string): Promise<UserProfile | null> {
-    const rows = await this.db
+    const rows = await this.#db
       .select({
         id: users.id,
         name: users.name,
@@ -61,7 +62,7 @@ export class UserProfileStore {
       website: fields.website ?? null,
       links: fields.links ?? [],
     };
-    await this.db
+    await this.#db
       .insert(userProfiles)
       .values({ userId: id, ...values })
       .onConflictDoUpdate({ target: userProfiles.userId, set: values });

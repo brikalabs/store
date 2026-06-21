@@ -55,6 +55,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@brika/clay": "^0.2.0",
+        "@brika/di": "workspace:*",
         "@brika/env": "workspace:*",
         "@brika/registry-contract": "workspace:*",
         "@brika/registry-core": "workspace:*",

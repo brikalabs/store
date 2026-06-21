@@ -1,9 +1,10 @@
+import { inject } from "@brika/di";
 import type { PluginSummary, Review, UserProfile } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { listScopesForMember } from "@brika/store-db/adapters";
 import { searchPlugins } from "@/lib/registry/registry";
 import { registryDb } from "@/server/registry-services";
-import { socialService } from "@/server/social";
+import { SocialService } from "@/server/services/social-service";
 
 export interface UserPage {
   readonly profile: UserProfile;
@@ -25,7 +26,7 @@ const CATALOG_SCAN = 200;
  * account authored.
  */
 export async function resolveUserPage(id: string): Promise<UserPage | null> {
-  const social = socialService();
+  const social = inject(SocialService);
   const profile = await social.getUserProfile(id);
   if (profile === null) return null;
 

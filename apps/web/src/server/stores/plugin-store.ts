@@ -1,7 +1,8 @@
+import { inject } from "@brika/di";
 import type { PluginDetail, RatingSummary } from "@brika/registry-contract";
 import { eq, sql } from "drizzle-orm";
-import type { Db } from "@/server/db/client";
 import { plugins, reviews } from "@/server/db/schema";
+import { DB } from "@/server/tokens";
 
 /**
  * Repository for the `plugins` cache table - the relational mirror of a published package that
@@ -11,11 +12,11 @@ import { plugins, reviews } from "@/server/db/schema";
  * is orchestration and lives in {@link SocialService}, not here - this store is pure SQL.
  */
 export class PluginStore {
-  constructor(private readonly db: Db) {}
+  readonly #db = inject(DB);
 
   /** Whether a cache row already exists for this package. */
   async exists(name: string): Promise<boolean> {
-    const rows = await this.db
+    const rows = await this.#db
       .select({ name: plugins.name })
       .from(plugins)
       .where(eq(plugins.name, name))
@@ -25,7 +26,7 @@ export class PluginStore {
 
   /** Insert a cache row from a resolved registry detail (no-op if it already exists). */
   async insertFromDetail(detail: PluginDetail): Promise<void> {
-    await this.db
+    await this.#db
       .insert(plugins)
       .values({
         name: detail.name,
@@ -47,12 +48,12 @@ export class PluginStore {
 
   /** Refresh the denormalized rating from the authoritative review rows. */
   async recomputeRating(pluginName: string): Promise<void> {
-    const rows = await this.db
+    const rows = await this.#db
       .select({ average: sql<number>`avg(${reviews.rating})`, count: sql<number>`count(*)` })
       .from(reviews)
       .where(eq(reviews.pluginName, pluginName));
     const row = rows[0];
-    await this.db
+    await this.#db
       .update(plugins)
       .set({ ratingAverage: row?.average ?? 0, ratingCount: row?.count ?? 0 })
       .where(eq(plugins.name, pluginName));
@@ -60,7 +61,7 @@ export class PluginStore {
 
   /** The rating summary for a package, or undefined when it has no reviews. */
   async ratingSummary(pluginName: string): Promise<RatingSummary | undefined> {
-    const rows = await this.db
+    const rows = await this.#db
       .select({ average: plugins.ratingAverage, count: plugins.ratingCount })
       .from(plugins)
       .where(eq(plugins.name, pluginName))

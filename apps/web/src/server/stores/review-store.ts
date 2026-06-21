@@ -1,9 +1,10 @@
+import { inject } from "@brika/di";
 import { Review } from "@brika/registry-contract";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { displayNameOf } from "@/lib/display-name";
-import type { Db } from "@/server/db/client";
 import { reviews, reviewVotes, userProfiles, users } from "@/server/db/schema";
 import { votedIds } from "@/server/stores/voted-ids";
+import { DB } from "@/server/tokens";
 
 /** A new or edited review's content (the rating + text the author submits). */
 export interface ReviewInput {
@@ -20,11 +21,11 @@ export interface ReviewInput {
  * concern, recomputed by {@link PluginStore} after a write (orchestrated by the service).
  */
 export class ReviewStore {
-  constructor(private readonly db: Db) {}
+  readonly #db = inject(DB);
 
   /** Every review of a plugin, newest first, with the viewer's helpful-vote state. */
   async listForPlugin(pluginName: string, viewerId: string | null = null): Promise<Review[]> {
-    const rows = await this.db
+    const rows = await this.#db
       .select({
         id: reviews.id,
         rating: reviews.rating,
@@ -46,7 +47,7 @@ export class ReviewStore {
       .orderBy(desc(reviews.createdAt));
 
     const voted = await votedIds(
-      this.db,
+      this.#db,
       reviewVotes,
       reviewVotes.reviewId,
       viewerId,
@@ -76,7 +77,7 @@ export class ReviewStore {
 
   /** Every review authored by an account, newest first (for the public profile page). */
   async listByUser(userId: string): Promise<Review[]> {
-    const rows = await this.db
+    const rows = await this.#db
       .select({
         id: reviews.id,
         pluginName: reviews.pluginName,
@@ -121,7 +122,7 @@ export class ReviewStore {
 
   /** Insert or edit the account's single review of a plugin (one row per user+plugin). */
   async upsert(pluginName: string, userId: string, input: ReviewInput): Promise<void> {
-    await this.db
+    await this.#db
       .insert(reviews)
       .values({
         id: crypto.randomUUID(),
@@ -151,7 +152,7 @@ export class ReviewStore {
    * false when the review does not exist.
    */
   async toggleHelpful(reviewId: string, userId: string): Promise<boolean> {
-    const found = await this.db
+    const found = await this.#db
       .select({ authorId: reviews.userId })
       .from(reviews)
       .where(eq(reviews.id, reviewId))
@@ -159,24 +160,24 @@ export class ReviewStore {
     const review = found[0];
     if (review === undefined || review.authorId === userId) return false;
 
-    const existing = await this.db
+    const existing = await this.#db
       .select({ userId: reviewVotes.userId })
       .from(reviewVotes)
       .where(and(eq(reviewVotes.reviewId, reviewId), eq(reviewVotes.userId, userId)))
       .limit(1);
     if (existing[0] === undefined) {
-      await this.db.insert(reviewVotes).values({ reviewId, userId, value: 1 });
+      await this.#db.insert(reviewVotes).values({ reviewId, userId, value: 1 });
     } else {
-      await this.db
+      await this.#db
         .delete(reviewVotes)
         .where(and(eq(reviewVotes.reviewId, reviewId), eq(reviewVotes.userId, userId)));
     }
 
-    const counted = await this.db
+    const counted = await this.#db
       .select({ count: sql<number>`count(*)` })
       .from(reviewVotes)
       .where(eq(reviewVotes.reviewId, reviewId));
-    await this.db
+    await this.#db
       .update(reviews)
       .set({ helpfulCount: counted[0]?.count ?? 0 })
       .where(eq(reviews.id, reviewId));

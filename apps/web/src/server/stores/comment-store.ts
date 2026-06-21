@@ -1,9 +1,10 @@
+import { inject } from "@brika/di";
 import { Comment } from "@brika/registry-contract";
 import { and, eq, sql } from "drizzle-orm";
 import { displayNameOf } from "@/lib/display-name";
-import type { Db } from "@/server/db/client";
 import { comments, commentVotes, userProfiles, users } from "@/server/db/schema";
 import { votedIds } from "@/server/stores/voted-ids";
+import { DB } from "@/server/tokens";
 
 /**
  * Repository for `comments` (+ the `comment_votes` upvote tally). Reads project a comment into
@@ -12,11 +13,11 @@ import { votedIds } from "@/server/stores/voted-ids";
  * `[deleted]`.
  */
 export class CommentStore {
-  constructor(private readonly db: Db) {}
+  readonly #db = inject(DB);
 
   /** Every comment of a plugin, oldest first, with upvote totals + the viewer's vote state. */
   async listForPlugin(pluginName: string, viewerId: string | null = null): Promise<Comment[]> {
-    const rows = await this.db
+    const rows = await this.#db
       .select({
         id: comments.id,
         parentId: comments.parentId,
@@ -38,7 +39,7 @@ export class CommentStore {
     const [upvotes, voted] = await Promise.all([
       this.#upvoteCounts(pluginName),
       votedIds(
-        this.db,
+        this.#db,
         commentVotes,
         commentVotes.commentId,
         viewerId,
@@ -73,7 +74,7 @@ export class CommentStore {
     body: string,
     parentId: string | null,
   ): Promise<void> {
-    await this.db
+    await this.#db
       .insert(comments)
       .values({ id: crypto.randomUUID(), pluginName, userId, body, parentId });
   }
@@ -83,7 +84,7 @@ export class CommentStore {
    * the comment is missing or deleted, or the user is its author (no self-upvote).
    */
   async toggleUpvote(commentId: string, userId: string): Promise<boolean> {
-    const found = await this.db
+    const found = await this.#db
       .select({ authorId: comments.userId, deleted: comments.deleted })
       .from(comments)
       .where(eq(comments.id, commentId))
@@ -91,15 +92,15 @@ export class CommentStore {
     const comment = found[0];
     if (comment === undefined || comment.deleted || comment.authorId === userId) return false;
 
-    const existing = await this.db
+    const existing = await this.#db
       .select({ userId: commentVotes.userId })
       .from(commentVotes)
       .where(and(eq(commentVotes.commentId, commentId), eq(commentVotes.userId, userId)))
       .limit(1);
     if (existing[0] === undefined) {
-      await this.db.insert(commentVotes).values({ commentId, userId, value: 1 });
+      await this.#db.insert(commentVotes).values({ commentId, userId, value: 1 });
     } else {
-      await this.db
+      await this.#db
         .delete(commentVotes)
         .where(and(eq(commentVotes.commentId, commentId), eq(commentVotes.userId, userId)));
     }
@@ -108,7 +109,7 @@ export class CommentStore {
 
   /** Upvote totals per comment for a plugin, keyed by comment id. */
   async #upvoteCounts(pluginName: string): Promise<Map<string, number>> {
-    const rows = await this.db
+    const rows = await this.#db
       .select({ commentId: commentVotes.commentId, count: sql<number>`count(*)` })
       .from(commentVotes)
       .innerJoin(comments, eq(commentVotes.commentId, comments.id))

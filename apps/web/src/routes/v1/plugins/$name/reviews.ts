@@ -1,9 +1,10 @@
+import { inject } from "@brika/di";
 import { badRequest, notFound, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth/auth";
 import { publicJson, runHandler } from "@/server/http";
-import { socialService } from "@/server/social";
+import { SocialService } from "@/server/services/social-service";
 
 const ReviewInput = z.object({
   rating: z.number().int().min(1).max(5),
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/v1/plugins/$name/reviews")({
       GET: ({ request, params }) =>
         runHandler(async () => {
           const viewerId = await getSessionUserId(request);
-          return publicJson(await socialService().listReviews(params.name, viewerId));
+          return publicJson(await inject(SocialService).listReviews(params.name, viewerId));
         }),
       POST: ({ request, params }) =>
         runHandler(async () => {
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/v1/plugins/$name/reviews")({
           if (userId === null) throw unauthorized("Sign in required");
           const parsed = ReviewInput.safeParse(await request.json());
           if (!parsed.success) throw badRequest("Invalid review");
-          const social = socialService();
+          const social = inject(SocialService);
           if (!(await social.ensurePluginCached(params.name))) throw notFound();
           await social.submitReview(params.name, userId, parsed.data);
           return publicJson(await social.listReviews(params.name, userId));

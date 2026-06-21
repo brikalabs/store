@@ -1,7 +1,9 @@
+import { runInInjectionContext } from "@brika/di";
 import { isOperator, type PublishIdentity } from "@brika/registry-core";
 import { forbidden, HttpError, json, reply, unauthorized } from "@brika/router";
 import { getCurrentUser, type SessionUser } from "@/lib/auth/auth";
 import { operatorAdmins } from "@/server/env";
+import { webInjector } from "@/server/injector";
 import { sessionIdentity } from "@/server/registry-identity";
 import { type RegistryServices, registryServices } from "@/server/registry-services";
 import { serverContext } from "@/server/server-context";
@@ -30,7 +32,7 @@ export interface ConsoleContext {
  * top-to-bottom. Any non-`HttpError` throw is a real bug and surfaces as a 500.
  */
 export function runHandler(body: () => Promise<Response>): Promise<Response> {
-  return body().catch((error: unknown) => {
+  return runInInjectionContext(webInjector(), body).catch((error: unknown) => {
     if (error instanceof HttpError) return reply(error.body, error.status, error.headers);
     throw error;
   });
