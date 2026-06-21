@@ -1,3 +1,4 @@
+import { trimTrailingSlash } from "@brika/registry-core";
 import { createAuthClient } from "better-auth/react";
 
 /**
@@ -12,7 +13,8 @@ import { createAuthClient } from "better-auth/react";
  * live `window.location.origin` (browser), else a valid SSR placeholder that is
  * never actually called. Mirrors how the registry facade reads `VITE_REGISTRY_URL`.
  */
-const ORIGIN = (import.meta.env?.VITE_BETTER_AUTH_URL as string | undefined)?.replace(/\/+$/, "");
+const RAW_ORIGIN = import.meta.env?.VITE_BETTER_AUTH_URL as string | undefined;
+const ORIGIN = RAW_ORIGIN === undefined ? undefined : trimTrailingSlash(RAW_ORIGIN);
 
 function authBaseUrl(): string {
   if (ORIGIN !== undefined) return `${ORIGIN}/api/auth`;
