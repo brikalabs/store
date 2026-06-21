@@ -3,7 +3,6 @@ import { scopeOf } from "@brika/registry-core";
 import { listScopesForMember } from "@brika/store-db/adapters";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
 import { MessageSquare, Star } from "lucide-react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { Stars } from "@/components/clay/stars";
@@ -13,10 +12,8 @@ import { PublishedPlugins } from "@/components/plugin/published-plugins";
 import { Stat } from "@/components/plugin/showcase-card";
 import { formatCount } from "@/lib/format";
 import { searchPlugins } from "@/lib/registry/registry";
-import { getUserProfile, listReviewsByUser } from "@/lib/social/social";
-import { users } from "@/server/db/schema";
 import { registryDb } from "@/server/registry-services";
-import { serverContext } from "@/server/server-context";
+import { socialService } from "@/server/social";
 
 interface UserPage {
   readonly profile: UserProfile;
@@ -42,21 +39,15 @@ const CATALOG_SCAN = 200;
 const fetchUserPage = createServerFn()
   .validator((id: string) => id)
   .handler(async ({ data: id }): Promise<UserPage | null> => {
-    const { db } = serverContext();
-    const profile = await getUserProfile(db, id);
+    const social = socialService();
+    const profile = await social.getUserProfile(id);
     if (profile === null) return null;
 
-    const loginRows = await db
-      .select({ login: users.login })
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1);
-    const login = loginRows[0]?.login;
-
+    const login = await social.findUserLogin(id);
     const [scopes, { plugins: catalog }, reviews] = await Promise.all([
       login ? listScopesForMember(registryDb(), "github", login) : Promise.resolve([]),
       searchPlugins(undefined, CATALOG_SCAN, 0),
-      listReviewsByUser(db, id),
+      social.listReviewsByUser(id),
     ]);
     const owned = new Set(scopes.map((s) => s.scope));
     const plugins = catalog.filter((plugin) => {

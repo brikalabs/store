@@ -1,9 +1,8 @@
 import { notFound, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { getSessionUserId } from "@/lib/auth/auth";
-import { listReviews, toggleReviewHelpful } from "@/lib/social/social";
 import { publicJson, runHandler } from "@/server/http";
-import { serverContext } from "@/server/server-context";
+import { socialService } from "@/server/social";
 
 /**
  * `POST /v1/plugins/:name/reviews/:reviewId/vote` - toggle the signed-in user's
@@ -17,9 +16,9 @@ export const Route = createFileRoute("/v1/plugins/$name/reviews/$reviewId/vote")
         runHandler(async () => {
           const userId = await getSessionUserId(request);
           if (userId === null) throw unauthorized("Sign in required");
-          const database = serverContext().db;
-          if (!(await toggleReviewHelpful(database, params.reviewId, userId))) throw notFound();
-          return publicJson(await listReviews(database, params.name, userId));
+          const social = socialService();
+          if (!(await social.toggleReviewHelpful(params.reviewId, userId))) throw notFound();
+          return publicJson(await social.listReviews(params.name, userId));
         }),
     },
   },

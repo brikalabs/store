@@ -2,9 +2,8 @@ import { badRequest, notFound, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth/auth";
-import { ensurePluginCached, listReviews, upsertReview } from "@/lib/social/social";
 import { publicJson, runHandler } from "@/server/http";
-import { serverContext } from "@/server/server-context";
+import { socialService } from "@/server/social";
 
 const ReviewInput = z.object({
   rating: z.number().int().min(1).max(5),
@@ -20,19 +19,18 @@ export const Route = createFileRoute("/v1/plugins/$name/reviews")({
       GET: ({ request, params }) =>
         runHandler(async () => {
           const viewerId = await getSessionUserId(request);
-          return publicJson(await listReviews(serverContext().db, params.name, viewerId));
+          return publicJson(await socialService().listReviews(params.name, viewerId));
         }),
       POST: ({ request, params }) =>
         runHandler(async () => {
           const userId = await getSessionUserId(request);
           if (userId === null) throw unauthorized("Sign in required");
-          const body: unknown = await request.json();
-          const parsed = ReviewInput.safeParse(body);
+          const parsed = ReviewInput.safeParse(await request.json());
           if (!parsed.success) throw badRequest("Invalid review");
-          const database = serverContext().db;
-          if (!(await ensurePluginCached(database, params.name))) throw notFound();
-          await upsertReview(database, params.name, userId, parsed.data);
-          return publicJson(await listReviews(database, params.name, userId));
+          const social = socialService();
+          if (!(await social.ensurePluginCached(params.name))) throw notFound();
+          await social.submitReview(params.name, userId, parsed.data);
+          return publicJson(await social.listReviews(params.name, userId));
         }),
     },
   },

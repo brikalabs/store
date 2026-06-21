@@ -2,9 +2,9 @@ import { badRequest, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
-import { getUserProfile, updateUserProfile } from "@/lib/social/social";
 import { publicJson, runHandler } from "@/server/http";
 import { serverContext } from "@/server/server-context";
+import { socialService } from "@/server/social";
 
 const ProfileInput = z.object({
   displayName: z.string().max(80).optional(),
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/api/account/profile")({
           const { db } = serverContext();
           const user = await getCurrentUser(request, db);
           if (user === null) throw unauthorized("Sign in required");
-          const profile = await getUserProfile(db, user.id);
+          const profile = await socialService(db).getUserProfile(user.id);
           if (profile === null) throw unauthorized("Sign in required");
           return publicJson(profile);
         }),
@@ -41,8 +41,9 @@ export const Route = createFileRoute("/api/account/profile")({
           if (user === null) throw unauthorized("Sign in required");
           const parsed = ProfileInput.safeParse(await request.json());
           if (!parsed.success) throw badRequest("Invalid profile");
-          await updateUserProfile(db, user.id, parsed.data);
-          const profile = await getUserProfile(db, user.id);
+          const social = socialService(db);
+          await social.updateUserProfile(user.id, parsed.data);
+          const profile = await social.getUserProfile(user.id);
           if (profile === null) throw unauthorized("Sign in required");
           return publicJson(profile);
         }),
