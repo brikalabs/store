@@ -17,7 +17,8 @@ import { streamScopeIcon } from "@/server/scope-icon";
 export const Route = createFileRoute("/api/scopes/$scope/icon")({
   server: {
     handlers: {
-      GET: ({ params }) => runHandler(() => streamScopeIcon(params.scope)),
+      GET: ({ request, params }) =>
+        runHandler(() => streamScopeIcon(params.scope, request.headers.get("if-none-match"))),
       POST: ({ request, params }) =>
         runAuthed(request, async (a) => {
           const type = request.headers.get("content-type")?.split(";")[0]?.trim() ?? "";

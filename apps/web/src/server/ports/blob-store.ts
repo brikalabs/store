@@ -28,6 +28,9 @@ export interface BlobObject {
   readonly size: number;
   /** The content type stored with the object, if any. */
   readonly contentType?: string;
+  /** A quoted entity tag for the content, for `ETag` + `If-None-Match` revalidation, when the
+   *  backend provides one (R2 does). Undefined for backends that do not. */
+  readonly etag?: string;
   /** The body as a stream - pipe it straight to a `Response` without buffering. */
   readonly body: ReadableStream<Uint8Array>;
   /** The body buffered into memory - for a small object you parse (e.g. the JSON file index). */

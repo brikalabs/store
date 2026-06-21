@@ -19,6 +19,8 @@ export class CfR2BlobStore implements BlobStore {
     return {
       size: object.size,
       contentType: object.httpMetadata?.contentType,
+      // R2's ETag, pre-quoted for the header (and echoed back in If-None-Match).
+      etag: object.httpEtag,
       body: object.body,
       bytes: async () => new Uint8Array(await object.arrayBuffer()),
     };
