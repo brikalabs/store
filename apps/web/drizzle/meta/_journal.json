@@ -8,6 +8,13 @@
       "when": 1781997269376,
       "tag": "0000_parched_sauron",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1782036550912,
+      "tag": "0001_betterauth",
+      "breakpoints": true
     }
   ]
 }

@@ -1,27 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { returnCookie, safeReturnPath, stateCookie } from "@/lib/auth/auth";
-import { authorizeUrl } from "@/lib/auth/github";
-import { vars } from "@/server/env";
+import { safeReturnPath } from "@/lib/auth/auth";
+import { getAuth } from "@/server/auth";
 
-/** `GET /auth/github`: start the GitHub OAuth flow. A `?return=<path>` is
- * remembered so the callback can send the user back where they started (e.g.
- * the device-authorization page with its code intact). */
+/**
+ * `GET /auth/github`: start GitHub sign-in. A compatibility shim over BetterAuth's
+ * social sign-in (`require-user` redirects here as `/auth/github?return=<path>`).
+ * We ask BetterAuth for the provider authorize URL (carrying the validated return
+ * as the post-login `callbackURL`) and forward its `location` + state cookie. The
+ * provider callback is handled by `/api/auth/callback/github` (the `$.ts` route).
+ */
 export const Route = createFileRoute("/auth/github")({
   server: {
     handlers: {
-      GET: ({ request }) => {
+      GET: async ({ request }) => {
         const url = new URL(request.url);
-        const state = crypto.randomUUID();
-        const secure = url.protocol === "https:";
-        const { GITHUB_CLIENT_ID, GITHUB_REDIRECT_URI } = vars();
-        const location = authorizeUrl(GITHUB_CLIENT_ID, GITHUB_REDIRECT_URI, state);
-        const headers = new Headers({ location });
-        headers.append("set-cookie", stateCookie(state, secure));
-        headers.append(
-          "set-cookie",
-          returnCookie(safeReturnPath(url.searchParams.get("return")), secure),
-        );
-        return new Response(null, { status: 302, headers });
+        const callbackURL = safeReturnPath(url.searchParams.get("return"));
+        const { headers, response } = await getAuth().api.signInSocial({
+          body: { provider: "github", callbackURL },
+          returnHeaders: true,
+        });
+        const location = headers.get("location") ?? response?.url;
+        if (location === undefined || location === null) {
+          return new Response("Could not initiate GitHub sign-in", { status: 502 });
+        }
+        const out = new Headers({ location });
+        for (const cookie of headers.getSetCookie()) out.append("set-cookie", cookie);
+        return new Response(null, { status: 302, headers: out });
       },
     },
   },

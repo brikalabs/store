@@ -82,14 +82,71 @@ export const developers = sqliteTable("developers", {
   pluginCount: integer("plugin_count").notNull().default(0),
 });
 
-/** Created only when someone signs in with GitHub to write. */
+/**
+ * The first-class Brika account (USER-001). Backs BetterAuth's `user` model via
+ * `modelName: "users"`, so the SQL table keeps the name `users` and `users.id`
+ * stays the PK that reviews/comments/votes/reports reference. Property keys here
+ * are the BetterAuth field names (camelCase); the SQL column names stay snake_case.
+ *
+ * `login` is a store-owned additional field carrying the GitHub username, which
+ * scope ownership and the `github:<login>` operator allowlist depend on. The old
+ * `github_id NOT NULL UNIQUE` coupling is dropped: provider ids now live in the
+ * BetterAuth `account` table.
+ */
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
-  githubId: integer("github_id").notNull().unique(),
-  login: text("login").notNull(),
   name: text("name"),
-  avatarUrl: text("avatar_url"),
-  createdAt: integer("created_at").notNull().default(epoch),
+  email: text("email"),
+  emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+  image: text("image"),
+  // Store-owned additional field (the GitHub username). Kept in sync from the
+  // GitHub profile at sign-in via BetterAuth's `mapProfileToUser`.
+  login: text("login"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(epoch),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(epoch),
+});
+
+/** BetterAuth `session` model: DB-backed sessions in D1 (AUTH-012). */
+export const session = sqliteTable("session", {
+  id: text("id").primaryKey(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(epoch),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(epoch),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+});
+
+/** BetterAuth `account` model: linked provider identities referencing a user (USER-001/AUTH-011). */
+export const account = sqliteTable("account", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp" }),
+  refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp" }),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(epoch),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(epoch),
+});
+
+/** BetterAuth `verification` model: short-lived verification tokens. */
+export const verification = sqliteTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(epoch),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(epoch),
 });
 
 export const reviews = sqliteTable(

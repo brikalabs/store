@@ -18,23 +18,27 @@ import {
   users,
 } from "@/server/db/schema";
 
-/** Upsert the GitHub user behind a session. */
+/**
+ * Upsert a user row directly. Sign-in no longer goes through here — BetterAuth
+ * creates/updates the `users` row on GitHub sign-in — but seeds and tests still
+ * insert users directly with a `login` (and now map the old `avatarUrl` to the
+ * BetterAuth `image` column).
+ */
 export async function upsertUser(
   database: Db,
-  user: { id: string; githubId: number; login: string; name?: string; avatarUrl?: string },
+  user: { id: string; login: string; name?: string; avatarUrl?: string },
 ): Promise<void> {
   await database
     .insert(users)
     .values({
       id: user.id,
-      githubId: user.githubId,
       login: user.login,
       name: user.name,
-      avatarUrl: user.avatarUrl,
+      image: user.avatarUrl,
     })
     .onConflictDoUpdate({
       target: users.id,
-      set: { login: user.login, name: user.name, avatarUrl: user.avatarUrl },
+      set: { login: user.login, name: user.name, image: user.avatarUrl },
     });
 }
 
@@ -139,7 +143,7 @@ export async function listReviews(
       userId: users.id,
       login: users.login,
       name: users.name,
-      avatarUrl: users.avatarUrl,
+      avatarUrl: users.image,
     })
     .from(reviews)
     .innerJoin(users, eq(reviews.userId, users.id))
@@ -291,7 +295,7 @@ export async function listComments(
       userId: users.id,
       login: users.login,
       name: users.name,
-      avatarUrl: users.avatarUrl,
+      avatarUrl: users.image,
     })
     .from(comments)
     .innerJoin(users, eq(comments.userId, users.id))

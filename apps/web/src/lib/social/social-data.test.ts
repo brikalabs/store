@@ -22,7 +22,7 @@ import { developers, plugins, users } from "@/server/db/schema";
 
 /** In-memory SQLite from the shipped migrations (see social.test.ts). */
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../drizzle");
-const MIGRATIONS = ["0000_parched_sauron.sql"];
+const MIGRATIONS = ["0000_parched_sauron.sql", "0001_betterauth.sql"];
 
 function makeDb(): Db {
   const sqlite = new Database(":memory:");
@@ -49,8 +49,8 @@ beforeEach(() => {
 
 describe("upsertUser", () => {
   test("inserts then updates on conflict", async () => {
-    await upsertUser(db, { id: "u1", githubId: 1, login: "octo" });
-    await upsertUser(db, { id: "u1", githubId: 1, login: "octocat", name: "Octo" });
+    await upsertUser(db, { id: "u1", login: "octo" });
+    await upsertUser(db, { id: "u1", login: "octocat", name: "Octo" });
     const rows = await db.select().from(users).where(eq(users.id, "u1"));
     expect(rows[0]?.login).toBe("octocat");
     expect(rows[0]?.name).toBe("Octo");
@@ -125,8 +125,8 @@ describe("ensurePluginCached", () => {
 describe("reviews + ratings", () => {
   async function seedPlugin() {
     await db.insert(plugins).values({ name: "p", latestVersion: "1.0.0", brikaEngine: "^0.1.0" });
-    await upsertUser(db, { id: "u1", githubId: 1, login: "a" });
-    await upsertUser(db, { id: "u2", githubId: 2, login: "b" });
+    await upsertUser(db, { id: "u1", login: "a" });
+    await upsertUser(db, { id: "u2", login: "b" });
   }
 
   test("upsertReview inserts, edits, and recomputes the rating summary", async () => {
@@ -156,7 +156,7 @@ describe("reviews + ratings", () => {
 describe("comments", () => {
   test("addComment + listComments returns threaded rows with author", async () => {
     await db.insert(plugins).values({ name: "p", latestVersion: "1.0.0", brikaEngine: "^0.1.0" });
-    await upsertUser(db, { id: "u1", githubId: 1, login: "asker", name: "Asker" });
+    await upsertUser(db, { id: "u1", login: "asker", name: "Asker" });
     await addComment(db, "p", "u1", "Top question", null);
     const top = (await listComments(db, "p"))[0];
     expect(top?.body).toBe("Top question");
