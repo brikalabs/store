@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { type Provider, runInContext } from "@brika/di";
-import { PublishService } from "@brika/registry-core";
+import { inject, type Provider, runInContext } from "@brika/di";
+import { PublishService, ResolveService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
 import {
   type Db,
@@ -21,7 +21,7 @@ import { transaction } from "@brika/tx";
 import { eq } from "drizzle-orm";
 import { SchemaManifestValidator } from "../adapters/manifest-validator";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
-import { buildServices, type Services, serviceProviders } from "../services";
+import { provideRegistry } from "../services";
 import { fakeR2, makeDb, seedExamplePackage } from "../test-harness";
 import { handleCatalog } from "./catalog";
 import { handleDownloads } from "./stats";
@@ -70,8 +70,13 @@ async function statusOf(run: Promise<Response>): Promise<number> {
 // "operator" is the lone admin for the takedown/restore tests; passed explicitly
 // (provider-qualified) rather than via the env, so these tests do not depend on the
 // process-global `cloudflare:workers` mock surviving cross-file test ordering.
-function services(db: Db): Services {
-  return buildServices(db, fakeR2(), "http://localhost:8787", new Set(["github:operator"]));
+function services(db: Db): Provider[] {
+  return provideRegistry({
+    db,
+    tarballs: fakeR2(),
+    baseUrl: "http://localhost:8787",
+    admins: new Set(["github:operator"]),
+  });
 }
 
 /**
@@ -80,8 +85,8 @@ function services(db: Db): Services {
  * appended after the graph's, so a test can override one dependency with a mock (a later
  * provider for the same token wins).
  */
-function run<T>(graph: Services, fn: () => Promise<T>, extra: Provider[] = []): Promise<T> {
-  return runInContext([...serviceProviders(graph), ...extra], fn);
+function run<T>(providers: Provider[], fn: () => Promise<T>, extra: Provider[] = []): Promise<T> {
+  return runInContext([...providers, ...extra], fn);
 }
 
 function post(body: unknown, token?: string): Request {
@@ -160,7 +165,7 @@ describe("publish (auth + invariant + ownership gates)", () => {
     // code to an HTTP status - is exercised without crafting a real tarball.
     const publishService = {
       publish: async () => ({ ok: false, code: "exists", message: "already exists" }),
-    } as unknown as Services["publish"];
+    } as unknown as PublishService;
     expect(
       await statusOf(
         run(services(db), () => publish({ body: validPublish, req: post(validPublish, token) }), [
@@ -558,7 +563,7 @@ describe("takedown / restore (operator-gated)", () => {
     );
     expect(res.status).toBe(200);
 
-    const packument = (await ctx.resolve.packument("@brika/x")) as {
+    const packument = (await run(ctx, () => inject(ResolveService).packument("@brika/x"))) as {
       versions: Record<string, unknown>;
       takedowns?: Record<string, string>;
     };
@@ -587,7 +592,7 @@ describe("takedown / restore (operator-gated)", () => {
     const res = await run(ctx, () => restore({ params, req: post(undefined, token) }));
     expect(res.status).toBe(200);
 
-    const packument = (await ctx.resolve.packument("@brika/x")) as {
+    const packument = (await run(ctx, () => inject(ResolveService).packument("@brika/x"))) as {
       versions: Record<string, unknown>;
     };
     expect(Object.keys(packument.versions)).toEqual(["1.0.0"]);
@@ -784,7 +789,7 @@ describe("scope publisher (verified attribution)", () => {
     await seedPackage(db, "brikalabs");
     const ctx = services(db);
 
-    const packument = (await ctx.resolve.packument("@brika/x")) as {
+    const packument = (await run(ctx, () => inject(ResolveService).packument("@brika/x"))) as {
       publisher?: { id: string; name: string; verified: boolean };
     };
     // No display name yet -> falls back to the scope.
@@ -813,7 +818,7 @@ describe("scope publisher (verified attribution)", () => {
     );
     expect(res.status).toBe(200);
 
-    const packument = (await ctx.resolve.packument("@brika/x")) as {
+    const packument = (await run(ctx, () => inject(ResolveService).packument("@brika/x"))) as {
       publisher?: { id: string; name: string; verified: boolean };
     };
     expect(packument.publisher).toEqual({ id: "@brika", name: "Brika Labs", verified: true });

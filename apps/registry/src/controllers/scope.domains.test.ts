@@ -4,7 +4,7 @@ import { type DnsResolver, type DomainChallenge, ScopeService } from "@brika/reg
 import { HttpError } from "@brika/router";
 import type { Db } from "@brika/store-db";
 import { D1ScopeDomains, D1ScopeMembers, D1ScopeStore, issueToken } from "@brika/store-db/adapters";
-import { buildServices, type Services, serviceProviders } from "../services";
+import { provideRegistry } from "../services";
 import { fakeR2, makeDb } from "../test-harness";
 
 /**
@@ -28,8 +28,8 @@ async function statusOf(run: Promise<Response>): Promise<number> {
   }
 }
 
-function services(db: Db): Services {
-  return buildServices(db, fakeR2(), "http://localhost:8787");
+function services(db: Db): Provider[] {
+  return provideRegistry({ db, tarballs: fakeR2(), baseUrl: "http://localhost:8787" });
 }
 
 /**
@@ -37,8 +37,8 @@ function services(db: Db): Services {
  * would establish in production, so its `inject(...)` calls resolve. `extra` providers are
  * appended so a test can override one dependency with a mock (a later provider wins).
  */
-function run<T>(graph: Services, fn: () => Promise<T>, extra: Provider[] = []): Promise<T> {
-  return runInContext([...serviceProviders(graph), ...extra], fn);
+function run<T>(providers: Provider[], fn: () => Promise<T>, extra: Provider[] = []): Promise<T> {
+  return runInContext([...providers, ...extra], fn);
 }
 
 function post(body: unknown, token?: string): Request {

@@ -14,23 +14,21 @@ import { scopeController } from "./controllers/scope";
 import { statsController } from "./controllers/stats";
 import { registryAdmins, vars } from "./env";
 import { logRoutes, mount, type RegistryEnv } from "./http/router";
-import { buildServices, serviceProviders } from "./services";
+import { provideRegistry } from "./services";
 
 /**
- * The registry's per-request DI seam: build the service graph from the request's bindings (the one
- * place `env` is read), exposed as `@brika/di` providers so handlers `inject(...)` them. `mount`
- * runs each handler inside `runInContext(registryProviders(...))`.
+ * The registry's per-request DI providers: the runtime seams from the request's bindings (the one
+ * place `env` is read) plus the service graph, so handlers `inject(...)` them. `mount` runs each
+ * handler inside `runInContext(registryProviders(...))`.
  */
 function registryProviders(bindings: Cloudflare.Env, baseUrl: string): Provider[] {
-  return serviceProviders(
-    buildServices(
-      getDb(bindings.DB),
-      bindings.TARBALLS,
-      baseUrl,
-      registryAdmins(),
-      vars().DOMAIN_VERIFY_SECRET,
-    ),
-  );
+  return provideRegistry({
+    db: getDb(bindings.DB),
+    tarballs: bindings.TARBALLS,
+    baseUrl,
+    admins: registryAdmins(),
+    domainSecret: vars().DOMAIN_VERIFY_SECRET,
+  });
 }
 
 /**

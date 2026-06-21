@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { runInContext } from "@brika/di";
+import { type Provider, runInContext } from "@brika/di";
 import type { Db } from "@brika/store-db";
 import { issueToken } from "@brika/store-db/adapters";
 import { Hono } from "hono";
 import { mount } from "../http/router";
-import { buildServices, type Services, serviceProviders } from "../services";
+import { provideRegistry } from "../services";
 import { fakeR2, makeDb } from "../test-harness";
 
 /**
@@ -31,8 +31,8 @@ mock.module("cloudflare:workers", () => {
 
 const { scopeController } = await import("./scope");
 
-function services(db: Db): Services {
-  return buildServices(db, fakeR2(), "http://localhost:8787");
+function services(db: Db): Provider[] {
+  return provideRegistry({ db, tarballs: fakeR2(), baseUrl: "http://localhost:8787" });
 }
 
 let db: Db;
@@ -47,7 +47,7 @@ describe("claim rate limiting (declared via route middleware)", () => {
     // per-request graph is supplied through the same `around` injection-context wrapper the worker
     // uses (not a `ctx` factory). This exercises the rate-limit middleware inside that context.
     mount(app, [scopeController], {
-      around: (_c, exec) => runInContext(serviceProviders(services(db)), exec),
+      around: (_c, exec) => runInContext(services(db), exec),
     });
     return app;
   }

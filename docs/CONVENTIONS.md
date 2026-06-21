@@ -89,31 +89,25 @@ silently rotting.
 
 ## Composition root (wiring)
 
-Two styles coexist, both with the bindings read in one per-request place and handlers
-testable with fakes. The registry uses a typed factory; the web uses `@brika/di`.
+Both apps use one DI primitive, `@brika/di`. The full rules - how to use a dependency
+(`inject(Token)`), the decision for how to create one (auto-build class / `token<T>()` interface /
+provide a value), the composition root as a `providers` array, and testing - live in **[the DI
+guide](di.md)**. Treat it as the single source of truth; follow it, do not invent variants.
 
-- **Registry: a typed factory.** `apps/registry/src/services.ts` `buildServices` returns a
-  plain object; `Services` is `ReturnType<typeof buildServices>`, inferred, so adding a
-  service is one entry (its type flows into every controller, no parallel interface). The
-  graph is passed to controllers as `ctx`; tests pass a mock object of the same shape.
-- **Web: functional DI (`@brika/di`).** `apps/web` uses `inject(Token)` (Angular's functional
-  style). A class is its own token and auto-resolves with zero registration; non-class
-  bindings are `InjectionToken`s, often self-providing via a `providedIn: 'root'`-style
-  default factory, so `webInjector()` declares only the request `ENV`. `runHandler` runs the
-  body in the per-request injection context (`AsyncLocalStorage`, so it survives `await`s, as
-  in `@brika/tx`). A handler `inject(SocialService)` and the graph builds itself, lazily and
-  request-scoped. Tests override one token with a mock; the rest stays real.
-- **The pure core is never `inject()`ed.** `@brika/registry-core` may import only `zod` /
-  `node:` / relative paths (enforced). Its services stay constructor-injected and are wired
-  into the web's injector via `useFactory` (`{ provide: REGISTRY, useFactory: () =>
-  registryServices(inject(REG_DB)) }`), so the app gets `inject()` DX with no framework
-  dependency in the hexagon center.
-- **`@brika/di` is not a "DI container."** It is a ~150-line typed primitive: functional
-  `inject()`, hierarchical injectors, lazy memoized singletons. No decorators, no
-  `reflect-metadata`, no string-keyed registry. The heavy containers stay rejected
-  (tsyringe's reflect-metadata cold-start, Awilix's runtime resolution + ~37 transitive
-  deps). `@brika/di` adds none of that: it is field-injection ergonomics + one-line mock
-  overrides over the same explicit, per-request, zero-reflection wiring.
+In short: `inject(Token)` everywhere; an app class that only depends on injectables auto-builds with
+no registration; a value, a function, or a pure/external class (a `@brika/registry-core` service, a
+`@brika/store-db` adapter) is bound in the per-request composition root - `webProviders` in the web,
+`provideRegistry(config)` in the registry - which is the one place `cloudflare:workers` `env` is
+read. The framework glue (`runHandler`, the registry router's `mount({ around })`) runs every
+request inside `runInContext(providers, ...)`, so application code never calls `createInjector`.
+
+- **The pure core is never `inject()`ed.** `@brika/registry-core` may import only `zod` / `node:` /
+  relative paths (enforced). Its services stay constructor-injected and are bound into the app's
+  providers, so the app gets `inject()` DX with no framework dependency in the hexagon center.
+- **`@brika/di` is not a "DI container."** It is a small typed primitive: functional `inject()`,
+  hierarchical injectors, lazy memoized singletons. No decorators, no `reflect-metadata`, no
+  string-keyed registry. The heavy containers stay rejected (tsyringe's reflect-metadata cold-start,
+  Awilix's runtime resolution + ~37 transitive deps).
 
 ## Style
 

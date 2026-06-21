@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { runInContext } from "@brika/di";
+import { inject, type Provider, runInContext } from "@brika/di";
+import { DeviceService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
 import { type Db, regDeviceAuth, regTokens } from "@brika/store-db";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { mount } from "../http/router";
-import { buildServices, type Services, serviceProviders } from "../services";
+import { provideRegistry } from "../services";
 import { fakeR2, makeDb } from "../test-harness";
 
 /**
@@ -36,16 +37,16 @@ mock.module("cloudflare:workers", () => {
 const { handleDeviceCode, handleDeviceToken, handleRevoke, handleWhoami, deviceController } =
   await import("./device");
 
-function services(db: Db): Services {
-  return buildServices(db, fakeR2(), "http://localhost:8787");
+function services(db: Db): Provider[] {
+  return provideRegistry({ db, tarballs: fakeR2(), baseUrl: "http://localhost:8787" });
 }
 
 /**
  * Run a handler inside the per-request injection context the `mount({ around })` wrapper
  * would establish in production, so its `inject(...)` calls resolve.
  */
-function run<T>(graph: Services, fn: () => Promise<T>): Promise<T> {
-  return runInContext(serviceProviders(graph), fn);
+function run<T>(providers: Provider[], fn: () => Promise<T>): Promise<T> {
+  return runInContext(providers, fn);
 }
 
 function tokenRequest(body: unknown): Request {
@@ -99,7 +100,7 @@ describe("device-code rate limiting (declared via route middleware)", () => {
     // The handlers resolve their deps via `inject(...)`, so the per-request graph is supplied
     // through the same `around` injection-context wrapper the worker uses (not a `ctx` factory).
     mount(app, [deviceController], {
-      around: (_c, exec) => runInContext(serviceProviders(services(db)), exec),
+      around: (_c, exec) => runInContext(services(db), exec),
     });
     return app;
   }
@@ -146,7 +147,7 @@ describe("handleDeviceToken", () => {
 
   test("400 (authorization_pending) when the grant exists but is not approved", async () => {
     const ctx = services(db);
-    const issued = await ctx.devices.requestCode();
+    const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await expect(
       run(ctx, () => handleDeviceToken(tokenRequest({ device_code: issued.deviceCode }))),
     ).rejects.toMatchObject({ status: 400, message: "authorization_pending" });
@@ -154,7 +155,7 @@ describe("handleDeviceToken", () => {
 
   test("issues a publish token once the grant is approved, consuming the grant", async () => {
     const ctx = services(db);
-    const issued = await ctx.devices.requestCode();
+    const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await db
       .update(regDeviceAuth)
       .set({ approved: true, githubLogin: "octocat" })
@@ -186,7 +187,7 @@ describe("handleWhoami", () => {
 
   test("returns the token's github login + display name (null without a store user)", async () => {
     const ctx = services(db);
-    const issued = await ctx.devices.requestCode();
+    const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await db
       .update(regDeviceAuth)
       .set({ approved: true, githubLogin: "octocat" })
@@ -217,7 +218,7 @@ describe("handleRevoke", () => {
   test("revokes the presented token and returns ok", async () => {
     const ctx = services(db);
     // Mint a token via the device flow so a row exists to revoke.
-    const issued = await ctx.devices.requestCode();
+    const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await db
       .update(regDeviceAuth)
       .set({ approved: true, githubLogin: "octocat" })

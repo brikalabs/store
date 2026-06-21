@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { runInContext } from "@brika/di";
+import { type Provider, runInContext } from "@brika/di";
 import { HttpError } from "@brika/router";
 import { type Db, regDownloads } from "@brika/store-db";
 import { eq } from "drizzle-orm";
-import { buildServices, type Services, serviceProviders } from "../services";
+import { provideRegistry } from "../services";
 import { makeDb, seedExamplePackage } from "../test-harness";
 import { packagesController } from "./packages";
 
@@ -47,8 +47,8 @@ beforeEach(async () => {
   await seedExamplePackage(db, "octocat");
 });
 
-function services(bucket: R2Bucket): Services {
-  return buildServices(db, bucket, "http://localhost:8787");
+function services(bucket: R2Bucket): Provider[] {
+  return provideRegistry({ db, tarballs: bucket, baseUrl: "http://localhost:8787" });
 }
 
 /**
@@ -58,7 +58,7 @@ function services(bucket: R2Bucket): Services {
  * `undefined`; the graph is delivered through the injection context, not the input.
  */
 function runRoute(
-  graph: Services,
+  providers: Provider[],
   route: (typeof packagesController.routes)[number],
   input: {
     readonly params: Record<string, string>;
@@ -66,7 +66,7 @@ function runRoute(
     readonly waitUntil: (promise: Promise<unknown>) => void;
   },
 ): Promise<unknown> {
-  return runInContext(serviceProviders(graph), async () =>
+  return runInContext(providers, async () =>
     route.run({ ...input, query: undefined, body: undefined, ctx: undefined }),
   );
 }
