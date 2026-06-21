@@ -6,6 +6,7 @@ import { Database } from "@/server/db/client";
 import { operatorAdmins } from "@/server/env";
 import { webProviders } from "@/server/injector";
 import { sessionIdentity } from "@/server/registry-identity";
+import { Audit } from "@/server/registry-services";
 
 /**
  * The TanStack-Start side of the shared HTTP toolkit. The generic primitives - `HttpError`
@@ -61,6 +62,24 @@ export async function operatorAuthed(request: Request): Promise<ConsoleContext> 
   const a = await authed(request);
   if (!isOperator(operatorAdmins(), a.identity)) throw forbidden("Not a registry operator");
   return a;
+}
+
+/**
+ * Record a console audit entry. The actor is always the caller; `version` defaults to null (scope
+ * actions are not version-scoped) and `detail` to null, so a route writes only what varies:
+ * `recordAudit(a, { action: "scope_create", packageName: scope })`. The web counterpart of the
+ * registry's `auditScope`.
+ */
+export function recordAudit(
+  ctx: ConsoleContext,
+  entry: {
+    readonly action: string;
+    readonly packageName: string;
+    readonly version?: string | null;
+    readonly detail?: Record<string, unknown> | null;
+  },
+): Promise<void> {
+  return inject(Audit).record({ version: null, detail: null, ...entry, actor: ctx.identity });
 }
 
 /**

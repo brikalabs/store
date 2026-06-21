@@ -3,8 +3,7 @@ import { domainChallengeHost, ScopeService } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { DomainBody, shapeDomains } from "@/lib/scope-domains";
-import { runAuthed } from "@/server/http";
-import { Audit } from "@/server/registry-services";
+import { recordAudit, runAuthed } from "@/server/http";
 
 /**
  * Scope domain claims (ORG-010), all admin-gated except the member-readable list:
@@ -28,11 +27,9 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
           const scopes = inject(ScopeService);
           const { domain } = parseBody(DomainBody, await request.json(), "Invalid domain");
           const result = okOrThrow(await scopes.addDomain(a.identity, params.scope, domain));
-          await inject(Audit).record({
+          await recordAudit(a, {
             action: "scope_domain_add",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { domain },
           });
           return reply(
@@ -51,11 +48,9 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
           const { domain } = parseBody(DomainBody, await request.json(), "Invalid domain");
           const result = okOrThrow(await scopes.verifyDomain(a.identity, params.scope, domain));
           if (result.verified) {
-            await inject(Audit).record({
+            await recordAudit(a, {
               action: "scope_domain_verified",
               packageName: params.scope,
-              version: null,
-              actor: a.identity,
               detail: { domain },
             });
           }
@@ -66,11 +61,9 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
           const scopes = inject(ScopeService);
           const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
           okOrThrow(await scopes.removeDomain(a.identity, params.scope, parsed.domain));
-          await inject(Audit).record({
+          await recordAudit(a, {
             action: "scope_domain_remove",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { domain: parsed.domain },
           });
           return reply({ ok: true, removed: parsed.domain });

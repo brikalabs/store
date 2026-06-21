@@ -5,8 +5,7 @@ import { onRollback, transaction } from "@brika/tx";
 import { createFileRoute } from "@tanstack/react-router";
 import { ICON_TYPES, MAX_ICON_BYTES } from "@/lib/scope-icon";
 import { BlobStore } from "@/server/blob-store";
-import { runAuthed, runHandler } from "@/server/http";
-import { Audit } from "@/server/registry-services";
+import { recordAudit, runAuthed, runHandler } from "@/server/http";
 import { streamScopeIcon } from "@/server/scope-icon";
 
 /**
@@ -39,11 +38,9 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
             onRollback(() => assets.delete(key));
             okOrThrow(await inject(ScopeService).setIcon(a.identity, params.scope, key));
           });
-          await inject(Audit).record({
+          await recordAudit(a, {
             action: "scope_icon_set",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { key },
           });
           return reply({ ok: true, scope: params.scope });
@@ -51,11 +48,9 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
       DELETE: ({ request, params }) =>
         runAuthed(request, async (a) => {
           okOrThrow(await inject(ScopeService).setIcon(a.identity, params.scope, null));
-          await inject(Audit).record({
+          await recordAudit(a, {
             action: "scope_icon_set",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { key: null },
           });
           return reply({ ok: true, scope: params.scope });

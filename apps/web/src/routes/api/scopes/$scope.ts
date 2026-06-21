@@ -2,8 +2,7 @@ import { inject } from "@brika/di";
 import { isCanonicalScope, ScopeService } from "@brika/registry-core";
 import { badRequest, httpError, okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { runAuthed } from "@/server/http";
-import { Audit } from "@/server/registry-services";
+import { recordAudit, runAuthed } from "@/server/http";
 
 /**
  * `GET /api/scopes/:scope` - the scope's editable profile (display name, description, links,
@@ -36,13 +35,7 @@ export const Route = createFileRoute("/api/scopes/$scope")({
           }
           const result = okOrThrow(await inject(ScopeService).claim(a.identity, scope));
           if (result.created) {
-            await inject(Audit).record({
-              action: "scope_create",
-              packageName: scope,
-              version: null,
-              actor: a.identity,
-              detail: null,
-            });
+            await recordAudit(a, { action: "scope_create", packageName: scope });
           }
           return reply({ ok: true, scope, created: result.created }, result.created ? 201 : 200);
         }),

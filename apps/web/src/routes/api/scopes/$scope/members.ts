@@ -3,8 +3,7 @@ import { ScopeService } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { runAuthed } from "@/server/http";
-import { Audit } from "@/server/registry-services";
+import { recordAudit, runAuthed } from "@/server/http";
 
 const PutBody = z.object({
   memberId: z.string().min(1),
@@ -33,11 +32,9 @@ export const Route = createFileRoute("/api/scopes/$scope/members")({
           const result = okOrThrow(
             await inject(ScopeService).setMember(a.identity, params.scope, target, parsed.role),
           );
-          await inject(Audit).record({
+          await recordAudit(a, {
             action: "scope_member_set",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { ...target, role: parsed.role },
           });
           return reply({ ok: true, scope: params.scope, member: result.member });

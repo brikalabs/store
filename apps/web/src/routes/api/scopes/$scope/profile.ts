@@ -3,8 +3,7 @@ import { ScopeService, scopeDescriptionSchema, scopeLinksSchema } from "@brika/r
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { runAuthed } from "@/server/http";
-import { Audit } from "@/server/registry-services";
+import { recordAudit, runAuthed } from "@/server/http";
 
 const Body = z.object({
   description: scopeDescriptionSchema.nullable(),
@@ -24,11 +23,9 @@ export const Route = createFileRoute("/api/scopes/$scope/profile")({
               links: parsed.links,
             }),
           );
-          await inject(Audit).record({
+          await recordAudit(a, {
             action: "scope_profile_set",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { links: parsed.links.length },
           });
           return reply({ ok: true, scope: params.scope, profile: result.profile });

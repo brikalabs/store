@@ -3,8 +3,7 @@ import { ManagementService } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { runAuthed } from "@/server/http";
-import { Audit } from "@/server/registry-services";
+import { recordAudit, runAuthed } from "@/server/http";
 
 const Body = z.object({
   name: z.string().min(1),
@@ -22,11 +21,10 @@ export const Route = createFileRoute("/api/plugins/deprecate")({
           const parsed = parseBody(Body, await request.json(), "Invalid deprecate request");
           const { name, version, message } = parsed;
           okOrThrow(await inject(ManagementService).deprecate(a.identity, name, version, message));
-          await inject(Audit).record({
+          await recordAudit(a, {
             action: "deprecate",
             packageName: name,
             version,
-            actor: a.identity,
             detail: { message },
           });
           return reply({ ok: true, name, version, deprecated: message });

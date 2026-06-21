@@ -3,8 +3,7 @@ import { ScopeService } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { runAuthed } from "@/server/http";
-import { Audit } from "@/server/registry-services";
+import { recordAudit, runAuthed } from "@/server/http";
 
 /**
  * Trusted-publisher bindings for a scope (PUB-016), admin-gated by the ScopeService.
@@ -36,11 +35,9 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
           const { publisher } = okOrThrow(
             await inject(ScopeService).addTrustedPublisher(a.identity, params.scope, binding),
           );
-          await inject(Audit).record({
+          await recordAudit(a, {
             action: "scope_trusted_publisher_add",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: binding,
           });
           return reply({ ok: true, publisher }, 201);
@@ -51,11 +48,9 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
           const { removed } = okOrThrow(
             await inject(ScopeService).removeTrustedPublisher(a.identity, params.scope, binding),
           );
-          await inject(Audit).record({
+          await recordAudit(a, {
             action: "scope_trusted_publisher_remove",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: binding,
           });
           return reply({ ok: true, removed });
