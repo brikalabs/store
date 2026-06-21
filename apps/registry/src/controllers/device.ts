@@ -65,7 +65,7 @@ export async function handleDeviceToken(req: Request): Promise<Response> {
  * so the CLI can render the signed-in account without re-running the device flow.
  */
 export async function handleWhoami(req: Request): Promise<Response> {
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const githubLogin = identity.owner;
   const displayName = await inject(ResolveDisplayName)(githubLogin);
   return reply({ github_login: githubLogin, display_name: displayName }, 200);

@@ -12,7 +12,7 @@ import { z } from "zod";
 import { cf } from "../adapters/cf-rate-limiter";
 import { principal, requireWrite } from "../auth";
 import { controller, route } from "../http/router";
-import { Audit, Tokens } from "../services";
+import { Audit } from "../services";
 
 /**
  * `POST /-/publish`. Authenticated by EITHER a GitHub Actions OIDC token (CI,
@@ -81,7 +81,7 @@ export async function publish({
 }): Promise<Response> {
   const publishService = inject(PublishService);
   const audit = inject(Audit);
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
 
   const { name, version, manifest, tarball, transparencyLog } = body;
   const tarballBytes = base64ToBytes(tarball);

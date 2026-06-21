@@ -13,7 +13,7 @@ import { z } from "zod";
 import { cf } from "../adapters/cf-rate-limiter";
 import { principal, requireAdmin, requireWrite } from "../auth";
 import { controller, route } from "../http/router";
-import { Admins, Audit, Tokens } from "../services";
+import { Audit } from "../services";
 
 /**
  * Scope management HTTP layer. The scope is the first-class ownership entity (npm/JSR model,
@@ -75,7 +75,7 @@ export async function createScope({
       "scope must be '@' + 2-20 lowercase letters, digits or hyphens, not starting with a hyphen",
     );
   }
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(await inject(ScopeService).claim(identity, scope));
   if (result.created) {
     await inject(Audit).record({
@@ -98,7 +98,7 @@ export async function listMembers({
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(await inject(ScopeService).listMembers(identity, scope));
   return reply({ ok: true, scope, members: result.members }, 200);
 }
@@ -116,7 +116,7 @@ export async function putMember({
   readonly req: Request;
 }): Promise<Response> {
   const { scope, provider, id } = params;
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(
     await inject(ScopeService).setMember(identity, scope, { provider, id }, body.role),
   );
@@ -139,7 +139,7 @@ export async function deleteMember({
   readonly req: Request;
 }): Promise<Response> {
   const { scope, provider, id } = params;
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(
     await inject(ScopeService).removeMember(identity, scope, { provider, id }),
   );
@@ -169,7 +169,7 @@ export async function setDisplayName({
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   okOrThrow(await inject(ScopeService).setDisplayName(identity, scope, body.displayName));
   await inject(Audit).record({
     action: "scope_display_name",
@@ -197,7 +197,7 @@ export async function setProfile({
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(
     await inject(ScopeService).setProfile(identity, scope, {
       description: body.description,
@@ -224,7 +224,7 @@ export async function listDomains({
 }): Promise<Response> {
   const { scope } = params;
   const scopes = inject(ScopeService);
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(await scopes.listDomains(identity, scope));
   const domains = await Promise.all(
     result.domains.map(async (d) => ({
@@ -254,7 +254,7 @@ export async function addDomain({
   const { scope } = params;
   const domain = parseDomain(params.domain);
   const scopes = inject(ScopeService);
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(await scopes.addDomain(identity, scope, domain));
   await inject(Audit).record({
     action: "scope_domain_add",
@@ -285,7 +285,7 @@ export async function verifyDomain({
 }): Promise<Response> {
   const { scope } = params;
   const domain = parseDomain(params.domain);
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(await inject(ScopeService).verifyDomain(identity, scope, domain));
   if (result.verified) {
     await inject(Audit).record({
@@ -309,7 +309,7 @@ export async function deleteDomain({
 }): Promise<Response> {
   const { scope } = params;
   const domain = parseDomain(params.domain);
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   okOrThrow(await inject(ScopeService).removeDomain(identity, scope, domain));
   await inject(Audit).record({
     action: "scope_domain_remove",
@@ -341,7 +341,7 @@ export async function listTrustedPublishers({
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(await inject(ScopeService).listTrustedPublishers(identity, scope));
   return reply({ ok: true, scope, publishers: result.publishers }, 200);
 }
@@ -357,7 +357,7 @@ export async function addTrustedPublisher({
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(await inject(ScopeService).addTrustedPublisher(identity, scope, body));
   await inject(Audit).record({
     action: "scope_trusted_publisher_add",
@@ -380,7 +380,7 @@ export async function removeTrustedPublisher({
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = okOrThrow(
     await inject(ScopeService).removeTrustedPublisher(identity, scope, body),
   );
@@ -411,7 +411,7 @@ export async function takedownScope({
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireAdmin(req, inject(Tokens), inject(Admins));
+  const identity = await requireAdmin(req);
   okOrThrow(await inject(ScopeService).takedown(scope, body.reason));
   await inject(Audit).record({
     action: "scope_takedown",
@@ -432,7 +432,7 @@ export async function restoreScope({
   readonly req: Request;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireAdmin(req, inject(Tokens), inject(Admins));
+  const identity = await requireAdmin(req);
   okOrThrow(await inject(ScopeService).restore(scope));
   await inject(Audit).record({
     action: "scope_restore",

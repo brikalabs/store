@@ -5,7 +5,7 @@ import { type PackageParams, PKG, packageName } from "@brika/router/npm";
 import { z } from "zod";
 import { requireAdmin, requireWrite } from "../auth";
 import { controller, route } from "../http/router";
-import { Admins, Audit, Tokens } from "../services";
+import { Audit } from "../services";
 
 /**
  * Post-publish management endpoints. The `PKG` pattern matches scoped and unscoped
@@ -65,7 +65,7 @@ async function runManaged(
   detail: Record<string, unknown>,
 ): Promise<Response> {
   const name = packageName(params);
-  const identity = await requireWrite(req, inject(Tokens));
+  const identity = await requireWrite(req);
   const result = await run(inject(ManagementService), identity, name);
   return auditAndRespond(action, name, params.version, identity, result, detail);
 }
@@ -106,7 +106,7 @@ async function runAdmin(
   detail: Record<string, unknown>,
 ): Promise<Response> {
   const name = packageName(params);
-  const identity = await requireAdmin(req, inject(Tokens), inject(Admins));
+  const identity = await requireAdmin(req);
   const result = await run(inject(ManagementService), name);
   return auditAndRespond(action, name, params.version, identity, result, detail);
 }
