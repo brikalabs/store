@@ -30,14 +30,14 @@ const DeviceCodeSchema = z.object({
 
 const DeviceTokenSchema = z.object({
   access_token: z.string().optional(),
-  github_login: z.string().optional(),
+  user_id: z.string().optional(),
   // Human display name resolved by the registry (null when the account has none).
   display_name: z.string().nullish(),
   error: z.string().optional(),
 });
 
 const WhoamiSchema = z.object({
-  github_login: z.string(),
+  user_id: z.string(),
   display_name: z.string().nullish(),
 });
 
@@ -66,14 +66,13 @@ export type ScopeRole = z.infer<typeof ScopeRole>;
 
 const MembersResponseSchema = z.object({
   ok: z.boolean().optional(),
-  members: z.array(z.object({ provider: z.string(), id: z.string(), role: ScopeRole })).optional(),
+  members: z.array(z.object({ userId: z.string(), role: ScopeRole })).optional(),
   error: z.string().optional(),
   code: z.string().optional(),
 });
 
 export interface ScopeMember {
-  readonly provider: string;
-  readonly id: string;
+  readonly userId: string;
   readonly role: ScopeRole;
 }
 
@@ -87,13 +86,13 @@ export type DeviceCode = z.infer<typeof DeviceCodeSchema>;
 
 export interface DeviceLogin {
   readonly token: string;
-  readonly githubLogin: string;
-  /** Resolved human display name, or null when the account has none (fall back to the login). */
+  readonly userId: string;
+  /** Resolved human display name, or null when the account has none (fall back to the id). */
   readonly displayName: string | null;
 }
 
 export interface WhoamiResult {
-  readonly githubLogin: string;
+  readonly userId: string;
   /** Resolved human display name, or null when the account has none. */
   readonly displayName: string | null;
 }
@@ -157,7 +156,7 @@ export class RegistryClient {
       if (res.ok && body.access_token !== undefined) {
         return {
           token: body.access_token,
-          githubLogin: body.github_login ?? "unknown",
+          userId: body.user_id ?? "unknown",
           displayName: body.display_name ?? null,
         };
       }
@@ -174,14 +173,14 @@ export class RegistryClient {
 
   /**
    * Resolve the signed-in account for the presented token (`GET /-/whoami`): the
-   * github login plus its display name (null when the account has none). Throws a
+   * account id plus its display name (null when the account has none). Throws a
    * `CliError` when the token is missing or rejected.
    */
   async whoami(token: string): Promise<WhoamiResult> {
     const res = await this.#send("/-/whoami", { method: "GET", headers: bearer(token) });
     if (!res.ok) throw new CliError(`could not resolve the signed-in account (${res.status})`);
     const body = await this.#parse(res, WhoamiSchema);
-    return { githubLogin: body.github_login, displayName: body.display_name ?? null };
+    return { userId: body.user_id, displayName: body.display_name ?? null };
   }
 
   /** Publish a version, returning its integrity. Throws a `CliError` on rejection. */
@@ -222,14 +221,14 @@ export class RegistryClient {
     throw new CliError(this.#scopeError("list members of", scope, res.status, body));
   }
 
-  /** Add a member or change their role (`PUT /-/scope/:scope/member/:provider/:id`). */
+  /** Add a member or change their role (`PUT /-/scope/:scope/member/:userId`). */
   async setScopeMember(
     token: string,
     scope: string,
-    member: { provider: string; id: string },
+    userId: string,
     role: ScopeRole,
   ): Promise<void> {
-    const res = await this.#send(this.#memberPath(scope, member), {
+    const res = await this.#send(this.#memberPath(scope, userId), {
       method: "PUT",
       headers: { ...JSON_HEADERS, ...bearer(token) },
       body: JSON.stringify({ role }),
@@ -239,13 +238,9 @@ export class RegistryClient {
     throw new CliError(this.#scopeError("update a member of", scope, res.status, body));
   }
 
-  /** Remove a member (`DELETE /-/scope/:scope/member/:provider/:id`). */
-  async removeScopeMember(
-    token: string,
-    scope: string,
-    member: { provider: string; id: string },
-  ): Promise<void> {
-    const res = await this.#send(this.#memberPath(scope, member), {
+  /** Remove a member (`DELETE /-/scope/:scope/member/:userId`). */
+  async removeScopeMember(token: string, scope: string, userId: string): Promise<void> {
+    const res = await this.#send(this.#memberPath(scope, userId), {
       method: "DELETE",
       headers: bearer(token),
     });
@@ -254,8 +249,8 @@ export class RegistryClient {
     throw new CliError(this.#scopeError("remove a member of", scope, res.status, body));
   }
 
-  #memberPath(scope: string, member: { provider: string; id: string }): string {
-    return `/-/scope/${encodeURIComponent(scope)}/member/${encodeURIComponent(member.provider)}/${encodeURIComponent(member.id)}`;
+  #memberPath(scope: string, userId: string): string {
+    return `/-/scope/${encodeURIComponent(scope)}/member/${encodeURIComponent(userId)}`;
   }
 
   #scopeError(

@@ -6,7 +6,7 @@ import { PublishTokenStore } from "@/server/stores/publish-token-store";
 
 /**
  * `DELETE /api/account/tokens/:hash` - revoke one of the signed-in user's tokens by its
- * hash. The query is subject-scoped, so a user can only revoke their own token; an unknown
+ * hash. The query is account-scoped, so a user can only revoke their own token; an unknown
  * or someone else's token is a 404.
  */
 export const Route = createFileRoute("/api/account/tokens/$hash")({
@@ -14,11 +14,7 @@ export const Route = createFileRoute("/api/account/tokens/$hash")({
     handlers: {
       DELETE: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const removed = await inject(PublishTokenStore).revokeTokenByHash(
-            "github",
-            a.user.login,
-            params.hash,
-          );
+          const removed = await inject(PublishTokenStore).revokeTokenByHash(a.user.id, params.hash);
           if (!removed) throw notFound();
           return reply({ ok: true });
         }),

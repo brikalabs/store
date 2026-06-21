@@ -50,7 +50,7 @@ const input: PublishInput = {
   version: "1.0.0",
   tarball: new TextEncoder().encode("TARBALL-BYTES"),
   manifest: { name: "@brika/plugin-x", version: "1.0.0" },
-  identity: { owner: "brika", repository: "brika/plugin-x" },
+  identity: { userId: null, provider: "github", repository: "brika/plugin-x" },
 };
 
 test("publishes: integrity computed, tarball + version + dist-tag written", async () => {
@@ -76,7 +76,8 @@ test("persists CI provenance from the publish identity", async () => {
   const result = await service.publish({
     ...input,
     identity: {
-      owner: "brikalabs",
+      userId: null,
+      provider: "github",
       repository: "brikalabs/plugin-x",
       provenance: { repository: "brikalabs/plugin-x", sha: "a96a3a4", runId: "123" },
     },

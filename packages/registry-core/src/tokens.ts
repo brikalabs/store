@@ -1,7 +1,6 @@
-/** A verified publish-token principal: the identity the token was issued to. */
+/** A verified publish-token principal: the Brika account the token was issued to. */
 export interface TokenPrincipal {
-  readonly provider: string;
-  readonly subject: string;
+  readonly userId: string;
 }
 
 /**
@@ -10,8 +9,8 @@ export interface TokenPrincipal {
  * database read cannot recover a token.
  */
 export interface TokenStore {
-  /** Issue a token for `subject` (default provider `github`); the plaintext is returned once. */
-  issue(subject: string, provider?: string): Promise<string>;
+  /** Issue a token for `userId`; the plaintext is returned once. */
+  issue(userId: string): Promise<string>;
   /** Resolve a presented token to its principal, or null when invalid/expired. */
   verify(token: string): Promise<TokenPrincipal | null>;
   /** Revoke the presented token. Idempotent. */

@@ -25,9 +25,8 @@ export const vars = defineEnv(
     // request origin, which is correct once a single custom domain is attached.
     REGISTRY_URL: z.union([z.url(), z.literal("")]).default(""),
     // Comma-separated operator admins allowed to take down / restore versions
-    // (distinct from scope ownership). Each entry is `provider:owner` (e.g.
-    // `github:octocat`); a bare entry defaults to the `github` provider. Empty -> no
-    // admins, so the takedown endpoints reject everyone until set via
+    // (distinct from scope ownership). Each entry is a Brika account id (`users.id`).
+    // Empty -> no admins, so the takedown endpoints reject everyone until set via
     // `wrangler secret`/`.dev.vars`.
     REGISTRY_ADMINS: z.string().default(""),
     // Secret for deriving stateless scope domain-verification challenges (ORG-010): the TXT
@@ -43,11 +42,8 @@ export const vars = defineEnv(
 export type Vars = ReturnType<typeof vars>;
 
 /**
- * The operator admins allowed to perform takedown/restore, as provider-qualified
- * `provider:owner` keys (matching how `requireAdmin` compares an identity). A bare
- * `REGISTRY_ADMINS` entry without a provider defaults to `github`, so existing
- * GitHub-login lists keep working while the check stays correct once a second
- * identity provider is added.
+ * The operator admins allowed to perform takedown/restore, as Brika account ids
+ * (`users.id`, matching how `requireAdmin` compares an identity's `userId`).
  */
 export function registryAdmins(): ReadonlySet<string> {
   return parseOperatorAdmins(vars().REGISTRY_ADMINS);

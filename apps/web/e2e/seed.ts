@@ -23,7 +23,7 @@ import {
 } from "../scripts/seed-lib";
 
 const EXAMPLES = ["plugin-i18n", "plugin-snapshot", "plugin-clock", "plugin-icon"];
-/** The login that owns the `@brika` scope in the e2e fixture (admin member). */
+/** The owner handle for the `@brika` scope in the e2e fixture; its account id is `u-e2e-bot`. */
 const SEED_OWNER = "e2e-bot";
 
 /**
@@ -37,9 +37,7 @@ function setupBrikaScope(): void {
   db.close();
 }
 
-/** The login of the e2e operator (a `REGISTRY_ADMINS` member; see playwright.config.ts). */
-const OPERATOR_LOGIN = "e2e-operator";
-/** Stable user id the operator e2e mints its session cookie for (see operator-session.ts). */
+/** The account id of the e2e operator: the `REGISTRY_ADMINS` allowlist + session cookie key on it. */
 const OPERATOR_USER_ID = "u-operator";
 
 /**
@@ -47,18 +45,17 @@ const OPERATOR_USER_ID = "u-operator";
  * cookie resolves to a real user) and a throwaway scope `@squatter` to take down and restore.
  * The squatter scope is deliberately separate from `@brika` so the operator e2e never disturbs
  * the storefront's public listings. The operator is granted moderation rights out-of-band
- * via `REGISTRY_ADMINS=github:e2e-operator` on the web dev server, not via any DB row.
+ * via `REGISTRY_ADMINS=u-operator` on the web dev server, not via any DB row.
  */
 function setupOperatorFixtures(): void {
   const db = new Database(findLocalD1());
   const now = Math.floor(Date.now() / 1000);
-  // A BetterAuth `users` row (USER-001): `login` is the GitHub username the
-  // session + operator allowlist resolve against; `github_id` is gone (provider
-  // ids live in the `account` table now). The signed session cookie (minted in
-  // operator-session.ts) resolves to this row via `session.user_id`.
+  // A BetterAuth `users` row (USER-001). The signed session cookie (minted in
+  // operator-session.ts) resolves to this row via `session.user_id`, and the operator
+  // allowlist (`REGISTRY_ADMINS`) keys on this same account id.
   db.run(
-    "INSERT OR REPLACE INTO users (id, login, name, image, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)",
-    [OPERATOR_USER_ID, OPERATOR_LOGIN, "E2E Operator", null, now, now],
+    "INSERT OR REPLACE INTO users (id, name, image, email_verified, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)",
+    [OPERATOR_USER_ID, "E2E Operator", null, now, now],
   );
   db.run(
     "INSERT OR IGNORE INTO reg_scopes (scope, display_name) VALUES ('@squatter', 'Squatter Co')",
@@ -66,7 +63,7 @@ function setupOperatorFixtures(): void {
   // Re-activate it if a previous run left it taken down, so the spec starts from a clean state.
   db.run("UPDATE reg_scopes SET takedown = NULL WHERE scope = '@squatter'");
   db.close();
-  log(`set up operator ${OPERATOR_LOGIN} + throwaway scope @squatter`);
+  log(`set up operator ${OPERATOR_USER_ID} + throwaway scope @squatter`);
 }
 
 /**
@@ -230,18 +227,17 @@ function seedSocial(): void {
     "INSERT OR IGNORE INTO plugins (name, latest_version, brika_engine, display_name, description) VALUES (?, ?, ?, ?, ?)",
     [name, "0.1.0", "^0.1.0", "i18n Toolkit", "Translate, format, and localize content."],
   );
-  // BetterAuth `users` rows (USER-001): `login` is the GitHub username, `image`
-  // the avatar shown beside reviews/comments. `github_id` is gone (provider ids
-  // live in the `account` table now).
+  // BetterAuth `users` rows (USER-001): `name` + `image` (the avatar shown beside
+  // reviews/comments) are all the social layer needs. `gh` only seeds a realistic avatar URL.
   const users = [
-    { id: "u-mara", login: "mara-dev", nm: "Mara Lopez" },
-    { id: "u-kenji", login: "kenji-ito", nm: "Kenji Ito" },
-    { id: "u-aria", login: "aria-n", nm: "Aria Novak" },
+    { id: "u-mara", gh: "mara-dev", nm: "Mara Lopez" },
+    { id: "u-kenji", gh: "kenji-ito", nm: "Kenji Ito" },
+    { id: "u-aria", gh: "aria-n", nm: "Aria Novak" },
   ];
   for (const u of users) {
     db.run(
-      "INSERT OR REPLACE INTO users (id, login, name, image, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)",
-      [u.id, u.login, u.nm, `https://avatars.githubusercontent.com/${u.login}`, now, now],
+      "INSERT OR REPLACE INTO users (id, name, image, email_verified, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)",
+      [u.id, u.nm, `https://avatars.githubusercontent.com/${u.gh}`, now, now],
     );
   }
   const reviews = [

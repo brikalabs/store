@@ -28,7 +28,6 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
           label={name}
           imageUrl={hasIcon ? `/api/scopes/${encodeURIComponent(scope)}/icon` : undefined}
           size={84}
-          className="rounded-[20px]"
         />
         <div className="flex-1">
           <div className="flex items-center gap-2.5">

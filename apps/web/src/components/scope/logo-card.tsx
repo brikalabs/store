@@ -1,5 +1,6 @@
 import { Trash2, Upload } from "lucide-react";
 import { type ChangeEvent, useState } from "react";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { toResizedWebp } from "@/lib/icon-resize";
 import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
 
@@ -46,14 +47,14 @@ export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
         browser before upload, so pick whatever you like. Without one, a generated avatar is used.
       </p>
       <div className="flex items-center gap-4">
-        <img
-          // The cache-buster forces a reload after upload/clear; a 404 falls back to the gradient.
-          src={`${scopePath(scope, "/icon")}?v=${bust}`}
-          alt="Current logo"
-          className="size-16 rounded-2xl border border-border bg-muted object-cover"
-          onError={(e) => {
-            e.currentTarget.style.visibility = "hidden";
-          }}
+        <GradientAvatar
+          // The cache-buster reloads the image after upload/clear; with no logo (404) the clay
+          // Avatar shows the generated gradient avatar - the same fallback the public page uses.
+          seed={scope}
+          label={scope}
+          imageUrl={`${scopePath(scope, "/icon")}?v=${bust}`}
+          size={64}
+          className="border border-border"
         />
         <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-border bg-background px-3 font-medium text-sm transition-colors hover:bg-muted">
           <Upload className="size-4" />

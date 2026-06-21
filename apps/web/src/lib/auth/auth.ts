@@ -6,13 +6,11 @@ export { parseCookies, safeReturnPath } from "@/lib/auth/auth-cookies";
 
 /**
  * The session identity the store works with everywhere downstream (console,
- * operator gating, scope ownership, social tables). `login` is the GitHub
- * username; `avatarUrl` resolves from BetterAuth's `image`. This shape is the
- * stable contract - it is unchanged by the move to BetterAuth.
+ * operator gating, scope ownership, social tables). `id` (the Brika account id) is
+ * the only identity; `avatarUrl` resolves from BetterAuth's `image`.
  */
 export interface SessionUser {
   id: string;
-  login: string;
   name: string | null;
   avatarUrl: string | null;
 }
@@ -29,11 +27,9 @@ export async function getCurrentUser(request: Request): Promise<SessionUser | nu
     id: string;
     name?: string | null;
     image?: string | null;
-    login?: string | null;
   };
   return {
     id: user.id,
-    login: user.login ?? "",
     name: user.name ?? null,
     avatarUrl: user.image ?? null,
   };

@@ -60,8 +60,8 @@ const PLUGIN = "@brika/plugin-i18n";
 /** Seed a cached plugin plus an author + a separate voter, with one review and one comment. */
 async function seed(h: Harness): Promise<void> {
   await cachePlugin(h.db, PLUGIN);
-  await h.stores.users.upsert({ id: "author", login: "author" });
-  await h.stores.users.upsert({ id: "voter", login: "voter" });
+  await h.stores.users.upsert({ id: "author", name: "author" });
+  await h.stores.users.upsert({ id: "voter", name: "voter" });
   await h.stores.reviews.upsert(PLUGIN, "author", { rating: 5, body: "Great" });
   await h.social.addComment(PLUGIN, "author", "Question?", null);
 }
@@ -72,12 +72,11 @@ beforeEach(() => {
 });
 
 describe("UserStore.upsert", () => {
-  test("inserts then updates on conflict, always storing a name", async () => {
-    await h.stores.users.upsert({ id: "u1", login: "octo" });
-    expect(await h.stores.profiles.get("u1")).toMatchObject({ displayName: "octo" }); // name = login
-    await h.stores.users.upsert({ id: "u1", login: "octocat", name: "Octo" });
+  test("inserts then updates the name on conflict", async () => {
+    await h.stores.users.upsert({ id: "u1", name: "octo" });
+    expect(await h.stores.profiles.get("u1")).toMatchObject({ displayName: "octo" });
+    await h.stores.users.upsert({ id: "u1", name: "Octo" });
     expect(await h.stores.profiles.get("u1")).toMatchObject({ displayName: "Octo" });
-    expect(await h.social.findUserLogin("u1")).toBe("octocat");
   });
 });
 
@@ -213,8 +212,8 @@ describe("ensurePluginCached (cache-aside from the registry)", () => {
 describe("submitReview + rating summary", () => {
   async function seedPlugin(): Promise<void> {
     await cachePlugin(h.db, "p");
-    await h.stores.users.upsert({ id: "u1", login: "a" });
-    await h.stores.users.upsert({ id: "u2", login: "b" });
+    await h.stores.users.upsert({ id: "u1", name: "a" });
+    await h.stores.users.upsert({ id: "u2", name: "b" });
   }
 
   test("inserts, edits, and recomputes the rating summary", async () => {
@@ -243,7 +242,7 @@ describe("submitReview + rating summary", () => {
 describe("comments", () => {
   test("addComment + listComments returns threaded rows with author", async () => {
     await cachePlugin(h.db, "p");
-    await h.stores.users.upsert({ id: "u1", login: "asker", name: "Asker" });
+    await h.stores.users.upsert({ id: "u1", name: "Asker" });
     await h.social.addComment("p", "u1", "Top question", null);
     const top = (await h.social.listComments("p"))[0];
     expect(top?.body).toBe("Top question");
@@ -259,7 +258,7 @@ describe("comments", () => {
   test("a reply to a missing or cross-plugin parent is rejected (false), and nothing is inserted", async () => {
     await cachePlugin(h.db, "p");
     await cachePlugin(h.db, "other");
-    await h.stores.users.upsert({ id: "u1", login: "asker" });
+    await h.stores.users.upsert({ id: "u1", name: "asker" });
     await h.social.addComment("other", "u1", "Elsewhere", null);
     const parentElsewhere = (await h.social.listComments("other"))[0];
 
@@ -272,8 +271,8 @@ describe("comments", () => {
 
   test("a deleted comment is a tombstone: no author identity, no upvotes", async () => {
     await cachePlugin(h.db, "p");
-    await h.stores.users.upsert({ id: "u1", login: "asker", name: "Asker" });
-    await h.stores.users.upsert({ id: "voter", login: "voter" });
+    await h.stores.users.upsert({ id: "u1", name: "Asker" });
+    await h.stores.users.upsert({ id: "voter", name: "voter" });
     await h.social.addComment("p", "u1", "Soon gone", null);
     const posted = (await h.social.listComments("p"))[0];
     await h.social.toggleCommentUpvote(posted?.id ?? "", "voter");
@@ -299,7 +298,6 @@ describe("user profile", () => {
   test("falls back to the GitHub name + avatar until edited, then reflects updates", async () => {
     await h.stores.users.upsert({
       id: "u1",
-      login: "octo",
       name: "Octo",
       avatarUrl: "https://avatars.example/octo.png",
     });
@@ -330,8 +328,8 @@ describe("listReviewsByUser", () => {
   test("returns the account's reviews, newest first, with the plugin name", async () => {
     await cachePlugin(h.db, "p1");
     await cachePlugin(h.db, "p2");
-    await h.stores.users.upsert({ id: "u1", login: "a", name: "A" });
-    await h.stores.users.upsert({ id: "u2", login: "b" });
+    await h.stores.users.upsert({ id: "u1", name: "A" });
+    await h.stores.users.upsert({ id: "u2", name: "b" });
     await h.social.submitReview("p1", "u1", { rating: 5, body: "great" });
     await h.social.submitReview("p2", "u1", { rating: 3, title: "ok", body: "fine" });
     await h.social.submitReview("p1", "u2", { rating: 1, body: "nope" });

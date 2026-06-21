@@ -70,7 +70,7 @@ export interface ScopeSeed {
   readonly scope: string;
   /** The scope's verified display name. */
   readonly displayName: string;
-  /** The GitHub login made admin of the scope (and the publish token's owner). */
+  /** A handle for the admin account; the account id is derived as `u-<owner>`. */
   readonly owner: string;
 }
 
@@ -86,20 +86,20 @@ export function ensureScope(seed: ScopeSeed): void {
     seed.scope,
     seed.displayName,
   ]);
-  db.run(
-    "INSERT OR IGNORE INTO reg_scope_members (scope, provider, member_id, role) VALUES (?, 'github', ?, 'admin')",
-    [seed.scope, seed.owner],
-  );
+  const userId = `u-${seed.owner}`;
+  db.run("INSERT OR IGNORE INTO reg_scope_members (scope, user_id, role) VALUES (?, ?, 'admin')", [
+    seed.scope,
+    userId,
+  ]);
   const now = Math.floor(Date.now() / 1000);
-  // A BetterAuth `users` row (USER-001): `login` is the GitHub username the scope
-  // membership + session resolve against; `github_id` no longer exists (provider
-  // ids live in the `account` table now).
+  // A BetterAuth `users` row (USER-001). Identity is the account id (`u-<owner>`); there is
+  // no GitHub-login column (provider ids live in the `account` table).
   db.run(
-    "INSERT OR REPLACE INTO users (id, login, name, image, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)",
-    [`u-${seed.owner}`, seed.owner, seed.owner, null, now, now],
+    "INSERT OR REPLACE INTO users (id, name, image, email_verified, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)",
+    [userId, seed.owner, null, now, now],
   );
   db.close();
-  log(`ensured scope ${seed.scope} (admin ${seed.owner})`);
+  log(`ensured scope ${seed.scope} (admin ${userId})`);
 }
 
 const TOKEN_TTL_SECONDS = 60 * 60;
@@ -110,11 +110,11 @@ export async function mintToken(owner: string, ttlSeconds = TOKEN_TTL_SECONDS): 
   const db = new Database(findLocalD1());
   const now = Math.floor(Date.now() / 1000);
   db.run(
-    "INSERT OR REPLACE INTO reg_tokens (token_hash, github_login, created_at, expires_at) VALUES (?, ?, ?, ?)",
-    [await sha256Hex(token), owner, now, now + ttlSeconds],
+    "INSERT OR REPLACE INTO reg_tokens (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+    [await sha256Hex(token), `u-${owner}`, now, now + ttlSeconds],
   );
   db.close();
-  log(`minted token for ${owner}`);
+  log(`minted token for u-${owner}`);
   return token;
 }
 

@@ -71,18 +71,21 @@ function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
 /** Author profile card; hidden when the plugin has no resolved author. */
 function SidebarAuthor({ detail }: Readonly<{ detail: PluginDetail }>) {
   if (!detail.author) return null;
+  // The author of a scoped package IS its scope, so show the scope's uploaded logo; clay falls
+  // back to the gradient tile when the scope has none (404).
+  const scope = scopeOf(detail.name);
   return (
     <Card interactive className="p-0">
       <Link
         to="/$"
-        params={{ _splat: scopeOf(detail.name) ?? detail.name }}
+        params={{ _splat: scope ?? detail.name }}
         className="flex items-center gap-3 p-4"
       >
         <GradientAvatar
           seed={detail.author.id}
           label={detail.author.name ?? detail.author.id}
+          imageUrl={scope ? `/api/scopes/${encodeURIComponent(scope)}/icon` : undefined}
           size={42}
-          className="rounded-[11px]"
         />
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">

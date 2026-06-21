@@ -26,7 +26,7 @@ describe("D1DeviceStore", () => {
     expect(row?.userCode).toBe("ABCD-1234");
     expect(row?.expiresAt).toBe(1000);
     expect(row?.approved).toBe(false);
-    expect(row?.githubLogin).toBeNull();
+    expect(row?.userId).toBeNull();
   });
 
   test("find returns null for an unknown device code", async () => {
@@ -42,7 +42,7 @@ describe("D1DeviceStore", () => {
     expect(grant).toEqual({
       deviceCode: "dev-2",
       userCode: "WXYZ-9876",
-      githubLogin: null,
+      userId: null,
       approved: false,
       expiresAt: 2000,
     });
@@ -53,12 +53,12 @@ describe("D1DeviceStore", () => {
     await store.create({ deviceCode: "dev-3", userCode: "MNOP-5555", expiresAt: 3000 });
     await db
       .update(regDeviceAuth)
-      .set({ approved: true, githubLogin: "octocat" })
+      .set({ approved: true, userId: "octocat" })
       .where(eq(regDeviceAuth.deviceCode, "dev-3"));
 
     const grant = await store.find("dev-3");
     expect(grant?.approved).toBe(true);
-    expect(grant?.githubLogin).toBe("octocat");
+    expect(grant?.userId).toBe("octocat");
   });
 
   test("remove deletes the grant; a later find returns null", async () => {

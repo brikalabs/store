@@ -31,7 +31,7 @@ export const Route = createFileRoute("/api/plugins/mine")({
           // scan covers it.
           const membership = inject(ScopeMembershipStore);
           const [myScopes, catalog] = await Promise.all([
-            membership.listScopesForMember("github", a.user.login),
+            membership.listScopesForMember(a.user.id),
             searchPlugins(undefined, 200, 0),
           ]);
           const owned = new Set(myScopes.map((s) => s.scope));

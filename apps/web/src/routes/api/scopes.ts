@@ -10,10 +10,7 @@ export const Route = createFileRoute("/api/scopes")({
     handlers: {
       GET: ({ request }) =>
         runAuthed(request, async (a) => {
-          const scopes = await inject(ScopeMembershipStore).listScopesForMember(
-            "github",
-            a.user.login,
-          );
+          const scopes = await inject(ScopeMembershipStore).listScopesForMember(a.user.id);
           return reply({ scopes });
         }),
     },

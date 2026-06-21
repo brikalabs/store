@@ -3,14 +3,6 @@ import * as p from "@brika/cli-kit/prompts";
 import { loadConfig } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
 
-/** Parse a member reference: `provider:id` (e.g. `github:alice`), or a bare id (github). */
-function parseMember(ref: string): { provider: string; id: string } {
-  const colon = ref.indexOf(":");
-  return colon === -1
-    ? { provider: "github", id: ref }
-    : { provider: ref.slice(0, colon), id: ref.slice(colon + 1) };
-}
-
 /** Run `work` under a spinner, stopping with `done` (its return) or "Failed" on throw. */
 async function withSpinner(start: string, work: () => Promise<string>): Promise<void> {
   const spin = p.spinner();
@@ -23,11 +15,11 @@ async function withSpinner(start: string, work: () => Promise<string>): Promise<
   }
 }
 
-const USAGE = "usage: brika scope <create|members|add|remove> <@scope> [provider:id]";
+const USAGE = "usage: brika scope <create|members|add|remove> <@scope> [account-id]";
 
 async function runMembers(client: RegistryClient, token: string, scope: string): Promise<void> {
   const members = await client.listScopeMembers(token, scope);
-  for (const m of members) p.log.info(`  ${m.provider}:${m.id} (${m.role})`);
+  for (const m of members) p.log.info(`  ${m.userId} (${m.role})`);
   p.log.info(`${members.length} member(s) of ${scope}`);
 }
 
@@ -38,13 +30,13 @@ async function runAdd(
   member: string | undefined,
   role: string,
 ): Promise<void> {
-  if (member === undefined) throw new CliError("usage: brika scope add <@scope> <provider:id>");
+  if (member === undefined) throw new CliError("usage: brika scope add <@scope> <account-id>");
   if (role !== "admin" && role !== "member") {
     throw new CliError("--role must be 'admin' or 'member'");
   }
   // `role` is narrowed to ScopeRole by the guard above - no cast needed.
   await withSpinner(`Adding ${member} to ${scope}`, async () => {
-    await client.setScopeMember(token, scope, parseMember(member), role);
+    await client.setScopeMember(token, scope, member, role);
     return `Set ${member} as ${role} on ${scope}`;
   });
 }
@@ -55,9 +47,9 @@ async function runRemove(
   scope: string,
   member: string | undefined,
 ): Promise<void> {
-  if (member === undefined) throw new CliError("usage: brika scope remove <@scope> <provider:id>");
+  if (member === undefined) throw new CliError("usage: brika scope remove <@scope> <account-id>");
   await withSpinner(`Removing ${member} from ${scope}`, async () => {
-    await client.removeScopeMember(token, scope, parseMember(member));
+    await client.removeScopeMember(token, scope, member);
     return `Removed ${member} from ${scope}`;
   });
 }
@@ -70,7 +62,7 @@ export const scope = defineCommand({
   args: {
     action: { description: "create | members | add | remove" },
     scope: { description: "Scope name, e.g. @brika" },
-    member: { description: "For add/remove: provider:id (e.g. github:alice) or a bare id" },
+    member: { description: "For add/remove: a Brika account id" },
   },
   options: {
     role: { type: "string", default: "member", description: "For add: admin | member" },
@@ -78,8 +70,8 @@ export const scope = defineCommand({
   examples: [
     "brika scope create @brika",
     "brika scope members @brika",
-    "brika scope add @brika github:alice --role admin",
-    "brika scope remove @brika github:alice",
+    "brika scope add @brika usr_abc123 --role admin",
+    "brika scope remove @brika usr_abc123",
   ],
   async handler({ args, values }) {
     const { action, scope: name, member } = args;

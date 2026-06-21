@@ -12,7 +12,7 @@ function fakeStore(seed: DeviceGrant[] = []): DeviceStore & { grants: Map<string
   return {
     grants,
     async create(grant) {
-      grants.set(grant.deviceCode, { ...grant, githubLogin: null, approved: false });
+      grants.set(grant.deviceCode, { ...grant, userId: null, approved: false });
     },
     async find(deviceCode) {
       return grants.get(deviceCode) ?? null;

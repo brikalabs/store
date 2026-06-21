@@ -11,8 +11,8 @@ export const whoami = defineCommand({
       p.log.info("Not logged in.");
       return;
     }
-    // Prefer the human display name; fall back to the github login, then a neutral label.
-    const account = config.displayName ?? config.githubLogin ?? "logged in";
+    // Prefer the human display name; fall back to the account id, then a neutral label.
+    const account = config.displayName ?? config.userId ?? "logged in";
     p.log.info(`${account} (${config.registry})`);
   },
 });

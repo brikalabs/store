@@ -1,13 +1,22 @@
-import type { AuditEntry, AuditLog, AuditReader, AuditRecord } from "@brika/registry-core";
+import type {
+  Actor,
+  AuditEntry,
+  AuditLog,
+  AuditReader,
+  AuditRecord,
+  PublishIdentity,
+} from "@brika/registry-core";
 import { desc } from "drizzle-orm";
 import type { Db } from "../client";
 import { regAudit } from "../schema";
+import { resolveActor } from "./queries";
 
 /**
  * D1 implementation of the {@link AuditLog} (write) and {@link AuditReader} (read) ports:
- * the append-only `reg_audit` table. Centralises the actor-resolution rule (CI publishes
- * attributed to the repo, local ones to the owner) and the row shape. The read side backs
- * the operator console's audit view; the write side is the best-effort recorder.
+ * the append-only `reg_audit` table. Centralises the actor-resolution rule (a human publish
+ * snapshots the account's display name + avatar; a CI publish is attributed to its repo) and
+ * the row shape. The read side backs the operator console's audit view; the write side is the
+ * best-effort recorder.
  */
 export class D1AuditLog implements AuditLog, AuditReader {
   readonly #db: Db;
@@ -48,7 +57,7 @@ export class D1AuditLog implements AuditLog, AuditReader {
         action: entry.action,
         packageName: entry.packageName,
         version: entry.version,
-        actor: entry.actor.repository ?? entry.actor.owner,
+        actor: await this.#actorFor(entry.actor),
         detail: entry.detail ?? null,
       });
     } catch (error) {
@@ -57,5 +66,18 @@ export class D1AuditLog implements AuditLog, AuditReader {
         error,
       );
     }
+  }
+
+  /**
+   * Snapshot the acting principal into a self-contained {@link Actor}. A human publish resolves
+   * the account's current display name + avatar (best-effort; nulls on any miss). A CI/OIDC
+   * publish has no account, so it is attributed to its `owner/repo`.
+   */
+  async #actorFor(identity: PublishIdentity): Promise<Actor> {
+    if (identity.userId !== null) {
+      const { displayName, avatarUrl } = await resolveActor(this.#db, identity.userId);
+      return { id: identity.userId, displayName, avatarUrl };
+    }
+    return { id: null, displayName: identity.repository, avatarUrl: null };
   }
 }

@@ -156,7 +156,12 @@ export function DiscoverIndex({
                   params={{ _splat: scope.scope }}
                   className="flex items-center gap-2.5"
                 >
-                  <GradientAvatar seed={scope.scope} label={scope.name} size={30} />
+                  <GradientAvatar
+                    seed={scope.scope}
+                    label={scope.name}
+                    imageUrl={`/api/scopes/${encodeURIComponent(scope.scope)}/icon`}
+                    size={30}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-semibold text-foreground text-xs">
                       {scope.name}

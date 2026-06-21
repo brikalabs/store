@@ -1,5 +1,20 @@
 import type { PublishIdentity } from "./publish";
 
+/**
+ * The acting principal, snapshotted into an audit row at write time so the log is
+ * self-contained: it survives a later rename, avatar change, or account deletion without a
+ * join. A human carries their account `id` + display snapshot; a CI/OIDC publish has no
+ * account (`id` null) and uses its `owner/repo` as the display name.
+ */
+export interface Actor {
+  /** Brika account id, or null for a CI/automated actor. */
+  readonly id: string | null;
+  /** Display-name snapshot at action time (or `owner/repo` for a CI actor). */
+  readonly displayName: string | null;
+  /** Avatar URL snapshot at action time; null for CI or when the account has none. */
+  readonly avatarUrl: string | null;
+}
+
 /** One entry for the append-only audit log (publishes + management + scope actions). */
 export interface AuditEntry {
   readonly action: string;
@@ -50,8 +65,8 @@ export interface AuditRecord {
   /** The package or org slug the action targeted, or null. */
   readonly target: string | null;
   readonly version: string | null;
-  /** Who performed it (the persisted actor string: repo for CI, owner for local). */
-  readonly actor: string | null;
+  /** Who performed it, as snapshotted at write time (account id + display name + avatar). */
+  readonly actor: Actor | null;
   readonly detail: Record<string, unknown> | null;
   /** ISO-8601 timestamp of when the entry was recorded. */
   readonly at: string;

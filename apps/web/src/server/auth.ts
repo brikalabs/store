@@ -35,11 +35,10 @@ function build() {
       github: {
         clientId: GITHUB_CLIENT_ID,
         clientSecret: GITHUB_CLIENT_SECRET,
-        // Capture the GitHub username into the store-owned `login` field, which
-        // scope ownership and the `github:<login>` operator allowlist depend on.
-        // `image`/`name` keep `SessionUser.avatarUrl`/`name` resolving.
+        // Sync the provider avatar + name onto the account. There is no GitHub-login field:
+        // identity is the Brika account id (`users.id`). `image`/`name` keep
+        // `SessionUser.avatarUrl`/`name` resolving.
         mapProfileToUser: (profile) => ({
-          login: profile.login,
           image: profile.avatar_url,
           name: profile.name ?? profile.login,
         }),
@@ -61,14 +60,11 @@ function build() {
     },
     user: {
       // Map BetterAuth's `user` model to the existing `users` table so `users.id`
-      // stays the PK that reviews/comments/votes/reports reference (USER-001).
+      // stays the PK that reviews/comments/votes/reports reference (USER-001). The
+      // user-authored profile columns (displayName/bio/website/avatarVersion/links)
+      // live on this table too but are NOT BetterAuth fields - the store writes them
+      // directly - so they are not declared here and OAuth never touches them.
       modelName: "users",
-      additionalFields: {
-        // The GitHub username. Not required at the type level because BetterAuth
-        // creates the row before `mapProfileToUser` is merged in some flows; it is
-        // always populated for GitHub sign-in.
-        login: { type: "string", required: false, input: false },
-      },
     },
   });
 }

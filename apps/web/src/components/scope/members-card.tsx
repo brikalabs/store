@@ -1,12 +1,14 @@
 import { Button, Input } from "@brika/clay";
 import { Trash2, UserPlus } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
-import { GithubIcon } from "@/components/clay/icons";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
 
 export interface Member {
-  provider: string;
-  id: string;
+  userId: string;
+  /** The account's display name + avatar, resolved server-side (membership stores only the id). */
+  displayName: string | null;
+  avatarUrl: string | null;
   role: "admin" | "member";
 }
 
@@ -28,18 +30,20 @@ export function MembersCard({
   onReload,
   onError,
 }: Readonly<MembersCardProps>) {
+  // Re-roling an existing member keys off their account id (already a member); the
+  // email-based invite (AddMember below) is only for adding someone new.
   async function setRole(member: Member, role: "admin" | "member") {
-    const res = await fetch(scopePath(scope, "/members"), {
+    const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(member.userId)}`), {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ memberId: member.id, role }),
+      body: JSON.stringify({ role }),
     });
     if (res.ok) await onReload();
     else onError(await readError(res));
   }
 
   async function remove(member: Member) {
-    const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(member.id)}`), {
+    const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(member.userId)}`), {
       method: "DELETE",
     });
     if (res.ok) await onReload();
@@ -53,39 +57,42 @@ export function MembersCard({
         <div className="h-16 animate-pulse rounded-xl bg-muted" />
       ) : (
         <ul className="flex flex-col divide-y divide-border">
-          {members.map((m) => (
-            <li key={`${m.provider}:${m.id}`} className="flex items-center gap-3 py-3">
-              <GithubIcon className="size-4 text-muted-foreground" />
-              <span className="flex-1 font-mono text-sm">{m.id}</span>
-              {isAdmin ? (
-                <>
-                  <select
-                    aria-label={`Role for ${m.id}`}
-                    value={m.role}
-                    onChange={(event) =>
-                      setRole(m, event.target.value === "admin" ? "admin" : "member")
-                    }
-                    className={ROLE_SELECT}
-                  >
-                    <option value="admin">admin</option>
-                    <option value="member">member</option>
-                  </select>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${m.id}`}
-                    onClick={() => remove(m)}
-                    className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </>
-              ) : (
-                <span className="rounded-full border border-border bg-muted px-2.5 py-1 font-semibold text-muted-foreground text-xs capitalize">
-                  {m.role}
-                </span>
-              )}
-            </li>
-          ))}
+          {members.map((m) => {
+            const label = m.displayName ?? m.userId;
+            return (
+              <li key={m.userId} className="flex items-center gap-3 py-3">
+                <GradientAvatar seed={m.userId} label={label} imageUrl={m.avatarUrl} size={28} />
+                <span className="flex-1 truncate text-sm">{label}</span>
+                {isAdmin ? (
+                  <>
+                    <select
+                      aria-label={`Role for ${label}`}
+                      value={m.role}
+                      onChange={(event) =>
+                        setRole(m, event.target.value === "admin" ? "admin" : "member")
+                      }
+                      className={ROLE_SELECT}
+                    >
+                      <option value="admin">admin</option>
+                      <option value="member">member</option>
+                    </select>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${label}`}
+                      onClick={() => remove(m)}
+                      className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </>
+                ) : (
+                  <span className="rounded-full border border-border bg-muted px-2.5 py-1 font-semibold text-muted-foreground text-xs capitalize">
+                    {m.role}
+                  </span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
       {isAdmin && <AddMember scope={scope} onAdded={onReload} onError={onError} />}
@@ -98,7 +105,7 @@ function AddMember({
   onAdded,
   onError,
 }: Readonly<ScopeCardProps & { onAdded: () => Promise<void> }>) {
-  const [login, setLogin] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "member">("member");
   const [busy, setBusy] = useState(false);
 
@@ -108,11 +115,11 @@ function AddMember({
     const res = await fetch(scopePath(scope, "/members"), {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ memberId: login.trim(), role }),
+      body: JSON.stringify({ email: email.trim(), role }),
     });
     setBusy(false);
     if (res.ok) {
-      setLogin("");
+      setEmail("");
       await onAdded();
     } else {
       onError(await readError(res));
@@ -122,11 +129,11 @@ function AddMember({
   return (
     <form onSubmit={submit} className="flex flex-col gap-2 border-border border-t pt-4 sm:flex-row">
       <Input
-        value={login}
-        onChange={(event) => setLogin(event.target.value)}
-        placeholder="GitHub login"
-        aria-label="GitHub login to add"
-        className="font-mono"
+        type="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        placeholder="member@email.com"
+        aria-label="Email of the account to invite"
       />
       <select
         aria-label="Role for the new member"
@@ -137,7 +144,7 @@ function AddMember({
         <option value="member">member</option>
         <option value="admin">admin</option>
       </select>
-      <Button type="submit" disabled={busy || login.trim().length === 0}>
+      <Button type="submit" disabled={busy || email.trim().length === 0}>
         <UserPlus className="size-4" />
         {busy ? "Adding…" : "Add member"}
       </Button>

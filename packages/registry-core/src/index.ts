@@ -9,6 +9,7 @@ export {
   TransparencyEntry,
 } from "./attestation";
 export {
+  type Actor,
   type AuditEntry,
   type AuditLog,
   type AuditReader,
@@ -39,7 +40,7 @@ export { sha1Hex, sha512Integrity } from "./integrity";
 export { displayNameSchema, hasUnsafeLabelChars } from "./labels";
 export { REGISTRY_LIMITS, type RegistryLimits } from "./limits";
 export { ManagementService, type ManageResult, type VersionManager } from "./manage";
-export type { MemberRef, ScopeMember, ScopeMembers, ScopeRole } from "./membership";
+export type { ScopeMember, ScopeMembers, ScopeRole } from "./membership";
 export { isCanonicalName, isCanonicalScope, scopeOf } from "./names";
 export {
   BaseClaims,
@@ -58,7 +59,7 @@ export {
   verifyGitlabOidc,
   verifyOidc,
 } from "./oidc";
-export { isOperator, operatorKey, parseOperatorAdmins } from "./operators";
+export { isOperator, parseOperatorAdmins } from "./operators";
 export {
   type AbbreviatedPackument,
   buildAbbreviatedPackument,

@@ -26,7 +26,7 @@ export class D1DeviceStore implements DeviceStore {
     return {
       deviceCode: row.deviceCode,
       userCode: row.userCode,
-      githubLogin: row.githubLogin,
+      userId: row.userId,
       approved: row.approved,
       expiresAt: row.expiresAt,
     };

@@ -4,15 +4,16 @@ import { eq } from "drizzle-orm";
 import { avatarUrlOf } from "@/lib/avatar";
 import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
-import { userProfiles, users } from "@/server/db/schema";
+import { users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 
 /**
- * Repository for the user-authored public profile (`user_profiles`, USER-002/003/005), keyed
- * 1:1 to a `users` row. The editable fields (displayName/bio/website/links/avatar) live here; the
- * avatar resolves to the account's uploaded image when set (`avatar_version`) and otherwise the GitHub
- * `image` on `users`, and the display name falls back to the GitHub `name` (never npm-derived).
- * Reads join `users` to resolve those fallbacks.
+ * Repository for the user-authored public profile (USER-002/003/005), now columns on the
+ * `users` row itself (no separate `user_profiles` table). The editable fields
+ * (displayName/bio/website/links/avatar) live alongside the provider-synced `name`/`image`:
+ * the avatar resolves to the account's uploaded image when set (`avatar_version`) and otherwise
+ * the provider `image`, and the display name falls back to the provider `name` (never
+ * npm-derived).
  */
 export class UserProfileStore {
   readonly #db = inject(Database).orm;
@@ -25,14 +26,13 @@ export class UserProfileStore {
         id: users.id,
         name: users.name,
         image: users.image,
-        displayName: userProfiles.displayName,
-        avatarVersion: userProfiles.avatarVersion,
-        bio: userProfiles.bio,
-        website: userProfiles.website,
-        links: userProfiles.links,
+        displayName: users.displayName,
+        avatarVersion: users.avatarVersion,
+        bio: users.bio,
+        website: users.website,
+        links: users.links,
       })
       .from(users)
-      .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
       .where(eq(users.id, id))
       .limit(1);
     const row = rows[0];
@@ -48,9 +48,9 @@ export class UserProfileStore {
   }
 
   /**
-   * Upsert the account's own profile fields (USER-003). The caller passes the session
-   * `users.id`, so a user only ever writes their own row; unset fields are stored as-is
-   * (empty, never back-filled from npm, USER-005).
+   * Update the account's own profile fields (USER-003). The caller passes the session
+   * `users.id` (the row always exists - BetterAuth created it at sign-up), so a user only ever
+   * writes their own row; unset fields are stored as-is (empty, never back-filled, USER-005).
    */
   async upsert(
     id: string,
@@ -61,16 +61,15 @@ export class UserProfileStore {
       links?: { label: string; url: string }[];
     },
   ): Promise<void> {
-    const values = {
-      displayName: fields.displayName ?? null,
-      bio: fields.bio ?? null,
-      website: fields.website ?? null,
-      links: fields.links ?? [],
-    };
     await this.#db
-      .insert(userProfiles)
-      .values({ userId: id, ...values })
-      .onConflictDoUpdate({ target: userProfiles.userId, set: values });
+      .update(users)
+      .set({
+        displayName: fields.displayName ?? null,
+        bio: fields.bio ?? null,
+        website: fields.website ?? null,
+        links: fields.links ?? [],
+      })
+      .where(eq(users.id, id));
   }
 
   /**
@@ -79,9 +78,6 @@ export class UserProfileStore {
    * own row. The public URL is derived from this at read time, never stored.
    */
   async setAvatarVersion(id: string, avatarVersion: string | null): Promise<void> {
-    await this.#db
-      .insert(userProfiles)
-      .values({ userId: id, avatarVersion })
-      .onConflictDoUpdate({ target: userProfiles.userId, set: { avatarVersion } });
+    await this.#db.update(users).set({ avatarVersion }).where(eq(users.id, id));
   }
 }

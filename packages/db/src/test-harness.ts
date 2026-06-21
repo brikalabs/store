@@ -32,15 +32,13 @@ export function makeDb(): Db {
 
 /**
  * Seed the canonical example package used across the registry tests: `@brika/x@1.0.0`
- * plus the `@brika` scope (whose admin is `owner`, so membership-based publish
+ * plus the `@brika` scope (whose admin is the account `owner`, so membership-based publish
  * authorization passes) and the `latest` dist-tag. Token issuance is left to the caller,
  * since only the auth-facing tests need one.
  */
 export async function seedExamplePackage(db: Db, owner: string): Promise<void> {
   await db.insert(regScopes).values({ scope: "@brika" });
-  await db
-    .insert(regScopeMembers)
-    .values({ scope: "@brika", provider: "github", memberId: owner, role: "admin" });
+  await db.insert(regScopeMembers).values({ scope: "@brika", userId: owner, role: "admin" });
   await db.insert(regPackages).values({ name: "@brika/x", scope: "@brika" });
   await db.insert(regVersions).values({
     name: "@brika/x",

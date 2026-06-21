@@ -4,15 +4,15 @@
  * and the CLI polls until a token is issued. Persistence is a `DeviceStore` port
  * (the registry app backs it with D1); randomness and the clock are injected so
  * the flow is deterministic under test. Token issuance stays in the app layer:
- * `redeem` returns the approved login and the handler mints the token.
+ * `redeem` returns the approved account id and the handler mints the token.
  */
 
 /** A stored device-authorization grant. */
 export interface DeviceGrant {
   readonly deviceCode: string;
   readonly userCode: string;
-  /** Set when the user approves the device in the store, else null. */
-  readonly githubLogin: string | null;
+  /** Brika account id set when the user approves the device in the store, else null. */
+  readonly userId: string | null;
   readonly approved: boolean;
   /** Expiry as a unix timestamp (seconds). */
   readonly expiresAt: number;
@@ -33,9 +33,9 @@ export interface IssuedDeviceCode {
   readonly intervalSeconds: number;
 }
 
-/** RFC 8628 token-poll outcome: the approved login, or a standard error code. */
+/** RFC 8628 token-poll outcome: the approved account id, or a standard error code. */
 export type DeviceRedeemResult =
-  | { readonly ok: true; readonly githubLogin: string }
+  | { readonly ok: true; readonly userId: string }
   | {
       readonly ok: false;
       readonly error: "invalid_grant" | "expired_token" | "authorization_pending";
@@ -95,7 +95,7 @@ export class DeviceService {
   }
 
   /**
-   * Resolve a polling CLI: returns the approved GitHub login (consuming the
+   * Resolve a polling CLI: returns the approved account id (consuming the
    * grant), or the RFC 8628 error otherwise. Expired grants are deleted.
    */
   async redeem(deviceCode: string): Promise<DeviceRedeemResult> {
@@ -105,10 +105,10 @@ export class DeviceService {
       await this.#store.remove(deviceCode);
       return { ok: false, error: "expired_token" };
     }
-    if (!grant.approved || grant.githubLogin === null) {
+    if (!grant.approved || grant.userId === null) {
       return { ok: false, error: "authorization_pending" };
     }
     await this.#store.remove(deviceCode);
-    return { ok: true, githubLogin: grant.githubLogin };
+    return { ok: true, userId: grant.userId };
   }
 }

@@ -88,10 +88,10 @@ describe("authenticateWrite (no credential)", () => {
 });
 
 describe("authenticateWrite (registry publish token)", () => {
-  test("resolves a registry token to its owner identity (no repository)", async () => {
+  test("resolves a registry token to its account identity (no repository)", async () => {
     const token = await issueToken(db, "octocat");
     const identity = await authenticateWrite(bearer(token), tokens);
-    expect(identity).toEqual({ provider: "github", owner: "octocat", repository: null });
+    expect(identity).toEqual({ userId: "octocat", provider: null, repository: null });
   });
 
   test("returns null for a brika_-prefixed token that does not exist", async () => {
@@ -121,8 +121,8 @@ describe("authenticateWrite (GitHub OIDC)", () => {
 
     const identity = await authenticateWrite(bearer(token), tokens);
     expect(identity).toEqual({
+      userId: null,
       provider: "github",
-      owner: "brika",
       repository: "brika/store",
       provenance: {
         repository: "brika/store",
@@ -139,8 +139,8 @@ describe("requireWrite", () => {
   test("returns the identity when a credential validates", async () => {
     const token = await issueToken(db, "octocat");
     expect(await requireWrite(bearer(token), tokens)).toEqual({
-      provider: "github",
-      owner: "octocat",
+      userId: "octocat",
+      provider: null,
       repository: null,
     });
   });
@@ -169,24 +169,20 @@ describe("requireAdmin", () => {
 
   test("401 when no credential is presented", async () => {
     expect(
-      await status(
-        requireAdmin(new Request("http://localhost/"), tokens, new Set(["github:octocat"])),
-      ),
+      await status(requireAdmin(new Request("http://localhost/"), tokens, new Set(["octocat"]))),
     ).toBe(401);
   });
 
-  test("403 when the credential is valid but the owner is not an admin", async () => {
+  test("403 when the credential is valid but the account is not an admin", async () => {
     const token = await issueToken(db, "stranger");
-    expect(await status(requireAdmin(bearer(token), tokens, new Set(["github:octocat"])))).toBe(
-      403,
-    );
+    expect(await status(requireAdmin(bearer(token), tokens, new Set(["octocat"])))).toBe(403);
   });
 
-  test("returns the identity when the owner is in the admin allowlist", async () => {
+  test("returns the identity when the account is in the admin allowlist", async () => {
     const token = await issueToken(db, "octocat");
-    expect(await requireAdmin(bearer(token), tokens, new Set(["github:octocat"]))).toEqual({
-      provider: "github",
-      owner: "octocat",
+    expect(await requireAdmin(bearer(token), tokens, new Set(["octocat"]))).toEqual({
+      userId: "octocat",
+      provider: null,
       repository: null,
     });
   });

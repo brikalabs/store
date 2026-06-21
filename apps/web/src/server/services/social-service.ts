@@ -92,8 +92,8 @@ export class SocialService {
     return this.#profiles.setAvatarVersion(id, avatarVersion);
   }
 
-  /** The account's GitHub login, for the ownership-derived "published plugins" on a profile. */
-  findUserLogin(id: string): Promise<string | null> {
-    return this.#users.findLogin(id);
+  /** The account id for a verified email, or null - resolves a scope invite's typed email to a user. */
+  findUserIdByEmail(email: string): Promise<string | null> {
+    return this.#users.findIdByEmail(email);
   }
 }
