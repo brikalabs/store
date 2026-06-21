@@ -1,8 +1,10 @@
+import type { BlobStore } from "@/server/ports/blob-store";
+
 /**
  * Avatar resolution, the counterpart to `display-name`: an account's avatar is its UPLOADED image
- * (the public URL of an object in R2, USER-002) when it has one, otherwise the provider (GitHub)
- * image - the default. Pure, so it lives in `lib` and is shared by every store that projects a user
- * (reviews, comments, profile).
+ * (an object in R2, served by its public URL, USER-002) when it has one, otherwise the provider
+ * (GitHub) image - the default. The public URL is BUILT here from the blob store's current base, so
+ * a bucket/domain change (or a stale row) never leaves an absolute URL pointing at the wrong host.
  */
 
 /** Upper bound for an uploaded avatar (the client resizes to ~512px WebP, so this is just a guard). */
@@ -15,12 +17,20 @@ export function userAvatarKey(userId: string): string {
 }
 
 /**
- * Resolve the avatar shown for an account: its uploaded avatar's public URL when set, else the
- * provider image, else none. `uploadedUrl` is `user_profiles.avatar_url` (non-null means uploaded).
+ * Resolve the avatar shown for an account: its uploaded avatar's public URL when set (built from the
+ * current base + a cache-busting `?v=<version>`), else the provider image, else none. `version` is
+ * `user_profiles.avatar_version`: non-null means the account uploaded one. Falls back to the provider
+ * image if the store has no public base URL configured (so reads never break on misconfiguration).
  */
 export function avatarUrlOf(
-  uploadedUrl: string | null,
+  blobs: Pick<BlobStore, "url">,
+  version: string | null,
+  userId: string,
   providerImage: string | null,
 ): string | undefined {
-  return uploadedUrl ?? providerImage ?? undefined;
+  if (version !== null) {
+    const base = blobs.url(userAvatarKey(userId));
+    if (base !== undefined) return `${base}?v=${version}`;
+  }
+  return providerImage ?? undefined;
 }

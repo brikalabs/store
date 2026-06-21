@@ -5,6 +5,7 @@ import { avatarUrlOf } from "@/lib/avatar";
 import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
 import { comments, commentVotes, userProfiles, users } from "@/server/db/schema";
+import { BlobStore } from "@/server/ports/blob-store";
 import { votedIds } from "@/server/stores/voted-ids";
 
 /**
@@ -15,6 +16,7 @@ import { votedIds } from "@/server/stores/voted-ids";
  */
 export class CommentStore {
   readonly #db = inject(Database).orm;
+  readonly #blob = inject(BlobStore);
 
   /** Every comment of a plugin, oldest first, with upvote totals + the viewer's vote state. */
   async listForPlugin(pluginName: string, viewerId: string | null = null): Promise<Comment[]> {
@@ -30,7 +32,7 @@ export class CommentStore {
         name: users.name,
         profileDisplayName: userProfiles.displayName,
         image: users.image,
-        uploadedAvatar: userProfiles.avatarUrl,
+        avatarVersion: userProfiles.avatarVersion,
       })
       .from(comments)
       .innerJoin(users, eq(comments.userId, users.id))
@@ -57,7 +59,7 @@ export class CommentStore {
         author: {
           id: row.userId,
           displayName: displayNameOf(row.profileDisplayName, row.name),
-          avatarUrl: avatarUrlOf(row.uploadedAvatar, row.image),
+          avatarUrl: avatarUrlOf(this.#blob, row.avatarVersion, row.userId, row.image),
         },
         body: row.deleted ? "[deleted]" : row.body,
         upvotes: upvotes.get(row.id) ?? 0,

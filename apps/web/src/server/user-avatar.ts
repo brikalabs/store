@@ -1,6 +1,6 @@
 import { inject } from "@brika/di";
 import { badRequest } from "@brika/router";
-import { MAX_AVATAR_BYTES, userAvatarKey } from "@/lib/avatar";
+import { avatarUrlOf, MAX_AVATAR_BYTES, userAvatarKey } from "@/lib/avatar";
 import { BlobStore } from "@/server/ports/blob-store";
 import { SocialService } from "@/server/services/social-service";
 
@@ -23,17 +23,17 @@ export async function uploadUserAvatar(
   userId: string,
   bytes: Uint8Array<ArrayBuffer>,
   contentType: string,
-): Promise<string> {
+): Promise<string | undefined> {
   if (contentType !== "image/webp") throw badRequest("Avatar must be a WebP image");
   if (bytes.byteLength === 0) throw badRequest("Empty upload");
   if (bytes.byteLength > MAX_AVATAR_BYTES) throw badRequest("Avatar exceeds 512 KiB");
 
   const assets = inject(BlobStore);
-  const key = userAvatarKey(userId);
-  await assets.put(key, bytes, "image/webp");
-  const url = `${assets.url(key)}?v=${await contentTag(bytes)}`;
-  await inject(SocialService).setUserAvatar(userId, url);
-  return url;
+  await assets.put(userAvatarKey(userId), bytes, "image/webp");
+  // Store only the content version; the public URL is derived from it at read time.
+  const version = await contentTag(bytes);
+  await inject(SocialService).setUserAvatar(userId, version);
+  return avatarUrlOf(assets, version, userId, null);
 }
 
 /**

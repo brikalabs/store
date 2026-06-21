@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createInjector } from "@brika/di";
 import { Database, type Db } from "@/server/db/client";
 import { plugins } from "@/server/db/schema";
+import { BlobStore } from "@/server/ports/blob-store";
 import { SocialService } from "@/server/services/social-service";
 import { CommentStore } from "@/server/stores/comment-store";
 import { PluginStore } from "@/server/stores/plugin-store";
@@ -9,6 +10,14 @@ import { ReviewStore } from "@/server/stores/review-store";
 import { makeStoreDb } from "@/server/stores/test-harness";
 import { UserProfileStore } from "@/server/stores/user-profile-store";
 import { UserStore } from "@/server/stores/user-store";
+
+/** A blob store whose only relevant behaviour for these tests is building a public avatar URL. */
+const fakeBlobStore: BlobStore = {
+  get: async () => null,
+  url: (key) => `https://cdn.test/${key}`,
+  put: async () => {},
+  delete: async () => {},
+};
 
 /**
  * Behavioural tests for the social use cases, against a real in-memory SQLite. They go through
@@ -22,7 +31,10 @@ function build() {
   const db = makeStoreDb();
   // Override the auto-building Database with a fake exposing `.orm` over the in-memory db, so the
   // stores resolve their `inject(Database).orm` to it without touching `Bindings`/the runtime.
-  const injector = createInjector([{ provide: Database, useValue: { orm: db } }]);
+  const injector = createInjector([
+    { provide: Database, useValue: { orm: db } },
+    { provide: BlobStore, useValue: fakeBlobStore },
+  ]);
   return {
     db,
     injector,

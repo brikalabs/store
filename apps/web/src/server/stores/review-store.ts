@@ -5,6 +5,7 @@ import { avatarUrlOf } from "@/lib/avatar";
 import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
 import { reviews, reviewVotes, userProfiles, users } from "@/server/db/schema";
+import { BlobStore } from "@/server/ports/blob-store";
 import { votedIds } from "@/server/stores/voted-ids";
 
 /** A new or edited review's content (the rating + text the author submits). */
@@ -23,6 +24,7 @@ export interface ReviewInput {
  */
 export class ReviewStore {
   readonly #db = inject(Database).orm;
+  readonly #blob = inject(BlobStore);
 
   /** Every review of a plugin, newest first, with the viewer's helpful-vote state. */
   async listForPlugin(pluginName: string, viewerId: string | null = null): Promise<Review[]> {
@@ -40,7 +42,7 @@ export class ReviewStore {
         name: users.name,
         profileDisplayName: userProfiles.displayName,
         image: users.image,
-        uploadedAvatar: userProfiles.avatarUrl,
+        avatarVersion: userProfiles.avatarVersion,
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.userId, users.id))
@@ -63,7 +65,7 @@ export class ReviewStore {
         author: {
           id: row.userId,
           displayName: displayNameOf(row.profileDisplayName, row.name),
-          avatarUrl: avatarUrlOf(row.uploadedAvatar, row.image),
+          avatarUrl: avatarUrlOf(this.#blob, row.avatarVersion, row.userId, row.image),
         },
         rating: row.rating,
         title: row.title ?? undefined,
@@ -94,7 +96,7 @@ export class ReviewStore {
         name: users.name,
         profileDisplayName: userProfiles.displayName,
         image: users.image,
-        uploadedAvatar: userProfiles.avatarUrl,
+        avatarVersion: userProfiles.avatarVersion,
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.userId, users.id))
@@ -109,7 +111,7 @@ export class ReviewStore {
         author: {
           id: row.authorId,
           displayName: displayNameOf(row.profileDisplayName, row.name),
-          avatarUrl: avatarUrlOf(row.uploadedAvatar, row.image),
+          avatarUrl: avatarUrlOf(this.#blob, row.avatarVersion, row.authorId, row.image),
         },
         rating: row.rating,
         title: row.title ?? undefined,

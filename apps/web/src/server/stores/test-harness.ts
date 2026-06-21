@@ -18,6 +18,7 @@ const MIGRATIONS = [
   "0001_betterauth.sql",
   "0002_user_profiles.sql",
   "0003_past_exodus.sql",
+  "0004_avatar_version.sql",
 ];
 
 export function makeStoreDb(): Db {

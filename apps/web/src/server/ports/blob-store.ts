@@ -12,9 +12,11 @@ export interface BlobStore {
   /** Open an object by key, or null when absent. The result carries its metadata and gives the body
    *  either as a stream (serve it straight to a `Response`) or buffered (`bytes()`, to parse). */
   get(key: string): Promise<BlobObject | null>;
-  /** The object's public URL on the bucket's CDN domain, for serving it directly (no worker hop).
-   *  Only meaningful for publicly-readable objects (e.g. scope icons, user avatars). */
-  url(key: string): string;
+  /** The object's public URL on the bucket's CDN domain, for serving it directly (no worker hop), or
+   *  undefined when no public base URL is configured. Only meaningful for publicly-readable objects
+   *  (e.g. scope icons, user avatars). Built fresh each call, so it always reflects the current
+   *  configured base - nothing stores the absolute URL. */
+  url(key: string): string | undefined;
   /** Write an object, optionally tagging its content type for direct serving. */
   put(key: string, value: Uint8Array | string, contentType?: string): Promise<void>;
   /** Remove an object by key (idempotent). Compensates a staged put when a transaction rolls back. */

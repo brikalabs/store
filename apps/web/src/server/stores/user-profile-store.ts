@@ -5,16 +5,18 @@ import { avatarUrlOf } from "@/lib/avatar";
 import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
 import { userProfiles, users } from "@/server/db/schema";
+import { BlobStore } from "@/server/ports/blob-store";
 
 /**
  * Repository for the user-authored public profile (`user_profiles`, USER-002/003/005), keyed
  * 1:1 to a `users` row. The editable fields (displayName/bio/website/links/avatar) live here; the
- * avatar resolves to the account's uploaded image when set (`avatar_url`) and otherwise the GitHub
+ * avatar resolves to the account's uploaded image when set (`avatar_version`) and otherwise the GitHub
  * `image` on `users`, and the display name falls back to the GitHub `name` (never npm-derived).
  * Reads join `users` to resolve those fallbacks.
  */
 export class UserProfileStore {
   readonly #db = inject(Database).orm;
+  readonly #blob = inject(BlobStore);
 
   /** The account's public profile by opaque account id, or null when the account is unknown. */
   async get(id: string): Promise<UserProfile | null> {
@@ -24,7 +26,7 @@ export class UserProfileStore {
         name: users.name,
         image: users.image,
         displayName: userProfiles.displayName,
-        uploadedAvatar: userProfiles.avatarUrl,
+        avatarVersion: userProfiles.avatarVersion,
         bio: userProfiles.bio,
         website: userProfiles.website,
         links: userProfiles.links,
@@ -38,7 +40,7 @@ export class UserProfileStore {
     return UserProfile.parse({
       id: row.id,
       displayName: displayNameOf(row.displayName, row.name),
-      avatarUrl: avatarUrlOf(row.uploadedAvatar, row.image),
+      avatarUrl: avatarUrlOf(this.#blob, row.avatarVersion, row.id, row.image),
       bio: row.bio ?? undefined,
       website: row.website ?? undefined,
       links: row.links ?? [],
@@ -72,13 +74,14 @@ export class UserProfileStore {
   }
 
   /**
-   * Set (or clear, with null) the account's uploaded-avatar public URL, leaving the other profile
-   * fields untouched. The caller passes the session `users.id`, so a user only writes their own row.
+   * Set (or clear, with null) the account's uploaded-avatar content version, leaving the other
+   * profile fields untouched. The caller passes the session `users.id`, so a user only writes its
+   * own row. The public URL is derived from this at read time, never stored.
    */
-  async setAvatarUrl(id: string, avatarUrl: string | null): Promise<void> {
+  async setAvatarVersion(id: string, avatarVersion: string | null): Promise<void> {
     await this.#db
       .insert(userProfiles)
-      .values({ userId: id, avatarUrl })
-      .onConflictDoUpdate({ target: userProfiles.userId, set: { avatarUrl } });
+      .values({ userId: id, avatarVersion })
+      .onConflictDoUpdate({ target: userProfiles.userId, set: { avatarVersion } });
   }
 }

@@ -1,3 +1,4 @@
+import { joinUrl } from "@/lib/url";
 import type { BlobObject, BlobStore } from "@/server/ports/blob-store";
 
 /**
@@ -11,16 +12,11 @@ export class CfR2BlobStore implements BlobStore {
 
   constructor(bucket: R2Bucket, publicBaseUrl: string | undefined) {
     this.#bucket = bucket;
-    this.#publicBaseUrl = publicBaseUrl?.replace(/\/+$/, "");
+    this.#publicBaseUrl = publicBaseUrl;
   }
 
-  url(key: string): string {
-    if (this.#publicBaseUrl === undefined) {
-      throw new Error(
-        "ASSETS_PUBLIC_URL is not set: enable public access on the bucket and set it to the r2.dev URL.",
-      );
-    }
-    return `${this.#publicBaseUrl}/${key}`;
+  url(key: string): string | undefined {
+    return this.#publicBaseUrl === undefined ? undefined : joinUrl(this.#publicBaseUrl, key);
   }
 
   async get(key: string): Promise<BlobObject | null> {
