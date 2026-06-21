@@ -67,6 +67,44 @@ export type Provider<T = unknown> =
 
 const ACTIVE = new AsyncLocalStorage<Injector>();
 
+/**
+ * Sugar for an interface token. Declare the interface and a same-named token so the one
+ * identifier is both the type and the runtime value (TypeScript merges a type and a value):
+ *
+ *   export interface Clock { now(): number; }
+ *   export const Clock = token<Clock>();   // inject(Clock) is typed Clock
+ *
+ * An interface has no runtime identity to inject by; this is the minimal token that gives it one
+ * without an abstract class.
+ */
+export function token<T>(description?: string): InjectionToken<T> {
+  return new InjectionToken<T>(description === undefined ? {} : { description });
+}
+
+/**
+ * App-wide default bindings (Angular's `providedIn: 'root'`), populated by {@link provides}.
+ * Consulted only when no injector in the chain provides the token, so an explicit provider (e.g.
+ * a test override) always wins.
+ */
+const ROOT_PROVIDERS = new Map<ProviderToken<unknown>, Provider>();
+
+/**
+ * Class decorator: register the class as the app-wide implementation of each `tokens` entry, so
+ * `inject(Token)` resolves to this one (shared) instance with no injector provider. Because a
+ * class can `implements` many interfaces, one class can back several interface tokens:
+ *
+ *   @provides(Clock, Logger)
+ *   class SystemServices implements Clock, Logger { ... }
+ *
+ * `inject(Clock)` and `inject(Logger)` then both resolve to the same `SystemServices`. A test can
+ * still override any token with an injector provider; the default only fills the gap.
+ */
+export function provides(...tokens: readonly ProviderToken<unknown>[]) {
+  return (value: Type<unknown>, _context: ClassDecoratorContext): void => {
+    for (const token of tokens) ROOT_PROVIDERS.set(token, { provide: token, useExisting: value });
+  };
+}
+
 /** True when called inside an injection context (a provider build, or {@link runInInjectionContext}). */
 export function isInInjectionContext(): boolean {
   return ACTIVE.getStore() !== undefined;
@@ -135,6 +173,8 @@ export class Injector {
     if (parent !== undefined) {
       if (parent.#canResolve(token)) return parent.#resolve(token);
     }
+    const rootDefault = ROOT_PROVIDERS.get(token);
+    if (rootDefault !== undefined) return this.#instantiate(token, () => this.#build(rootDefault));
     if (token instanceof InjectionToken) {
       const factory = token.factory;
       if (factory === undefined) throw new Error(`No provider for ${tokenName(token)}`);

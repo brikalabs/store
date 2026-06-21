@@ -10,8 +10,10 @@ export {
   isInInjectionContext,
   type Provider,
   type ProviderToken,
+  provides,
   runInContext,
   runInInjectionContext,
   type Type,
+  token,
   type ValueProvider,
 } from "./injector";
