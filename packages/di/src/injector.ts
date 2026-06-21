@@ -9,13 +9,46 @@ import { AsyncLocalStorage } from "node:async_hooks";
  * both the hono and the tanstack app.
  */
 
-/** A DI key for something with no class to name it: an interface, a binding, a config value. */
 /** Optional config for an {@link InjectionToken}. Everything is optional - `new InjectionToken<T>()` is valid. */
 export interface InjectionTokenOptions<T> {
   /** A default provider (Angular's `providedIn: 'root'` factory), used when nothing else provides it. */
   readonly factory?: () => T;
-  /** A label for error messages. Optional - omit it and the token gets a generated id. */
+  /** An explicit label for error messages. Omit it and the token is named by where it was created. */
   readonly description?: string;
+}
+
+/** Extract a `file:line:col` from one `Error.stack` frame (V8 `(path:1:2)` or `at path:1:2`). */
+function frameLocation(frame: string): string | undefined {
+  const inParens = /\(([^()]+)\)\s*$/.exec(frame);
+  const loc = inParens?.[1] ?? /\bat\s+(.+?)\s*$/.exec(frame)?.[1];
+  return loc?.replace(/^file:\/\//, "");
+}
+
+/** This module's own file (from a load-time stack), so token naming can skip its own frames. */
+const DI_FILE = ((): string => {
+  for (const frame of (new Error("di location probe").stack ?? "").split("\n")) {
+    const loc = frameLocation(frame);
+    if (loc !== undefined && !loc.includes("node:") && !loc.includes("<anonymous>")) {
+      return loc.replace(/:\d+(:\d+)?$/, "");
+    }
+  }
+  return "";
+})();
+
+/**
+ * The first stack frame OUTSIDE this module: where `new InjectionToken()` / `token<T>()` was called.
+ * Names a token by its declaration site, so a missing-provider error reads
+ * `InjectionToken(server/services.ts:41:14)` instead of an unstable `token#N` - with no caller label.
+ */
+function creationSite(): string | undefined {
+  for (const frame of (new Error().stack ?? "").split("\n")) {
+    const loc = frameLocation(frame);
+    if (loc === undefined || loc.includes("node:") || loc.includes("<anonymous>")) continue;
+    if (DI_FILE !== "" && loc.includes(DI_FILE)) continue;
+    const parts = loc.split("/");
+    return parts.length > 2 ? parts.slice(-2).join("/") : loc;
+  }
+  return undefined;
 }
 
 let tokenCounter = 0;
@@ -27,7 +60,7 @@ export class InjectionToken<T> {
   readonly factory: (() => T) | undefined;
   constructor(options: InjectionTokenOptions<T> = {}) {
     tokenCounter += 1;
-    this.description = options.description ?? `token#${tokenCounter}`;
+    this.description = options.description ?? creationSite() ?? `token#${tokenCounter}`;
     this.factory = options.factory;
   }
   toString(): string {
