@@ -6,9 +6,3 @@ export const ICON_TYPES: Record<string, string> = {
 };
 
 export const MAX_ICON_BYTES = 512 * 1024; // 512 KiB
-
-export const CONTENT_TYPE_BY_EXT: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  webp: "image/webp",
-};

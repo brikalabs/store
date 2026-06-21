@@ -1,7 +1,6 @@
 import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
 import { notFound } from "@brika/router";
-import { CONTENT_TYPE_BY_EXT } from "@/lib/scope-icon";
 import { BlobStore } from "@/server/ports/blob-store";
 
 /**
@@ -14,11 +13,10 @@ export async function streamScopeIcon(scope: string): Promise<Response> {
   if (iconKey === null) throw notFound();
   const stored = await inject(BlobStore).getStream(iconKey);
   if (stored === null) throw notFound();
-  const ext = iconKey.split(".").pop() ?? "";
-  // Pipe R2's body straight to the Response: no buffering the whole icon into memory.
+  // Pipe R2's body straight to the Response (no buffering), with the content type stored at upload.
   return new Response(stored.body, {
     headers: {
-      "content-type": CONTENT_TYPE_BY_EXT[ext] ?? stored.contentType ?? "application/octet-stream",
+      "content-type": stored.contentType ?? "application/octet-stream",
       "content-length": String(stored.size),
       "cache-control": "public, max-age=300",
     },
