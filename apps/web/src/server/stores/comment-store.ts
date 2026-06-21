@@ -1,6 +1,7 @@
 import { inject } from "@brika/di";
 import { Comment } from "@brika/registry-contract";
 import { and, eq, sql } from "drizzle-orm";
+import { avatarUrlOf } from "@/lib/avatar";
 import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
 import { comments, commentVotes, userProfiles, users } from "@/server/db/schema";
@@ -28,7 +29,8 @@ export class CommentStore {
         userId: users.id,
         name: users.name,
         profileDisplayName: userProfiles.displayName,
-        avatarUrl: users.image,
+        image: users.image,
+        uploadedAvatar: userProfiles.avatarUrl,
       })
       .from(comments)
       .innerJoin(users, eq(comments.userId, users.id))
@@ -55,7 +57,7 @@ export class CommentStore {
         author: {
           id: row.userId,
           displayName: displayNameOf(row.profileDisplayName, row.name),
-          avatarUrl: row.avatarUrl ?? undefined,
+          avatarUrl: avatarUrlOf(row.uploadedAvatar, row.image),
         },
         body: row.deleted ? "[deleted]" : row.body,
         upvotes: upvotes.get(row.id) ?? 0,

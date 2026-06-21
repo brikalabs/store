@@ -86,6 +86,11 @@ export class SocialService {
     return this.#profiles.upsert(id, fields);
   }
 
+  /** Set (or clear, with null) the account's uploaded-avatar public URL, leaving the profile fields. */
+  setUserAvatar(id: string, avatarUrl: string | null): Promise<void> {
+    return this.#profiles.setAvatarUrl(id, avatarUrl);
+  }
+
   /** The account's GitHub login, for the ownership-derived "published plugins" on a profile. */
   findUserLogin(id: string): Promise<string | null> {
     return this.#users.findLogin(id);

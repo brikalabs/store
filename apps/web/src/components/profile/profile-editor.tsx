@@ -2,7 +2,7 @@ import { Button, Input, Textarea } from "@brika/clay";
 import { type UserProfile, UserProfile as UserProfileSchema } from "@brika/registry-contract";
 import { Check, Plus, X } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
-import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { AvatarPicker } from "@/components/profile/avatar-picker";
 
 export function ProfileEditor({
   profile,
@@ -13,6 +13,7 @@ export function ProfileEditor({
   onSaved: (next: UserProfile) => void;
   avatarUrl?: string;
 }>) {
+  const [avatar, setAvatar] = useState(avatarUrl);
   const [displayName, setDisplayName] = useState(profile.displayName ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [website, setWebsite] = useState(profile.website ?? "");
@@ -69,18 +70,12 @@ export function ProfileEditor({
     <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-6">
       <h2 className="font-bold font-heading text-xl tracking-tight">Public profile</h2>
 
-      <div className="flex items-center gap-4">
-        <GradientAvatar
-          seed={profile.id}
-          label={profile.displayName}
-          imageUrl={avatarUrl}
-          size={64}
-          className="rounded-[18px]"
-        />
-        <span className="text-muted-foreground text-xs">
-          Your avatar comes from your GitHub account.
-        </span>
-      </div>
+      <AvatarPicker
+        id={profile.id}
+        displayName={profile.displayName}
+        avatarUrl={avatar}
+        onChange={setAvatar}
+      />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label htmlFor="profile-name" className="flex flex-col gap-1.5 text-sm">

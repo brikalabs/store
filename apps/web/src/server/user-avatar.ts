@@ -1,0 +1,50 @@
+import { inject } from "@brika/di";
+import { badRequest } from "@brika/router";
+import { MAX_AVATAR_BYTES, userAvatarKey } from "@/lib/avatar";
+import { BlobStore } from "@/server/ports/blob-store";
+import { SocialService } from "@/server/services/social-service";
+
+/** A short content fingerprint, appended to the avatar's public URL to bust the CDN/browser cache on
+ *  replacement (the R2 key is stable, so a new upload reuses the URL without it). */
+async function contentTag(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest).slice(0, 4), (b) =>
+    b.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+/**
+ * Store an account's uploaded avatar (USER-002) and point the profile at its PUBLIC R2 URL, so it is
+ * served straight from the bucket's CDN (no worker hop). The client has already resized + WebP-encoded
+ * it; this validates the result, puts it under the deterministic key, and records the public URL
+ * (with a cache-busting tag) on the profile. Returns the stored URL.
+ */
+export async function uploadUserAvatar(
+  userId: string,
+  bytes: Uint8Array<ArrayBuffer>,
+  contentType: string,
+): Promise<string> {
+  if (contentType !== "image/webp") throw badRequest("Avatar must be a WebP image");
+  if (bytes.byteLength === 0) throw badRequest("Empty upload");
+  if (bytes.byteLength > MAX_AVATAR_BYTES) throw badRequest("Avatar exceeds 512 KiB");
+
+  const assets = inject(BlobStore);
+  const key = userAvatarKey(userId);
+  await assets.put(key, bytes, "image/webp");
+  const url = `${assets.url(key)}?v=${await contentTag(bytes)}`;
+  await inject(SocialService).setUserAvatar(userId, url);
+  return url;
+}
+
+/**
+ * Clear an account's uploaded avatar and remove the R2 object, falling back to the provider image.
+ * Returns the now-resolved avatar URL (the provider image, or undefined when there is none) so the
+ * caller can reflect it immediately.
+ */
+export async function clearUserAvatar(userId: string): Promise<string | undefined> {
+  const social = inject(SocialService);
+  await social.setUserAvatar(userId, null);
+  await inject(BlobStore).delete(userAvatarKey(userId));
+  const profile = await social.getUserProfile(userId);
+  return profile?.avatarUrl;
+}

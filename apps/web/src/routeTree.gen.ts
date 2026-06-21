@@ -54,6 +54,7 @@ import { Route as ApiDeviceApproveRouteImport } from './routes/api/device/approv
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAccountTokensRouteImport } from './routes/api/account/tokens'
 import { Route as ApiAccountProfileRouteImport } from './routes/api/account/profile'
+import { Route as ApiAccountAvatarRouteImport } from './routes/api/account/avatar'
 import { Route as V1PluginsNameVersionsRouteImport } from './routes/v1/plugins/$name/versions'
 import { Route as V1PluginsNameReviewsRouteImport } from './routes/v1/plugins/$name/reviews'
 import { Route as V1PluginsNameReadmeRouteImport } from './routes/v1/plugins/$name/readme'
@@ -301,6 +302,11 @@ const ApiAccountProfileRoute = ApiAccountProfileRouteImport.update({
   path: '/api/account/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAccountAvatarRoute = ApiAccountAvatarRouteImport.update({
+  id: '/api/account/avatar',
+  path: '/api/account/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const V1PluginsNameVersionsRoute = V1PluginsNameVersionsRouteImport.update({
   id: '/versions',
   path: '/versions',
@@ -448,6 +454,7 @@ export interface FileRoutesByFullPath {
   '/legal/': typeof LegalIndexRoute
   '/operator/': typeof OperatorIndexRoute
   '/plugins/': typeof PluginsIndexRoute
+  '/api/account/avatar': typeof ApiAccountAvatarRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -514,6 +521,7 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalIndexRoute
   '/operator': typeof OperatorIndexRoute
   '/plugins': typeof PluginsIndexRoute
+  '/api/account/avatar': typeof ApiAccountAvatarRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -583,6 +591,7 @@ export interface FileRoutesById {
   '/legal/': typeof LegalIndexRoute
   '/operator/': typeof OperatorIndexRoute
   '/plugins/': typeof PluginsIndexRoute
+  '/api/account/avatar': typeof ApiAccountAvatarRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -653,6 +662,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/operator/'
     | '/plugins/'
+    | '/api/account/avatar'
     | '/api/account/profile'
     | '/api/account/tokens'
     | '/api/auth/$'
@@ -719,6 +729,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/operator'
     | '/plugins'
+    | '/api/account/avatar'
     | '/api/account/profile'
     | '/api/account/tokens'
     | '/api/auth/$'
@@ -787,6 +798,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/operator/'
     | '/plugins/'
+    | '/api/account/avatar'
     | '/api/account/profile'
     | '/api/account/tokens'
     | '/api/auth/$'
@@ -848,6 +860,7 @@ export interface RootRouteChildren {
   V1VerifiedRoute: typeof V1VerifiedRoute
   LegalIndexRoute: typeof LegalIndexRoute
   PluginsIndexRoute: typeof PluginsIndexRoute
+  ApiAccountAvatarRoute: typeof ApiAccountAvatarRoute
   ApiAccountProfileRoute: typeof ApiAccountProfileRoute
   ApiAccountTokensRoute: typeof ApiAccountTokensRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -1177,6 +1190,13 @@ declare module '@tanstack/react-router' {
       path: '/api/account/profile'
       fullPath: '/api/account/profile'
       preLoaderRoute: typeof ApiAccountProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/account/avatar': {
+      id: '/api/account/avatar'
+      path: '/api/account/avatar'
+      fullPath: '/api/account/avatar'
+      preLoaderRoute: typeof ApiAccountAvatarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/v1/plugins/$name/versions': {
@@ -1528,6 +1548,7 @@ const rootRouteChildren: RootRouteChildren = {
   V1VerifiedRoute: V1VerifiedRoute,
   LegalIndexRoute: LegalIndexRoute,
   PluginsIndexRoute: PluginsIndexRoute,
+  ApiAccountAvatarRoute: ApiAccountAvatarRoute,
   ApiAccountProfileRoute: ApiAccountProfileRoute,
   ApiAccountTokensRoute: ApiAccountTokensRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

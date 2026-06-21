@@ -2,13 +2,25 @@ import type { BlobObject, BlobStore } from "@/server/ports/blob-store";
 
 /**
  * Cloudflare R2 adapter for the {@link BlobStore} port (the integration layer). The composition
- * root passes the request's bucket (`env.ASSETS`); nothing else in the app touches R2 directly.
+ * root passes the request's bucket (`env.ASSETS`) and the bucket's public base URL (its CDN custom
+ * domain, `ASSETS_PUBLIC_URL`); nothing else in the app touches R2 directly.
  */
 export class CfR2BlobStore implements BlobStore {
   readonly #bucket: R2Bucket;
+  readonly #publicBaseUrl: string | undefined;
 
-  constructor(bucket: R2Bucket) {
+  constructor(bucket: R2Bucket, publicBaseUrl: string | undefined) {
     this.#bucket = bucket;
+    this.#publicBaseUrl = publicBaseUrl?.replace(/\/+$/, "");
+  }
+
+  url(key: string): string {
+    if (this.#publicBaseUrl === undefined) {
+      throw new Error(
+        "ASSETS_PUBLIC_URL is not set: enable public access on the bucket and set it to the r2.dev URL.",
+      );
+    }
+    return `${this.#publicBaseUrl}/${key}`;
   }
 
   async get(key: string): Promise<BlobObject | null> {

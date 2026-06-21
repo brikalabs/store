@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import type { Provider } from "@brika/di";
 import { CfR2BlobStore } from "@/server/adapters/cf-r2-blob-store";
 import { Database, getDb } from "@/server/db/client";
+import { vars } from "@/server/env";
 import { BlobStore } from "@/server/ports/blob-store";
 import { RegistryDatabase, registryDb, registryProviders } from "@/server/registry-services";
 
@@ -16,6 +17,6 @@ import { RegistryDatabase, registryDb, registryProviders } from "@/server/regist
 export const webProviders: readonly Provider[] = [
   { provide: Database, useFactory: () => new Database(getDb(env.DB)) },
   { provide: RegistryDatabase, useFactory: () => new RegistryDatabase(registryDb()) },
-  { provide: BlobStore, useFactory: () => new CfR2BlobStore(env.ASSETS) },
+  { provide: BlobStore, useFactory: () => new CfR2BlobStore(env.ASSETS, vars().ASSETS_PUBLIC_URL) },
   ...registryProviders,
 ];

@@ -1,6 +1,7 @@
 import { inject } from "@brika/di";
 import { Review } from "@brika/registry-contract";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { avatarUrlOf } from "@/lib/avatar";
 import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
 import { reviews, reviewVotes, userProfiles, users } from "@/server/db/schema";
@@ -38,7 +39,8 @@ export class ReviewStore {
         userId: users.id,
         name: users.name,
         profileDisplayName: userProfiles.displayName,
-        avatarUrl: users.image,
+        image: users.image,
+        uploadedAvatar: userProfiles.avatarUrl,
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.userId, users.id))
@@ -61,7 +63,7 @@ export class ReviewStore {
         author: {
           id: row.userId,
           displayName: displayNameOf(row.profileDisplayName, row.name),
-          avatarUrl: row.avatarUrl ?? undefined,
+          avatarUrl: avatarUrlOf(row.uploadedAvatar, row.image),
         },
         rating: row.rating,
         title: row.title ?? undefined,
@@ -91,7 +93,8 @@ export class ReviewStore {
         authorId: users.id,
         name: users.name,
         profileDisplayName: userProfiles.displayName,
-        avatarUrl: users.image,
+        image: users.image,
+        uploadedAvatar: userProfiles.avatarUrl,
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.userId, users.id))
@@ -106,7 +109,7 @@ export class ReviewStore {
         author: {
           id: row.authorId,
           displayName: displayNameOf(row.profileDisplayName, row.name),
-          avatarUrl: row.avatarUrl ?? undefined,
+          avatarUrl: avatarUrlOf(row.uploadedAvatar, row.image),
         },
         rating: row.rating,
         title: row.title ?? undefined,

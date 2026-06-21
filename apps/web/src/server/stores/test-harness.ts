@@ -13,7 +13,12 @@ import * as schema from "@/server/db/schema";
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../drizzle");
-const MIGRATIONS = ["0000_parched_sauron.sql", "0001_betterauth.sql", "0002_user_profiles.sql"];
+const MIGRATIONS = [
+  "0000_parched_sauron.sql",
+  "0001_betterauth.sql",
+  "0002_user_profiles.sql",
+  "0003_past_exodus.sql",
+];
 
 export function makeStoreDb(): Db {
   const sqlite = new Database(":memory:");
