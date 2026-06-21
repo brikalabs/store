@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { type Provider, runInContext } from "@brika/di";
 import { PublishService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
 import {
@@ -20,7 +21,7 @@ import { transaction } from "@brika/tx";
 import { eq } from "drizzle-orm";
 import { SchemaManifestValidator } from "../adapters/manifest-validator";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
-import { buildServices, type Services } from "../services";
+import { buildServices, type Services, serviceProviders } from "../services";
 import { fakeR2, makeDb, seedExamplePackage } from "../test-harness";
 import { handleCatalog } from "./catalog";
 import { handleDownloads } from "./stats";
@@ -73,6 +74,16 @@ function services(db: Db): Services {
   return buildServices(db, fakeR2(), "http://localhost:8787", new Set(["github:operator"]));
 }
 
+/**
+ * Run a handler inside the per-request injection context the `mount({ around })` wrapper
+ * would establish in production, so its `inject(...)` calls resolve. `extra` providers are
+ * appended after the graph's, so a test can override one dependency with a mock (a later
+ * provider for the same token wins).
+ */
+function run<T>(graph: Services, fn: () => Promise<T>, extra: Provider[] = []): Promise<T> {
+  return runInContext([...serviceProviders(graph), ...extra], fn);
+}
+
 function post(body: unknown, token?: string): Request {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (token !== undefined) headers.authorization = `Bearer ${token}`;
@@ -109,21 +120,27 @@ const validPublish = {
 describe("publish (auth + invariant + ownership gates)", () => {
   test("401 without a bearer token", async () => {
     expect(
-      await statusOf(publish({ body: validPublish, req: post(validPublish), ctx: services(db) })),
+      await statusOf(
+        run(services(db), () => publish({ body: validPublish, req: post(validPublish) })),
+      ),
     ).toBe(401);
   });
 
   test("400 when the manifest name/version does not match the published name/version", async () => {
     const token = await issueToken(db, "octocat");
     const body = { ...validPublish, manifest: { name: "@brika/y", version: "2.0.0" } };
-    expect(await statusOf(publish({ body, req: post(body, token), ctx: services(db) }))).toBe(400);
+    expect(await statusOf(run(services(db), () => publish({ body, req: post(body, token) })))).toBe(
+      400,
+    );
   });
 
   test("400 for a non-canonical name (uppercase scope) before the ownership gate runs", async () => {
     const token = await issueToken(db, "octocat");
     const name = "@Brika/x"; // case variant of a real scope: must be refused at the door
     const body = { ...validPublish, name, manifest: { name, version: "1.0.0" } };
-    expect(await statusOf(publish({ body, req: post(body, token), ctx: services(db) }))).toBe(400);
+    expect(await statusOf(run(services(db), () => publish({ body, req: post(body, token) })))).toBe(
+      400,
+    );
   });
 
   test("403 when the scope has a different member set", async () => {
@@ -132,7 +149,7 @@ describe("publish (auth + invariant + ownership gates)", () => {
     const token = await issueToken(db, "stranger");
     expect(
       await statusOf(
-        publish({ body: validPublish, req: post(validPublish, token), ctx: services(db) }),
+        run(services(db), () => publish({ body: validPublish, req: post(validPublish, token) })),
       ),
     ).toBe(403);
   });
@@ -141,14 +158,15 @@ describe("publish (auth + invariant + ownership gates)", () => {
     const token = await issueToken(db, "octocat");
     // Stub the domain so the controller's job under test - mapping the rejection
     // code to an HTTP status - is exercised without crafting a real tarball.
-    const ctx: Services = {
-      ...services(db),
-      publish: {
-        publish: async () => ({ ok: false, code: "exists", message: "already exists" }),
-      } as unknown as Services["publish"],
-    };
+    const publishService = {
+      publish: async () => ({ ok: false, code: "exists", message: "already exists" }),
+    } as unknown as Services["publish"];
     expect(
-      await statusOf(publish({ body: validPublish, req: post(validPublish, token), ctx })),
+      await statusOf(
+        run(services(db), () => publish({ body: validPublish, req: post(validPublish, token) }), [
+          { provide: PublishService, useValue: publishService },
+        ]),
+      ),
     ).toBe(409);
   });
 
@@ -157,18 +175,19 @@ describe("publish (auth + invariant + ownership gates)", () => {
     await seedBrikaScope(db, "octocat");
     const token = await issueToken(db, "octocat");
     // A 1-byte cap rejects even the tiny 3-byte "AAAA" tarball.
-    const ctx = {
-      ...services(db),
-      publish: new PublishService(
-        new D1MetadataWriter(db),
-        new R2TarballWriter(fakeR2()),
-        new SchemaManifestValidator(),
-        new D1OwnershipPolicy(new D1ScopeMembers(db), new D1TrustedPublishers(db)),
-        { maxTarballBytes: 1 },
-      ),
-    };
+    const publishService = new PublishService(
+      new D1MetadataWriter(db),
+      new R2TarballWriter(fakeR2()),
+      new SchemaManifestValidator(),
+      new D1OwnershipPolicy(new D1ScopeMembers(db), new D1TrustedPublishers(db)),
+      { maxTarballBytes: 1 },
+    );
     expect(
-      await statusOf(publish({ body: validPublish, req: post(validPublish, token), ctx })),
+      await statusOf(
+        run(services(db), () => publish({ body: validPublish, req: post(validPublish, token) }), [
+          { provide: PublishService, useValue: publishService },
+        ]),
+      ),
     ).toBe(413);
   });
 });
@@ -177,22 +196,24 @@ describe("createScope (explicit scope claim)", () => {
   const params = { scope: "@team" };
 
   test("401 without a token", async () => {
-    expect(await statusOf(createScope({ params, req: post(undefined), ctx: services(db) }))).toBe(
-      401,
-    );
+    expect(
+      await statusOf(run(services(db), () => createScope({ params, req: post(undefined) }))),
+    ).toBe(401);
   });
 
   test("400 for a non-canonical scope", async () => {
     const token = await issueToken(db, "alice");
     const bad = { scope: "@Team" }; // uppercase: rejected by the canonical-scope rule
     expect(
-      await statusOf(createScope({ params: bad, req: post(undefined, token), ctx: services(db) })),
+      await statusOf(
+        run(services(db), () => createScope({ params: bad, req: post(undefined, token) })),
+      ),
     ).toBe(400);
   });
 
   test("201 creates the scope and seeds the caller as its admin member", async () => {
     const token = await issueToken(db, "alice");
-    const res = await createScope({ params, req: post(undefined, token), ctx: services(db) });
+    const res = await run(services(db), () => createScope({ params, req: post(undefined, token) }));
     expect(res.status).toBe(201);
     const rows = await db.select().from(regScopes).where(eq(regScopes.scope, "@team"));
     expect(rows[0]).toMatchObject({ scope: "@team", displayName: null });
@@ -207,8 +228,9 @@ describe("createScope (explicit scope claim)", () => {
 
   test("200 (idempotent) when the caller already administers the scope", async () => {
     const token = await issueToken(db, "alice");
-    await createScope({ params, req: post(undefined, token), ctx: services(db) });
-    const res = await createScope({ params, req: post(undefined, token), ctx: services(db) });
+    const ctx = services(db);
+    await run(ctx, () => createScope({ params, req: post(undefined, token) }));
+    const res = await run(ctx, () => createScope({ params, req: post(undefined, token) }));
     expect(res.status).toBe(200);
   });
 
@@ -217,11 +239,15 @@ describe("createScope (explicit scope claim)", () => {
     const token = await issueToken(db, "hoarder");
     // The default cap is REGISTRY_LIMITS.maxScopesPerAccount (3); claim up to it, then over.
     for (const scope of ["@s1", "@s2", "@s3"]) {
-      const res = await createScope({ params: { scope }, req: post(undefined, token), ctx });
+      const res = await run(ctx, () =>
+        createScope({ params: { scope }, req: post(undefined, token) }),
+      );
       expect(res.status).toBe(201);
     }
     expect(
-      await statusOf(createScope({ params: { scope: "@s4" }, req: post(undefined, token), ctx })),
+      await statusOf(
+        run(ctx, () => createScope({ params: { scope: "@s4" }, req: post(undefined, token) })),
+      ),
     ).toBe(429);
     // the over-cap scope was not created
     expect(await db.select().from(regScopes).where(eq(regScopes.scope, "@s4"))).toHaveLength(0);
@@ -234,7 +260,7 @@ describe("createScope (explicit scope claim)", () => {
       .values({ scope: "@team", provider: "github", memberId: "alice", role: "admin" });
     const token = await issueToken(db, "mallory");
     expect(
-      await statusOf(createScope({ params, req: post(undefined, token), ctx: services(db) })),
+      await statusOf(run(services(db), () => createScope({ params, req: post(undefined, token) }))),
     ).toBe(409);
   });
 
@@ -242,8 +268,8 @@ describe("createScope (explicit scope claim)", () => {
     const alice = await issueToken(db, "alice");
     const mallory = await issueToken(db, "mallory");
     const [a, b] = await Promise.all([
-      statusOf(createScope({ params, req: post(undefined, alice), ctx: services(db) })),
-      statusOf(createScope({ params, req: post(undefined, mallory), ctx: services(db) })),
+      statusOf(run(services(db), () => createScope({ params, req: post(undefined, alice) }))),
+      statusOf(run(services(db), () => createScope({ params, req: post(undefined, mallory) }))),
     ]);
     expect([a, b].filter((s) => s === 201)).toHaveLength(1);
     expect([a, b].filter((s) => s === 409)).toHaveLength(1);
@@ -259,19 +285,19 @@ describe("scope members (roles + invariants)", () => {
   /** Claim scope `@team` with `adminLogin` as its admin; return the token. */
   async function seedScopeAdmin(adminLogin: string): Promise<string> {
     const token = await issueToken(db, adminLogin);
-    const ctx = services(db);
-    await createScope({ params: { scope }, req: post(undefined, token), ctx });
+    await run(services(db), () => createScope({ params: { scope }, req: post(undefined, token) }));
     return token;
   }
 
   test("an admin adds a member; a non-admin cannot", async () => {
     const alice = await seedScopeAdmin("alice");
-    const res = await putMember({
-      params: memberParams("bob"),
-      body: { role: "member" },
-      req: post(undefined, alice),
-      ctx: services(db),
-    });
+    const res = await run(services(db), () =>
+      putMember({
+        params: memberParams("bob"),
+        body: { role: "member" },
+        req: post(undefined, alice),
+      }),
+    );
     expect(res.status).toBe(200);
     expect((await membersOf()).map((m) => m.memberId).sort((a, b) => a.localeCompare(b))).toEqual([
       "alice",
@@ -281,24 +307,26 @@ describe("scope members (roles + invariants)", () => {
     const bob = await issueToken(db, "bob"); // a plain member, not an admin
     expect(
       await statusOf(
-        putMember({
-          params: memberParams("carol"),
-          body: { role: "member" },
-          req: post(undefined, bob),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          putMember({
+            params: memberParams("carol"),
+            body: { role: "member" },
+            req: post(undefined, bob),
+          }),
+        ),
       ),
     ).toBe(403);
   });
 
   test("a newly added member can publish under the scope", async () => {
     const alice = await seedScopeAdmin("alice");
-    await putMember({
-      params: memberParams("bob"),
-      body: { role: "member" },
-      req: post(undefined, alice),
-      ctx: services(db),
-    });
+    await run(services(db), () =>
+      putMember({
+        params: memberParams("bob"),
+        body: { role: "member" },
+        req: post(undefined, alice),
+      }),
+    );
     const bob = await issueToken(db, "bob");
     const body = {
       name: "@team/x",
@@ -307,21 +335,24 @@ describe("scope members (roles + invariants)", () => {
       tarball: "AAAA",
     };
     // Reaches the size/validation gate (not 403), i.e. membership authorized the publish.
-    expect(await statusOf(publish({ body, req: post(body, bob), ctx: services(db) }))).not.toBe(
-      403,
-    );
+    expect(
+      await statusOf(run(services(db), () => publish({ body, req: post(body, bob) }))),
+    ).not.toBe(403);
   });
 
   test("listMembers requires membership", async () => {
     const alice = await seedScopeAdmin("alice");
     expect(
-      (await listMembers({ params: { scope }, req: post(undefined, alice), ctx: services(db) }))
-        .status,
+      (
+        await run(services(db), () =>
+          listMembers({ params: { scope }, req: post(undefined, alice) }),
+        )
+      ).status,
     ).toBe(200);
     const stranger = await issueToken(db, "bob");
     expect(
       await statusOf(
-        listMembers({ params: { scope }, req: post(undefined, stranger), ctx: services(db) }),
+        run(services(db), () => listMembers({ params: { scope }, req: post(undefined, stranger) })),
       ),
     ).toBe(403);
   });
@@ -330,53 +361,58 @@ describe("scope members (roles + invariants)", () => {
     const alice = await seedScopeAdmin("alice");
     expect(
       await statusOf(
-        putMember({
-          params: memberParams("alice"),
-          body: { role: "member" },
-          req: post(undefined, alice),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          putMember({
+            params: memberParams("alice"),
+            body: { role: "member" },
+            req: post(undefined, alice),
+          }),
+        ),
       ),
     ).toBe(409);
     expect(
       await statusOf(
-        deleteMember({
-          params: memberParams("alice"),
-          req: post(undefined, alice),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          deleteMember({
+            params: memberParams("alice"),
+            req: post(undefined, alice),
+          }),
+        ),
       ),
     ).toBe(409);
   });
 
   test("concurrent demotions of two admins cannot leave the scope with zero admins", async () => {
     const alice = await seedScopeAdmin("alice");
-    await putMember({
-      params: memberParams("bob"),
-      body: { role: "admin" },
-      req: post(undefined, alice),
-      ctx: services(db),
-    });
+    await run(services(db), () =>
+      putMember({
+        params: memberParams("bob"),
+        body: { role: "admin" },
+        req: post(undefined, alice),
+      }),
+    );
     const bob = await issueToken(db, "bob");
 
     // Both admins try to demote the other at once. The atomic SQL guard lets at most one
     // succeed, so the "at least one admin" invariant holds (no read-then-write TOCTOU).
     await Promise.allSettled([
       statusOf(
-        putMember({
-          params: memberParams("bob"),
-          body: { role: "member" },
-          req: post(undefined, alice),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          putMember({
+            params: memberParams("bob"),
+            body: { role: "member" },
+            req: post(undefined, alice),
+          }),
+        ),
       ),
       statusOf(
-        putMember({
-          params: memberParams("alice"),
-          body: { role: "member" },
-          req: post(undefined, bob),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          putMember({
+            params: memberParams("alice"),
+            body: { role: "member" },
+            req: post(undefined, bob),
+          }),
+        ),
       ),
     ]);
     const admins = (await membersOf()).filter((m) => m.role === "admin");
@@ -385,17 +421,19 @@ describe("scope members (roles + invariants)", () => {
 
   test("with a second admin, one admin can be removed", async () => {
     const alice = await seedScopeAdmin("alice");
-    await putMember({
-      params: memberParams("bob"),
-      body: { role: "admin" },
-      req: post(undefined, alice),
-      ctx: services(db),
-    });
-    const res = await deleteMember({
-      params: memberParams("alice"),
-      req: post(undefined, alice),
-      ctx: services(db),
-    });
+    await run(services(db), () =>
+      putMember({
+        params: memberParams("bob"),
+        body: { role: "admin" },
+        req: post(undefined, alice),
+      }),
+    );
+    const res = await run(services(db), () =>
+      deleteMember({
+        params: memberParams("alice"),
+        req: post(undefined, alice),
+      }),
+    );
     expect(res.status).toBe(200);
     expect((await membersOf()).map((m) => m.memberId)).toEqual(["bob"]);
   });
@@ -405,11 +443,9 @@ describe("trusted publishers (PUB-016)", () => {
   /** Claim scope `@team` admined by `login`; return the admin token. */
   async function seedScope(login: string): Promise<string> {
     const token = await issueToken(db, login);
-    await createScope({
-      params: { scope: "@team" },
-      req: post(undefined, token),
-      ctx: services(db),
-    });
+    await run(services(db), () =>
+      createScope({ params: { scope: "@team" }, req: post(undefined, token) }),
+    );
     return token;
   }
   const params = { scope: "@team" };
@@ -419,28 +455,22 @@ describe("trusted publishers (PUB-016)", () => {
     const token = await seedScope("alice");
     expect(
       (
-        await addTrustedPublisher({
-          params,
-          body: binding,
-          req: post(undefined, token),
-          ctx: services(db),
-        })
+        await run(services(db), () =>
+          addTrustedPublisher({ params, body: binding, req: post(undefined, token) }),
+        )
       ).status,
     ).toBe(201);
 
     const listed = await (
-      await listTrustedPublishers({ params, req: post(undefined, token), ctx: services(db) })
+      await run(services(db), () => listTrustedPublishers({ params, req: post(undefined, token) }))
     ).json();
     expect(listed.publishers).toMatchObject([{ scope: "@team", ...binding }]);
 
     expect(
       (
-        await removeTrustedPublisher({
-          params,
-          body: binding,
-          req: post(undefined, token),
-          ctx: services(db),
-        })
+        await run(services(db), () =>
+          removeTrustedPublisher({ params, body: binding, req: post(undefined, token) }),
+        )
       ).status,
     ).toBe(200);
   });
@@ -450,12 +480,9 @@ describe("trusted publishers (PUB-016)", () => {
     const bob = await issueToken(db, "bob");
     expect(
       await statusOf(
-        addTrustedPublisher({
-          params,
-          body: binding,
-          req: post(undefined, bob),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          addTrustedPublisher({ params, body: binding, req: post(undefined, bob) }),
+        ),
       ),
     ).toBe(403);
   });
@@ -467,12 +494,9 @@ describe("deprecate / yank (ownership-gated mutations)", () => {
 
   test("deprecate sets the version's message for an owner", async () => {
     const { token } = await seedPackage(db, "octocat");
-    const res = await deprecate({
-      params,
-      body: { message: "use @brika/y" },
-      req: post(undefined, token),
-      ctx: services(db),
-    });
+    const res = await run(services(db), () =>
+      deprecate({ params, body: { message: "use @brika/y" }, req: post(undefined, token) }),
+    );
     expect(res.status).toBe(200);
     const rows = await db.select().from(regVersions);
     expect(rows[0]?.deprecated).toBe("use @brika/y");
@@ -480,12 +504,9 @@ describe("deprecate / yank (ownership-gated mutations)", () => {
 
   test("yank hides the version from new installs for an owner", async () => {
     const { token } = await seedPackage(db, "octocat");
-    const res = await yank({
-      params,
-      body: { yanked: true },
-      req: post(undefined, token),
-      ctx: services(db),
-    });
+    const res = await run(services(db), () =>
+      yank({ params, body: { yanked: true }, req: post(undefined, token) }),
+    );
     expect(res.status).toBe(200);
     const rows = await db.select().from(regVersions);
     expect(rows[0]?.yanked).toBe(true);
@@ -494,18 +515,15 @@ describe("deprecate / yank (ownership-gated mutations)", () => {
   test("401 without a token, 403 for a non-owner", async () => {
     await seedPackage(db, "octocat");
     const anon = statusOf(
-      deprecate({ params, body: { message: null }, req: post(undefined), ctx: services(db) }),
+      run(services(db), () => deprecate({ params, body: { message: null }, req: post(undefined) })),
     );
     expect(await anon).toBe(401);
 
     const stranger = await issueToken(db, "stranger");
     const forbidden = statusOf(
-      deprecate({
-        params,
-        body: { message: null },
-        req: post(undefined, stranger),
-        ctx: services(db),
-      }),
+      run(services(db), () =>
+        deprecate({ params, body: { message: null }, req: post(undefined, stranger) }),
+      ),
     );
     expect(await forbidden).toBe(403);
   });
@@ -519,12 +537,9 @@ describe("takedown / restore (operator-gated)", () => {
   test("403 for a valid credential that is not a registry admin", async () => {
     const { token } = await seedPackage(db, "octocat"); // owner, but not an admin
     const res = statusOf(
-      takedown({
-        params,
-        body: { reason: "malware" },
-        req: post(undefined, token),
-        ctx: services(db),
-      }),
+      run(services(db), () =>
+        takedown({ params, body: { reason: "malware" }, req: post(undefined, token) }),
+      ),
     );
     expect(await res).toBe(403);
   });
@@ -534,12 +549,13 @@ describe("takedown / restore (operator-gated)", () => {
     const ctx = services(db);
     const token = await asAdmin(db);
 
-    const res = await takedown({
-      params,
-      body: { reason: "malware: exfiltrates env" },
-      req: post(undefined, token),
-      ctx,
-    });
+    const res = await run(ctx, () =>
+      takedown({
+        params,
+        body: { reason: "malware: exfiltrates env" },
+        req: post(undefined, token),
+      }),
+    );
     expect(res.status).toBe(200);
 
     const packument = (await ctx.resolve.packument("@brika/x")) as {
@@ -550,7 +566,7 @@ describe("takedown / restore (operator-gated)", () => {
     expect(packument.takedowns).toEqual({ "1.0.0": "malware: exfiltrates env" }); // reason surfaced
 
     const catalog = await (
-      await handleCatalog(new Request("http://localhost/-/v1/packages"), ctx)
+      await run(ctx, () => handleCatalog(new Request("http://localhost/-/v1/packages")))
     ).json();
     expect(catalog.packages).toHaveLength(0);
 
@@ -565,8 +581,10 @@ describe("takedown / restore (operator-gated)", () => {
     const ctx = services(db);
     const token = await asAdmin(db);
 
-    await takedown({ params, body: { reason: "policy" }, req: post(undefined, token), ctx });
-    const res = await restore({ params, req: post(undefined, token), ctx });
+    await run(ctx, () =>
+      takedown({ params, body: { reason: "policy" }, req: post(undefined, token) }),
+    );
+    const res = await run(ctx, () => restore({ params, req: post(undefined, token) }));
     expect(res.status).toBe(200);
 
     const packument = (await ctx.resolve.packument("@brika/x")) as {
@@ -585,12 +603,9 @@ describe("scope takedown / restore (operator-gated, ORG-007)", () => {
     const token = await issueToken(db, "octocat");
     expect(
       await statusOf(
-        takedownScope({
-          params,
-          body: { reason: "squat" },
-          req: post(undefined, token),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          takedownScope({ params, body: { reason: "squat" }, req: post(undefined, token) }),
+        ),
       ),
     ).toBe(403);
   });
@@ -600,22 +615,21 @@ describe("scope takedown / restore (operator-gated, ORG-007)", () => {
     const ctx = services(db);
     const token = await asAdmin(db);
 
-    expect((await getScope({ params, ctx })).status).toBe(200);
+    expect((await run(ctx, () => getScope({ params }))).status).toBe(200);
 
-    const res = await takedownScope({
-      params,
-      body: { reason: "name-squatting" },
-      req: post(undefined, token),
-      ctx,
-    });
+    const res = await run(ctx, () =>
+      takedownScope({ params, body: { reason: "name-squatting" }, req: post(undefined, token) }),
+    );
     expect(res.status).toBe(200);
     // The public scope page 404s, and the reason is recorded (audited) but never leaked there.
-    expect(await statusOf(getScope({ params, ctx }))).toBe(404);
+    expect(await statusOf(run(ctx, () => getScope({ params })))).toBe(404);
     const taken = await db.select().from(regScopes).where(eq(regScopes.scope, "@brika"));
     expect(taken[0]?.takedown).toBe("name-squatting");
 
-    expect((await restoreScope({ params, req: post(undefined, token), ctx })).status).toBe(200);
-    expect((await getScope({ params, ctx })).status).toBe(200);
+    expect(
+      (await run(ctx, () => restoreScope({ params, req: post(undefined, token) }))).status,
+    ).toBe(200);
+    expect((await run(ctx, () => getScope({ params }))).status).toBe(200);
     const restored = await db.select().from(regScopes).where(eq(regScopes.scope, "@brika"));
     expect(restored[0]?.takedown).toBeNull();
   });
@@ -624,12 +638,13 @@ describe("scope takedown / restore (operator-gated, ORG-007)", () => {
     const token = await asAdmin(db);
     expect(
       await statusOf(
-        takedownScope({
-          params: { scope: "@ghost" },
-          body: { reason: "x" },
-          req: post(undefined, token),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          takedownScope({
+            params: { scope: "@ghost" },
+            body: { reason: "x" },
+            req: post(undefined, token),
+          }),
+        ),
       ),
     ).toBe(404);
   });
@@ -638,7 +653,9 @@ describe("scope takedown / restore (operator-gated, ORG-007)", () => {
 describe("handleCatalog", () => {
   test("lists the latest non-yanked version with totals", async () => {
     await seedPackage(db, "octocat");
-    const res = await handleCatalog(new Request("http://localhost/-/v1/packages"), services(db));
+    const res = await run(services(db), () =>
+      handleCatalog(new Request("http://localhost/-/v1/packages")),
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.total).toBe(1);
@@ -647,18 +664,16 @@ describe("handleCatalog", () => {
 
   test("free-text search filters by name", async () => {
     await seedPackage(db, "octocat");
-    const miss = await handleCatalog(
-      new Request("http://localhost/-/v1/packages?text=nomatch"),
-      services(db),
+    const miss = await run(services(db), () =>
+      handleCatalog(new Request("http://localhost/-/v1/packages?text=nomatch")),
     );
     expect((await miss.json()).total).toBe(0);
   });
 
   test("clamps the limit query parameter into range", async () => {
     await seedPackage(db, "octocat");
-    const res = await handleCatalog(
-      new Request("http://localhost/-/v1/packages?limit=5"),
-      services(db),
+    const res = await run(services(db), () =>
+      handleCatalog(new Request("http://localhost/-/v1/packages?limit=5")),
     );
     expect(res.status).toBe(200);
     expect((await res.json()).total).toBe(1);
@@ -668,7 +683,7 @@ describe("handleCatalog", () => {
 describe("handleDownloads", () => {
   test("returns zeroed stats for a package with no installs", async () => {
     await seedPackage(db, "octocat");
-    const res = await handleDownloads("@brika/x", services(db));
+    const res = await run(services(db), () => handleDownloads("@brika/x"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toMatchObject({ name: "@brika/x", total: 0, weekly: 0 });
@@ -776,7 +791,7 @@ describe("scope publisher (verified attribution)", () => {
     expect(packument.publisher).toEqual({ id: "@brika", name: "@brika", verified: true });
 
     const catalog = await (
-      await handleCatalog(new Request("http://localhost/-/v1/packages"), ctx)
+      await run(ctx, () => handleCatalog(new Request("http://localhost/-/v1/packages")))
     ).json();
     expect(catalog.packages[0].publisher).toEqual({
       id: "@brika",
@@ -789,12 +804,13 @@ describe("scope publisher (verified attribution)", () => {
     const { token } = await seedPackage(db, "brikalabs");
     const ctx = services(db);
 
-    const res = await setDisplayName({
-      params: { scope: "@brika" },
-      body: { displayName: "Brika Labs" },
-      req: post(undefined, token),
-      ctx,
-    });
+    const res = await run(ctx, () =>
+      setDisplayName({
+        params: { scope: "@brika" },
+        body: { displayName: "Brika Labs" },
+        req: post(undefined, token),
+      }),
+    );
     expect(res.status).toBe(200);
 
     const packument = (await ctx.resolve.packument("@brika/x")) as {
@@ -807,12 +823,13 @@ describe("scope publisher (verified attribution)", () => {
     await seedPackage(db, "brikalabs");
     const stranger = await issueToken(db, "intruder");
     const res = statusOf(
-      setDisplayName({
-        params: { scope: "@brika" },
-        body: { displayName: "Pwned" },
-        req: post(undefined, stranger),
-        ctx: services(db),
-      }),
+      run(services(db), () =>
+        setDisplayName({
+          params: { scope: "@brika" },
+          body: { displayName: "Pwned" },
+          req: post(undefined, stranger),
+        }),
+      ),
     );
     expect(await res).toBe(403);
   });

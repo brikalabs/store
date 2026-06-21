@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { runInContext } from "@brika/di";
 import { HttpError } from "@brika/router";
 import { type Db, regDownloads } from "@brika/store-db";
 import { eq } from "drizzle-orm";
-import { buildServices, type Services } from "../services";
+import { buildServices, type Services, serviceProviders } from "../services";
 import { makeDb, seedExamplePackage } from "../test-harness";
 import { packagesController } from "./packages";
 
@@ -14,8 +15,10 @@ import { packagesController } from "./packages";
  */
 
 // route order: tarball (more specific) first, then packument.
-const tarballRoute = packagesController.routes[0];
-const packumentRoute = packagesController.routes[1];
+const [tarballRoute, packumentRoute] = packagesController.routes;
+if (tarballRoute === undefined || packumentRoute === undefined) {
+  throw new Error("packages controller is missing its tarball/packument routes");
+}
 
 /** An R2 bucket pre-seeded with one tarball at `key`. */
 function r2With(key: string, bytes: Uint8Array): R2Bucket {
@@ -48,6 +51,26 @@ function services(bucket: R2Bucket): Services {
   return buildServices(db, bucket, "http://localhost:8787");
 }
 
+/**
+ * Drive a route's `run` entrypoint inside the per-request injection context the
+ * `mount({ around })` wrapper establishes in production, so its handler's `inject(...)`
+ * calls resolve from `graph`. The router's context type is now `void`, so `ctx` is
+ * `undefined`; the graph is delivered through the injection context, not the input.
+ */
+function runRoute(
+  graph: Services,
+  route: (typeof packagesController.routes)[number],
+  input: {
+    readonly params: Record<string, string>;
+    readonly req: Request;
+    readonly waitUntil: (promise: Promise<unknown>) => void;
+  },
+): Promise<unknown> {
+  return runInContext(serviceProviders(graph), async () =>
+    route.run({ ...input, query: undefined, body: undefined, ctx: undefined }),
+  );
+}
+
 async function expectStatus(run: () => Promise<unknown>, status: number): Promise<void> {
   try {
     await run();
@@ -60,12 +83,9 @@ async function expectStatus(run: () => Promise<unknown>, status: number): Promis
 
 describe("packument route", () => {
   test("returns the full document as application/json by default", async () => {
-    const res = (await packumentRoute?.run({
+    const res = (await runRoute(services(r2With("k", new Uint8Array())), packumentRoute, {
       params: { scope: "@brika", pkg: "x" },
-      query: undefined,
-      body: undefined,
       req: new Request("http://localhost/@brika%2fx"),
-      ctx: services(r2With("k", new Uint8Array())),
       waitUntil: noopWaitUntil,
     })) as Response;
 
@@ -77,14 +97,11 @@ describe("packument route", () => {
   });
 
   test("returns the abbreviated document when the install Accept header is sent", async () => {
-    const res = (await packumentRoute?.run({
+    const res = (await runRoute(services(r2With("k", new Uint8Array())), packumentRoute, {
       params: { scope: "@brika", pkg: "x" },
-      query: undefined,
-      body: undefined,
       req: new Request("http://localhost/@brika%2fx", {
         headers: { accept: "application/vnd.npm.install-v1+json" },
       }),
-      ctx: services(r2With("k", new Uint8Array())),
       waitUntil: noopWaitUntil,
     })) as Response;
 
@@ -95,14 +112,11 @@ describe("packument route", () => {
   test("404 for an unknown package", async () => {
     await expectStatus(
       () =>
-        packumentRoute?.run({
+        runRoute(services(r2With("k", new Uint8Array())), packumentRoute, {
           params: { scope: "@brika", pkg: "missing" },
-          query: undefined,
-          body: undefined,
           req: new Request("http://localhost/@brika%2fmissing"),
-          ctx: services(r2With("k", new Uint8Array())),
           waitUntil: noopWaitUntil,
-        }) ?? Promise.resolve(),
+        }),
       404,
     );
   });
@@ -113,12 +127,9 @@ describe("tarball route", () => {
 
   test("streams the tarball and records the download via waitUntil", async () => {
     const tasks: Promise<unknown>[] = [];
-    const res = (await tarballRoute?.run({
+    const res = (await runRoute(services(r2With(key, new Uint8Array([1, 2, 3]))), tarballRoute, {
       params: { scope: "@brika", pkg: "x", file: "x-1.0.0.tgz" },
-      query: undefined,
-      body: undefined,
       req: new Request(`http://localhost/${key}`),
-      ctx: services(r2With(key, new Uint8Array([1, 2, 3]))),
       waitUntil: (p) => tasks.push(p),
     })) as Response;
 
@@ -136,14 +147,11 @@ describe("tarball route", () => {
   test("404 when the filename does not parse to a version", async () => {
     await expectStatus(
       () =>
-        tarballRoute?.run({
+        runRoute(services(r2With(key, new Uint8Array([1]))), tarballRoute, {
           params: { scope: "@brika", pkg: "x", file: "not-a-tarball.txt" },
-          query: undefined,
-          body: undefined,
           req: new Request("http://localhost/@brika%2fx/-/not-a-tarball.txt"),
-          ctx: services(r2With(key, new Uint8Array([1]))),
           waitUntil: noopWaitUntil,
-        }) ?? Promise.resolve(),
+        }),
       404,
     );
   });
@@ -151,14 +159,11 @@ describe("tarball route", () => {
   test("404 when the tarball bytes are absent from R2", async () => {
     await expectStatus(
       () =>
-        tarballRoute?.run({
+        runRoute(services(r2With(key, new Uint8Array([1]))), tarballRoute, {
           params: { scope: "@brika", pkg: "x", file: "x-9.9.9.tgz" },
-          query: undefined,
-          body: undefined,
           req: new Request("http://localhost/@brika%2fx/-/x-9.9.9.tgz"),
-          ctx: services(r2With(key, new Uint8Array([1]))),
           waitUntil: noopWaitUntil,
-        }) ?? Promise.resolve(),
+        }),
       404,
     );
   });

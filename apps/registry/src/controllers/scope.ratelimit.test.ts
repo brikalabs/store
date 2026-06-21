@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { runInContext } from "@brika/di";
 import type { Db } from "@brika/store-db";
 import { issueToken } from "@brika/store-db/adapters";
 import { Hono } from "hono";
 import { mount } from "../http/router";
-import { buildServices, type Services } from "../services";
+import { buildServices, type Services, serviceProviders } from "../services";
 import { fakeR2, makeDb } from "../test-harness";
 
 /**
@@ -42,7 +43,12 @@ beforeEach(() => {
 describe("claim rate limiting (declared via route middleware)", () => {
   function mountedApp(): Hono {
     const app = new Hono();
-    mount(app, [scopeController], { context: () => services(db) });
+    // The handlers + the `principal` rate-limit key resolve their deps via `inject(...)`, so the
+    // per-request graph is supplied through the same `around` injection-context wrapper the worker
+    // uses (not a `ctx` factory). This exercises the rate-limit middleware inside that context.
+    mount(app, [scopeController], {
+      around: (_c, exec) => runInContext(serviceProviders(services(db)), exec),
+    });
     return app;
   }
 

@@ -1,4 +1,6 @@
 import { env } from "cloudflare:workers";
+import { inject, type Provider, runInContext } from "@brika/di";
+import { ScopeService } from "@brika/registry-core";
 import { jsonLogger } from "@brika/router";
 import { getDb } from "@brika/store-db";
 import { Hono } from "hono";
@@ -12,7 +14,24 @@ import { scopeController } from "./controllers/scope";
 import { statsController } from "./controllers/stats";
 import { registryAdmins, vars } from "./env";
 import { logRoutes, mount, type RegistryEnv } from "./http/router";
-import { buildServices } from "./services";
+import { buildServices, serviceProviders } from "./services";
+
+/**
+ * The registry's per-request DI seam: build the service graph from the request's bindings (the one
+ * place `env` is read), exposed as `@brika/di` providers so handlers `inject(...)` them. `mount`
+ * runs each handler inside `runInContext(registryProviders(...))`.
+ */
+function registryProviders(bindings: Cloudflare.Env, baseUrl: string): Provider[] {
+  return serviceProviders(
+    buildServices(
+      getDb(bindings.DB),
+      bindings.TARBALLS,
+      baseUrl,
+      registryAdmins(),
+      vars().DOMAIN_VERIFY_SECRET,
+    ),
+  );
+}
 
 /**
  * The Brika registry: an npm-compatible resolve surface so `bun add` installs
@@ -61,14 +80,7 @@ const controllers = [
 // request is logged as a structured JSON line (method, route, status, timing,
 // controller/handler, client IP).
 mount(app, controllers, {
-  context: (c) =>
-    buildServices(
-      getDb(c.env.DB),
-      c.env.TARBALLS,
-      baseUrlFor(c.req.url),
-      registryAdmins(),
-      vars().DOMAIN_VERIFY_SECRET,
-    ),
+  around: (c, run) => runInContext(registryProviders(c.env, baseUrlFor(c.req.url)), run),
   logger: jsonLogger("registry request"),
 });
 
@@ -84,14 +96,9 @@ logRoutes(app);
  * as DNS changes over time, rather than trusting a one-time check forever.
  */
 async function scheduled(): Promise<void> {
-  const services = buildServices(
-    getDb(env.DB),
-    env.TARBALLS,
-    vars().REGISTRY_URL,
-    registryAdmins(),
-    vars().DOMAIN_VERIFY_SECRET,
+  const revoked = await runInContext(registryProviders(env, vars().REGISTRY_URL), () =>
+    inject(ScopeService).reverifyDomains(),
   );
-  const revoked = await services.scopes.reverifyDomains();
   if (revoked.length > 0) {
     console.log(JSON.stringify({ msg: "scope domain re-verification revoked badges", revoked }));
   }

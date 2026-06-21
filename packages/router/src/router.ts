@@ -117,8 +117,19 @@ export interface ControllerConfig<Ctx, E extends Env> {
 
 /** How `mount` turns a Hono request into the per-request inputs. */
 export interface MountOptions<Ctx, E extends Env> {
-  /** Build the per-request context (e.g. a service graph) from Hono's Context. */
-  readonly context: (c: Context<E>) => Ctx | Promise<Ctx>;
+  /**
+   * Build the per-request context (e.g. a service graph) from Hono's Context. Optional: omit it
+   * when handlers resolve their dependencies another way (e.g. `inject()` inside an injection
+   * context established by {@link around}), in which case `ctx` is `undefined`.
+   */
+  readonly context?: (c: Context<E>) => Ctx | Promise<Ctx>;
+  /**
+   * Wrap handler (and route-middleware) execution. The seam for running each request inside a
+   * surrounding scope, e.g. a `@brika/di` injection context:
+   * `around: (c, run) => runInContext(providersFor(c), run)`. Keeps the router itself free of any
+   * DI dependency; the app supplies the wrapper.
+   */
+  readonly around?: (c: Context<E>, run: () => Promise<Response>) => Promise<Response>;
   /** Optional: called once per request with its route, status, and timing. */
   readonly logger?: RouterLogger;
 }
@@ -315,18 +326,22 @@ async function handleRequest<Ctx, E extends Env>(
   let status = 500;
   let unexpected: unknown;
   try {
-    const ctx = await options.context(c);
+    // `ctx` is undefined when no `context` factory is set (handlers use `inject()` instead).
+    const ctx = options.context ? await options.context(c) : (undefined as Ctx);
     const body = await parseBody(c, def.bodySchema);
     const query = parseQuery(c, def.querySchema);
-    // Route middleware runs first (a throw aborts via the catch below), then the handler.
-    const response = await dispatch(middleware, def.run, {
-      params: c.req.param(),
-      query,
-      body,
-      ctx,
-      req: c.req.raw,
-      waitUntil: (promise: Promise<unknown>) => c.executionCtx.waitUntil(promise),
-    });
+    // Route middleware runs first (a throw aborts via the catch below), then the handler. When an
+    // `around` wrapper is set, both run inside it (e.g. a per-request injection context).
+    const exec = (): Promise<Response> =>
+      dispatch(middleware, def.run, {
+        params: c.req.param(),
+        query,
+        body,
+        ctx,
+        req: c.req.raw,
+        waitUntil: (promise: Promise<unknown>) => c.executionCtx.waitUntil(promise),
+      });
+    const response = options.around ? await options.around(c, exec) : await exec();
     status = response.status;
     return response;
   } catch (error) {

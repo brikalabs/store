@@ -1,9 +1,14 @@
+import { type Provider, token } from "@brika/di";
 import {
+  type AuditLog,
+  type CatalogReader,
   DeviceService,
+  type DownloadStore,
   ManagementService,
   PublishService,
   ResolveService,
   ScopeService,
+  type TokenStore,
 } from "@brika/registry-core";
 import type { Db } from "@brika/store-db";
 import {
@@ -125,3 +130,45 @@ export function buildServices(
  * depend on this type; adding a service to the factory extends it here for free.
  */
 export type Services = ReturnType<typeof buildServices>;
+
+/** Operator admins as a DI token (a `Set` has no class to be its own token). */
+export const Admins = token<ReadonlySet<string>>("Admins");
+/** Display-name resolver as a DI token (a function, no class). */
+export const ResolveDisplayName =
+  token<(githubLogin: string) => Promise<string | null>>("ResolveDisplayName");
+
+/**
+ * The persistence ports as DI tokens, so a handler `inject(Tokens)` etc. depends on the
+ * `@brika/registry-core` PORT (an interface), never the concrete `D1*` adapter, and stays off the
+ * ORM. The composition root binds each token to its D1 instance below; the domain services
+ * (`ResolveService`, `ScopeService`, ...) are injected by their own class, as they are the domain.
+ */
+export const Tokens = token<TokenStore>("TokenStore");
+export const Catalog = token<CatalogReader>("CatalogReader");
+export const Downloads = token<DownloadStore>("DownloadStore");
+export const Audit = token<AuditLog>("AuditLog");
+
+/**
+ * Expose a built {@link Services} graph as `@brika/di` providers, so a handler resolves a
+ * dependency with `inject(ScopeService)` / `inject(D1TokenStore)` / `inject(Admins)` instead of
+ * threading a `ctx`. {@link buildServices} stays the single typed composition root; this is only
+ * the delivery seam. Each service is bound under its own class token (`useValue`, the already-built
+ * instance); the two non-class members use the value tokens above. A test overrides any one entry
+ * with a mock and leaves the rest real. `index.ts` builds the graph per request from the bindings
+ * and passes these to `runInContext`.
+ */
+export function serviceProviders(services: Services): Provider[] {
+  return [
+    { provide: ResolveService, useValue: services.resolve },
+    { provide: PublishService, useValue: services.publish },
+    { provide: ManagementService, useValue: services.management },
+    { provide: ScopeService, useValue: services.scopes },
+    { provide: DeviceService, useValue: services.devices },
+    { provide: Catalog, useValue: services.catalog },
+    { provide: Tokens, useValue: services.tokens },
+    { provide: Downloads, useValue: services.downloads },
+    { provide: Audit, useValue: services.audit },
+    { provide: Admins, useValue: services.admins },
+    { provide: ResolveDisplayName, useValue: services.resolveDisplayName },
+  ];
+}

@@ -1,6 +1,8 @@
+import { inject } from "@brika/di";
 import {
   type PublishErrorCode,
   type PublishIdentity,
+  PublishService,
   sha512Integrity,
   TransparencyEntry,
 } from "@brika/registry-core";
@@ -10,7 +12,7 @@ import { z } from "zod";
 import { cf } from "../adapters/cf-rate-limiter";
 import { principal, requireWrite } from "../auth";
 import { controller, route } from "../http/router";
-import type { Services } from "../services";
+import { Audit, Tokens } from "../services";
 
 /**
  * `POST /-/publish`. Authenticated by EITHER a GitHub Actions OIDC token (CI,
@@ -73,14 +75,13 @@ function statusForPublishError(code: PublishErrorCode): number {
 export async function publish({
   body,
   req,
-  ctx,
 }: {
   readonly body: z.infer<typeof PublishBody>;
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
-  const { publish: publishService, audit } = ctx;
-  const identity = await requireWrite(req, ctx.tokens);
+  const publishService = inject(PublishService);
+  const audit = inject(Audit);
+  const identity = await requireWrite(req, inject(Tokens));
 
   const { name, version, manifest, tarball, transparencyLog } = body;
   const tarballBytes = base64ToBytes(tarball);

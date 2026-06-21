@@ -34,6 +34,7 @@
       "name": "@brika/registry",
       "version": "0.1.0",
       "dependencies": {
+        "@brika/di": "workspace:*",
         "@brika/env": "workspace:*",
         "@brika/registry-core": "workspace:*",
         "@brika/router": "workspace:*",
