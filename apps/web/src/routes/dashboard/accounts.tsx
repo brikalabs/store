@@ -103,11 +103,11 @@ function AccountsPage() {
         </p>
       </div>
 
-      {error !== null ? (
+      {error === null ? null : (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-destructive text-sm">
           {error}
         </div>
-      ) : null}
+      )}
 
       {accounts === null ? (
         <div className="h-40 animate-pulse rounded-2xl bg-muted" />

@@ -32,9 +32,8 @@ mock.module("cloudflare:workers", () => {
   };
 });
 
-const { handleDeviceCode, handleDeviceToken, handleRevoke, deviceController } = await import(
-  "./device"
-);
+const { handleDeviceCode, handleDeviceToken, handleRevoke, handleWhoami, deviceController } =
+  await import("./device");
 
 function services(db: Db): Services {
   return buildServices(db, fakeR2(), "http://localhost:8787");
@@ -161,6 +160,36 @@ describe("handleDeviceToken", () => {
     // The token was persisted and the grant consumed.
     expect(await db.select().from(regTokens)).toHaveLength(1);
     expect(await db.select().from(regDeviceAuth)).toHaveLength(0);
+  });
+});
+
+describe("handleWhoami", () => {
+  test("401 when there is no Bearer authorization header", async () => {
+    const req = new Request("http://localhost/", { method: "GET" });
+    expect(await statusOf(handleWhoami(req, services(db)))).toBe(401);
+  });
+
+  test("returns the token's github login + display name (null without a store user)", async () => {
+    const ctx = services(db);
+    const issued = await ctx.devices.requestCode();
+    await db
+      .update(regDeviceAuth)
+      .set({ approved: true, githubLogin: "octocat" })
+      .where(eq(regDeviceAuth.deviceCode, issued.deviceCode));
+    const tokenBody = await (
+      await handleDeviceToken(tokenRequest({ device_code: issued.deviceCode }), ctx)
+    ).json();
+
+    const req = new Request("http://localhost/", {
+      method: "GET",
+      headers: { authorization: `Bearer ${tokenBody.access_token}` },
+    });
+    const res = await handleWhoami(req, ctx);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.github_login).toBe("octocat");
+    // No store `users` row in this harness, so the display name resolves to null.
+    expect(body.display_name).toBeNull();
   });
 });
 
