@@ -56,12 +56,15 @@ export function targetSize(source: Size, resize: ResizeOptions | undefined): Siz
   };
 }
 
+/** The starting pipeline: WebP output, no resize. Shared + never mutated (steps spread into a new one). */
+const DEFAULT_PIPELINE: Pipeline = { type: "image/webp" };
+
 /** A lazily-built image pipeline. Construct it with {@link image}; chain `resize`/`webp`/... ; `toBlob()`. */
 export class Image {
   readonly #source: Blob;
   readonly #pipeline: Pipeline;
 
-  constructor(source: Blob, pipeline: Pipeline = { type: "image/webp" }) {
+  constructor(source: Blob, pipeline: Pipeline = DEFAULT_PIPELINE) {
     this.#source = source;
     this.#pipeline = pipeline;
   }

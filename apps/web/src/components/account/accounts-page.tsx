@@ -115,68 +115,18 @@ export function AccountsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {PROVIDERS.map((provider) => {
-            const linked = accounts.find((a) => a.providerId === provider.id);
-            const isBusy = busy === provider.id;
-            // Can't remove the only remaining sign-in method (USER-004-AC4).
-            const isLastLinked = linked !== undefined && linkedCount <= 1;
+            const connected = accounts.find((a) => a.providerId === provider.id) !== undefined;
             return (
-              <div
+              <AccountRow
                 key={provider.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-5"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-muted">
-                    <provider.Icon className="size-5" />
-                  </span>
-                  <div>
-                    <div className="font-semibold text-foreground text-sm">{provider.label}</div>
-                    <div className="text-muted-foreground text-xs">
-                      {linked ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Check className="size-3.5 text-brand-ink" />
-                          Connected
-                        </span>
-                      ) : (
-                        "Not connected"
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {linked ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={isBusy || isLastLinked}
-                    title={
-                      isLastLinked
-                        ? "You can't unlink your only sign-in method."
-                        : `Unlink ${provider.label}`
-                    }
-                    onClick={() => unlink(provider.id)}
-                  >
-                    {isBusy ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Unlink className="size-4" />
-                    )}
-                    Unlink
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    disabled={isBusy}
-                    onClick={() => link(provider.id)}
-                    title={`Link ${provider.label}`}
-                  >
-                    {isBusy ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Link2 className="size-4" />
-                    )}
-                    Link
-                  </Button>
-                )}
-              </div>
+                provider={provider}
+                connected={connected}
+                busy={busy === provider.id}
+                // Can't remove the only remaining sign-in method (USER-004-AC4).
+                isLastLinked={connected && linkedCount <= 1}
+                onLink={() => link(provider.id)}
+                onUnlink={() => unlink(provider.id)}
+              />
             );
           })}
 
@@ -188,5 +138,65 @@ export function AccountsPage() {
         </div>
       )}
     </AdminShell>
+  );
+}
+
+/** One provider row: its connected state and the link/unlink action. Extracted so the list callback
+ *  stays trivial and this stays well under the cognitive-complexity budget. */
+function AccountRow({
+  provider,
+  connected,
+  busy,
+  isLastLinked,
+  onLink,
+  onUnlink,
+}: Readonly<{
+  provider: Provider;
+  connected: boolean;
+  busy: boolean;
+  isLastLinked: boolean;
+  onLink: () => void;
+  onUnlink: () => void;
+}>) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-center gap-3">
+        <span className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-muted">
+          <provider.Icon className="size-5" />
+        </span>
+        <div>
+          <div className="font-semibold text-foreground text-sm">{provider.label}</div>
+          <div className="text-muted-foreground text-xs">
+            {connected ? (
+              <span className="inline-flex items-center gap-1">
+                <Check className="size-3.5 text-brand-ink" />
+                Connected
+              </span>
+            ) : (
+              "Not connected"
+            )}
+          </div>
+        </div>
+      </div>
+      {connected ? (
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={busy || isLastLinked}
+          title={
+            isLastLinked ? "You can't unlink your only sign-in method." : `Unlink ${provider.label}`
+          }
+          onClick={onUnlink}
+        >
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Unlink className="size-4" />}
+          Unlink
+        </Button>
+      ) : (
+        <Button type="button" disabled={busy} onClick={onLink} title={`Link ${provider.label}`}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
+          Link
+        </Button>
+      )}
+    </div>
   );
 }

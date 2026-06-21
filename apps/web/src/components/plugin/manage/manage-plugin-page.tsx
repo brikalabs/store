@@ -74,7 +74,7 @@ function ManagePlugin({ name, detail }: Readonly<ManageData>) {
 
         {/* sidebar */}
         <aside className="flex flex-col gap-5 lg:sticky lg:top-20">
-          {detail !== null ? (
+          {detail ? (
             <Card>
               <span className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
                 Synced from the registry
