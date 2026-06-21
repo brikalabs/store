@@ -4,7 +4,7 @@ import { onRollback, transaction } from "@brika/tx";
 import { createFileRoute } from "@tanstack/react-router";
 import { ICON_TYPES, MAX_ICON_BYTES } from "@/lib/scope-icon";
 import { BlobStore } from "@/server/blob-store";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed, runHandler } from "@/server/http";
 import { streamScopeIcon } from "@/server/scope-icon";
 
 /**
@@ -18,8 +18,7 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
     handlers: {
       GET: ({ params }) => runHandler(() => streamScopeIcon(params.scope)),
       POST: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const type = request.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
           const ext = ICON_TYPES[type];
           if (ext === undefined) throw badRequest("Logo must be a PNG, JPEG, or WebP image");
@@ -48,8 +47,7 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
           return reply({ ok: true, scope: params.scope });
         }),
       DELETE: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           okOrThrow(await a.svc.scopes.setIcon(a.identity, params.scope, null));
           await a.svc.audit.record({
             action: "scope_icon_set",

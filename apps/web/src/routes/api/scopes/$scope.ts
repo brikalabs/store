@@ -1,7 +1,7 @@
 import { isCanonicalScope } from "@brika/registry-core";
 import { badRequest, httpError, okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed } from "@/server/http";
 
 /**
  * `GET /api/scopes/:scope` - the scope's editable profile (display name, description, links,
@@ -13,8 +13,7 @@ export const Route = createFileRoute("/api/scopes/$scope")({
   server: {
     handlers: {
       GET: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const info = await a.svc.scopes.getPublic(params.scope);
           if (info === null) throw httpError(404, `scope ${params.scope} does not exist`);
           return reply({
@@ -26,8 +25,7 @@ export const Route = createFileRoute("/api/scopes/$scope")({
           });
         }),
       PUT: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const { scope } = params;
           if (!isCanonicalScope(scope)) {
             throw badRequest(

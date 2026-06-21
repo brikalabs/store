@@ -2,7 +2,7 @@ import { inject } from "@brika/di";
 import { scopeOf } from "@brika/registry-core";
 import { badRequest, notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed } from "@/server/http";
 import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
@@ -15,8 +15,7 @@ export const Route = createFileRoute("/api/plugins/versions")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const name = new URL(request.url).searchParams.get("name");
           if (name === null || name === "") throw badRequest("Missing package name");
 

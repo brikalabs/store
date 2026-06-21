@@ -2,7 +2,7 @@ import { domainChallengeHost } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { DomainBody, shapeDomains } from "@/lib/scope-domains";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed } from "@/server/http";
 
 /**
  * Scope domain claims (ORG-010), all admin-gated except the member-readable list:
@@ -15,15 +15,13 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
   server: {
     handlers: {
       GET: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const result = okOrThrow(await a.svc.scopes.listDomains(a.identity, params.scope));
           const domains = await shapeDomains(a.svc.scopes, params.scope, result.domains);
           return reply({ scope: params.scope, domains });
         }),
       PUT: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const { domain } = parseBody(DomainBody, await request.json(), "Invalid domain");
           const result = okOrThrow(await a.svc.scopes.addDomain(a.identity, params.scope, domain));
           await a.svc.audit.record({
@@ -44,8 +42,7 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
           );
         }),
       POST: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
           const result = okOrThrow(
             await a.svc.scopes.verifyDomain(a.identity, params.scope, parsed.domain),
@@ -62,8 +59,7 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
           return reply({ ok: true, domain: result.domain, verified: result.verified });
         }),
       DELETE: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
           okOrThrow(await a.svc.scopes.removeDomain(a.identity, params.scope, parsed.domain));
           await a.svc.audit.record({

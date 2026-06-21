@@ -1,7 +1,7 @@
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { operatorAuthed, runHandler } from "@/server/http";
+import { runOperator } from "@/server/http";
 
 const Body = z.object({ reason: z.string().min(1).max(1024) });
 
@@ -13,8 +13,7 @@ export const Route = createFileRoute("/api/operator/scopes/$scope/takedown")({
   server: {
     handlers: {
       POST: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await operatorAuthed(request);
+        runOperator(request, async (a) => {
           const parsed = parseBody(Body, await request.json(), "A takedown reason is required");
           okOrThrow(await a.svc.scopes.takedown(params.scope, parsed.reason));
           await a.svc.audit.record({

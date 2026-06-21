@@ -1,7 +1,7 @@
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed } from "@/server/http";
 
 /**
  * Trusted-publisher bindings for a scope (PUB-016), admin-gated by the ScopeService.
@@ -21,16 +21,14 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
   server: {
     handlers: {
       GET: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const { publishers } = okOrThrow(
             await a.svc.scopes.listTrustedPublishers(a.identity, params.scope),
           );
           return reply({ scope: params.scope, publishers });
         }),
       PUT: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
           const { publisher } = okOrThrow(
             await a.svc.scopes.addTrustedPublisher(a.identity, params.scope, binding),
@@ -45,8 +43,7 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
           return reply({ ok: true, publisher }, 201);
         }),
       DELETE: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
           const { removed } = okOrThrow(
             await a.svc.scopes.removeTrustedPublisher(a.identity, params.scope, binding),

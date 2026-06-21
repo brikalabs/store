@@ -1,6 +1,6 @@
 import { badRequest, notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { operatorAuthed, runHandler } from "@/server/http";
+import { runOperator } from "@/server/http";
 
 /**
  * `GET /api/operator/packages/versions?name=@scope/pkg` - every version of a package with
@@ -11,8 +11,7 @@ export const Route = createFileRoute("/api/operator/packages/versions")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runHandler(async () => {
-          const a = await operatorAuthed(request);
+        runOperator(request, async (a) => {
           const name = new URL(request.url).searchParams.get("name");
           if (name === null || name.length === 0) throw badRequest("A package name is required");
           const pkg = await a.svc.metadata.getPackage(name);

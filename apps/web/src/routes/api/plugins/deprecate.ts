@@ -1,7 +1,7 @@
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed } from "@/server/http";
 
 const Body = z.object({
   name: z.string().min(1),
@@ -15,8 +15,7 @@ export const Route = createFileRoute("/api/plugins/deprecate")({
   server: {
     handlers: {
       POST: ({ request }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const parsed = parseBody(Body, await request.json(), "Invalid deprecate request");
           const { name, version, message } = parsed;
           okOrThrow(await a.svc.management.deprecate(a.identity, name, version, message));

@@ -1,7 +1,7 @@
 import { inject } from "@brika/di";
 import { notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed } from "@/server/http";
 import { PublishTokenStore } from "@/server/stores/publish-token-store";
 
 /**
@@ -13,8 +13,7 @@ export const Route = createFileRoute("/api/account/tokens/$hash")({
   server: {
     handlers: {
       DELETE: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const removed = await inject(PublishTokenStore).revokeTokenByHash(
             "github",
             a.user.login,

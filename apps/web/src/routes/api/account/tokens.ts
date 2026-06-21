@@ -1,7 +1,7 @@
 import { inject } from "@brika/di";
 import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed } from "@/server/http";
 import { PublishTokenStore } from "@/server/stores/publish-token-store";
 
 /**
@@ -12,14 +12,12 @@ export const Route = createFileRoute("/api/account/tokens")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const tokens = await inject(PublishTokenStore).listSubjectTokens("github", a.user.login);
           return reply({ tokens });
         }),
       POST: ({ request }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const token = await a.svc.tokens.issue(a.user.login);
           return reply({ token }, 201);
         }),

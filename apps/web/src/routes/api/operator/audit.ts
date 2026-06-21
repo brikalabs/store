@@ -1,6 +1,6 @@
 import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { operatorAuthed, runHandler } from "@/server/http";
+import { runOperator } from "@/server/http";
 
 /** How many audit rows the console requests at once (also the server-side hard cap). */
 const DEFAULT_LIMIT = 100;
@@ -14,8 +14,7 @@ export const Route = createFileRoute("/api/operator/audit")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runHandler(async () => {
-          const a = await operatorAuthed(request);
+        runOperator(request, async (a) => {
           const raw = Number(new URL(request.url).searchParams.get("limit"));
           const limit =
             Number.isFinite(raw) && raw > 0 ? Math.min(Math.floor(raw), MAX_LIMIT) : DEFAULT_LIMIT;

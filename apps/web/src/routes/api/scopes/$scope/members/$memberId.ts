@@ -1,6 +1,6 @@
 import { okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed } from "@/server/http";
 
 /**
  * `DELETE /api/scopes/:scope/members/:memberId` - remove a member (admin only). The domain
@@ -10,8 +10,7 @@ export const Route = createFileRoute("/api/scopes/$scope/members/$memberId")({
   server: {
     handlers: {
       DELETE: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const target = { provider: "github", id: params.memberId };
           const result = okOrThrow(
             await a.svc.scopes.removeMember(a.identity, params.scope, target),

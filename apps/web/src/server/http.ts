@@ -63,3 +63,25 @@ export async function operatorAuthed(request: Request): Promise<ConsoleContext> 
   if (!isOperator(operatorAdmins(), a.identity)) throw forbidden("Not a registry operator");
   return a;
 }
+
+/**
+ * Run a console handler body: in the per-request DI context AND with the session resolved first
+ * (401 if signed out), passing the {@link ConsoleContext}. Folds the `runHandler` +
+ * `authed(request)` that every `api/*` handler repeated - `runAuthed(request, async (a) => ...)`
+ * instead of `runHandler(async () => { const a = await authed(request); ... })`. The route keeps
+ * its own `({ request, params }) =>` destructure, so route params stay typed by TanStack.
+ */
+export function runAuthed(
+  request: Request,
+  body: (ctx: ConsoleContext) => Promise<Response>,
+): Promise<Response> {
+  return runHandler(async () => body(await authed(request)));
+}
+
+/** Like {@link runAuthed}, but also requires a registry operator (the gate for `api/operator/*`). */
+export function runOperator(
+  request: Request,
+  body: (ctx: ConsoleContext) => Promise<Response>,
+): Promise<Response> {
+  return runHandler(async () => body(await operatorAuthed(request)));
+}

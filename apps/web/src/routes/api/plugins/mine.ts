@@ -5,7 +5,7 @@ import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { resolveOwnedPlugins } from "@/lib/registry/owned-plugins";
 import { searchPlugins } from "@/lib/registry/registry";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed } from "@/server/http";
 import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
@@ -24,9 +24,7 @@ export const Route = createFileRoute("/api/plugins/mine")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runHandler(async () => {
-          const a = await authed(request);
-
+        runAuthed(request, async (a) => {
           // The scopes the user owns and the hosted catalog (rich summaries for listed packages).
           // These reads are independent, so overlap them; the catalog is bounded, so one capped
           // scan covers it.

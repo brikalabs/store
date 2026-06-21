@@ -1,7 +1,7 @@
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { authed, runHandler } from "@/server/http";
+import { runAuthed } from "@/server/http";
 
 const PutBody = z.object({
   memberId: z.string().min(1),
@@ -17,14 +17,12 @@ export const Route = createFileRoute("/api/scopes/$scope/members")({
   server: {
     handlers: {
       GET: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const result = okOrThrow(await a.svc.scopes.listMembers(a.identity, params.scope));
           return reply({ scope: params.scope, members: result.members });
         }),
       PUT: ({ request, params }) =>
-        runHandler(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const parsed = parseBody(PutBody, await request.json(), "Invalid member or role");
           const target = { provider: "github", id: parsed.memberId };
           const result = okOrThrow(

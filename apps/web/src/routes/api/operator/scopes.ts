@@ -1,6 +1,6 @@
 import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { operatorAuthed, runHandler } from "@/server/http";
+import { runOperator } from "@/server/http";
 
 /**
  * `GET /api/operator/scopes` - every scope with its takedown state, for the operator
@@ -10,8 +10,7 @@ export const Route = createFileRoute("/api/operator/scopes")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runHandler(async () => {
-          const a = await operatorAuthed(request);
+        runOperator(request, async (a) => {
           const scopes = (await a.svc.scopes.listForOperator()).map((s) => ({
             scope: s.scope,
             displayName: s.displayName,
