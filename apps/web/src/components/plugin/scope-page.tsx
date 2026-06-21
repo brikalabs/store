@@ -1,7 +1,8 @@
 import { Globe, ShieldCheck } from "lucide-react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { ProfileLinks } from "@/components/plugin/profile-links";
-import { ShowcaseCard, Stat } from "@/components/plugin/showcase-card";
+import { PublishedPlugins } from "@/components/plugin/published-plugins";
+import { Stat } from "@/components/plugin/showcase-card";
 import { formatCount } from "@/lib/format";
 import type { ScopePage } from "@/lib/registry/registry";
 
@@ -70,20 +71,7 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
 
       <div className="h-px bg-border" />
 
-      <section className="flex flex-col gap-4">
-        <h2 className="font-bold font-heading text-xl tracking-tight">
-          Plugins <span className="font-medium text-muted-foreground">{plugins.length}</span>
-        </h2>
-        {plugins.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No published Brika plugins yet.</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {plugins.map((plugin) => (
-              <ShowcaseCard key={plugin.name} plugin={plugin} />
-            ))}
-          </div>
-        )}
-      </section>
+      <PublishedPlugins plugins={plugins} />
     </main>
   );
 }

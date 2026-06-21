@@ -9,7 +9,8 @@ import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { Stars } from "@/components/clay/stars";
 import { NotFoundPage } from "@/components/feedback/error-pages";
 import { ProfileLinks } from "@/components/plugin/profile-links";
-import { ShowcaseCard, Stat } from "@/components/plugin/showcase-card";
+import { PublishedPlugins } from "@/components/plugin/published-plugins";
+import { Stat } from "@/components/plugin/showcase-card";
 import { formatCount } from "@/lib/format";
 import { searchPlugins } from "@/lib/registry/registry";
 import { getUserProfile, listReviewsByUser } from "@/lib/social/social";
@@ -117,20 +118,7 @@ function UserProfileView({ page }: Readonly<{ page: UserPage }>) {
 
       <div className="h-px bg-border" />
 
-      <section className="flex flex-col gap-4">
-        <h2 className="font-bold font-heading text-xl tracking-tight">
-          Plugins <span className="font-medium text-muted-foreground">{plugins.length}</span>
-        </h2>
-        {plugins.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No published Brika plugins yet.</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {plugins.map((plugin) => (
-              <ShowcaseCard key={plugin.name} plugin={plugin} />
-            ))}
-          </div>
-        )}
-      </section>
+      <PublishedPlugins plugins={plugins} />
 
       {reviews.length > 0 ? (
         <section className="flex flex-col gap-4">
