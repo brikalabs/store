@@ -17,6 +17,8 @@ traceability:
 `GET /auth/me` returns the signed-in user (id, login, name, avatarUrl) or `null`. The response
 is never cached.
 
+> **Note:** BetterAuth will absorb this into its session/get-session endpoint (see `AUTH-012`) once multi-provider auth ships.
+
 ## Acceptance criteria
 
 ### AUTH-005-AC1 , Returns the user for a valid session

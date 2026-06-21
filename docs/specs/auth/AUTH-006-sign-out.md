@@ -16,6 +16,8 @@ traceability:
 
 `GET /auth/logout` clears the session cookie and returns the user home.
 
+> **Note:** BetterAuth will absorb this into its sign-out endpoint, deleting the D1 `session` row (see `AUTH-012`), once multi-provider auth ships.
+
 ## Acceptance criteria
 
 ### AUTH-006-AC1 , Clears the session cookie and redirects home

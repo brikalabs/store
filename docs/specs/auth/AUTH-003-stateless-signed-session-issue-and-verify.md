@@ -15,6 +15,8 @@ traceability:
 
 ## Description
 
+> **Planned supersession:** replaced by BetterAuth DB-backed sessions (see `AUTH-012`); the stateless signed cookie gives way to a D1-stored `session` row. Still `done` and accurate for current production; not retired until BetterAuth ships.
+
 The session is stateless: the `brika_session` value is `<userId>.<hmac>`, where the HMAC is
 computed over the user id with `SESSION_SECRET` (HMAC-SHA-256). Verification recomputes the
 HMAC and compares in constant time. No session table is read or written.

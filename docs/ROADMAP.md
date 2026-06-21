@@ -12,6 +12,7 @@ Status of the platform and the precise next steps. Legend: ✅ done and verified
 | Store: social (GitHub OAuth, reviews, comments, helpful/upvote grading) | ✅ |
 | Store: media (icon, localized readme/changelog, screenshots via jsDelivr) | ✅ |
 | Store: developer console (profile, your packages by ownership, publish setup) | ✅ |
+| Auth/identity: BetterAuth multi-provider sign-in + account linking + first-class account, public `/u/:id` profile (AUTH-010..013, USER-001..005) | ⬜ |
 | Scope model: scope is the ownership account (members on the scope), public `/@scope` page | ✅ |
 | Scope model: anti-squat claim rate limit + per-account cap (ORG-004/005) | ✅ |
 | Scope model: profile (description, links, logo upload) + verified domains (ORG-009/010) | ✅ |
@@ -54,6 +55,18 @@ Largely built. Remaining:
   "organisation owns scopes" model (`ORG-001`/`002`/`003`/`008`) was collapsed back into
   the scope and those specs are retired to `gone` (see
   [ADR 0001](./adr/0001-organisation-1n-model.md)).
+- ⬜ **Auth + identity rework**: adopt **BetterAuth** for console sign-in -
+  provider-agnostic social sign-in (GitHub now, Google/GitLab/etc. pluggable),
+  account linking, and DB-backed sessions via its Drizzle/D1 adapter on Workers
+  (`AUTH-010`..`AUTH-013`), replacing the hand-rolled GitHub-only OAuth + stateless
+  signed-cookie session (`AUTH-001`/`002`/`003`, kept `done` until BetterAuth ships).
+  The **account** becomes the first-class identity (`USER-001`; drop the `developers`
+  table and stored `pluginCount`), with a user-authored profile - never npm-derived
+  (`USER-005`) - editable in the console (`CONSOLE-012`/`USER-003`), link/unlink in
+  `USER-004`, and a public page at `store.brika.dev/u/:id` (`USER-002`) that replaces
+  the gone npm-maintainer `/developers/:id` page (`STORE-004`). The registry CLI
+  device-auth (`AUTH-008`) and token/OIDC publish path (`PUB-016`) are unchanged. See
+  [ADR 0003](./adr/0003-betterauth-and-user-profiles.md).
 - ⬜ **Console slices still to build**: review responses + comment moderation.
   (Editable per-plugin listing overrides were dropped: the listing is the
   published manifest; the per-plugin page is version management only.)

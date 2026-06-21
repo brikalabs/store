@@ -15,6 +15,8 @@ traceability:
 
 ## Description
 
+> **Planned supersession:** replaced by BetterAuth multi-provider auth (the provider callback, see `AUTH-010`). Still `done` and accurate for current production; not retired until BetterAuth ships.
+
 `GET /auth/github/callback` finishes the flow: it validates the returned state against the
 state cookie, exchanges the code for a token, fetches the GitHub user, upserts the user row,
 marks the developer verified, sets the `brika_session` cookie, and redirects to the saved

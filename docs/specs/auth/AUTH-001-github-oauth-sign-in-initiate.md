@@ -15,6 +15,8 @@ traceability:
 
 ## Description
 
+> **Planned supersession:** replaced by BetterAuth multi-provider auth (provider-agnostic sign-in, see `AUTH-010`). Still `done` and accurate for current production; not retired until BetterAuth ships.
+
 `GET /auth/github` starts the Authorization Code flow: it mints a CSRF state, stashes a
 safe return path, sets both as short-lived cookies, and redirects to GitHub's authorize
 endpoint. An optional `?return=<path>` is remembered so the callback can land the user back
