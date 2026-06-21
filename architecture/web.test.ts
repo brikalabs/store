@@ -8,9 +8,10 @@ import { describe, test } from "bun:test";
  * `server/services/*`; routes and components see a service, never SQL.
  */
 
-/** The social tables (the store's own drizzle schema) + the raw ORM. */
+/** The social tables (the store's own drizzle schema) + the raw ORM + the shared D1 adapters. */
 const SOCIAL_SCHEMA = modules("@/server/db/schema");
 const RAW_ORM = modules("drizzle-orm");
+const D1_ADAPTERS = modules("@brika/store-db/adapters");
 
 describe("apps/web layering", () => {
   test("routes + components never touch the ORM or the social tables (they go through a service)", () => {
@@ -29,6 +30,30 @@ describe("apps/web layering", () => {
         "apps/web/src/server/auth.ts",
       )
       .mayNotImport(SOCIAL_SCHEMA)
+      .assert();
+  });
+
+  test("the raw ORM is confined to the stores + the db client (not the wider app)", () => {
+    rule()
+      .filesMatching("apps/web/src")
+      .except(
+        "apps/web/src/server/stores",
+        "apps/web/src/server/db",
+        // BetterAuth's device-approval read is a known direct-ORM use, server-only.
+        "apps/web/src/lib/auth/device-approval.ts",
+      )
+      .mayNotImport(RAW_ORM)
+      .assert();
+  });
+
+  test("the shared D1 adapters reach the app only through the stores + the composition root", () => {
+    rule()
+      .filesMatching("apps/web/src")
+      .except(
+        "apps/web/src/server/stores",
+        "apps/web/src/server/registry-services.ts",
+      )
+      .mayNotImport(D1_ADAPTERS)
       .assert();
   });
 });
