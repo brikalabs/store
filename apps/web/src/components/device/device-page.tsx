@@ -1,8 +1,8 @@
 import { getRouteApi } from "@tanstack/react-router";
 import { KeyRound } from "lucide-react";
-import { type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type SyntheticEvent, useCallback, useState } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { CODE_LENGTH, isLocalHost, normalizeCode, withSeparator } from "@/lib/device-code";
+import { normalizeCode, withSeparator } from "@/lib/device-code";
 import { DeviceBody } from "./device-body";
 
 const route = getRouteApi("/device");
@@ -13,7 +13,6 @@ export function DevicePage() {
   const [value, setValue] = useState(() => normalizeCode(code ?? ""));
   const [state, setState] = useState<"idle" | "ok" | "error">("idle");
   const [submitting, setSubmitting] = useState(false);
-  const autoApproved = useRef(false);
 
   const submitApprove = useCallback(async (userCode: string) => {
     setSubmitting(true);
@@ -26,19 +25,6 @@ export function DevicePage() {
     setSubmitting(false);
     setState(res.ok ? "ok" : "error");
   }, []);
-
-  // Local-dev convenience only: when you arrive already signed in with the code
-  // pre-filled from the URL, approve automatically. Gated to localhost on
-  // purpose - auto-approving in production would let an attacker get their own
-  // device code approved by luring a signed-in user to /device?code=..., so the
-  // deployed flow always keeps the explicit "Authorize" click below.
-  useEffect(() => {
-    if (autoApproved.current || loading || user === null) return;
-    const normalized = normalizeCode(code ?? "");
-    if (normalized.length < CODE_LENGTH || !isLocalHost()) return;
-    autoApproved.current = true;
-    void submitApprove(normalized);
-  }, [loading, user, code, submitApprove]);
 
   function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -13,10 +13,3 @@ export function normalizeCode(raw: string): string {
 export function withSeparator(value: string): string {
   return `${value.slice(0, 4)}-${value.slice(4)}`;
 }
-
-/** True only on a local dev origin; auto-approval is gated to these. */
-export function isLocalHost(): boolean {
-  if (typeof document === "undefined") return false;
-  const { hostname } = globalThis.location;
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
-}
