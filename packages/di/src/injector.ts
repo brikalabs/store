@@ -110,17 +110,27 @@ export function isInInjectionContext(): boolean {
   return ACTIVE.getStore() !== undefined;
 }
 
+/** Options for {@link inject} / {@link Injector.get}. */
+export interface InjectOptions {
+  /** Return `undefined` instead of throwing when nothing provides the token. */
+  readonly optional?: boolean;
+}
+
 /**
  * Resolve a dependency from the active injector. Call it in a field initializer / constructor of
  * an injector-built class, or anywhere within {@link runInInjectionContext}. Throws when there is
- * no active context (so a forgotten `runInInjectionContext` fails loudly, not silently).
+ * no active context (so a forgotten `runInInjectionContext` fails loudly, not silently), or when
+ * nothing provides the token - unless `{ optional: true }`, which yields `undefined` instead.
  */
-export function inject<T>(token: ProviderToken<T>): T {
+export function inject<T>(token: ProviderToken<T>): T;
+export function inject<T>(token: ProviderToken<T>, options: { optional: true }): T | undefined;
+export function inject<T>(token: ProviderToken<T>, options?: InjectOptions): T | undefined {
   const injector = ACTIVE.getStore();
   if (injector === undefined) {
+    if (options?.optional === true) return undefined;
     throw new Error(`inject(${tokenName(token)}) called outside an injection context`);
   }
-  return injector.get(token);
+  return options?.optional === true ? injector.get(token, { optional: true }) : injector.get(token);
 }
 
 /** Run `fn` with `injector` active, so `inject()` inside it (and its awaits) resolves against it. */
@@ -155,10 +165,21 @@ export class Injector {
     this.#instances.set(Injector, this); // `inject(Injector)` yields the injector itself
   }
 
-  get<T>(token: ProviderToken<T>): T {
+  get<T>(token: ProviderToken<T>): T;
+  get<T>(token: ProviderToken<T>, options: { optional: true }): T | undefined;
+  get<T>(token: ProviderToken<T>, options?: InjectOptions): T | undefined {
+    if (options?.optional === true && !this.#providable(token)) return undefined;
     // The single typed boundary of a heterogeneous container: the maps are keyed by erased
     // tokens, so the value is recovered as `T` here (the provider's type guarantees it).
     return this.#resolve(token) as T;
+  }
+
+  /** Whether `token` can be resolved at all (a provider/instance anywhere, a root default, an
+   *  InjectionToken default factory, or a constructable class). Drives `{ optional: true }`. */
+  #providable(token: ProviderToken<unknown>): boolean {
+    if (this.#canResolve(token) || ROOT_PROVIDERS.has(token)) return true;
+    if (token instanceof InjectionToken) return token.factory !== undefined;
+    return true; // a concrete class is its own provider
   }
 
   #resolve(token: ProviderToken<unknown>): unknown {

@@ -5,6 +5,7 @@ export {
   type FactoryProvider,
   InjectionToken,
   type InjectionTokenOptions,
+  type InjectOptions,
   Injector,
   inject,
   isInInjectionContext,
