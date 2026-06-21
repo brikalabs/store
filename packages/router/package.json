@@ -25,6 +25,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@brika/stack": "workspace:*",
     "hono": "^4.12.25",
     "zod": "^4.4.3"
   },

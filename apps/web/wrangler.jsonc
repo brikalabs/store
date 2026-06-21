@@ -36,12 +36,21 @@
     }
   ],
   // Mirrored icons + readmes. Create with `wrangler r2 bucket create brika-store-assets`.
+  // Local dev uses a fully LOCAL miniflare bucket (fast, offline, no auth); avatars still resolve
+  // because dev's ASSETS_PUBLIC_URL (.dev.vars) points at the worker `/assets/<key>` route, which
+  // streams the local bucket. In prod ASSETS_PUBLIC_URL is the bucket's r2.dev URL (served direct).
   "r2_buckets": [
     {
       "binding": "ASSETS",
       "bucket_name": "brika-store-assets"
     }
-  ]
+  ],
+  // Public base URL of the ASSETS bucket (r2.dev public access, enabled with
+  // `wrangler r2 bucket dev-url enable brika-store-assets`), for serving uploaded avatars directly
+  // off R2's CDN. Non-secret; re-fetch with `wrangler r2 bucket dev-url get brika-store-assets`.
+  "vars": {
+    "ASSETS_PUBLIC_URL": "https://pub-fd529148655f473aabce44ccd37362ad.r2.dev"
+  }
   // No cron yet: the npm cache fills lazily (cache-aside) on read. Add a
   // "triggers".crons schedule here once a scheduled() prewarm handler exists
   // (see DEPLOYMENT.md follow-ups) so we don't fire an unhandled cron event.

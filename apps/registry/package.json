@@ -22,6 +22,7 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@brika/di": "workspace:*",
     "@brika/env": "workspace:*",
     "@brika/registry-core": "workspace:*",
     "@brika/router": "workspace:*",

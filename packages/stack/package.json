@@ -1,0 +1,30 @@
+{
+  "name": "@brika/stack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Best-effort source-location helpers over Error.stack: parse a frame, find a module's own file, find the first caller outside it - for naming routes and DI tokens by where they were declared",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brikalabs/store.git",
+    "directory": "packages/stack"
+  },
+  "license": "MIT",
+  "author": "Brika Labs",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.5",
+    "typescript": "^6.0.3"
+  }
+}

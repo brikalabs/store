@@ -33,6 +33,12 @@ export const vars = defineEnv(
     // the registry worker's REGISTRY_ADMINS so the console and the takedown endpoints agree on
     // who is an operator. Empty -> no operators, so the console is unreachable until set.
     REGISTRY_ADMINS: z.string().default(""),
+    // Public base URL of the ASSETS R2 bucket, used to build public object URLs for directly-served
+    // assets like uploaded user avatars. Set it to the bucket's managed r2.dev URL (enable public
+    // access on the bucket -> `https://pub-<hash>.r2.dev`) or a custom domain. No default: it is
+    // deployment-specific, and a wrong value would silently produce dead URLs. Unset -> avatar
+    // upload fails loudly (the rest of the app is unaffected).
+    ASSETS_PUBLIC_URL: z.url().optional(),
   },
   () => env,
 );

@@ -146,9 +146,7 @@ export function CommentsSection({ pluginName, fallback = [] }: Props) {
 function CommentMeta({ comment }: Readonly<{ comment: Comment }>) {
   return (
     <div className="flex items-center gap-2">
-      <span className="font-semibold text-foreground text-sm">
-        {comment.author.name ?? comment.author.login}
-      </span>
+      <span className="font-semibold text-foreground text-sm">{comment.author.displayName}</span>
       <span className="text-muted-foreground text-xs">{formatDate(comment.createdAt)}</span>
     </div>
   );
@@ -169,7 +167,8 @@ function CommentThread({
     <article className="flex gap-3">
       <GradientAvatar
         seed={comment.author.id}
-        label={comment.author.name ?? comment.author.login}
+        label={comment.author.displayName}
+        imageUrl={comment.author.avatarUrl}
         size={34}
         className="rounded-[9px]"
       />
@@ -191,7 +190,8 @@ function CommentThread({
               <div key={reply.id} className="flex gap-2.5">
                 <GradientAvatar
                   seed={reply.author.id}
-                  label={reply.author.name ?? reply.author.login}
+                  label={reply.author.displayName}
+                  imageUrl={reply.author.avatarUrl}
                   size={30}
                   className="rounded-lg"
                 />

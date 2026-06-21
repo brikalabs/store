@@ -5,7 +5,6 @@ import { getRequest } from "@tanstack/react-start/server";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { operatorAdmins } from "@/server/env";
 import { sessionIdentity } from "@/server/registry-identity";
-import { serverContext } from "@/server/server-context";
 
 /**
  * Resolve the signed-in operator from the request cookie, or null when the session is
@@ -16,8 +15,7 @@ import { serverContext } from "@/server/server-context";
  */
 export const fetchOperator = createServerFn().handler(
   async (): Promise<{ login: string } | null> => {
-    const { db } = serverContext();
-    const user = await getCurrentUser(getRequest(), db);
+    const user = await getCurrentUser(getRequest());
     if (user === null || !isOperator(operatorAdmins(), sessionIdentity(user))) return null;
     return { login: user.login };
   },

@@ -1,5 +1,4 @@
 import { getAuth } from "@/server/auth";
-import type { Db } from "@/server/db/client";
 
 // Pure cookie/redirect helpers live in `./auth-cookies` (unit-tested there);
 // re-exported so callers keep importing them from `./auth`.
@@ -21,10 +20,9 @@ export interface SessionUser {
 /**
  * Resolve the BetterAuth-backed session for the request and map it to a
  * `SessionUser`, or null when signed-out / the session row is expired or revoked
- * (AUTH-012). The `db` parameter is kept for the call-site contract; BetterAuth
- * reads its own bound D1 client, so it is intentionally unused here.
+ * (AUTH-012). BetterAuth reads its own bound D1 client, so no `db` is threaded in.
  */
-export async function getCurrentUser(request: Request, _db: Db): Promise<SessionUser | null> {
+export async function getCurrentUser(request: Request): Promise<SessionUser | null> {
   const session = await getAuth().api.getSession({ headers: request.headers });
   if (session === null) return null;
   const user = session.user as {

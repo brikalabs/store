@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { type Provider, runInContext } from "@brika/di";
 import { type DnsResolver, type DomainChallenge, ScopeService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
 import type { Db } from "@brika/store-db";
 import { D1ScopeDomains, D1ScopeMembers, D1ScopeStore, issueToken } from "@brika/store-db/adapters";
-import { buildServices, type Services } from "../services";
+import { provideRegistry } from "../services";
 import { fakeR2, makeDb } from "../test-harness";
 
 /**
  * Controller tests for the scope profile/domain handlers (ORG-009/010): the thin HTTP layer
- * over `ctx.scopes`. `cloudflare:workers` is stubbed (the publish/manage controllers
- * transitively import it); handlers are imported after the stub.
+ * over `inject(ScopeService)`. Each handler runs inside an injection context built from the
+ * in-memory graph (the `run` helper), the same seam `mount({ around })` establishes in
+ * production. `cloudflare:workers` is stubbed (the publish/manage controllers transitively
+ * import it); handlers are imported after the stub.
  */
 mock.module("cloudflare:workers", () => ({ env: { STORE_URL: "http://localhost:3000/" } }));
 
@@ -25,8 +28,17 @@ async function statusOf(run: Promise<Response>): Promise<number> {
   }
 }
 
-function services(db: Db): Services {
-  return buildServices(db, fakeR2(), "http://localhost:8787");
+function services(db: Db): Provider[] {
+  return provideRegistry({ db, tarballs: fakeR2(), baseUrl: "http://localhost:8787" });
+}
+
+/**
+ * Run a handler inside the per-request injection context the `mount({ around })` wrapper
+ * would establish in production, so its `inject(...)` calls resolve. `extra` providers are
+ * appended so a test can override one dependency with a mock (a later provider wins).
+ */
+function run<T>(providers: Provider[], fn: () => Promise<T>, extra: Provider[] = []): Promise<T> {
+  return runInContext([...providers, ...extra], fn);
 }
 
 function post(body: unknown, token?: string): Request {
@@ -43,7 +55,7 @@ beforeEach(() => {
 /** Claim `scope` as `login` (who becomes its admin) and return the admin's token. */
 async function seedScopeAdmin(login: string, scope: string): Promise<string> {
   const token = await issueToken(db, login);
-  await createScope({ params: { scope }, req: post(undefined, token), ctx: services(db) });
+  await run(services(db), () => createScope({ params: { scope }, req: post(undefined, token) }));
   return token;
 }
 
@@ -51,13 +63,13 @@ describe("getScope (public)", () => {
   test("200 with the scope's public fields (no sub-scopes); 404 for an unknown scope", async () => {
     await seedScopeAdmin("alice", "@acme");
     const ctx = services(db);
-    const res = await getScope({ params: { scope: "@acme" }, ctx });
+    const res = await run(ctx, () => getScope({ params: { scope: "@acme" } }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body).toMatchObject({ ok: true, scope: "@acme", iconKey: null });
     // A scope no longer owns sub-scopes: the public payload exposes no `scopes` array.
     expect(body).not.toHaveProperty("scopes");
-    expect(await statusOf(getScope({ params: { scope: "@nope" }, ctx }))).toBe(404);
+    expect(await statusOf(run(ctx, () => getScope({ params: { scope: "@nope" } })))).toBe(404);
   });
 });
 
@@ -68,23 +80,21 @@ describe("setProfile (ORG-009)", () => {
       description: "We build things",
       links: [{ label: "X", url: "https://x.com/a" }],
     };
-    const res = await setProfile({
-      params: { scope: "@acme" },
-      body,
-      req: post(body, alice),
-      ctx: services(db),
-    });
+    const res = await run(services(db), () =>
+      setProfile({ params: { scope: "@acme" }, body, req: post(body, alice) }),
+    );
     expect(res.status).toBe(200);
 
     const bob = await issueToken(db, "bob");
     expect(
       await statusOf(
-        setProfile({
-          params: { scope: "@acme" },
-          body: { description: null, links: [] },
-          req: post(undefined, bob),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          setProfile({
+            params: { scope: "@acme" },
+            body: { description: null, links: [] },
+            req: post(undefined, bob),
+          }),
+        ),
       ),
     ).toBe(403);
   });
@@ -93,21 +103,17 @@ describe("setProfile (ORG-009)", () => {
 describe("domains (ORG-010)", () => {
   test("add returns the TXT host + value; list reflects it; a bad domain is 400; non-admin 403", async () => {
     const alice = await seedScopeAdmin("alice", "@acme");
-    const add = await addDomain({
-      params: { scope: "@acme", domain: "acme.dev" },
-      req: post(undefined, alice),
-      ctx: services(db),
-    });
+    const add = await run(services(db), () =>
+      addDomain({ params: { scope: "@acme", domain: "acme.dev" }, req: post(undefined, alice) }),
+    );
     expect(add.status).toBe(201);
     const added = (await add.json()) as { host: string; txt: string };
     expect(added.host).toBe("_brika-challenge.acme.dev");
     expect(added.txt.length).toBeGreaterThan(0);
 
-    const list = await listDomains({
-      params: { scope: "@acme" },
-      req: post(undefined, alice),
-      ctx: services(db),
-    });
+    const list = await run(services(db), () =>
+      listDomains({ params: { scope: "@acme" }, req: post(undefined, alice) }),
+    );
     const listed = (await list.json()) as { domains: { domain: string; host: string }[] };
     expect(listed.domains).toMatchObject([
       { domain: "acme.dev", host: "_brika-challenge.acme.dev" },
@@ -116,22 +122,21 @@ describe("domains (ORG-010)", () => {
     // A non-canonical domain is rejected at the controller (parseDomain -> 400).
     expect(
       await statusOf(
-        addDomain({
-          params: { scope: "@acme", domain: "not a domain" },
-          req: post(undefined, alice),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          addDomain({
+            params: { scope: "@acme", domain: "not a domain" },
+            req: post(undefined, alice),
+          }),
+        ),
       ),
     ).toBe(400);
 
     const bob = await issueToken(db, "bob");
     expect(
       await statusOf(
-        addDomain({
-          params: { scope: "@acme", domain: "evil.dev" },
-          req: post(undefined, bob),
-          ctx: services(db),
-        }),
+        run(services(db), () =>
+          addDomain({ params: { scope: "@acme", domain: "evil.dev" }, req: post(undefined, bob) }),
+        ),
       ),
     ).toBe(403);
   });
@@ -146,36 +151,55 @@ describe("domains (ORG-010)", () => {
       new D1ScopeDomains(db),
       { domainChallenge: challenge, dnsResolver: dns },
     );
-    const ctx: Services = { ...services(db), scopes };
+    // Override just the ScopeService with the deterministic one; the rest of the graph is real.
+    const overrides: Provider[] = [{ provide: ScopeService, useValue: scopes }];
+    const graph = services(db);
     const token = await issueToken(db, "alice");
-    await createScope({ params: { scope: "@acme" }, req: post(undefined, token), ctx });
-    await addDomain({
-      params: { scope: "@acme", domain: "acme.dev" },
-      req: post(undefined, token),
-      ctx,
-    });
+    await run(
+      graph,
+      () => createScope({ params: { scope: "@acme" }, req: post(undefined, token) }),
+      overrides,
+    );
+    await run(
+      graph,
+      () =>
+        addDomain({ params: { scope: "@acme", domain: "acme.dev" }, req: post(undefined, token) }),
+      overrides,
+    );
 
-    const verify = await verifyDomain({
-      params: { scope: "@acme", domain: "acme.dev" },
-      req: post(undefined, token),
-      ctx,
-    });
+    const verify = await run(
+      graph,
+      () =>
+        verifyDomain({
+          params: { scope: "@acme", domain: "acme.dev" },
+          req: post(undefined, token),
+        }),
+      overrides,
+    );
     expect(verify.status).toBe(200);
     expect(await verify.json()).toMatchObject({ verified: true });
 
-    const del = await deleteDomain({
-      params: { scope: "@acme", domain: "acme.dev" },
-      req: post(undefined, token),
-      ctx,
-    });
-    expect(del.status).toBe(200);
-    expect(
-      await statusOf(
+    const del = await run(
+      graph,
+      () =>
         deleteDomain({
           params: { scope: "@acme", domain: "acme.dev" },
           req: post(undefined, token),
-          ctx,
         }),
+      overrides,
+    );
+    expect(del.status).toBe(200);
+    expect(
+      await statusOf(
+        run(
+          graph,
+          () =>
+            deleteDomain({
+              params: { scope: "@acme", domain: "acme.dev" },
+              req: post(undefined, token),
+            }),
+          overrides,
+        ),
       ),
     ).toBe(404);
   });

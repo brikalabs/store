@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { inject, type Provider, runInContext } from "@brika/di";
+import { DeviceService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
 import { type Db, regDeviceAuth, regTokens } from "@brika/store-db";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { mount } from "../http/router";
-import { buildServices, type Services } from "../services";
+import { provideRegistry } from "../services";
 import { fakeR2, makeDb } from "../test-harness";
 
 /**
@@ -35,8 +37,16 @@ mock.module("cloudflare:workers", () => {
 const { handleDeviceCode, handleDeviceToken, handleRevoke, handleWhoami, deviceController } =
   await import("./device");
 
-function services(db: Db): Services {
-  return buildServices(db, fakeR2(), "http://localhost:8787");
+function services(db: Db): Provider[] {
+  return provideRegistry({ db, tarballs: fakeR2(), baseUrl: "http://localhost:8787" });
+}
+
+/**
+ * Run a handler inside the per-request injection context the `mount({ around })` wrapper
+ * would establish in production, so its `inject(...)` calls resolve.
+ */
+function run<T>(providers: Provider[], fn: () => Promise<T>): Promise<T> {
+  return runInContext(providers, fn);
 }
 
 function tokenRequest(body: unknown): Request {
@@ -64,7 +74,7 @@ beforeEach(() => {
 
 describe("handleDeviceCode", () => {
   test("issues a grant and returns the verification URLs (trailing slash trimmed)", async () => {
-    const res = await handleDeviceCode(services(db));
+    const res = await run(services(db), () => handleDeviceCode());
     expect(res.status).toBe(200);
     const body = await res.json();
 
@@ -87,7 +97,11 @@ describe("device-code rate limiting (declared via route middleware)", () => {
   /** Mount the real device controller; the limiter comes from the mocked binding. */
   function mountedApp(): Hono {
     const app = new Hono();
-    mount(app, [deviceController], { context: () => services(db) });
+    // The handlers resolve their deps via `inject(...)`, so the per-request graph is supplied
+    // through the same `around` injection-context wrapper the worker uses (not a `ctx` factory).
+    mount(app, [deviceController], {
+      around: (_c, exec) => runInContext(services(db), exec),
+    });
     return app;
   }
 
@@ -119,7 +133,7 @@ describe("device-code rate limiting (declared via route middleware)", () => {
 
 describe("handleDeviceToken", () => {
   test("400 invalid_request when the body is missing device_code", async () => {
-    expect(await statusOf(handleDeviceToken(tokenRequest({}), services(db)))).toBe(400);
+    expect(await statusOf(run(services(db), () => handleDeviceToken(tokenRequest({}))))).toBe(400);
   });
 
   test("400 invalid_request when the body is not valid JSON", async () => {
@@ -128,26 +142,28 @@ describe("handleDeviceToken", () => {
       headers: { "content-type": "application/json" },
       body: "not json",
     });
-    expect(await statusOf(handleDeviceToken(req, services(db)))).toBe(400);
+    expect(await statusOf(run(services(db), () => handleDeviceToken(req)))).toBe(400);
   });
 
   test("400 (authorization_pending) when the grant exists but is not approved", async () => {
     const ctx = services(db);
-    const issued = await ctx.devices.requestCode();
+    const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await expect(
-      handleDeviceToken(tokenRequest({ device_code: issued.deviceCode }), ctx),
+      run(ctx, () => handleDeviceToken(tokenRequest({ device_code: issued.deviceCode }))),
     ).rejects.toMatchObject({ status: 400, message: "authorization_pending" });
   });
 
   test("issues a publish token once the grant is approved, consuming the grant", async () => {
     const ctx = services(db);
-    const issued = await ctx.devices.requestCode();
+    const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await db
       .update(regDeviceAuth)
       .set({ approved: true, githubLogin: "octocat" })
       .where(eq(regDeviceAuth.deviceCode, issued.deviceCode));
 
-    const res = await handleDeviceToken(tokenRequest({ device_code: issued.deviceCode }), ctx);
+    const res = await run(ctx, () =>
+      handleDeviceToken(tokenRequest({ device_code: issued.deviceCode })),
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.token_type).toBe("bearer");
@@ -166,25 +182,25 @@ describe("handleDeviceToken", () => {
 describe("handleWhoami", () => {
   test("401 when there is no Bearer authorization header", async () => {
     const req = new Request("http://localhost/", { method: "GET" });
-    expect(await statusOf(handleWhoami(req, services(db)))).toBe(401);
+    expect(await statusOf(run(services(db), () => handleWhoami(req)))).toBe(401);
   });
 
   test("returns the token's github login + display name (null without a store user)", async () => {
     const ctx = services(db);
-    const issued = await ctx.devices.requestCode();
+    const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await db
       .update(regDeviceAuth)
       .set({ approved: true, githubLogin: "octocat" })
       .where(eq(regDeviceAuth.deviceCode, issued.deviceCode));
     const tokenBody = await (
-      await handleDeviceToken(tokenRequest({ device_code: issued.deviceCode }), ctx)
+      await run(ctx, () => handleDeviceToken(tokenRequest({ device_code: issued.deviceCode })))
     ).json();
 
     const req = new Request("http://localhost/", {
       method: "GET",
       headers: { authorization: `Bearer ${tokenBody.access_token}` },
     });
-    const res = await handleWhoami(req, ctx);
+    const res = await run(ctx, () => handleWhoami(req));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.github_login).toBe("octocat");
@@ -196,26 +212,26 @@ describe("handleWhoami", () => {
 describe("handleRevoke", () => {
   test("401 when there is no Bearer authorization header", async () => {
     const req = new Request("http://localhost/", { method: "POST" });
-    expect(await statusOf(handleRevoke(req, services(db)))).toBe(401);
+    expect(await statusOf(run(services(db), () => handleRevoke(req)))).toBe(401);
   });
 
   test("revokes the presented token and returns ok", async () => {
     const ctx = services(db);
     // Mint a token via the device flow so a row exists to revoke.
-    const issued = await ctx.devices.requestCode();
+    const issued = await run(ctx, () => inject(DeviceService).requestCode());
     await db
       .update(regDeviceAuth)
       .set({ approved: true, githubLogin: "octocat" })
       .where(eq(regDeviceAuth.deviceCode, issued.deviceCode));
     const tokenBody = await (
-      await handleDeviceToken(tokenRequest({ device_code: issued.deviceCode }), ctx)
+      await run(ctx, () => handleDeviceToken(tokenRequest({ device_code: issued.deviceCode })))
     ).json();
 
     const req = new Request("http://localhost/", {
       method: "POST",
       headers: { authorization: `Bearer ${tokenBody.access_token}` },
     });
-    const res = await handleRevoke(req, ctx);
+    const res = await run(ctx, () => handleRevoke(req));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
     expect(await db.select().from(regTokens)).toHaveLength(0);
@@ -226,7 +242,7 @@ describe("handleRevoke", () => {
       method: "POST",
       headers: { authorization: "Bearer brika_unknown" },
     });
-    const res = await handleRevoke(req, services(db));
+    const res = await run(services(db), () => handleRevoke(req));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
   });

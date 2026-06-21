@@ -1,8 +1,9 @@
-import { listSubjectTokens } from "@brika/store-db/adapters";
+import { inject } from "@brika/di";
+import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonPrivate } from "@/lib/http";
-import { authed, runJson } from "@/server/console-api";
-import { registryDb } from "@/server/registry-services";
+import { runAuthed } from "@/server/http";
+import { Tokens } from "@/server/registry-services";
+import { PublishTokenStore } from "@/server/stores/publish-token-store";
 
 /**
  * `GET  /api/account/tokens` - the signed-in user's publish tokens (metadata only; the
@@ -12,16 +13,14 @@ export const Route = createFileRoute("/api/account/tokens")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const tokens = await listSubjectTokens(registryDb(), "github", a.user.login);
-          return jsonPrivate({ tokens });
+        runAuthed(request, async (a) => {
+          const tokens = await inject(PublishTokenStore).listSubjectTokens("github", a.user.login);
+          return reply({ tokens });
         }),
       POST: ({ request }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const token = await a.svc.tokens.issue(a.user.login);
-          return jsonPrivate({ token }, 201);
+        runAuthed(request, async (a) => {
+          const token = await inject(Tokens).issue(a.user.login);
+          return reply({ token }, 201);
         }),
     },
   },

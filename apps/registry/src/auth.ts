@@ -1,3 +1,4 @@
+import { inject } from "@brika/di";
 import {
   GITHUB_ISSUER,
   GITLAB_ISSUER,
@@ -13,7 +14,7 @@ import {
 } from "@brika/registry-core";
 import { forbidden, type RateLimitKey, unauthorized } from "@brika/router";
 import { CachingJwksProvider } from "./adapters/jwks";
-import type { Services } from "./services";
+import { Admins, Tokens } from "./services";
 
 /**
  * Shared write-authentication for the registry's mutating endpoints (publish,
@@ -85,7 +86,7 @@ export async function authenticateWrite(
 /**
  * Like {@link authenticateWrite}, but throws `401 Unauthorized` instead of
  * returning `null`, so a handler reads the identity in one line:
- * `const identity = await requireWrite(req, ctx.tokens)`.
+ * `const identity = await requireWrite(req)` (the token store defaults to `inject(Tokens)`).
  *
  * Memoized per request (keyed by the `Request`): the rate-limit middleware and the
  * handler both call it, but the OIDC/JWKS verification runs only once. The cache
@@ -93,7 +94,10 @@ export async function authenticateWrite(
  */
 const identityByRequest = new WeakMap<Request, Promise<PublishIdentity>>();
 
-export function requireWrite(request: Request, tokens: TokenStore): Promise<PublishIdentity> {
+export function requireWrite(
+  request: Request,
+  tokens: TokenStore = inject(Tokens),
+): Promise<PublishIdentity> {
   const cached = identityByRequest.get(request);
   if (cached !== undefined) return cached;
   const resolved = authenticateWrite(request, tokens).then((identity) => {
@@ -108,10 +112,11 @@ export function requireWrite(request: Request, tokens: TokenStore): Promise<Publ
  * A `rateLimit` key strategy that keys by the authenticated principal: the OIDC
  * repository, else the token owner. For publish-style endpoints, where CI shares
  * GitHub Actions egress IPs so a per-IP key would throttle unrelated repos. Reuses
- * the memoized {@link requireWrite}, so it adds no extra verification.
+ * the memoized {@link requireWrite}, so it adds no extra verification. Runs inside the
+ * per-request injection context (the `mount({ around })` wrapper), so `inject` is valid.
  */
-export const principal: RateLimitKey<Services> = async ({ req, ctx }) => {
-  const identity = await requireWrite(req, ctx.tokens);
+export const principal: RateLimitKey<void> = async ({ req }) => {
+  const identity = await requireWrite(req);
   return identity.repository ?? identity.owner;
 };
 
@@ -127,8 +132,8 @@ export const principal: RateLimitKey<Services> = async ({ req, ctx }) => {
  */
 export async function requireAdmin(
   request: Request,
-  tokens: TokenStore,
-  admins: ReadonlySet<string>,
+  tokens: TokenStore = inject(Tokens),
+  admins: ReadonlySet<string> = inject(Admins),
 ): Promise<PublishIdentity> {
   const identity = await requireWrite(request, tokens);
   if (!isOperator(admins, identity)) throw forbidden("Not a registry admin");

@@ -89,21 +89,25 @@ silently rotting.
 
 ## Composition root (wiring)
 
-- **No DI container.** Dependencies are wired by hand in a per-request
-  composition root (`apps/registry/src/services.ts` `buildServices`, the web
-  `serverContext()`), then passed to handlers as a typed object. Handlers never
-  reach for the ambient `env`; the composition root is the single place bindings
-  are read. This keeps wiring explicit and handlers testable with fakes, with no
-  runtime/bundle cost on the Worker isolate.
-- **One source per service: the factory.** `Services` is
-  `ReturnType<typeof buildServices>`, inferred from the returned object, so adding
-  a service is a single entry in that object (its type flows into every handler);
-  there is no parallel interface to keep in sync.
-- **Why not a container** (tsyringe / Inversify / Awilix): evaluated and rejected.
-  On a stateless Worker isolate a container buys nothing the composition root does
-  not (the graph is built per request regardless), while costing reflect-metadata
-  cold-start (tsyringe), runtime resolution and ~37 transitive deps (Awilix), and
-  a second wiring to keep in sync. A typed factory is simpler and strictly safer.
+Both apps use one DI primitive, `@brika/di`. The full rules - how to use a dependency
+(`inject(Token)`), the decision for how to create one (auto-build class / `token<T>()` interface /
+provide a value), the composition root as a `providers` array, and testing - live in **[the DI
+guide](di.md)**. Treat it as the single source of truth; follow it, do not invent variants.
+
+In short: `inject(Token)` everywhere; an app class that only depends on injectables auto-builds with
+no registration; a value, a function, or a pure/external class (a `@brika/registry-core` service, a
+`@brika/store-db` adapter) is bound in the per-request composition root - `webProviders` in the web,
+`provideRegistry(config)` in the registry - which is the one place `cloudflare:workers` `env` is
+read. The framework glue (`runHandler`, the registry router's `mount({ around })`) runs every
+request inside `runInContext(providers, ...)`, so application code never calls `createInjector`.
+
+- **The pure core is never `inject()`ed.** `@brika/registry-core` may import only `zod` / `node:` /
+  relative paths (enforced). Its services stay constructor-injected and are bound into the app's
+  providers, so the app gets `inject()` DX with no framework dependency in the hexagon center.
+- **`@brika/di` is not a "DI container."** It is a small typed primitive: functional `inject()`,
+  hierarchical injectors, lazy memoized singletons. No decorators, no `reflect-metadata`, no
+  string-keyed registry. The heavy containers stay rejected (tsyringe's reflect-metadata cold-start,
+  Awilix's runtime resolution + ~37 transitive deps).
 
 ## Style
 

@@ -1,7 +1,8 @@
+import { inject } from "@brika/di";
+import { ScopeService, trustedPublisherSchema } from "@brika/registry-core";
+import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { jsonPrivate } from "@/lib/http";
-import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
+import { recordAudit, runAuthed } from "@/server/http";
 
 /**
  * Trusted-publisher bindings for a scope (PUB-016), admin-gated by the ScopeService.
@@ -9,56 +10,49 @@ import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
  *   PUT    /api/scopes/:scope/trusted-publishers   add    { provider, repository, workflow }
  *   DELETE /api/scopes/:scope/trusted-publishers   remove { provider, repository, workflow }
  */
-const Body = z.object({
-  provider: z.enum(["github", "gitlab"]),
-  repository: z.string().regex(/^[^\s/]+(?:\/[^\s/]+)+$/, "repository must be 'owner/repo'"),
-  workflow: z
-    .string()
-    .regex(/^[\w.-]+\.ya?ml$/, "workflow must be a workflow filename, e.g. publish.yml"),
-});
-
 export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
   server: {
     handlers: {
       GET: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const { publishers } = unwrap(
-            await a.svc.scopes.listTrustedPublishers(a.identity, params.scope),
+        runAuthed(request, async (a) => {
+          const { publishers } = okOrThrow(
+            await inject(ScopeService).listTrustedPublishers(a.identity, params.scope),
           );
-          return jsonPrivate({ scope: params.scope, publishers });
+          return reply({ scope: params.scope, publishers });
         }),
       PUT: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
-          const { publisher } = unwrap(
-            await a.svc.scopes.addTrustedPublisher(a.identity, params.scope, binding),
+        runAuthed(request, async (a) => {
+          const binding = await readBody(
+            request,
+            trustedPublisherSchema,
+            "Invalid trusted publisher",
           );
-          await a.svc.audit.record({
+          const { publisher } = okOrThrow(
+            await inject(ScopeService).addTrustedPublisher(a.identity, params.scope, binding),
+          );
+          await recordAudit(a, {
             action: "scope_trusted_publisher_add",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: binding,
           });
-          return jsonPrivate({ ok: true, publisher }, 201);
+          return reply({ ok: true, publisher }, 201);
         }),
       DELETE: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const binding = parseBody(Body, await request.json(), "Invalid trusted publisher");
-          const { removed } = unwrap(
-            await a.svc.scopes.removeTrustedPublisher(a.identity, params.scope, binding),
+        runAuthed(request, async (a) => {
+          const binding = await readBody(
+            request,
+            trustedPublisherSchema,
+            "Invalid trusted publisher",
           );
-          await a.svc.audit.record({
+          const { removed } = okOrThrow(
+            await inject(ScopeService).removeTrustedPublisher(a.identity, params.scope, binding),
+          );
+          await recordAudit(a, {
             action: "scope_trusted_publisher_remove",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: binding,
           });
-          return jsonPrivate({ ok: true, removed });
+          return reply({ ok: true, removed });
         }),
     },
   },

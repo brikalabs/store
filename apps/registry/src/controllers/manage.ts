@@ -1,10 +1,11 @@
-import type { ManagementService, ManageResult, PublishIdentity } from "@brika/registry-core";
+import { inject } from "@brika/di";
+import { ManagementService, type ManageResult, type PublishIdentity } from "@brika/registry-core";
 import { httpError, reply } from "@brika/router";
 import { type PackageParams, PKG, packageName } from "@brika/router/npm";
 import { z } from "zod";
 import { requireAdmin, requireWrite } from "../auth";
 import { controller, route } from "../http/router";
-import type { Services } from "../services";
+import { Audit } from "../services";
 
 /**
  * Post-publish management endpoints. The `PKG` pattern matches scoped and unscoped
@@ -25,11 +26,10 @@ const DeprecateBody = z.object({ message: z.string().max(1024).nullable() });
 const YankBody = z.object({ yanked: z.boolean() });
 const TakedownBody = z.object({ reason: z.string().min(1).max(1024) });
 
-/** What both management handlers need: typed params + the request + the service graph. */
+/** What both management handlers need: typed params + the request. Services are injected. */
 interface ManageContext {
   readonly params: PackageParams & { readonly version: string };
   readonly req: Request;
-  readonly ctx: Services;
 }
 
 /**
@@ -39,7 +39,6 @@ interface ManageContext {
  * is all that differs between the two runners.
  */
 async function auditAndRespond(
-  ctx: ManageContext["ctx"],
   action: string,
   name: string,
   version: string,
@@ -47,7 +46,7 @@ async function auditAndRespond(
   result: ManageResult,
   detail: Record<string, unknown>,
 ): Promise<Response> {
-  await ctx.audit.record({
+  await inject(Audit).record({
     action: result.ok ? action : `${action}_rejected`,
     packageName: name,
     version,
@@ -60,15 +59,15 @@ async function auditAndRespond(
 
 /** Authenticate the scope owner, run the mutation, and audit the outcome. */
 async function runManaged(
-  { params, req, ctx }: ManageContext,
+  { params, req }: ManageContext,
   action: string,
   run: (svc: ManagementService, actor: PublishIdentity, name: string) => Promise<ManageResult>,
   detail: Record<string, unknown>,
 ): Promise<Response> {
   const name = packageName(params);
-  const identity = await requireWrite(req, ctx.tokens);
-  const result = await run(ctx.management, identity, name);
-  return auditAndRespond(ctx, action, name, params.version, identity, result, detail);
+  const identity = await requireWrite(req);
+  const result = await run(inject(ManagementService), identity, name);
+  return auditAndRespond(action, name, params.version, identity, result, detail);
 }
 
 export function deprecate(
@@ -101,15 +100,15 @@ export function yank(
  * `requireAdmin` before this runs; the only domain failure here is `not_found`.
  */
 async function runAdmin(
-  { params, req, ctx }: ManageContext,
+  { params, req }: ManageContext,
   action: string,
   run: (svc: ManagementService, name: string) => Promise<ManageResult>,
   detail: Record<string, unknown>,
 ): Promise<Response> {
   const name = packageName(params);
-  const identity = await requireAdmin(req, ctx.tokens, ctx.admins);
-  const result = await run(ctx.management, name);
-  return auditAndRespond(ctx, action, name, params.version, identity, result, detail);
+  const identity = await requireAdmin(req);
+  const result = await run(inject(ManagementService), name);
+  return auditAndRespond(action, name, params.version, identity, result, detail);
 }
 
 export function takedown(

@@ -1,6 +1,8 @@
+import { inject } from "@brika/di";
+import { badRequest, notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonBadRequest, jsonNotFound, jsonPrivate } from "@/lib/http";
-import { operatorAuthed, runJson } from "@/server/console-api";
+import { runOperator } from "@/server/http";
+import { Metadata } from "@/server/registry-services";
 
 /**
  * `GET /api/operator/packages/versions?name=@scope/pkg` - every version of a package with
@@ -11,13 +13,11 @@ export const Route = createFileRoute("/api/operator/packages/versions")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runJson(async () => {
-          const a = await operatorAuthed(request);
+        runOperator(request, async () => {
           const name = new URL(request.url).searchParams.get("name");
-          if (name === null || name.length === 0)
-            return jsonBadRequest("A package name is required");
-          const pkg = await a.svc.metadata.getPackage(name);
-          if (pkg === null) return jsonNotFound();
+          if (name === null || name.length === 0) throw badRequest("A package name is required");
+          const pkg = await inject(Metadata).getPackage(name);
+          if (pkg === null) throw notFound();
           const versions = pkg.versions
             .map((v) => ({
               version: v.version,
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/operator/packages/versions")({
               takedownReason: v.takedownReason,
             }))
             .sort((x, y) => y.publishedAt.localeCompare(x.publishedAt));
-          return jsonPrivate({ name, publisher: pkg.publisher, versions });
+          return reply({ name, publisher: pkg.publisher, versions });
         }),
     },
   },

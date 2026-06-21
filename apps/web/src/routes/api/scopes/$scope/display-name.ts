@@ -1,8 +1,9 @@
-import { displayNameSchema } from "@brika/registry-core";
+import { inject } from "@brika/di";
+import { displayNameSchema, ScopeService } from "@brika/registry-core";
+import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate } from "@/lib/http";
-import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
+import { recordAudit, runAuthed } from "@/server/http";
 
 const Body = z.object({ displayName: displayNameSchema.nullable() });
 
@@ -11,20 +12,17 @@ export const Route = createFileRoute("/api/scopes/$scope/display-name")({
   server: {
     handlers: {
       POST: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const parsed = parseBody(Body, await request.json(), "Invalid display name");
-          const result = unwrap(
-            await a.svc.scopes.setDisplayName(a.identity, params.scope, parsed.displayName),
+        runAuthed(request, async (a) => {
+          const parsed = await readBody(request, Body, "Invalid display name");
+          const result = okOrThrow(
+            await inject(ScopeService).setDisplayName(a.identity, params.scope, parsed.displayName),
           );
-          await a.svc.audit.record({
+          await recordAudit(a, {
             action: "scope_display_name",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { displayName: parsed.displayName },
           });
-          return jsonPrivate({ ok: true, scope: params.scope, displayName: result.displayName });
+          return reply({ ok: true, scope: params.scope, displayName: result.displayName });
         }),
     },
   },

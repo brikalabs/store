@@ -1,9 +1,9 @@
+import { inject } from "@brika/di";
+import { notFound, readBody } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/auth/auth";
-import { jsonBadRequest, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { getUserProfile, updateUserProfile } from "@/lib/social/social";
-import { serverContext } from "@/server/server-context";
+import { publicJson, runUser } from "@/server/http";
+import { SocialService } from "@/server/services/social-service";
 
 const ProfileInput = z.object({
   displayName: z.string().max(80).optional(),
@@ -24,25 +24,21 @@ const ProfileInput = z.object({
 export const Route = createFileRoute("/api/account/profile")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        const { db } = serverContext();
-        const user = await getCurrentUser(request, db);
-        if (user === null) return jsonUnauthorized();
-        const profile = await getUserProfile(db, user.id);
-        if (profile === null) return jsonUnauthorized();
-        return jsonOk(profile);
-      },
-      PUT: async ({ request }) => {
-        const { db } = serverContext();
-        const user = await getCurrentUser(request, db);
-        if (user === null) return jsonUnauthorized();
-        const parsed = ProfileInput.safeParse(await request.json());
-        if (!parsed.success) return jsonBadRequest("Invalid profile");
-        await updateUserProfile(db, user.id, parsed.data);
-        const profile = await getUserProfile(db, user.id);
-        if (profile === null) return jsonUnauthorized();
-        return jsonOk(profile);
-      },
+      GET: ({ request }) =>
+        runUser(request, async (userId) => {
+          const profile = await inject(SocialService).getUserProfile(userId);
+          if (profile === null) throw notFound();
+          return publicJson(profile);
+        }),
+      PUT: ({ request }) =>
+        runUser(request, async (userId) => {
+          const parsed = await readBody(request, ProfileInput, "Invalid profile");
+          const social = inject(SocialService);
+          await social.updateUserProfile(userId, parsed);
+          const profile = await social.getUserProfile(userId);
+          if (profile === null) throw notFound();
+          return publicJson(profile);
+        }),
     },
   },
 });

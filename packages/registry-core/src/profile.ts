@@ -49,6 +49,13 @@ export interface ScopeProfileInput {
   readonly links: readonly ScopeLink[];
 }
 
+/** The scope profile request body: a nullable description plus the labelled links. Shared so the
+ *  registry endpoint and the store console validate the profile edit identically. */
+export const scopeProfileSchema = z.object({
+  description: scopeDescriptionSchema.nullable(),
+  links: scopeLinksSchema,
+});
+
 // A registrable hostname a scope can claim and verify (e.g. `brika.dev`, `docs.brika.dev`):
 // lowercase labels of a-z/0-9/hyphen (no leading/trailing hyphen), at least two, a 2+ letter
 // TLD, <=253 chars. No scheme, port, or path - this is a bare domain, not a URL.

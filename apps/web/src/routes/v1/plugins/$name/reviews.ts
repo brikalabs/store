@@ -1,9 +1,10 @@
+import { inject } from "@brika/di";
+import { notFound, readBody } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth/auth";
-import { jsonBadRequest, jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { ensurePluginCached, listReviews, upsertReview } from "@/lib/social/social";
-import { serverContext } from "@/server/server-context";
+import { publicJson, runHandler, runUser } from "@/server/http";
+import { SocialService } from "@/server/services/social-service";
 
 const ReviewInput = z.object({
   rating: z.number().int().min(1).max(5),
@@ -16,21 +17,19 @@ const ReviewInput = z.object({
 export const Route = createFileRoute("/v1/plugins/$name/reviews")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
-        const viewerId = await getSessionUserId(request);
-        return jsonOk(await listReviews(serverContext().db, params.name, viewerId));
-      },
-      POST: async ({ request, params }) => {
-        const userId = await getSessionUserId(request);
-        if (userId === null) return jsonUnauthorized();
-        const body: unknown = await request.json();
-        const parsed = ReviewInput.safeParse(body);
-        if (!parsed.success) return jsonBadRequest("Invalid review");
-        const database = serverContext().db;
-        if (!(await ensurePluginCached(database, params.name))) return jsonNotFound();
-        await upsertReview(database, params.name, userId, parsed.data);
-        return jsonOk(await listReviews(database, params.name, userId));
-      },
+      GET: ({ request, params }) =>
+        runHandler(async () => {
+          const viewerId = await getSessionUserId(request);
+          return publicJson(await inject(SocialService).listReviews(params.name, viewerId));
+        }),
+      POST: ({ request, params }) =>
+        runUser(request, async (userId) => {
+          const parsed = await readBody(request, ReviewInput, "Invalid review");
+          const social = inject(SocialService);
+          if (!(await social.ensurePluginCached(params.name))) throw notFound();
+          await social.submitReview(params.name, userId, parsed);
+          return publicJson(await social.listReviews(params.name, userId));
+        }),
     },
   },
 });

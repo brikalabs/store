@@ -1,8 +1,8 @@
+import { inject } from "@brika/di";
+import { notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { getSessionUserId } from "@/lib/auth/auth";
-import { jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { listComments, toggleCommentUpvote } from "@/lib/social/social";
-import { serverContext } from "@/server/server-context";
+import { publicJson, runUser } from "@/server/http";
+import { SocialService } from "@/server/services/social-service";
 
 /**
  * `POST /v1/plugins/:name/comments/:commentId/vote` - toggle the signed-in
@@ -12,13 +12,12 @@ import { serverContext } from "@/server/server-context";
 export const Route = createFileRoute("/v1/plugins/$name/comments/$commentId/vote")({
   server: {
     handlers: {
-      POST: async ({ request, params }) => {
-        const userId = await getSessionUserId(request);
-        if (userId === null) return jsonUnauthorized();
-        const database = serverContext().db;
-        if (!(await toggleCommentUpvote(database, params.commentId, userId))) return jsonNotFound();
-        return jsonOk(await listComments(database, params.name, userId));
-      },
+      POST: ({ request, params }) =>
+        runUser(request, async (userId) => {
+          const social = inject(SocialService);
+          if (!(await social.toggleCommentUpvote(params.commentId, userId))) throw notFound();
+          return publicJson(await social.listComments(params.name, userId));
+        }),
     },
   },
 });

@@ -1,6 +1,6 @@
 import type { CommitVersionInput, MetadataWriter, VersionManager } from "@brika/registry-core";
 import { type TransactionalDb, transactionalDb } from "@brika/tx";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import type { Db } from "../client";
 import { regDistTags, regPackages, regVersions } from "../schema";
@@ -74,6 +74,7 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
       .update(regVersions)
       .set({ yanked })
       .where(and(eq(regVersions.name, name), eq(regVersions.version, version)));
+    await this.#refreshLatestTag(name);
   }
 
   async setTakedown(name: string, version: string, reason: string | null): Promise<void> {
@@ -81,5 +82,52 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
       .update(regVersions)
       .set({ takedown: reason })
       .where(and(eq(regVersions.name, name), eq(regVersions.version, version)));
+    await this.#refreshLatestTag(name);
+  }
+
+  /**
+   * Keep the `latest` dist-tag pointing at the newest *installable* version (not yanked, not
+   * taken down). Yank/takedown omit a version from the packument; if `latest` still pointed at
+   * it, `bun add` would resolve a version that isn't there and the storefront catalog (which
+   * joins `latest` then drops yanked rows) would hide the whole package even when older versions
+   * still install. When every version is hidden the tag is removed, so the package is unlisted
+   * publicly but its row survives for its owner to un-yank.
+   *
+   * The "newest installable" pick is resolved IN SQL, ordered by publish time then version, so it
+   * is deterministic: `publishedAt` is stored truncated to whole seconds, so a bulk/CI publish can
+   * tie, and a JS `reduce` with no tie-break would let the engine's row order decide `latest` (and
+   * possibly pick a lower version). `version DESC` breaks the tie stably.
+   *
+   * Caveat: the read-then-write is two statements, so a publish landing between them can still race
+   * (the same single-writer assumption the publish path's unconditional `latest` upsert already
+   * makes); D1 has no interactive transaction to close that window, and a yank is rare next to it.
+   */
+  async #refreshLatestTag(name: string): Promise<void> {
+    const newest = await this.#db
+      .select({ version: regVersions.version })
+      .from(regVersions)
+      .where(
+        and(
+          eq(regVersions.name, name),
+          eq(regVersions.yanked, false),
+          isNull(regVersions.takedown),
+        ),
+      )
+      .orderBy(desc(regVersions.publishedAt), desc(regVersions.version))
+      .limit(1);
+    const version = newest[0]?.version;
+    if (version === undefined) {
+      await this.#db
+        .delete(regDistTags)
+        .where(and(eq(regDistTags.name, name), eq(regDistTags.tag, "latest")));
+      return;
+    }
+    await this.#db
+      .insert(regDistTags)
+      .values({ name, tag: "latest", version })
+      .onConflictDoUpdate({
+        target: [regDistTags.name, regDistTags.tag],
+        set: { version },
+      });
   }
 }

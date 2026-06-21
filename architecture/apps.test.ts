@@ -33,4 +33,16 @@ describe("apps/registry", () => {
       .mayNotImport(ORM)
       .assert();
   });
+
+  test("the Cloudflare bindings are read only at the entry + env + cf adapters (handlers inject)", () => {
+    rule()
+      .filesMatching("apps/registry/src")
+      .except(
+        "apps/registry/src/index.ts",
+        "apps/registry/src/env.ts",
+        "apps/registry/src/adapters",
+      )
+      .mayNotImport(modules("cloudflare:workers"))
+      .assert();
+  });
 });

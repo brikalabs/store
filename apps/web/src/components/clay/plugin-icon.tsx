@@ -84,13 +84,25 @@ export function PluginIcon({
   );
 }
 
-/** Gradient initials tile, used for author/developer avatars. */
+/**
+ * Gradient initials tile, used for user/author/scope avatars. When `imageUrl` is
+ * given (a GitHub avatar from `users.image`, a scope icon, ...), the real image
+ * renders over the gradient; the gradient + initials stay underneath so a missing
+ * or failed-to-load image (empty `alt`, so no broken-image glyph) degrades to them.
+ */
 export function GradientAvatar({
   seed,
   label,
+  imageUrl,
   size = 40,
   className,
-}: Readonly<{ seed: string; label: string; size?: number; className?: string }>) {
+}: Readonly<{
+  seed: string;
+  label: string;
+  imageUrl?: string | null;
+  size?: number;
+  className?: string;
+}>) {
   const initials =
     label
       .replace(/[^a-zA-Z0-9]/g, "")
@@ -100,7 +112,7 @@ export function GradientAvatar({
     <span
       data-slot="gradient-avatar"
       className={cn(
-        "inline-flex shrink-0 items-center justify-center font-bold font-heading text-white leading-none",
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden font-bold font-heading text-white leading-none",
         className,
       )}
       style={{
@@ -113,6 +125,14 @@ export function GradientAvatar({
       }}
     >
       {initials}
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 size-full object-cover"
+        />
+      ) : null}
     </span>
   );
 }

@@ -1,9 +1,10 @@
+import { inject } from "@brika/di";
 import { scopeOf } from "@brika/registry-core";
-import { listScopesForMember } from "@brika/store-db/adapters";
+import { badRequest, notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonBadRequest, jsonNotFound, jsonPrivate } from "@/lib/http";
-import { authed, runJson } from "@/server/console-api";
-import { registryDb } from "@/server/registry-services";
+import { runAuthed } from "@/server/http";
+import { Metadata } from "@/server/registry-services";
+import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
  * `GET /api/plugins/versions?name=<encoded>` - a registry-hosted package's versions with
@@ -15,19 +16,21 @@ export const Route = createFileRoute("/api/plugins/versions")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runJson(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const name = new URL(request.url).searchParams.get("name");
-          if (name === null || name === "") return jsonBadRequest("Missing package name");
+          if (name === null || name === "") throw badRequest("Missing package name");
 
-          const record = await a.svc.metadata.getPackage(name);
-          if (record === null) return jsonNotFound();
+          const record = await inject(Metadata).getPackage(name);
+          if (record === null) throw notFound();
 
           const scope = scopeOf(name);
-          const myScopes = await listScopesForMember(registryDb(), "github", a.user.login);
+          const myScopes = await inject(ScopeMembershipStore).listScopesForMember(
+            "github",
+            a.user.login,
+          );
           const canManage = scope !== null && myScopes.some((s) => s.scope === scope);
 
-          return jsonPrivate({
+          return reply({
             name,
             latest: record.distTags.latest ?? null,
             canManage,

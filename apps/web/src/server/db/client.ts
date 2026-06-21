@@ -11,3 +11,13 @@ export function getDb(d1: D1Database) {
 }
 
 export type Db = ReturnType<typeof getDb>;
+
+/**
+ * The store-schema drizzle client as an injectable: a store reads `inject(Database).orm`.
+ * Plain class (no binding read here, so it stays test-safe); the composition root provides it
+ * from the request's D1 (`useFactory: () => new Database(getDb(env.DB))`), and a unit test
+ * overrides it with `{ provide: Database, useValue: { orm: inMemoryDb } }`.
+ */
+export class Database {
+  constructor(readonly orm: Db) {}
+}

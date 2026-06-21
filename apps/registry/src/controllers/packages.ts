@@ -1,8 +1,10 @@
+import { inject } from "@brika/di";
+import { ResolveService } from "@brika/registry-core";
 import { notFound } from "@brika/router";
 import { type PackageParams, PKG, packageName } from "@brika/router/npm";
 import { controller, route } from "../http/router";
 import { parseTarballVersion } from "../npm-url";
-import type { Services } from "../services";
+import { Downloads } from "../services";
 
 /**
  * The npm read protocol: packuments and tarballs. Both use the npm `PKG` pattern,
@@ -21,14 +23,12 @@ const ABBREVIATED_ACCEPT = "application/vnd.npm.install-v1+json";
 async function packument({
   params,
   req,
-  ctx,
 }: {
   readonly params: PackageParams;
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const abbreviated = (req.headers.get("accept") ?? "").includes(ABBREVIATED_ACCEPT);
-  const doc = await ctx.resolve.packument(packageName(params), { abbreviated });
+  const doc = await inject(ResolveService).packument(packageName(params), { abbreviated });
   if (doc === null) throw notFound();
   return new Response(JSON.stringify(doc), {
     status: 200,
@@ -49,20 +49,22 @@ async function packument({
  */
 async function tarball({
   params,
-  ctx,
   waitUntil,
 }: {
   readonly params: PackageParams & { readonly file: string };
-  readonly ctx: Services;
   readonly waitUntil: (promise: Promise<unknown>) => void;
 }): Promise<Response> {
   const name = packageName(params);
   const version = parseTarballVersion(name, params.file);
   if (version === null) throw notFound();
-  const stream = await ctx.resolve.tarball(name, version);
+  const stream = await inject(ResolveService).tarball(name, version);
   if (stream === null) throw notFound();
 
-  waitUntil(ctx.downloads.record(name).catch(() => {}));
+  waitUntil(
+    inject(Downloads)
+      .record(name)
+      .catch(() => {}),
+  );
 
   return new Response(stream, {
     status: 200,

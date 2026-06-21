@@ -1,8 +1,8 @@
-import { revokeTokenByHash } from "@brika/store-db/adapters";
+import { inject } from "@brika/di";
+import { notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonNotFound, jsonPrivate } from "@/lib/http";
-import { authed, runJson } from "@/server/console-api";
-import { registryDb } from "@/server/registry-services";
+import { runAuthed } from "@/server/http";
+import { PublishTokenStore } from "@/server/stores/publish-token-store";
 
 /**
  * `DELETE /api/account/tokens/:hash` - revoke one of the signed-in user's tokens by its
@@ -13,16 +13,14 @@ export const Route = createFileRoute("/api/account/tokens/$hash")({
   server: {
     handlers: {
       DELETE: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const removed = await revokeTokenByHash(
-            registryDb(),
+        runAuthed(request, async (a) => {
+          const removed = await inject(PublishTokenStore).revokeTokenByHash(
             "github",
             a.user.login,
             params.hash,
           );
-          if (!removed) return jsonNotFound();
-          return jsonPrivate({ ok: true });
+          if (!removed) throw notFound();
+          return reply({ ok: true });
         }),
     },
   },

@@ -22,6 +22,7 @@
     "test:e2e": "bun run --filter @brika/store-web e2e",
     "typecheck": "bun run --filter '*' typecheck",
     "check:no-em-dash": "bun run scripts/check-no-em-dash.ts",
+    "check:thin-routes": "bun run scripts/check-thin-routes.ts",
     "spec:lint": "bun run scripts/spec-lint.ts",
     "spec:index": "bun run scripts/gen-spec-index.ts",
     "spec:coverage": "bun run scripts/spec-coverage.ts",
@@ -30,7 +31,7 @@
     "unenforced": "bun run packages/markers/src/cli.ts --kind unenforced",
     "markers:vscode": "bun run --filter brika-markers build",
     "markers:vscode:install": "bun run --filter brika-markers install:editor",
-    "lint": "bunx --bun biome check . && bun run check:no-em-dash",
+    "lint": "bunx --bun biome check . && bun run check:no-em-dash && bun run check:thin-routes",
     "sonar": "bunx --bun biome lint --config-path biome.sonar.jsonc --max-diagnostics=none .",
     "sonar:fix": "bunx --bun biome lint --write --config-path biome.sonar.jsonc --max-diagnostics=none ."
   },

@@ -70,3 +70,8 @@ export function notFound(message = "Not found"): HttpError {
 export function conflict(message = "Conflict", code?: string): HttpError {
   return new HttpError(409, message, code);
 }
+
+/** 413: the request body is larger than the endpoint accepts. */
+export function payloadTooLarge(message = "Payload too large", code?: string): HttpError {
+  return new HttpError(413, message, code);
+}

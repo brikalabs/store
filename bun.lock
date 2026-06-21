@@ -34,6 +34,7 @@
       "name": "@brika/registry",
       "version": "0.1.0",
       "dependencies": {
+        "@brika/di": "workspace:*",
         "@brika/env": "workspace:*",
         "@brika/registry-core": "workspace:*",
         "@brika/router": "workspace:*",
@@ -55,12 +56,14 @@
       "version": "0.1.0",
       "dependencies": {
         "@brika/clay": "^0.2.0",
+        "@brika/di": "workspace:*",
         "@brika/env": "workspace:*",
         "@brika/registry-contract": "workspace:*",
         "@brika/registry-core": "workspace:*",
         "@brika/router": "workspace:*",
         "@brika/schema": "workspace:*",
         "@brika/store-db": "workspace:*",
+        "@brika/tx": "workspace:*",
         "@tanstack/react-router": "^1.170.15",
         "@tanstack/react-start": "^1.168.25",
         "better-auth": "^1.6.20",
@@ -129,6 +132,17 @@
         "drizzle-kit": "^0.31.10",
       },
     },
+    "packages/di": {
+      "name": "@brika/di",
+      "version": "0.1.0",
+      "dependencies": {
+        "@brika/stack": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.5",
+        "typescript": "^6.0.3",
+      },
+    },
     "packages/env": {
       "name": "@brika/env",
       "version": "0.1.0",
@@ -160,6 +174,7 @@
       "name": "@brika/router",
       "version": "0.1.0",
       "dependencies": {
+        "@brika/stack": "workspace:*",
         "hono": "^4.12.25",
         "zod": "^4.4.3",
       },
@@ -173,6 +188,14 @@
       "version": "0.4.0",
       "dependencies": {
         "zod": "^4.4.3",
+      },
+    },
+    "packages/stack": {
+      "name": "@brika/stack",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/bun": "^1.3.5",
+        "typescript": "^6.0.3",
       },
     },
     "packages/tx": {
@@ -260,6 +283,8 @@
 
     "@brika/cli-kit": ["@brika/cli-kit@workspace:packages/cli-kit"],
 
+    "@brika/di": ["@brika/di@workspace:packages/di"],
+
     "@brika/env": ["@brika/env@workspace:packages/env"],
 
     "@brika/registry": ["@brika/registry@workspace:apps/registry"],
@@ -273,6 +298,8 @@
     "@brika/router": ["@brika/router@workspace:packages/router"],
 
     "@brika/schema": ["@brika/schema@workspace:packages/schema"],
+
+    "@brika/stack": ["@brika/stack@workspace:packages/stack"],
 
     "@brika/store-db": ["@brika/store-db@workspace:packages/db"],
 

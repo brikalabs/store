@@ -1,7 +1,9 @@
+import { inject } from "@brika/di";
+import { ManagementService } from "@brika/registry-core";
+import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { jsonPrivate } from "@/lib/http";
-import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
+import { recordAudit, runAuthed } from "@/server/http";
 
 const Body = z.object({
   name: z.string().min(1),
@@ -17,19 +19,16 @@ export const Route = createFileRoute("/api/plugins/yank")({
   server: {
     handlers: {
       POST: ({ request }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const parsed = parseBody(Body, await request.json(), "Invalid yank request");
+        runAuthed(request, async (a) => {
+          const parsed = await readBody(request, Body, "Invalid yank request");
           const { name, version, yanked } = parsed;
-          unwrap(await a.svc.management.setYanked(a.identity, name, version, yanked));
-          await a.svc.audit.record({
+          okOrThrow(await inject(ManagementService).setYanked(a.identity, name, version, yanked));
+          await recordAudit(a, {
             action: yanked ? "yank" : "unyank",
             packageName: name,
             version,
-            actor: a.identity,
-            detail: null,
           });
-          return jsonPrivate({ ok: true, name, version, yanked });
+          return reply({ ok: true, name, version, yanked });
         }),
     },
   },

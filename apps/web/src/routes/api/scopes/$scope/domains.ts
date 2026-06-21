@@ -1,10 +1,9 @@
-import { domainChallengeHost, scopeDomainSchema } from "@brika/registry-core";
+import { inject } from "@brika/di";
+import { domainChallengeHost, ScopeService } from "@brika/registry-core";
+import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { jsonPrivate } from "@/lib/http";
-import { authed, parseBody, runJson, unwrap } from "@/server/console-api";
-
-const DomainBody = z.object({ domain: scopeDomainSchema });
+import { DomainBody, shapeDomains } from "@/lib/scope-domains";
+import { recordAudit, runAuthed } from "@/server/http";
 
 /**
  * Scope domain claims (ORG-010), all admin-gated except the member-readable list:
@@ -17,73 +16,57 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
   server: {
     handlers: {
       GET: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const result = unwrap(await a.svc.scopes.listDomains(a.identity, params.scope));
-          // Surface the (derived) TXT host + value each pending domain must publish.
-          const domains = await Promise.all(
-            result.domains.map(async (d) => ({
-              ...d,
-              host: domainChallengeHost(d.domain),
-              txt: await a.svc.scopes.domainChallenge(params.scope, d.domain),
-            })),
-          );
-          return jsonPrivate({ scope: params.scope, domains });
+        runAuthed(request, async (a) => {
+          const scopes = inject(ScopeService);
+          const result = okOrThrow(await scopes.listDomains(a.identity, params.scope));
+          const domains = await shapeDomains(scopes, params.scope, result.domains);
+          return reply({ scope: params.scope, domains });
         }),
       PUT: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
-          const { domain } = parsed;
-          const result = unwrap(await a.svc.scopes.addDomain(a.identity, params.scope, domain));
-          await a.svc.audit.record({
+        runAuthed(request, async (a) => {
+          const scopes = inject(ScopeService);
+          const { domain } = await readBody(request, DomainBody, "Invalid domain");
+          const result = okOrThrow(await scopes.addDomain(a.identity, params.scope, domain));
+          await recordAudit(a, {
             action: "scope_domain_add",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { domain },
           });
-          return jsonPrivate(
+          return reply(
             {
               ok: true,
               domain: result.domain,
               host: domainChallengeHost(domain),
-              txt: await a.svc.scopes.domainChallenge(params.scope, domain),
+              txt: await scopes.domainChallenge(params.scope, domain),
             },
             201,
           );
         }),
       POST: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
-          const result = unwrap(
-            await a.svc.scopes.verifyDomain(a.identity, params.scope, parsed.domain),
-          );
+        runAuthed(request, async (a) => {
+          const scopes = inject(ScopeService);
+          const { domain } = await readBody(request, DomainBody, "Invalid domain");
+          const result = okOrThrow(await scopes.verifyDomain(a.identity, params.scope, domain));
           if (result.verified) {
-            await a.svc.audit.record({
+            await recordAudit(a, {
               action: "scope_domain_verified",
               packageName: params.scope,
-              version: null,
-              actor: a.identity,
-              detail: { domain: parsed.domain },
+              detail: { domain },
             });
           }
-          return jsonPrivate({ ok: true, domain: result.domain, verified: result.verified });
+          return reply({ ok: true, domain: result.domain, verified: result.verified });
         }),
       DELETE: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
-          unwrap(await a.svc.scopes.removeDomain(a.identity, params.scope, parsed.domain));
-          await a.svc.audit.record({
+        runAuthed(request, async (a) => {
+          const scopes = inject(ScopeService);
+          const parsed = await readBody(request, DomainBody, "Invalid domain");
+          okOrThrow(await scopes.removeDomain(a.identity, params.scope, parsed.domain));
+          await recordAudit(a, {
             action: "scope_domain_remove",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { domain: parsed.domain },
           });
-          return jsonPrivate({ ok: true, removed: parsed.domain });
+          return reply({ ok: true, removed: parsed.domain });
         }),
     },
   },

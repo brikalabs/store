@@ -99,9 +99,10 @@ export const users = sqliteTable("users", {
  * The account is the first-class identity (USER-001), so the profile lives in its
  * own table to keep the BetterAuth `users` table clean. Every field is authored by
  * the account holder and NEVER derived from npm: `displayName` overrides the GitHub
- * name, `links` is a labelled list. The avatar is not stored here - it comes from
- * the GitHub avatar on `users.image`. A missing row means an unset profile (all
- * fields default to empty), so reads fall back to the `users` row.
+ * name, `links` is a labelled list. `avatarVersion` is the content tag of an uploaded avatar in R2
+ * when set (the public URL is BUILT from the current `ASSETS_PUBLIC_URL` + this, never stored, so it
+ * survives a bucket/domain change); otherwise the avatar defaults to the GitHub one on `users.image`.
+ * A missing row means an unset profile (all fields default to empty), so reads fall back to `users`.
  */
 export const userProfiles = sqliteTable("user_profiles", {
   userId: text("user_id")
@@ -110,6 +111,8 @@ export const userProfiles = sqliteTable("user_profiles", {
   displayName: text("display_name"),
   bio: text("bio"),
   website: text("website"),
+  /** Content tag of the account's uploaded avatar (cache-buster), or null to use the provider image. */
+  avatarVersion: text("avatar_version"),
   links: text("links", { mode: "json" })
     .$type<{ label: string; url: string }[]>()
     .notNull()

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as OperatorRouteImport } from './routes/operator'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DeviceRouteImport } from './routes/device'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as SplatRouteImport } from './routes/$'
@@ -36,6 +37,7 @@ import { Route as DashboardAccountsRouteImport } from './routes/dashboard/accoun
 import { Route as AuthMeRouteImport } from './routes/auth/me'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
+import { Route as AssetsSplatRouteImport } from './routes/assets/$'
 import { Route as ApiScopesRouteImport } from './routes/api/scopes'
 import { Route as DashboardPluginsIndexRouteImport } from './routes/dashboard/plugins/index'
 import { Route as V1PluginsNameRouteImport } from './routes/v1/plugins/$name'
@@ -54,6 +56,7 @@ import { Route as ApiDeviceApproveRouteImport } from './routes/api/device/approv
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAccountTokensRouteImport } from './routes/api/account/tokens'
 import { Route as ApiAccountProfileRouteImport } from './routes/api/account/profile'
+import { Route as ApiAccountAvatarRouteImport } from './routes/api/account/avatar'
 import { Route as V1PluginsNameVersionsRouteImport } from './routes/v1/plugins/$name/versions'
 import { Route as V1PluginsNameReviewsRouteImport } from './routes/v1/plugins/$name/reviews'
 import { Route as V1PluginsNameReadmeRouteImport } from './routes/v1/plugins/$name/readme'
@@ -79,6 +82,11 @@ import { Route as V1PluginsNameVVersionFilesSplatRouteImport } from './routes/v1
 const OperatorRoute = OperatorRouteImport.update({
   id: '/operator',
   path: '/operator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeviceRoute = DeviceRouteImport.update({
@@ -211,6 +219,11 @@ const AuthGithubRoute = AuthGithubRouteImport.update({
   path: '/auth/github',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AssetsSplatRoute = AssetsSplatRouteImport.update({
+  id: '/assets/$',
+  path: '/assets/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiScopesRoute = ApiScopesRouteImport.update({
   id: '/api/scopes',
   path: '/api/scopes',
@@ -299,6 +312,11 @@ const ApiAccountTokensRoute = ApiAccountTokensRouteImport.update({
 const ApiAccountProfileRoute = ApiAccountProfileRouteImport.update({
   id: '/api/account/profile',
   path: '/api/account/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAccountAvatarRoute = ApiAccountAvatarRouteImport.update({
+  id: '/api/account/avatar',
+  path: '/api/account/avatar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const V1PluginsNameVersionsRoute = V1PluginsNameVersionsRouteImport.update({
@@ -424,8 +442,10 @@ export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/device': typeof DeviceRoute
+  '/login': typeof LoginRoute
   '/operator': typeof OperatorRouteWithChildren
   '/api/scopes': typeof ApiScopesRouteWithChildren
+  '/assets/$': typeof AssetsSplatRoute
   '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
@@ -448,6 +468,7 @@ export interface FileRoutesByFullPath {
   '/legal/': typeof LegalIndexRoute
   '/operator/': typeof OperatorIndexRoute
   '/plugins/': typeof PluginsIndexRoute
+  '/api/account/avatar': typeof ApiAccountAvatarRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -491,7 +512,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/device': typeof DeviceRoute
+  '/login': typeof LoginRoute
   '/api/scopes': typeof ApiScopesRouteWithChildren
+  '/assets/$': typeof AssetsSplatRoute
   '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
@@ -514,6 +537,7 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalIndexRoute
   '/operator': typeof OperatorIndexRoute
   '/plugins': typeof PluginsIndexRoute
+  '/api/account/avatar': typeof ApiAccountAvatarRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -559,8 +583,10 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/device': typeof DeviceRoute
+  '/login': typeof LoginRoute
   '/operator': typeof OperatorRouteWithChildren
   '/api/scopes': typeof ApiScopesRouteWithChildren
+  '/assets/$': typeof AssetsSplatRoute
   '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
@@ -583,6 +609,7 @@ export interface FileRoutesById {
   '/legal/': typeof LegalIndexRoute
   '/operator/': typeof OperatorIndexRoute
   '/plugins/': typeof PluginsIndexRoute
+  '/api/account/avatar': typeof ApiAccountAvatarRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -629,8 +656,10 @@ export interface FileRouteTypes {
     | '/$'
     | '/dashboard'
     | '/device'
+    | '/login'
     | '/operator'
     | '/api/scopes'
+    | '/assets/$'
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
@@ -653,6 +682,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/operator/'
     | '/plugins/'
+    | '/api/account/avatar'
     | '/api/account/profile'
     | '/api/account/tokens'
     | '/api/auth/$'
@@ -696,7 +726,9 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/device'
+    | '/login'
     | '/api/scopes'
+    | '/assets/$'
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
@@ -719,6 +751,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/operator'
     | '/plugins'
+    | '/api/account/avatar'
     | '/api/account/profile'
     | '/api/account/tokens'
     | '/api/auth/$'
@@ -763,8 +796,10 @@ export interface FileRouteTypes {
     | '/$'
     | '/dashboard'
     | '/device'
+    | '/login'
     | '/operator'
     | '/api/scopes'
+    | '/assets/$'
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
@@ -787,6 +822,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/operator/'
     | '/plugins/'
+    | '/api/account/avatar'
     | '/api/account/profile'
     | '/api/account/tokens'
     | '/api/auth/$'
@@ -832,8 +868,10 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   DeviceRoute: typeof DeviceRoute
+  LoginRoute: typeof LoginRoute
   OperatorRoute: typeof OperatorRouteWithChildren
   ApiScopesRoute: typeof ApiScopesRouteWithChildren
+  AssetsSplatRoute: typeof AssetsSplatRoute
   AuthGithubRoute: typeof AuthGithubRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   AuthMeRoute: typeof AuthMeRoute
@@ -848,6 +886,7 @@ export interface RootRouteChildren {
   V1VerifiedRoute: typeof V1VerifiedRoute
   LegalIndexRoute: typeof LegalIndexRoute
   PluginsIndexRoute: typeof PluginsIndexRoute
+  ApiAccountAvatarRoute: typeof ApiAccountAvatarRoute
   ApiAccountProfileRoute: typeof ApiAccountProfileRoute
   ApiAccountTokensRoute: typeof ApiAccountTokensRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -869,6 +908,13 @@ declare module '@tanstack/react-router' {
       path: '/operator'
       fullPath: '/operator'
       preLoaderRoute: typeof OperatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/device': {
@@ -1053,6 +1099,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthGithubRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/assets/$': {
+      id: '/assets/$'
+      path: '/assets/$'
+      fullPath: '/assets/$'
+      preLoaderRoute: typeof AssetsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/scopes': {
       id: '/api/scopes'
       path: '/api/scopes'
@@ -1177,6 +1230,13 @@ declare module '@tanstack/react-router' {
       path: '/api/account/profile'
       fullPath: '/api/account/profile'
       preLoaderRoute: typeof ApiAccountProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/account/avatar': {
+      id: '/api/account/avatar'
+      path: '/api/account/avatar'
+      fullPath: '/api/account/avatar'
+      preLoaderRoute: typeof ApiAccountAvatarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/v1/plugins/$name/versions': {
@@ -1512,8 +1572,10 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   DashboardRoute: DashboardRouteWithChildren,
   DeviceRoute: DeviceRoute,
+  LoginRoute: LoginRoute,
   OperatorRoute: OperatorRouteWithChildren,
   ApiScopesRoute: ApiScopesRouteWithChildren,
+  AssetsSplatRoute: AssetsSplatRoute,
   AuthGithubRoute: AuthGithubRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   AuthMeRoute: AuthMeRoute,
@@ -1528,6 +1590,7 @@ const rootRouteChildren: RootRouteChildren = {
   V1VerifiedRoute: V1VerifiedRoute,
   LegalIndexRoute: LegalIndexRoute,
   PluginsIndexRoute: PluginsIndexRoute,
+  ApiAccountAvatarRoute: ApiAccountAvatarRoute,
   ApiAccountProfileRoute: ApiAccountProfileRoute,
   ApiAccountTokensRoute: ApiAccountTokensRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

@@ -1,26 +1,20 @@
+import { type Provider, token } from "@brika/di";
 import {
+  type AuditLog,
+  type CatalogReader,
   DeviceService,
+  type DownloadStore,
   ManagementService,
   PublishService,
   ResolveService,
   ScopeService,
+  type TokenStore,
 } from "@brika/registry-core";
-import type { Db } from "@brika/store-db";
+import { buildRegistryGraph, type Db } from "@brika/store-db";
 import {
-  CloudflareDohResolver,
-  D1AuditLog,
-  D1CatalogReader,
   D1DeviceStore,
   D1DownloadStore,
-  D1MetadataReader,
   D1MetadataWriter,
-  D1OwnershipPolicy,
-  D1ScopeDomains,
-  D1ScopeMembers,
-  D1ScopeStore,
-  D1TokenStore,
-  D1TrustedPublishers,
-  HmacDomainChallenge,
   resolveDisplayName,
 } from "@brika/store-db/adapters";
 import { SchemaManifestValidator } from "./adapters/manifest-validator";
@@ -28,100 +22,62 @@ import { NoopTarballScanner } from "./adapters/noop-tarball-scanner";
 import { R2TarballReader } from "./adapters/r2-tarball";
 import { R2TarballWriter } from "./adapters/r2-tarball-writer";
 
-/**
- * The registry's composition root: the one place that reads the Cloudflare
- * bindings and assembles the domain services with their concrete adapters. It is
- * built once per request and handed to handlers, so no handler reaches for the
- * ambient `env` itself.
- *
- * Adding a service is a single entry in the returned object below: its type flows
- * into {@link Services} and into every handler automatically, with no separate
- * interface to keep in sync. Swapping a backend means editing only this file and
- * the adapters it names; a test stands one in by passing an object of the same
- * shape (the inferred `Services`).
- *
- * Note: rate limiting is intentionally NOT here. It is a cross-cutting edge concern
- * declared inline on the routes that opt in (`rateLimit(...)` in the controllers,
- * backed by `adapters/cf-rate-limiter.ts`), so it never threads through this graph.
- */
-export function buildServices(
-  db: Db,
-  tarballs: R2Bucket,
-  baseUrl: string,
-  admins: ReadonlySet<string> = new Set(),
-  domainSecret = "test-domain-secret",
-) {
-  // The D1 implementation of the scope membership port, built once and injected into the
-  // authorization policy (which depends on the port, not the concrete adapter) and shared
-  // with the scope controller. The scope IS the ownership entity (npm/JSR model), so
-  // publishing resolves the package's scope straight to its membership (scopeMembers).
-  const scopeMembers = new D1ScopeMembers(db);
-  // Trusted-publisher bindings (PUB-016) authorize tokenless OIDC publishes; shared between
-  // the publish authorization policy and the scope controller that manages the bindings.
-  const trustedPublishers = new D1TrustedPublishers(db);
-  const ownership = new D1OwnershipPolicy(scopeMembers, trustedPublishers);
-  // The raw drizzle client (`db`) is deliberately NOT exposed on the returned graph:
-  // every persistence + auth concern goes through a port below, so a controller cannot
-  // reach the database directly. Adapters capture `db` here at construction.
-  return {
-    /**
-     * Operator admins (provider-qualified `provider:owner` keys) for takedown/restore,
-     * resolved once here from `REGISTRY_ADMINS` rather than re-read from the ambient env
-     * per request. Defaults to empty (no admins) so a test or a missing config fails
-     * closed.
-     */
-    admins,
-    /** npm-protocol read surface: packuments + tarball streams. */
-    resolve: new ResolveService(new D1MetadataReader(db), new R2TarballReader(tarballs), {
-      baseUrl,
-    }),
-    /** Publish pipeline: ownership, validation, immutability, integrity. */
-    publish: new PublishService(
-      new D1MetadataWriter(db),
-      new R2TarballWriter(tarballs),
-      new SchemaManifestValidator(),
-      ownership,
-      // Allow-all today; the seam for a real malware/abuse scanner over the bytes.
-      { scanner: new NoopTarballScanner() },
-    ),
-    /** Post-publish management: deprecate, yank. */
-    management: new ManagementService(new D1MetadataWriter(db), ownership),
-    /**
-     * Scope use cases (the scope IS the ownership entity): claim a scope, members + roles,
-     * display name, profile (description, links, icon), and claim/verify domains (over the
-     * stores). The claim gate (ORG-006) defaults to allow-all in `ScopeService` until a real
-     * identity verifier lands; domain verification resolves TXT records over DNS-over-HTTPS
-     * (ORG-010).
-     */
-    scopes: new ScopeService(new D1ScopeStore(db), scopeMembers, new D1ScopeDomains(db), {
-      dnsResolver: new CloudflareDohResolver(),
-      domainChallenge: new HmacDomainChallenge(domainSecret),
-      trustedPublishers,
-    }),
-    /** Package catalog read surface (`GET /-/v1/packages`). */
-    catalog: new D1CatalogReader(db),
-    /** Publish-token store (issue/verify/revoke) for auth + the device flow. */
-    tokens: new D1TokenStore(db),
-    /** Per-day install-count store: record + stats. */
-    downloads: new D1DownloadStore(db),
-    /** Device-authorization flow (RFC 8628). */
-    devices: new DeviceService(new D1DeviceStore(db)),
-    /** Append-only audit log of publishes + management actions. */
-    audit: new D1AuditLog(db),
-    /**
-     * Resolve a human display name for an authenticated GitHub login, for the CLI's
-     * `login`/`whoami` output. The account identity (`users`, `user_profiles`) lives in
-     * the store web app's tables, which are NOT part of the registry's `reg_*` drizzle
-     * schema but share the SAME bound D1 (`env.DB`); the resolver reads them with a single
-     * parameterized raw query over that client. Returns null when no display name exists,
-     * so the caller falls back to the github login.
-     */
-    resolveDisplayName: (githubLogin: string) => resolveDisplayName(db, githubLogin),
-  } as const;
+/** Operator admins (`provider:owner` keys) for takedown/restore. */
+export const Admins = token<ReadonlySet<string>>();
+/** Display-name resolver for the CLI's login/whoami (reads the web app's user tables on the same D1). */
+export const ResolveDisplayName = token<(githubLogin: string) => Promise<string | null>>();
+// Persistence ports as tokens, so a handler depends on the registry-core interface, not the D1 class.
+export const Tokens = token<TokenStore>();
+export const Catalog = token<CatalogReader>();
+export const Downloads = token<DownloadStore>();
+export const Audit = token<AuditLog>();
+
+/** The runtime values the platform hands the registry per request (or a test supplies). */
+export interface RegistryConfig {
+  readonly db: Db;
+  readonly tarballs: R2Bucket;
+  readonly baseUrl: string;
+  readonly admins?: ReadonlySet<string>;
+  readonly domainSecret?: string;
 }
 
 /**
- * The per-request service graph, inferred from {@link buildServices}. Handlers
- * depend on this type; adding a service to the factory extends it here for free.
+ * The registry's composition root as `@brika/di` providers (Angular's `provideX()` shape). The
+ * shared D1-backed services come from `buildRegistryGraph` (one place wires the adapters + service
+ * constructors for both apps); this adds the registry's own R2-backed resolve/publish, the device
+ * flow, downloads, and operator admins. Domain services bind under their own class; persistence
+ * ports bind under their PORT token (the registry-core interface), keeping controllers off the
+ * concrete `D1*` and the ORM. A test passes a fake db + bucket and appends a later provider.
+ *
+ * Rate limiting is intentionally NOT here: it is an inline edge concern on the routes that opt in.
  */
-export type Services = ReturnType<typeof buildServices>;
+export function provideRegistry(config: RegistryConfig): Provider[] {
+  const { db, tarballs, baseUrl } = config;
+  const g = buildRegistryGraph(db, { domainSecret: config.domainSecret ?? "test-domain-secret" });
+
+  return [
+    { provide: Admins, useValue: config.admins ?? new Set() },
+    { provide: ResolveDisplayName, useValue: (login: string) => resolveDisplayName(db, login) },
+    {
+      provide: ResolveService,
+      useValue: new ResolveService(g.metadata, new R2TarballReader(tarballs), { baseUrl }),
+    },
+    {
+      provide: PublishService,
+      useValue: new PublishService(
+        new D1MetadataWriter(db),
+        new R2TarballWriter(tarballs),
+        new SchemaManifestValidator(),
+        g.ownership,
+        { scanner: new NoopTarballScanner() },
+      ),
+    },
+    { provide: ManagementService, useValue: g.management },
+    { provide: ScopeService, useValue: g.scopes },
+    { provide: DeviceService, useValue: new DeviceService(new D1DeviceStore(db)) },
+    { provide: Catalog, useValue: g.catalog },
+    { provide: Tokens, useValue: g.tokens },
+    { provide: Downloads, useValue: new D1DownloadStore(db) },
+    { provide: Audit, useValue: g.audit },
+  ];
+}

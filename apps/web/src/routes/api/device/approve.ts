@@ -1,10 +1,10 @@
-import { env } from "cloudflare:workers";
+import { inject } from "@brika/di";
+import { badRequest, readBody, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
-import { approveDeviceCode } from "@/lib/auth/device-approval";
-import { jsonBadRequest, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { serverContext } from "@/server/server-context";
+import { publicJson, runHandler } from "@/server/http";
+import { DeviceApprovalStore } from "@/server/stores/device-approval-store";
 
 /**
  * `POST /api/device/approve`: approve a pending registry device-authorization
@@ -18,20 +18,19 @@ const ApproveInput = z.object({ user_code: z.string() });
 export const Route = createFileRoute("/api/device/approve")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        const user = await getCurrentUser(request, serverContext().db);
-        if (user === null) return jsonUnauthorized();
+      POST: ({ request }) =>
+        runHandler(async () => {
+          const user = await getCurrentUser(request);
+          if (user === null) throw unauthorized("Sign in required");
 
-        const raw: unknown = await request.json().catch(() => null);
-        const parsed = ApproveInput.safeParse(raw);
-        if (!parsed.success) return jsonBadRequest("Invalid request");
+          const parsed = await readBody(request, ApproveInput, "Invalid request");
 
-        const code = parsed.data.user_code.trim().toUpperCase();
-        if (!(await approveDeviceCode(env.DB, code, user.login))) {
-          return jsonBadRequest("That code is invalid, expired, or already used");
-        }
-        return jsonOk({ ok: true });
-      },
+          const code = parsed.user_code.trim().toUpperCase();
+          if (!(await inject(DeviceApprovalStore).approve(code, user.login))) {
+            throw badRequest("That code is invalid, expired, or already used");
+          }
+          return publicJson({ ok: true });
+        }),
     },
   },
 });

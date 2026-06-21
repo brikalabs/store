@@ -1,8 +1,10 @@
+import { inject } from "@brika/di";
+import { badRequest, notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonBadRequest, jsonNotFound } from "@/lib/http";
 import { getRegistryAsset } from "@/lib/registry/registry-assets";
 import { isRegistryName, isSafeAssetPath } from "@/lib/registry/registry-source";
-import { serverContext } from "@/server/server-context";
+import { runHandler } from "@/server/http";
+import { BlobStore } from "@/server/ports/blob-store";
 
 /**
  * `GET /v1/plugins/:name/v/:version/files/<path>` - serve a single file bundled
@@ -13,28 +15,29 @@ import { serverContext } from "@/server/server-context";
 export const Route = createFileRoute("/v1/plugins/$name/v/$version/files/$")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
-        const name = decodeURIComponent(params.name);
-        if (!isRegistryName(name)) return jsonNotFound();
+      GET: ({ params }) =>
+        runHandler(async () => {
+          const name = decodeURIComponent(params.name);
+          if (!isRegistryName(name)) throw notFound();
 
-        const path = params._splat ?? "";
-        if (!isSafeAssetPath(path)) return jsonBadRequest("invalid asset path");
+          const path = params._splat ?? "";
+          if (!isSafeAssetPath(path)) throw badRequest("invalid asset path");
 
-        const asset = await getRegistryAsset(serverContext().assets, name, params.version, path);
-        if (asset === null) return jsonNotFound();
+          const asset = await getRegistryAsset(inject(BlobStore), name, params.version, path);
+          if (asset === null) throw notFound();
 
-        // Copy into a fresh ArrayBuffer-backed view so the body type is concrete
-        // (the tar reader yields `Uint8Array<ArrayBufferLike>`).
-        const body = new Uint8Array(asset.bytes.byteLength);
-        body.set(asset.bytes);
-        return new Response(body, {
-          status: 200,
-          headers: {
-            "content-type": asset.contentType,
-            "cache-control": "public, max-age=31536000, immutable",
-          },
-        });
-      },
+          // Copy into a fresh ArrayBuffer-backed view so the body type is concrete
+          // (the tar reader yields `Uint8Array<ArrayBufferLike>`).
+          const body = new Uint8Array(asset.bytes.byteLength);
+          body.set(asset.bytes);
+          return new Response(body, {
+            status: 200,
+            headers: {
+              "content-type": asset.contentType,
+              "cache-control": "public, max-age=31536000, immutable",
+            },
+          });
+        }),
     },
   },
 });

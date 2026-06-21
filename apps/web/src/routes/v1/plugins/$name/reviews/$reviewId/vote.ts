@@ -1,8 +1,8 @@
+import { inject } from "@brika/di";
+import { notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { getSessionUserId } from "@/lib/auth/auth";
-import { jsonNotFound, jsonOk, jsonUnauthorized } from "@/lib/http";
-import { listReviews, toggleReviewHelpful } from "@/lib/social/social";
-import { serverContext } from "@/server/server-context";
+import { publicJson, runUser } from "@/server/http";
+import { SocialService } from "@/server/services/social-service";
 
 /**
  * `POST /v1/plugins/:name/reviews/:reviewId/vote` - toggle the signed-in user's
@@ -12,13 +12,12 @@ import { serverContext } from "@/server/server-context";
 export const Route = createFileRoute("/v1/plugins/$name/reviews/$reviewId/vote")({
   server: {
     handlers: {
-      POST: async ({ request, params }) => {
-        const userId = await getSessionUserId(request);
-        if (userId === null) return jsonUnauthorized();
-        const database = serverContext().db;
-        if (!(await toggleReviewHelpful(database, params.reviewId, userId))) return jsonNotFound();
-        return jsonOk(await listReviews(database, params.name, userId));
-      },
+      POST: ({ request, params }) =>
+        runUser(request, async (userId) => {
+          const social = inject(SocialService);
+          if (!(await social.toggleReviewHelpful(params.reviewId, userId))) throw notFound();
+          return publicJson(await social.listReviews(params.name, userId));
+        }),
     },
   },
 });

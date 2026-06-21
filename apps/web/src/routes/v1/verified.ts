@@ -1,6 +1,6 @@
 import { VerifiedList } from "@brika/registry-contract";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonOk } from "@/lib/http";
+import { publicJson } from "@/server/http";
 
 /**
  * `GET /v1/verified`: the signed curation list. Empty until the curation data
@@ -11,7 +11,7 @@ const VERIFIED = VerifiedList.parse({ plugins: [] });
 export const Route = createFileRoute("/v1/verified")({
   server: {
     handlers: {
-      GET: () => jsonOk(VERIFIED),
+      GET: () => publicJson(VERIFIED),
     },
   },
 });

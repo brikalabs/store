@@ -23,15 +23,13 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-6 sm:flex-row sm:items-start">
-        {hasIcon ? (
-          <img
-            src={`/api/scopes/${encodeURIComponent(scope)}/icon`}
-            alt={name}
-            className="size-[84px] shrink-0 rounded-[20px] border border-border object-cover"
-          />
-        ) : (
-          <GradientAvatar seed={scope} label={name} size={84} className="rounded-[20px]" />
-        )}
+        <GradientAvatar
+          seed={scope}
+          label={name}
+          imageUrl={hasIcon ? `/api/scopes/${encodeURIComponent(scope)}/icon` : undefined}
+          size={84}
+          className="rounded-[20px]"
+        />
         <div className="flex-1">
           <div className="flex items-center gap-2.5">
             <h1 className="font-bold font-heading text-3xl tracking-tight">{name}</h1>

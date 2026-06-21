@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { PublishIdentity } from "./publish";
 
 /**
@@ -21,6 +22,20 @@ export interface TrustedPublisher {
   /** Workflow/config filename, e.g. `publish.yml` / `.gitlab-ci.yml` (from the OIDC ref claim). */
   readonly workflow: string;
 }
+
+/**
+ * The shape of a trusted-publisher binding request body: provider + project + the
+ * workflow/config filename allowed to publish under the scope via OIDC. Validated so a
+ * malformed binding never reaches the store (and so it can actually match a real OIDC ref
+ * claim). Shared so the registry endpoint and the store console validate identically.
+ */
+export const trustedPublisherSchema = z.object({
+  provider: z.enum(["github", "gitlab"]),
+  repository: z.string().regex(/^[^\s/]+(?:\/[^\s/]+)+$/, "repository must be 'owner/repo'"),
+  workflow: z
+    .string()
+    .regex(/^[\w.-]+\.ya?ml$/, "workflow must be a workflow filename, e.g. publish.yml"),
+});
 
 /**
  * Persistence port for trusted-publisher bindings (`reg_trusted_publishers`). Managed by an

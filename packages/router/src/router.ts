@@ -1,3 +1,4 @@
+import { callerFrame, moduleFile } from "@brika/stack";
 import type { Context, Env, Hono, MiddlewareHandler } from "hono";
 import type { z } from "zod";
 import { badRequest, HttpError } from "./errors";
@@ -117,8 +118,19 @@ export interface ControllerConfig<Ctx, E extends Env> {
 
 /** How `mount` turns a Hono request into the per-request inputs. */
 export interface MountOptions<Ctx, E extends Env> {
-  /** Build the per-request context (e.g. a service graph) from Hono's Context. */
-  readonly context: (c: Context<E>) => Ctx | Promise<Ctx>;
+  /**
+   * Build the per-request context (e.g. a service graph) from Hono's Context. Optional: omit it
+   * when handlers resolve their dependencies another way (e.g. `inject()` inside an injection
+   * context established by {@link around}), in which case `ctx` is `undefined`.
+   */
+  readonly context?: (c: Context<E>) => Ctx | Promise<Ctx>;
+  /**
+   * Wrap handler (and route-middleware) execution. The seam for running each request inside a
+   * surrounding scope, e.g. a `@brika/di` injection context:
+   * `around: (c, run) => runInContext(providersFor(c), run)`. Keeps the router itself free of any
+   * DI dependency; the app supplies the wrapper.
+   */
+  readonly around?: (c: Context<E>, run: () => Promise<Response>) => Promise<Response>;
   /** Optional: called once per request with its route, status, and timing. */
   readonly logger?: RouterLogger;
 }
@@ -130,26 +142,8 @@ export interface RouteInfo {
   readonly pattern: string;
 }
 
-/** Extract the `file:line:col` from one `Error.stack` frame. */
-function frameLocation(frame: string): string | undefined {
-  const inParens = /\(([^()]+)\)\s*$/.exec(frame);
-  const loc = inParens?.[1] ?? /\bat\s+(.+?)\s*$/.exec(frame)?.[1];
-  return loc?.replace(/^file:\/\//, "");
-}
-
-/** The first non-`node:` frame's file in a stack (no line:col), or "". */
-function topFile(stack: string | undefined): string {
-  for (const frame of (stack ?? "").split("\n")) {
-    const loc = frameLocation(frame);
-    if (loc !== undefined && !loc.includes("<anonymous>") && !loc.includes("node:")) {
-      return loc.replace(/:\d+(:\d+)?$/, "");
-    }
-  }
-  return "";
-}
-
 /** This module's own file (captured from a load-time stack), so we can skip its frames. */
-const ROUTER_FILE = topFile(new Error("router module location probe").stack);
+const ROUTER_FILE = moduleFile(new Error("router module location probe").stack);
 
 /**
  * Best-effort `file:line:col` of the first caller outside this module, captured at
@@ -158,15 +152,7 @@ const ROUTER_FILE = topFile(new Error("router module location probe").stack);
  * and is simply omitted when unavailable.
  */
 function callerSource(): string | undefined {
-  const stack = new Error().stack;
-  if (stack === undefined) return undefined;
-  for (const frame of stack.split("\n")) {
-    const loc = frameLocation(frame);
-    if (loc === undefined || loc.includes("<anonymous>") || loc.includes("node:")) continue;
-    if (ROUTER_FILE !== "" && loc.includes(ROUTER_FILE)) continue;
-    return loc;
-  }
-  return undefined;
+  return callerFrame(new Error("router caller probe").stack, ROUTER_FILE);
 }
 
 /** The validated type a schema yields (or `undefined` when a route declares none). */
@@ -251,6 +237,10 @@ function parseQuery(c: Context, schema: z.ZodType | undefined): unknown {
  * `n` optional segments yield `2^n` patterns; a pattern with none passes through.
  * This is what lets a leading or middle optional segment work even though the
  * underlying Hono matcher has no native optional-segment support.
+ *
+ * An expansion that collapses to the empty string (a sole/terminal optional with no
+ * prefix, e.g. `:x?`) is dropped: registering `""` would bind the handler to `/`, the
+ * root - never the intent. Such a route should be written with its own concrete prefix.
  */
 function expandOptional(pattern: string): string[] {
   let variants: string[][] = [[]];
@@ -262,7 +252,7 @@ function expandOptional(pattern: string): string[] {
       variants = variants.map((segments) => [...segments, segment]);
     }
   }
-  return variants.map((segments) => segments.join("/"));
+  return variants.map((segments) => segments.join("/")).filter((p) => p !== "");
 }
 
 /** The client IP, from Cloudflare's `CF-Connecting-IP` or the first `X-Forwarded-For` hop. */
@@ -315,18 +305,22 @@ async function handleRequest<Ctx, E extends Env>(
   let status = 500;
   let unexpected: unknown;
   try {
-    const ctx = await options.context(c);
+    // `ctx` is undefined when no `context` factory is set (handlers use `inject()` instead).
+    const ctx = options.context ? await options.context(c) : (undefined as Ctx);
     const body = await parseBody(c, def.bodySchema);
     const query = parseQuery(c, def.querySchema);
-    // Route middleware runs first (a throw aborts via the catch below), then the handler.
-    const response = await dispatch(middleware, def.run, {
-      params: c.req.param(),
-      query,
-      body,
-      ctx,
-      req: c.req.raw,
-      waitUntil: (promise: Promise<unknown>) => c.executionCtx.waitUntil(promise),
-    });
+    // Route middleware runs first (a throw aborts via the catch below), then the handler. When an
+    // `around` wrapper is set, both run inside it (e.g. a per-request injection context).
+    const exec = (): Promise<Response> =>
+      dispatch(middleware, def.run, {
+        params: c.req.param(),
+        query,
+        body,
+        ctx,
+        req: c.req.raw,
+        waitUntil: (promise: Promise<unknown>) => c.executionCtx.waitUntil(promise),
+      });
+    const response = options.around ? await options.around(c, exec) : await exec();
     status = response.status;
     return response;
   } catch (error) {

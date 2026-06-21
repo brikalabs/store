@@ -11,6 +11,30 @@ export interface AuditEntry {
 }
 
 /**
+ * Build an {@link AuditEntry} from the caller's identity plus the varying fields, defaulting the
+ * version and detail to null. Every audit call site shares the same actor + null-defaulting, so
+ * this is the one place that shape is assembled (the registry's `auditScope` and the console's
+ * `recordAudit` both delegate here).
+ */
+export function auditEntry(
+  actor: PublishIdentity,
+  entry: {
+    readonly action: string;
+    readonly packageName: string;
+    readonly version?: string | null;
+    readonly detail?: Record<string, unknown> | null;
+  },
+): AuditEntry {
+  return {
+    action: entry.action,
+    packageName: entry.packageName,
+    version: entry.version ?? null,
+    actor,
+    detail: entry.detail ?? null,
+  };
+}
+
+/**
  * Append-only audit log port. `record` is best-effort by contract: it is called AFTER
  * the action it records has already committed, so a failed audit write must be
  * swallowed (logged, never thrown) rather than turning a successful action into a 500.

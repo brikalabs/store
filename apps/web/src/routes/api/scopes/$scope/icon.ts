@@ -1,21 +1,13 @@
+import { inject } from "@brika/di";
+import { ScopeService } from "@brika/registry-core";
+import { badRequest, okOrThrow, readBytes, reply } from "@brika/router";
+import { onRollback, transaction } from "@brika/tx";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonBadRequest, jsonPrivate } from "@/lib/http";
-import { authed, runJson, unwrap } from "@/server/console-api";
-import { registryServices } from "@/server/registry-services";
-import { serverContext } from "@/server/server-context";
-
-/** Allowed raster logo types -> file extension. SVG is excluded (script-in-SVG surface). */
-const ICON_TYPES: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-};
-const MAX_ICON_BYTES = 512 * 1024; // 512 KiB
-const CONTENT_TYPE_BY_EXT: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  webp: "image/webp",
-};
+import { sniffImageMime } from "@/lib/image-format";
+import { ICON_TYPES, MAX_ICON_BYTES } from "@/lib/scope-icon";
+import { recordAudit, runAuthed, runHandler } from "@/server/http";
+import { BlobStore } from "@/server/ports/blob-store";
+import { streamScopeIcon } from "@/server/scope-icon";
 
 /**
  * Scope logo (ORG-009):
@@ -26,57 +18,46 @@ const CONTENT_TYPE_BY_EXT: Record<string, string> = {
 export const Route = createFileRoute("/api/scopes/$scope/icon")({
   server: {
     handlers: {
-      GET: ({ params }) =>
-        runJson(async () => {
-          const iconKey = await registryServices().scopes.iconKeyOf(params.scope);
-          if (iconKey === null) return new Response("Not found", { status: 404 });
-          const stored = await serverContext().assets.get(iconKey);
-          if (stored === null) return new Response("Not found", { status: 404 });
-          const ext = iconKey.split(".").pop() ?? "";
-          // Copy into a fresh ArrayBuffer-backed view so the body type is concrete.
-          const body = new Uint8Array(stored.byteLength);
-          body.set(stored);
-          return new Response(body, {
-            headers: {
-              "content-type": CONTENT_TYPE_BY_EXT[ext] ?? "application/octet-stream",
-              "cache-control": "public, max-age=300",
-            },
-          });
-        }),
+      GET: ({ request, params }) =>
+        runHandler(() => streamScopeIcon(params.scope, request.headers.get("if-none-match"))),
       POST: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
+        runAuthed(request, async (a) => {
           const type = request.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
           const ext = ICON_TYPES[type];
-          if (ext === undefined) return jsonBadRequest("Logo must be a PNG, JPEG, or WebP image");
-          const bytes = new Uint8Array(await request.arrayBuffer());
-          if (bytes.byteLength === 0) return jsonBadRequest("Empty upload");
-          if (bytes.byteLength > MAX_ICON_BYTES) return jsonBadRequest("Logo exceeds 512 KiB");
+          if (ext === undefined) throw badRequest("Logo must be a PNG, JPEG, or WebP image");
+          const bytes = await readBytes(request, MAX_ICON_BYTES, "Logo exceeds 512 KiB");
+          // Validate the FORMAT by magic number, not the declared content-type, and require the
+          // bytes to match the declared type - so a mislabelled or polyglot payload is rejected.
+          if (sniffImageMime(bytes) !== type)
+            throw badRequest("Logo content does not match its type");
 
+          // Stage the blob then commit the D1 pointer atomically: if the ownership-gated
+          // setIcon fails (e.g. not a scope member), the transaction rolls back and the
+          // onRollback compensation deletes the just-staged blob, so a rejected upload never
+          // leaves an orphaned object in R2.
           const key = `scope-icons/${params.scope}.${ext}`;
-          await serverContext().assets.put(key, bytes, type);
-          unwrap(await a.svc.scopes.setIcon(a.identity, params.scope, key));
-          await a.svc.audit.record({
+          const assets = inject(BlobStore);
+          await transaction(async () => {
+            await assets.put(key, bytes, type);
+            onRollback(() => assets.delete(key));
+            okOrThrow(await inject(ScopeService).setIcon(a.identity, params.scope, key));
+          });
+          await recordAudit(a, {
             action: "scope_icon_set",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { key },
           });
-          return jsonPrivate({ ok: true, scope: params.scope });
+          return reply({ ok: true, scope: params.scope });
         }),
       DELETE: ({ request, params }) =>
-        runJson(async () => {
-          const a = await authed(request);
-          unwrap(await a.svc.scopes.setIcon(a.identity, params.scope, null));
-          await a.svc.audit.record({
+        runAuthed(request, async (a) => {
+          okOrThrow(await inject(ScopeService).setIcon(a.identity, params.scope, null));
+          await recordAudit(a, {
             action: "scope_icon_set",
             packageName: params.scope,
-            version: null,
-            actor: a.identity,
             detail: { key: null },
           });
-          return jsonPrivate({ ok: true, scope: params.scope });
+          return reply({ ok: true, scope: params.scope });
         }),
     },
   },

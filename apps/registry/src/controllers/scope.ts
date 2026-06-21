@@ -1,19 +1,21 @@
+import { inject } from "@brika/di";
 import {
+  auditEntry,
   displayNameSchema,
   domainChallengeHost,
   isCanonicalScope,
-  scopeDescriptionSchema,
+  type PublishIdentity,
+  ScopeService,
   scopeDomainSchema,
-  scopeLinksSchema,
+  scopeProfileSchema,
+  trustedPublisherSchema,
 } from "@brika/registry-core";
-import { badRequest, httpError, rateLimit, reply } from "@brika/router";
+import { badRequest, httpError, okOrThrow, rateLimit, reply } from "@brika/router";
 import { z } from "zod";
 import { cf } from "../adapters/cf-rate-limiter";
 import { principal, requireAdmin, requireWrite } from "../auth";
-import { okOrThrow } from "../http/result";
 import { controller, route } from "../http/router";
-
-import type { Services } from "../services";
+import { Audit } from "../services";
 
 /**
  * Scope management HTTP layer. The scope is the first-class ownership entity (npm/JSR model,
@@ -40,9 +42,20 @@ import type { Services } from "../services";
  *   POST   /-/scope/:scope/restore                  reverse a takedown (ORG-007)
  *
  * These handlers are thin: they validate input, resolve the caller's verified identity,
- * delegate the rules + invariants to `ctx.scopes` (the domain `ScopeService`), audit the
+ * delegate the rules + invariants to `inject(ScopeService)` (the domain service), audit the
  * outcome, and map the result to a status. No database access or business logic here.
  */
+
+/** Record a scope audit entry. Every scope action shares packageName=scope, version=null, and the
+ *  caller as actor, varying only by action + detail. */
+function auditScope(
+  action: string,
+  scope: string,
+  actor: PublishIdentity,
+  detail: Record<string, unknown> | null = null,
+): Promise<void> {
+  return inject(Audit).record(auditEntry(actor, { action, packageName: scope, detail }));
+}
 
 /**
  * `GET /-/scope/:scope` - public scope info (scope, display name, description, links, icon
@@ -50,15 +63,14 @@ import type { Services } from "../services";
  */
 export async function getScope({
   params,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
-  readonly ctx: Services;
 }): Promise<Response> {
-  const info = await ctx.scopes.getPublic(params.scope);
+  const scopes = inject(ScopeService);
+  const info = await scopes.getPublic(params.scope);
   if (info === null) throw httpError(404, `scope ${params.scope} does not exist`, "not_found");
   const { hasIcon: _hasIcon, ...rest } = info;
-  const iconKey = await ctx.scopes.iconKeyOf(params.scope);
+  const iconKey = await scopes.iconKeyOf(params.scope);
   return reply({ ok: true, ...rest, iconKey }, 200);
 }
 
@@ -66,11 +78,9 @@ export async function getScope({
 export async function createScope({
   params,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
   if (!isCanonicalScope(scope)) {
@@ -78,16 +88,10 @@ export async function createScope({
       "scope must be '@' + 2-20 lowercase letters, digits or hyphens, not starting with a hyphen",
     );
   }
-  const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.scopes.claim(identity, scope));
+  const identity = await requireWrite(req);
+  const result = okOrThrow(await inject(ScopeService).claim(identity, scope));
   if (result.created) {
-    await ctx.audit.record({
-      action: "scope_create",
-      packageName: scope,
-      version: null,
-      actor: identity,
-      detail: null,
-    });
+    await auditScope("scope_create", scope, identity);
   }
   return reply({ ok: true, scope, created: result.created }, result.created ? 201 : 200);
 }
@@ -96,15 +100,13 @@ export async function createScope({
 export async function listMembers({
   params,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.scopes.listMembers(identity, scope));
+  const identity = await requireWrite(req);
+  const result = okOrThrow(await inject(ScopeService).listMembers(identity, scope));
   return reply({ ok: true, scope, members: result.members }, 200);
 }
 
@@ -115,25 +117,17 @@ export async function putMember({
   params,
   body,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string; readonly provider: string; readonly id: string };
   readonly body: z.infer<typeof MemberBody>;
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope, provider, id } = params;
-  const identity = await requireWrite(req, ctx.tokens);
+  const identity = await requireWrite(req);
   const result = okOrThrow(
-    await ctx.scopes.setMember(identity, scope, { provider, id }, body.role),
+    await inject(ScopeService).setMember(identity, scope, { provider, id }, body.role),
   );
-  await ctx.audit.record({
-    action: "scope_member_set",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { provider, id, role: body.role },
-  });
+  await auditScope("scope_member_set", scope, identity, { provider, id, role: body.role });
   return reply({ ok: true, scope, member: result.member }, 200);
 }
 
@@ -141,22 +135,16 @@ export async function putMember({
 export async function deleteMember({
   params,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string; readonly provider: string; readonly id: string };
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope, provider, id } = params;
-  const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.scopes.removeMember(identity, scope, { provider, id }));
-  await ctx.audit.record({
-    action: "scope_member_remove",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { provider, id },
-  });
+  const identity = await requireWrite(req);
+  const result = okOrThrow(
+    await inject(ScopeService).removeMember(identity, scope, { provider, id }),
+  );
+  await auditScope("scope_member_remove", scope, identity, { provider, id });
   return reply({ ok: true, scope, removed: result.removed }, 200);
 }
 
@@ -170,58 +158,37 @@ export async function setDisplayName({
   params,
   body,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
   readonly body: z.infer<typeof DisplayNameBody>;
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, ctx.tokens);
-  okOrThrow(await ctx.scopes.setDisplayName(identity, scope, body.displayName));
-  await ctx.audit.record({
-    action: "scope_display_name",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { displayName: body.displayName },
-  });
+  const identity = await requireWrite(req);
+  okOrThrow(await inject(ScopeService).setDisplayName(identity, scope, body.displayName));
+  await auditScope("scope_display_name", scope, identity, { displayName: body.displayName });
   return reply({ ok: true, scope, displayName: body.displayName }, 200);
 }
-
-const ProfileBody = z.object({
-  description: scopeDescriptionSchema.nullable(),
-  links: scopeLinksSchema,
-});
 
 /** `PUT /-/scope/:scope/profile` - set the description + links (admin; ORG-009). */
 export async function setProfile({
   params,
   body,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
-  readonly body: z.infer<typeof ProfileBody>;
+  readonly body: z.infer<typeof scopeProfileSchema>;
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, ctx.tokens);
+  const identity = await requireWrite(req);
   const result = okOrThrow(
-    await ctx.scopes.setProfile(identity, scope, {
+    await inject(ScopeService).setProfile(identity, scope, {
       description: body.description,
       links: body.links,
     }),
   );
-  await ctx.audit.record({
-    action: "scope_profile_set",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { links: body.links.length },
-  });
+  await auditScope("scope_profile_set", scope, identity, { links: body.links.length });
   return reply({ ok: true, scope, profile: result.profile }, 200);
 }
 
@@ -229,20 +196,19 @@ export async function setProfile({
 export async function listDomains({
   params,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.scopes.listDomains(identity, scope));
+  const scopes = inject(ScopeService);
+  const identity = await requireWrite(req);
+  const result = okOrThrow(await scopes.listDomains(identity, scope));
   const domains = await Promise.all(
     result.domains.map(async (d) => ({
       ...d,
       host: domainChallengeHost(d.domain),
-      txt: await ctx.scopes.domainChallenge(scope, d.domain),
+      txt: await scopes.domainChallenge(scope, d.domain),
     })),
   );
   return reply({ ok: true, scope, domains }, 200);
@@ -259,30 +225,23 @@ function parseDomain(raw: string): string {
 export async function addDomain({
   params,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string; readonly domain: string };
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
   const domain = parseDomain(params.domain);
-  const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.scopes.addDomain(identity, scope, domain));
-  await ctx.audit.record({
-    action: "scope_domain_add",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { domain },
-  });
+  const scopes = inject(ScopeService);
+  const identity = await requireWrite(req);
+  const result = okOrThrow(await scopes.addDomain(identity, scope, domain));
+  await auditScope("scope_domain_add", scope, identity, { domain });
   return reply(
     {
       ok: true,
       scope,
       domain: result.domain,
       host: domainChallengeHost(domain),
-      txt: await ctx.scopes.domainChallenge(scope, domain),
+      txt: await scopes.domainChallenge(scope, domain),
     },
     201,
   );
@@ -292,24 +251,16 @@ export async function addDomain({
 export async function verifyDomain({
   params,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string; readonly domain: string };
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
   const domain = parseDomain(params.domain);
-  const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.scopes.verifyDomain(identity, scope, domain));
+  const identity = await requireWrite(req);
+  const result = okOrThrow(await inject(ScopeService).verifyDomain(identity, scope, domain));
   if (result.verified) {
-    await ctx.audit.record({
-      action: "scope_domain_verified",
-      packageName: scope,
-      version: null,
-      actor: identity,
-      detail: { domain },
-    });
+    await auditScope("scope_domain_verified", scope, identity, { domain });
   }
   return reply({ ok: true, scope, domain, verified: result.verified }, 200);
 }
@@ -318,50 +269,29 @@ export async function verifyDomain({
 export async function deleteDomain({
   params,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string; readonly domain: string };
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
   const domain = parseDomain(params.domain);
-  const identity = await requireWrite(req, ctx.tokens);
-  okOrThrow(await ctx.scopes.removeDomain(identity, scope, domain));
-  await ctx.audit.record({
-    action: "scope_domain_remove",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { domain },
-  });
+  const identity = await requireWrite(req);
+  okOrThrow(await inject(ScopeService).removeDomain(identity, scope, domain));
+  await auditScope("scope_domain_remove", scope, identity, { domain });
   return reply({ ok: true, scope, removed: domain }, 200);
 }
-
-// A trusted-publisher binding (PUB-016): provider + project + the workflow/config filename
-// allowed to publish under the scope via OIDC. Validated here so a malformed binding never
-// reaches the store (and so it can actually match a real OIDC ref claim).
-const TrustedPublisherBody = z.object({
-  provider: z.enum(["github", "gitlab"]),
-  repository: z.string().regex(/^[^\s/]+(?:\/[^\s/]+)+$/, "repository must be 'owner/repo'"),
-  workflow: z
-    .string()
-    .regex(/^[\w.-]+\.ya?ml$/, "workflow must be a workflow filename, e.g. publish.yml"),
-});
 
 /** `GET /-/scope/:scope/trusted-publishers` - list bindings (admin; PUB-016). */
 export async function listTrustedPublishers({
   params,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.scopes.listTrustedPublishers(identity, scope));
+  const identity = await requireWrite(req);
+  const result = okOrThrow(await inject(ScopeService).listTrustedPublishers(identity, scope));
   return reply({ ok: true, scope, publishers: result.publishers }, 200);
 }
 
@@ -370,23 +300,15 @@ export async function addTrustedPublisher({
   params,
   body,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
-  readonly body: z.infer<typeof TrustedPublisherBody>;
+  readonly body: z.infer<typeof trustedPublisherSchema>;
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.scopes.addTrustedPublisher(identity, scope, body));
-  await ctx.audit.record({
-    action: "scope_trusted_publisher_add",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { ...body },
-  });
+  const identity = await requireWrite(req);
+  const result = okOrThrow(await inject(ScopeService).addTrustedPublisher(identity, scope, body));
+  await auditScope("scope_trusted_publisher_add", scope, identity, { ...body });
   return reply({ ok: true, scope, publisher: result.publisher }, 201);
 }
 
@@ -395,23 +317,17 @@ export async function removeTrustedPublisher({
   params,
   body,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
-  readonly body: z.infer<typeof TrustedPublisherBody>;
+  readonly body: z.infer<typeof trustedPublisherSchema>;
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireWrite(req, ctx.tokens);
-  const result = okOrThrow(await ctx.scopes.removeTrustedPublisher(identity, scope, body));
-  await ctx.audit.record({
-    action: "scope_trusted_publisher_remove",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { ...body },
-  });
+  const identity = await requireWrite(req);
+  const result = okOrThrow(
+    await inject(ScopeService).removeTrustedPublisher(identity, scope, body),
+  );
+  await auditScope("scope_trusted_publisher_remove", scope, identity, { ...body });
   return reply({ ok: true, scope, removed: result.removed }, 200);
 }
 
@@ -426,23 +342,15 @@ export async function takedownScope({
   params,
   body,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
   readonly body: z.infer<typeof TakedownBody>;
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireAdmin(req, ctx.tokens, ctx.admins);
-  okOrThrow(await ctx.scopes.takedown(scope, body.reason));
-  await ctx.audit.record({
-    action: "scope_takedown",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { reason: body.reason },
-  });
+  const identity = await requireAdmin(req);
+  okOrThrow(await inject(ScopeService).takedown(scope, body.reason));
+  await auditScope("scope_takedown", scope, identity, { reason: body.reason });
   return reply({ ok: true, scope, takedown: body.reason }, 200);
 }
 
@@ -450,22 +358,14 @@ export async function takedownScope({
 export async function restoreScope({
   params,
   req,
-  ctx,
 }: {
   readonly params: { readonly scope: string };
   readonly req: Request;
-  readonly ctx: Services;
 }): Promise<Response> {
   const { scope } = params;
-  const identity = await requireAdmin(req, ctx.tokens, ctx.admins);
-  okOrThrow(await ctx.scopes.restore(scope));
-  await ctx.audit.record({
-    action: "scope_restore",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: null,
-  });
+  const identity = await requireAdmin(req);
+  okOrThrow(await inject(ScopeService).restore(scope));
+  await auditScope("scope_restore", scope, identity);
   return reply({ ok: true, scope, takedown: null }, 200);
 }
 
@@ -489,7 +389,7 @@ export const scopeController = controller({
     route.put({ path: "/:scope/member/:provider/:id", body: MemberBody, handler: putMember }),
     route.delete({ path: "/:scope/member/:provider/:id", handler: deleteMember }),
     route.post({ path: "/:scope/display-name", body: DisplayNameBody, handler: setDisplayName }),
-    route.put({ path: "/:scope/profile", body: ProfileBody, handler: setProfile }),
+    route.put({ path: "/:scope/profile", body: scopeProfileSchema, handler: setProfile }),
     route.get({ path: "/:scope/domains", handler: listDomains }),
     route.put({ path: "/:scope/domain/:domain", handler: addDomain }),
     route.post({ path: "/:scope/domain/:domain/verify", handler: verifyDomain }),
@@ -499,12 +399,12 @@ export const scopeController = controller({
     route.get({ path: "/:scope/trusted-publishers", handler: listTrustedPublishers }),
     route.put({
       path: "/:scope/trusted-publishers",
-      body: TrustedPublisherBody,
+      body: trustedPublisherSchema,
       handler: addTrustedPublisher,
     }),
     route.delete({
       path: "/:scope/trusted-publishers",
-      body: TrustedPublisherBody,
+      body: trustedPublisherSchema,
       handler: removeTrustedPublisher,
     }),
     // Operator-only (REGISTRY_ADMINS), not scope membership: takedown/restore a squatted scope.

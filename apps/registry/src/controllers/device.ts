@@ -1,10 +1,12 @@
+import { inject } from "@brika/di";
+import { DeviceService } from "@brika/registry-core";
 import { badRequest, rateLimit, reply, unauthorized } from "@brika/router";
 import { z } from "zod";
 import { cf, clientKey } from "../adapters/cf-rate-limiter";
 import { requireWrite } from "../auth";
 import { vars } from "../env";
 import { controller, route } from "../http/router";
-import type { Services } from "../services";
+import { ResolveDisplayName, Tokens } from "../services";
 
 /**
  * OAuth device authorization flow (RFC 8628) for `brika auth login`, plus token
@@ -16,8 +18,8 @@ import type { Services } from "../services";
  * parse so it can return RFC 8628's `invalid_request` error code.
  */
 
-export async function handleDeviceCode(services: Services): Promise<Response> {
-  const code = await services.devices.requestCode();
+export async function handleDeviceCode(): Promise<Response> {
+  const code = await inject(DeviceService).requestCode();
   const verificationUri = `${vars().STORE_URL.replace(/\/+$/, "")}/device`;
   return reply(
     {
@@ -35,17 +37,17 @@ export async function handleDeviceCode(services: Services): Promise<Response> {
 
 const TokenRequest = z.object({ device_code: z.string() });
 
-export async function handleDeviceToken(req: Request, services: Services): Promise<Response> {
+export async function handleDeviceToken(req: Request): Promise<Response> {
   const parsed = TokenRequest.safeParse(await req.json().catch(() => null));
   if (!parsed.success) throw badRequest("invalid_request");
 
-  const result = await services.devices.redeem(parsed.data.device_code);
+  const result = await inject(DeviceService).redeem(parsed.data.device_code);
   if (!result.ok) throw badRequest(result.error);
 
-  const token = await services.tokens.issue(result.githubLogin);
+  const token = await inject(Tokens).issue(result.githubLogin);
   // Resolve a human display name for the CLI's "Logged in as ..." line. Null when the
   // login has no store account/profile yet; the CLI then shows the github login.
-  const displayName = await services.resolveDisplayName(result.githubLogin);
+  const displayName = await inject(ResolveDisplayName)(result.githubLogin);
   return reply(
     {
       access_token: token,
@@ -62,18 +64,18 @@ export async function handleDeviceToken(req: Request, services: Services): Promi
  * authenticated github login plus its resolved display name (null when none),
  * so the CLI can render the signed-in account without re-running the device flow.
  */
-export async function handleWhoami(req: Request, services: Services): Promise<Response> {
-  const identity = await requireWrite(req, services.tokens);
+export async function handleWhoami(req: Request): Promise<Response> {
+  const identity = await requireWrite(req);
   const githubLogin = identity.owner;
-  const displayName = await services.resolveDisplayName(githubLogin);
+  const displayName = await inject(ResolveDisplayName)(githubLogin);
   return reply({ github_login: githubLogin, display_name: displayName }, 200);
 }
 
 /** Revoke the presented publish token (used by `brika logout`). Idempotent. */
-export async function handleRevoke(req: Request, services: Services): Promise<Response> {
+export async function handleRevoke(req: Request): Promise<Response> {
   const authorization = req.headers.get("authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) throw unauthorized();
-  await services.tokens.revoke(authorization.slice("Bearer ".length));
+  await inject(Tokens).revoke(authorization.slice("Bearer ".length));
   return reply({ ok: true }, 200);
 }
 
@@ -87,10 +89,10 @@ export const deviceController = controller({
       middleware: [
         rateLimit({ max: 10, window: "1m", key: clientKey, store: cf("DEVICE_LIMITER") }),
       ],
-      handler: ({ ctx }) => handleDeviceCode(ctx),
+      handler: () => handleDeviceCode(),
     }),
-    route.post({ path: "/-/device/token", handler: ({ req, ctx }) => handleDeviceToken(req, ctx) }),
-    route.get({ path: "/-/whoami", handler: ({ req, ctx }) => handleWhoami(req, ctx) }),
-    route.post({ path: "/-/token/revoke", handler: ({ req, ctx }) => handleRevoke(req, ctx) }),
+    route.post({ path: "/-/device/token", handler: ({ req }) => handleDeviceToken(req) }),
+    route.get({ path: "/-/whoami", handler: ({ req }) => handleWhoami(req) }),
+    route.post({ path: "/-/token/revoke", handler: ({ req }) => handleRevoke(req) }),
   ],
 });

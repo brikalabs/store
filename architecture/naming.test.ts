@@ -30,6 +30,13 @@ describe("filenames", () => {
       .mustBeNamed(kebabFilename())
       .assert();
   });
+
+  test("the shared D1 adapters are kebab-case", () => {
+    rule()
+      .filesMatching("packages/db/src/adapters")
+      .mustBeNamed(kebabFilename())
+      .assert();
+  });
 });
 
 describe("class names", () => {
@@ -54,9 +61,16 @@ describe("class names", () => {
       .assert();
   });
 
+  test("the shared D1 adapters are PascalCase", () => {
+    rule()
+      .filesMatching("packages/db/src/adapters")
+      .classesMustBeNamed(pascalCase)
+      .assert();
+  });
+
   test("D1-backed adapters (d1-*.ts) declare D1-prefixed classes", () => {
     rule()
-      .filesMatching("apps/registry/src/adapters/d1-*.ts")
+      .filesMatching("packages/db/src/adapters/d1-*.ts")
       .classesMustBePrefixed("D1")
       .assert();
   });

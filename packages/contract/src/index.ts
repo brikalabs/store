@@ -83,6 +83,17 @@ export const RatingSummary = z.object({
 });
 export type RatingSummary = z.infer<typeof RatingSummary>;
 
+/**
+ * A package's listing state, derived from its latest installable (non-yanked, non-taken-down)
+ * version. Yank and deprecate are per-version flags; this projects them to the package level:
+ * - `published`: a current installable version with no deprecation.
+ * - `deprecated`: the latest installable version carries a deprecation message (still installs).
+ * - `yanked`: every version is yanked, so nothing installs; the owner can un-yank to relist.
+ * - `taken_down`: an operator removed it; only an operator can restore it.
+ */
+export const PluginListingStatus = z.enum(["published", "deprecated", "yanked", "taken_down"]);
+export type PluginListingStatus = z.infer<typeof PluginListingStatus>;
+
 /** A plugin as it appears in search results and cards. */
 export const PluginSummary = z.object({
   name: z.string(),
@@ -102,6 +113,13 @@ export const PluginSummary = z.object({
   brikaEngine: z.string(),
   verified: z.boolean().default(false),
   featured: z.boolean().default(false),
+  /**
+   * The package's listing state, derived from its latest installable version. `published` is
+   * the default the public catalog always carries; the others are surfaced on the owner
+   * dashboard so a maintainer can tell at a glance why a package is flagged and what they can
+   * do about it. See {@link PluginListingStatus}.
+   */
+  listingStatus: PluginListingStatus.default("published"),
   /** ISO-8601 timestamps */
   publishedAt: z.iso.datetime().optional(),
   updatedAt: z.iso.datetime().optional(),
@@ -274,11 +292,15 @@ export type VerifiedList = z.infer<typeof VerifiedList>;
  * Optional social capabilities (advertised, not required of a registry)
  * ------------------------------------------------------------------ */
 
-/** A community member, created only when someone signs in to write. */
+/**
+ * A community member (review/comment author), created only when someone signs in
+ * to write. Identity is a single, always-present `displayName` - the account's
+ * user-set display name, else its name - NEVER the opaque account id or a GitHub
+ * username. The avatar is the account's GitHub image.
+ */
 export const Reviewer = z.object({
   id: z.string(),
-  login: z.string(),
-  name: z.string().optional(),
+  displayName: z.string(),
   avatarUrl: z.url().optional(),
 });
 export type Reviewer = z.infer<typeof Reviewer>;
@@ -327,12 +349,13 @@ export type ProfileLink = z.infer<typeof ProfileLink>;
  * A Brika account's public profile (`GET /u/:id`). User-authored, NEVER derived
  * from npm (USER-005): every field is the account's own. Keyed by the stable
  * opaque account id (`users.id`), not a claimable handle (USER-002). `avatarUrl`
- * carries the account's GitHub avatar (BetterAuth `users.image`); `displayName`
- * overrides the GitHub name when set.
+ * carries the account's GitHub avatar (BetterAuth `users.image`); `displayName` is
+ * always present (the user-set name, else the GitHub name) and is the ONLY identity
+ * label shown - never the opaque id or a username.
  */
 export const UserProfile = z.object({
   id: z.string(),
-  displayName: z.string().optional(),
+  displayName: z.string(),
   avatarUrl: z.url().optional(),
   bio: z.string().optional(),
   website: z.url().optional(),

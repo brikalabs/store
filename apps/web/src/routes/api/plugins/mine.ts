@@ -1,47 +1,59 @@
+import { inject } from "@brika/di";
+import type { PluginSummary } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
-import { listScopesForMember } from "@brika/store-db/adapters";
+import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { jsonPrivate } from "@/lib/http";
+import { resolveOwnedPlugins } from "@/lib/registry/owned-plugins";
 import { searchPlugins } from "@/lib/registry/registry";
-import { authed, runJson } from "@/server/console-api";
-import { registryDb } from "@/server/registry-services";
+import { runAuthed } from "@/server/http";
+import { Metadata } from "@/server/registry-services";
+import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
- * `GET /api/plugins/mine` - the catalog plugins published under scopes the signed-in user
- * owns: the scopes they are a member of (publishing is gated on scope membership, so this is
- * real Brika ownership, never an npm maintainer guess). The store no longer lists from public
- * npm, so "my plugins" is sourced from the hosted catalog filtered by the user's scope set.
- * Returns `{ plugins }` ({@link PluginSummary}[]), deduped by name.
+ * `GET /api/plugins/mine` - every plugin published under a scope the signed-in user owns (scope
+ * membership, so real Brika ownership, never an npm maintainer guess), each tagged with its
+ * `PluginListingStatus`. Unlike the public catalog this includes packages with no installable
+ * version (every version yanked / taken down): they would otherwise vanish from the owner's view
+ * with no way to relist them. Listed packages reuse the rich catalog summary; hidden ones are
+ * rebuilt from their newest version's manifest. Returns `{ plugins }`.
  *
  * The scope set is resolved server-side from the session user via {@link listScopesForMember}
- * (the same ownership read `api/plugins/versions` gates management on), so the client can
- * never widen what it sees.
+ * (the same ownership read `api/plugins/versions` gates management on), so the client can never
+ * widen what it sees.
  */
 export const Route = createFileRoute("/api/plugins/mine")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        runJson(async () => {
-          const a = await authed(request);
-
-          // The scopes the user owns (via scope membership), and the hosted catalog. Both
-          // round-trips are independent, so overlap them; the catalog is bounded, so one
-          // capped scan covers every scope.
+        runAuthed(request, async (a) => {
+          // The scopes the user owns and the hosted catalog (rich summaries for listed packages).
+          // These reads are independent, so overlap them; the catalog is bounded, so one capped
+          // scan covers it.
+          const membership = inject(ScopeMembershipStore);
           const [myScopes, catalog] = await Promise.all([
-            listScopesForMember(registryDb(), "github", a.user.login),
+            membership.listScopesForMember("github", a.user.login),
             searchPlugins(undefined, 200, 0),
           ]);
-
           const owned = new Set(myScopes.map((s) => s.scope));
-          const seen = new Set<string>();
-          const plugins = catalog.plugins.filter((plugin) => {
-            const scope = scopeOf(plugin.name);
-            if (scope === null || !owned.has(scope) || seen.has(plugin.name)) return false;
-            seen.add(plugin.name);
-            return true;
-          });
+          const scopeName = new Map(myScopes.map((s) => [s.scope, s.displayName ?? s.scope]));
 
-          return jsonPrivate({ plugins });
+          const catalogByName = new Map<string, PluginSummary>();
+          for (const plugin of catalog.plugins) {
+            const scope = scopeOf(plugin.name);
+            if (scope !== null && owned.has(scope) && !catalogByName.has(plugin.name)) {
+              catalogByName.set(plugin.name, plugin);
+            }
+          }
+
+          const ownedNames = await membership.listPackageNamesForScopes([...owned]);
+          const plugins = await resolveOwnedPlugins(
+            inject(Metadata),
+            ownedNames,
+            scopeName,
+            catalogByName,
+          );
+
+          return reply({ plugins });
         }),
     },
   },
