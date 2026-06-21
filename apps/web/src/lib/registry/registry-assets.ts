@@ -1,4 +1,5 @@
 import { readTarGzEntries, tarballPath } from "@brika/registry-core";
+import { cacheJson } from "@/lib/blob-cache";
 import { contentTypeFor, REGISTRY_ORIGIN } from "@/lib/registry/registry-source";
 import type { BlobStore } from "@/server/ports/blob-store";
 
@@ -115,45 +116,41 @@ async function extractFromTarball(
  * tarball is unpacked, hashed, and measured exactly once: the result is cached
  * in R2 as JSON (versions are immutable), so it is never recomputed per request.
  */
-export async function getRegistryFileList(
+export function getRegistryFileList(
   assets: BlobStore,
   name: string,
   version: string,
 ): Promise<PluginFileIndex | null> {
-  const key = cacheKey(name, version, "__index.json");
-  const cached = await assets.get(key);
-  if (cached !== null) {
-    return JSON.parse(new TextDecoder().decode(await cached.bytes())) as PluginFileIndex;
-  }
+  return cacheJson(assets, cacheKey(name, version, "__index.json"), async () => {
+    const res = await fetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
+    if (!res.ok) return null;
+    const tarball = new Uint8Array(await res.arrayBuffer());
+    const entries = await readTarGzEntries(tarball);
 
-  const res = await fetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
-  if (!res.ok) return null;
-  const tarball = new Uint8Array(await res.arrayBuffer());
-  const entries = await readTarGzEntries(tarball);
+    const described = await Promise.all(
+      entries.map((entry) => describeFile(entry.path, entry.data)),
+    );
+    described.sort((a, b) => a.path.localeCompare(b.path));
 
-  const described = await Promise.all(entries.map((entry) => describeFile(entry.path, entry.data)));
-  described.sort((a, b) => a.path.localeCompare(b.path));
+    const files: Record<string, PluginFileEntry> = {};
+    let totalSize = 0;
+    for (const file of described) {
+      files[file.path] = file;
+      totalSize += file.size;
+    }
 
-  const files: Record<string, PluginFileEntry> = {};
-  let totalSize = 0;
-  for (const file of described) {
-    files[file.path] = file;
-    totalSize += file.size;
-  }
-
-  const [sha1, sha512] = await Promise.all([
-    crypto.subtle.digest("SHA-1", tarball),
-    crypto.subtle.digest("SHA-512", tarball),
-  ]);
-  const index: PluginFileIndex = {
-    files,
-    totalSize,
-    fileCount: described.length,
-    shasum: toHex(sha1),
-    integrity: `sha512-${toBase64(sha512)}`,
-  };
-  await assets.put(key, JSON.stringify(index), "application/json");
-  return index;
+    const [sha1, sha512] = await Promise.all([
+      crypto.subtle.digest("SHA-1", tarball),
+      crypto.subtle.digest("SHA-512", tarball),
+    ]);
+    return {
+      files,
+      totalSize,
+      fileCount: described.length,
+      shasum: toHex(sha1),
+      integrity: `sha512-${toBase64(sha512)}`,
+    };
+  });
 }
 
 /**
