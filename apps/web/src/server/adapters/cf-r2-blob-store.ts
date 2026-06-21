@@ -1,4 +1,4 @@
-import type { BlobStore } from "@/server/ports/blob-store";
+import type { BlobStore, BlobStream } from "@/server/ports/blob-store";
 
 /**
  * Cloudflare R2 adapter for the {@link BlobStore} port (the integration layer). The composition
@@ -15,6 +15,13 @@ export class CfR2BlobStore implements BlobStore {
     const object = await this.#bucket.get(key);
     if (object === null) return null;
     return new Uint8Array(await object.arrayBuffer());
+  }
+
+  async getStream(key: string): Promise<BlobStream | null> {
+    const object = await this.#bucket.get(key);
+    if (object === null) return null;
+    // R2 hands back the body as a ReadableStream, so it pipes to the Response untouched.
+    return { body: object.body, size: object.size, contentType: object.httpMetadata?.contentType };
   }
 
   async put(key: string, value: Uint8Array | string, contentType?: string): Promise<void> {

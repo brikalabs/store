@@ -12,15 +12,14 @@ import { BlobStore } from "@/server/ports/blob-store";
 export async function streamScopeIcon(scope: string): Promise<Response> {
   const iconKey = await inject(ScopeService).iconKeyOf(scope);
   if (iconKey === null) throw notFound();
-  const stored = await inject(BlobStore).get(iconKey);
+  const stored = await inject(BlobStore).getStream(iconKey);
   if (stored === null) throw notFound();
   const ext = iconKey.split(".").pop() ?? "";
-  // Copy into a fresh ArrayBuffer-backed view so the body type is concrete.
-  const body = new Uint8Array(stored.byteLength);
-  body.set(stored);
-  return new Response(body, {
+  // Pipe R2's body straight to the Response: no buffering the whole icon into memory.
+  return new Response(stored.body, {
     headers: {
-      "content-type": CONTENT_TYPE_BY_EXT[ext] ?? "application/octet-stream",
+      "content-type": CONTENT_TYPE_BY_EXT[ext] ?? stored.contentType ?? "application/octet-stream",
+      "content-length": String(stored.size),
       "cache-control": "public, max-age=300",
     },
   });
