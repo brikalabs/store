@@ -2,12 +2,11 @@ import { inject } from "@brika/di";
 import type { PluginSummary } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { reply } from "@brika/router";
-import { listPackageNamesForScopes, listScopesForMember } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
 import { resolveOwnedPlugins } from "@/lib/registry/owned-plugins";
 import { searchPlugins } from "@/lib/registry/registry";
 import { authed, runHandler } from "@/server/http";
-import { RegistryDatabase } from "@/server/registry-services";
+import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
  * `GET /api/plugins/mine` - every plugin published under a scope the signed-in user owns (scope
@@ -31,8 +30,9 @@ export const Route = createFileRoute("/api/plugins/mine")({
           // The scopes the user owns and the hosted catalog (rich summaries for listed packages).
           // These reads are independent, so overlap them; the catalog is bounded, so one capped
           // scan covers it.
+          const membership = inject(ScopeMembershipStore);
           const [myScopes, catalog] = await Promise.all([
-            listScopesForMember(inject(RegistryDatabase).orm, "github", a.user.login),
+            membership.listScopesForMember("github", a.user.login),
             searchPlugins(undefined, 200, 0),
           ]);
           const owned = new Set(myScopes.map((s) => s.scope));
@@ -46,9 +46,7 @@ export const Route = createFileRoute("/api/plugins/mine")({
             }
           }
 
-          const ownedNames = await listPackageNamesForScopes(inject(RegistryDatabase).orm, [
-            ...owned,
-          ]);
+          const ownedNames = await membership.listPackageNamesForScopes([...owned]);
           const plugins = await resolveOwnedPlugins(
             a.svc.metadata,
             ownedNames,

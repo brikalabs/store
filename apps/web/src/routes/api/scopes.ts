@@ -1,9 +1,8 @@
 import { inject } from "@brika/di";
 import { reply } from "@brika/router";
-import { listScopesForMember } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
 import { authed, runHandler } from "@/server/http";
-import { RegistryDatabase } from "@/server/registry-services";
+import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /** `GET /api/scopes` - the scopes the signed-in user belongs to, with their role. */
 export const Route = createFileRoute("/api/scopes")({
@@ -12,8 +11,7 @@ export const Route = createFileRoute("/api/scopes")({
       GET: ({ request }) =>
         runHandler(async () => {
           const a = await authed(request);
-          const scopes = await listScopesForMember(
-            inject(RegistryDatabase).orm,
+          const scopes = await inject(ScopeMembershipStore).listScopesForMember(
             "github",
             a.user.login,
           );

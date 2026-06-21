@@ -1,9 +1,8 @@
 import { inject } from "@brika/di";
 import { notFound, reply } from "@brika/router";
-import { revokeTokenByHash } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
 import { authed, runHandler } from "@/server/http";
-import { RegistryDatabase } from "@/server/registry-services";
+import { PublishTokenStore } from "@/server/stores/publish-token-store";
 
 /**
  * `DELETE /api/account/tokens/:hash` - revoke one of the signed-in user's tokens by its
@@ -16,8 +15,7 @@ export const Route = createFileRoute("/api/account/tokens/$hash")({
       DELETE: ({ request, params }) =>
         runHandler(async () => {
           const a = await authed(request);
-          const removed = await revokeTokenByHash(
-            inject(RegistryDatabase).orm,
+          const removed = await inject(PublishTokenStore).revokeTokenByHash(
             "github",
             a.user.login,
             params.hash,

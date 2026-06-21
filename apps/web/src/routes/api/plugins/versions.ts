@@ -1,10 +1,9 @@
 import { inject } from "@brika/di";
 import { scopeOf } from "@brika/registry-core";
 import { badRequest, notFound, reply } from "@brika/router";
-import { listScopesForMember } from "@brika/store-db/adapters";
 import { createFileRoute } from "@tanstack/react-router";
 import { authed, runHandler } from "@/server/http";
-import { RegistryDatabase } from "@/server/registry-services";
+import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
  * `GET /api/plugins/versions?name=<encoded>` - a registry-hosted package's versions with
@@ -25,8 +24,7 @@ export const Route = createFileRoute("/api/plugins/versions")({
           if (record === null) throw notFound();
 
           const scope = scopeOf(name);
-          const myScopes = await listScopesForMember(
-            inject(RegistryDatabase).orm,
+          const myScopes = await inject(ScopeMembershipStore).listScopesForMember(
             "github",
             a.user.login,
           );
