@@ -52,9 +52,13 @@ const OPERATOR_USER_ID = "u-operator";
 function setupOperatorFixtures(): void {
   const db = new Database(findLocalD1());
   const now = Math.floor(Date.now() / 1000);
+  // A BetterAuth `users` row (USER-001): `login` is the GitHub username the
+  // session + operator allowlist resolve against; `github_id` is gone (provider
+  // ids live in the `account` table now). The signed session cookie (minted in
+  // operator-session.ts) resolves to this row via `session.user_id`.
   db.run(
-    "INSERT OR REPLACE INTO users (id, github_id, login, name, created_at) VALUES (?, ?, ?, ?, ?)",
-    [OPERATOR_USER_ID, 990_001, OPERATOR_LOGIN, "E2E Operator", now],
+    "INSERT OR REPLACE INTO users (id, login, name, image, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)",
+    [OPERATOR_USER_ID, OPERATOR_LOGIN, "E2E Operator", null, now, now],
   );
   db.run(
     "INSERT OR IGNORE INTO reg_scopes (scope, display_name) VALUES ('@squatter', 'Squatter Co')",
@@ -226,15 +230,18 @@ function seedSocial(): void {
     "INSERT OR IGNORE INTO plugins (name, latest_version, brika_engine, display_name, description) VALUES (?, ?, ?, ?, ?)",
     [name, "0.1.0", "^0.1.0", "i18n Toolkit", "Translate, format, and localize content."],
   );
+  // BetterAuth `users` rows (USER-001): `login` is the GitHub username, `image`
+  // the avatar shown beside reviews/comments. `github_id` is gone (provider ids
+  // live in the `account` table now).
   const users = [
-    { id: "u-mara", gh: 900_001, login: "mara-dev", nm: "Mara Lopez" },
-    { id: "u-kenji", gh: 900_002, login: "kenji-ito", nm: "Kenji Ito" },
-    { id: "u-aria", gh: 900_003, login: "aria-n", nm: "Aria Novak" },
+    { id: "u-mara", login: "mara-dev", nm: "Mara Lopez" },
+    { id: "u-kenji", login: "kenji-ito", nm: "Kenji Ito" },
+    { id: "u-aria", login: "aria-n", nm: "Aria Novak" },
   ];
   for (const u of users) {
     db.run(
-      "INSERT OR REPLACE INTO users (id, github_id, login, name, created_at) VALUES (?, ?, ?, ?, ?)",
-      [u.id, u.gh, u.login, u.nm, now],
+      "INSERT OR REPLACE INTO users (id, login, name, image, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)",
+      [u.id, u.login, u.nm, `https://avatars.githubusercontent.com/${u.login}`, now, now],
     );
   }
   const reviews = [

@@ -1,25 +1,29 @@
 ---
 id: AUTH-011
 title: "Account linking (one account, multiple provider identities)"
-status: todo
+status: done
 area: auth
 group: auth
-test_mode: none
+test_mode: manual
 traceability:
-  code: []
+  code:
+    - apps/web/src/server/auth.ts:getAuth
+    - apps/web/src/lib/auth/client.ts
+    - apps/web/src/routes/dashboard/accounts.tsx
   tests: []
 ---
 
 ## Description
 
-> **Status: not yet implemented (follow-up).** BetterAuth core + first-class user profiles
-> shipped (Phases 1+2); cross-provider account linking is a later phase.
+Account linking is enabled on the BetterAuth instance (`server/auth.ts`): `account.accountLinking`
+is `{ enabled: true, trustedProviders: ["github"] }`. The live OAuth link round-trip can't run
+headlessly, so this is verified manually; the config + client + console surface compile and render.
 
-One Brika account can carry multiple provider identities (e.g. GitHub and Google) via
-BetterAuth account linking. A new provider identity links to the existing account rather than
-minting a duplicate, and a signed-in user can link an additional provider to their current
-account. See `USER-004` for the console link/unlink surface; this spec covers the auth-layer
-linking semantics.
+One Brika account can carry multiple provider identities (e.g. GitHub and a future second
+provider) via BetterAuth account linking. A new provider identity links to the existing account
+rather than minting a duplicate, and a signed-in user can link an additional provider to their
+current account. See `USER-004` for the console link/unlink surface; this spec covers the
+auth-layer linking semantics.
 
 ## Acceptance criteria
 

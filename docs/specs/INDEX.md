@@ -10,9 +10,9 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 | Status | Count |
 | --- | --- |
-| [DONE] | 110 |
+| [DONE] | 112 |
 | [WIP] | 1 |
-| [TODO] | 9 |
+| [TODO] | 7 |
 | [HOLD] | 2 |
 | [GONE] | 26 |
 
@@ -21,7 +21,6 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | Code | Status | Title |
 | --- | --- | --- |
 | [AUTH-009](auth/AUTH-009-oauth-and-secret-configuration.md) | [HOLD] | OAuth and secret configuration |
-| [AUTH-011](auth/AUTH-011-account-linking-across-providers.md) | [TODO] | Account linking (one account, multiple provider identities) |
 | [HARDEN-012](registry/HARDEN-012-real-malware-scanner-behind-the-hook.md) | [TODO] | Real malware scanner behind the hook |
 | [HARDEN-013](registry/HARDEN-013-scheduled-r2-d1-backups.md) | [TODO] | Scheduled R2 + D1 backups |
 | [HARDEN-014](registry/HARDEN-014-operator-provisioning-of-hardening-infrastructure.md) | [HOLD] | Operator provisioning of hardening infrastructure |
@@ -31,7 +30,6 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [SOCIAL-011](store/SOCIAL-011-comment-moderation.md) | [TODO] | Comment moderation |
 | [STORE-012](store/STORE-012-marketplace-redesign-spotlight-vs-console-direction.md) | [WIP] | Marketplace redesign: Spotlight vs Console direction |
 | [STORE-013](store/STORE-013-verified-publisher-list-signing.md) | [TODO] | Verified publisher list signing |
-| [USER-004](user/USER-004-account-linking-console.md) | [TODO] | Account linking (link and unlink providers) |
 
 ## auth
 
@@ -47,7 +45,7 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [AUTH-008](auth/AUTH-008-cli-device-authorization-approval-store-side.md) | [DONE] | CLI device-authorization approval (store side) |
 | [AUTH-009](auth/AUTH-009-oauth-and-secret-configuration.md) | [HOLD] | OAuth and secret configuration |
 | [AUTH-010](auth/AUTH-010-provider-agnostic-sign-in-via-betterauth.md) | [DONE] | Provider-agnostic sign-in via BetterAuth |
-| [AUTH-011](auth/AUTH-011-account-linking-across-providers.md) | [TODO] | Account linking (one account, multiple provider identities) |
+| [AUTH-011](auth/AUTH-011-account-linking-across-providers.md) | [DONE] | Account linking (one account, multiple provider identities) |
 | [AUTH-012](auth/AUTH-012-betterauth-backed-session-d1.md) | [DONE] | BetterAuth-backed session (DB-backed, D1 adapter) |
 | [AUTH-013](auth/AUTH-013-betterauth-workers-edge-configuration.md) | [DONE] | BetterAuth Workers/D1 configuration and migration |
 
@@ -208,6 +206,6 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [USER-001](user/USER-001-user-account-is-first-class-identity.md) | [DONE] | User account is the first-class identity |
 | [USER-002](user/USER-002-public-profile-page.md) | [DONE] | Public profile page at /u/:id |
 | [USER-003](user/USER-003-profile-editor.md) | [DONE] | Account profile editor |
-| [USER-004](user/USER-004-account-linking-console.md) | [TODO] | Account linking (link and unlink providers) |
+| [USER-004](user/USER-004-account-linking-console.md) | [DONE] | Account linking (link and unlink providers) |
 | [USER-005](user/USER-005-profile-is-user-authored-not-npm-derived.md) | [DONE] | Profile data is user-authored, never derived from npm |
 

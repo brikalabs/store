@@ -45,6 +45,20 @@ function build() {
         }),
       },
     },
+    // Cross-provider account linking (AUTH-011 / USER-004). One Brika account can
+    // carry several provider identities. `trustedProviders` lists the providers
+    // whose verified email may auto-link a new sign-in to the matching existing
+    // account (AUTH-011-AC1); untrusted/unverified sign-ins are never silently
+    // merged by email (AUTH-011-AC4). A provider identity already bound to another
+    // account is refused (AUTH-011-AC3, enforced by BetterAuth). `allowUnlinkingAll`
+    // stays at its default (false), so the last remaining provider can't be
+    // unlinked and the account keeps a sign-in method (USER-004-AC4 / AUTH-011).
+    account: {
+      accountLinking: {
+        enabled: true,
+        trustedProviders: ["github"],
+      },
+    },
     user: {
       // Map BetterAuth's `user` model to the existing `users` table so `users.id`
       // stays the PK that reviews/comments/votes/reports reference (USER-001).

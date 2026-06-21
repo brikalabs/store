@@ -1,24 +1,31 @@
 ---
 id: USER-004
 title: "Account linking (link and unlink providers)"
-status: todo
+status: done
 area: user
 group: user
-test_mode: none
+test_mode: manual
 traceability:
-  code: []
+  code:
+    - apps/web/src/routes/dashboard/accounts.tsx
+    - apps/web/src/lib/auth/client.ts
+    - apps/web/src/components/layout/admin-shell.tsx
+    - apps/web/src/server/auth.ts:getAuth
   tests: []
 ---
 
 ## Description
 
-> **Status: not yet implemented (follow-up).** BetterAuth core + first-class user profiles
-> shipped (Phases 1+2); the link/unlink console surface (and its auth-layer semantics in
-> `AUTH-011`) is a later phase.
+The console exposes a "Connected accounts" section (`routes/dashboard/accounts.tsx`, linked from
+`admin-shell.tsx`). It uses the browser BetterAuth client (`lib/auth/client.ts`) to `listAccounts()`
+and render each provider's linked state, with a Link affordance (`linkSocial`) for unlinked
+providers and an Unlink button (`unlinkAccount`) that is disabled for the last remaining provider.
+The live OAuth link round-trip can't run headlessly, so this is verified manually; the surface
+compiles and renders.
 
 A signed-in user manages the provider identities linked to their account: they can link an
-additional provider (e.g. add Google to a GitHub-only account) and unlink one they no longer
-want, as long as at least one sign-in method remains. This is the console surface over the
+additional provider (e.g. add a second provider to a GitHub-only account) and unlink one they no
+longer want, as long as at least one sign-in method remains. This is the console surface over the
 BetterAuth linking semantics specified in `AUTH-011`.
 
 ## Acceptance criteria

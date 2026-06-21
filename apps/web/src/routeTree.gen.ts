@@ -32,6 +32,7 @@ import { Route as LegalCookiesRouteImport } from './routes/legal/cookies'
 import { Route as LegalAcceptableUseRouteImport } from './routes/legal/acceptable-use'
 import { Route as DashboardScopesRouteImport } from './routes/dashboard/scopes'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
+import { Route as DashboardAccountsRouteImport } from './routes/dashboard/accounts'
 import { Route as AuthMeRouteImport } from './routes/auth/me'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
@@ -188,6 +189,11 @@ const DashboardScopesRoute = DashboardScopesRouteImport.update({
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAccountsRoute = DashboardAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
   getParentRoute: () => DashboardRoute,
 } as any)
 const AuthMeRoute = AuthMeRouteImport.update({
@@ -423,6 +429,7 @@ export interface FileRoutesByFullPath {
   '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/accounts': typeof DashboardAccountsRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/scopes': typeof DashboardScopesRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
@@ -488,6 +495,7 @@ export interface FileRoutesByTo {
   '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/accounts': typeof DashboardAccountsRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/scopes': typeof DashboardScopesRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
@@ -556,6 +564,7 @@ export interface FileRoutesById {
   '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
+  '/dashboard/accounts': typeof DashboardAccountsRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/scopes': typeof DashboardScopesRoute
   '/legal/acceptable-use': typeof LegalAcceptableUseRoute
@@ -625,6 +634,7 @@ export interface FileRouteTypes {
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/accounts'
     | '/dashboard/profile'
     | '/dashboard/scopes'
     | '/legal/acceptable-use'
@@ -690,6 +700,7 @@ export interface FileRouteTypes {
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/accounts'
     | '/dashboard/profile'
     | '/dashboard/scopes'
     | '/legal/acceptable-use'
@@ -757,6 +768,7 @@ export interface FileRouteTypes {
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
+    | '/dashboard/accounts'
     | '/dashboard/profile'
     | '/dashboard/scopes'
     | '/legal/acceptable-use'
@@ -1011,6 +1023,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/dashboard/profile'
       preLoaderRoute: typeof DashboardProfileRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/accounts': {
+      id: '/dashboard/accounts'
+      path: '/accounts'
+      fullPath: '/dashboard/accounts'
+      preLoaderRoute: typeof DashboardAccountsRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/auth/me': {
@@ -1311,6 +1330,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface DashboardRouteChildren {
+  DashboardAccountsRoute: typeof DashboardAccountsRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardScopesRoute: typeof DashboardScopesRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -1321,6 +1341,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAccountsRoute: DashboardAccountsRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardScopesRoute: DashboardScopesRoute,
   DashboardIndexRoute: DashboardIndexRoute,
