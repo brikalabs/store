@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { inject, type Provider, runInContext } from "@brika/di";
+import { inject, runInContext } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
 import { jsonLogger } from "@brika/router";
 import { getDb } from "@brika/store-db";
@@ -17,18 +17,21 @@ import { logRoutes, mount, type RegistryEnv } from "./http/router";
 import { provideRegistry } from "./services";
 
 /**
- * The registry's per-request DI providers: the runtime seams from the request's bindings (the one
- * place `env` is read) plus the service graph, so handlers `inject(...)` them. `mount` runs each
- * handler inside `runInContext(registryProviders(...))`.
+ * Run `fn` in the registry's per-request DI context, built from the request bindings. The one place
+ * `env` is read; a handler then just `inject(...)`s. Used by both the router (`mount({ around })`)
+ * and the cron handler.
  */
-function registryProviders(bindings: Cloudflare.Env, baseUrl: string): Provider[] {
-  return provideRegistry({
-    db: getDb(bindings.DB),
-    tarballs: bindings.TARBALLS,
-    baseUrl,
-    admins: registryAdmins(),
-    domainSecret: vars().DOMAIN_VERIFY_SECRET,
-  });
+function withRegistry<R>(bindings: Cloudflare.Env, baseUrl: string, fn: () => R): R {
+  return runInContext(
+    provideRegistry({
+      db: getDb(bindings.DB),
+      tarballs: bindings.TARBALLS,
+      baseUrl,
+      admins: registryAdmins(),
+      domainSecret: vars().DOMAIN_VERIFY_SECRET,
+    }),
+    fn,
+  );
 }
 
 /**
@@ -39,8 +42,8 @@ function registryProviders(bindings: Cloudflare.Env, baseUrl: string): Provider[
  * feature controllers, each declaring its routes next to its handlers and
  * receiving typed params + a validated body. All domain logic lives in
  * `@brika/registry-core`; this worker is the HTTP + Cloudflare adapter layer. The
- * Cloudflare bindings are read in exactly one place (the `context` factory below),
- * so every handler receives a typed `Services` graph rather than the ambient env.
+ * Cloudflare bindings are read in exactly one place ({@link withRegistry}), so a
+ * handler resolves its dependencies via `inject(...)`, never the ambient env.
  */
 
 /**
@@ -71,14 +74,13 @@ const controllers = [
   packagesController,
 ];
 
-// Mount the feature controllers. The composition root (the only place bindings are
-// read) is the `context` factory, run per request. Package routes use the npm
-// `PKG` pattern (an optional `@scope` segment, regex-constrained so it never
-// shadows the `/-/...` endpoints); registration order is not load-bearing. Each
-// request is logged as a structured JSON line (method, route, status, timing,
+// Mount the feature controllers, each handler run inside the per-request DI context via the
+// router's `around` hook. Package routes use the npm `PKG` pattern (an optional `@scope` segment,
+// regex-constrained so it never shadows the `/-/...` endpoints); registration order is not
+// load-bearing. Each request is logged as a structured JSON line (method, route, status, timing,
 // controller/handler, client IP).
 mount(app, controllers, {
-  around: (c, run) => runInContext(registryProviders(c.env, baseUrlFor(c.req.url)), run),
+  around: (c, run) => withRegistry(c.env, baseUrlFor(c.req.url), run),
   logger: jsonLogger("registry request"),
 });
 
@@ -94,7 +96,7 @@ logRoutes(app);
  * as DNS changes over time, rather than trusting a one-time check forever.
  */
 async function scheduled(): Promise<void> {
-  const revoked = await runInContext(registryProviders(env, vars().REGISTRY_URL), () =>
+  const revoked = await withRegistry(env, vars().REGISTRY_URL, () =>
     inject(ScopeService).reverifyDomains(),
   );
   if (revoked.length > 0) {
