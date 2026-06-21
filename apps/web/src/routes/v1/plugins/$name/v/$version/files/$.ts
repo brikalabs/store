@@ -3,8 +3,8 @@ import { badRequest, notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { getRegistryAsset } from "@/lib/registry/registry-assets";
 import { isRegistryName, isSafeAssetPath } from "@/lib/registry/registry-source";
-import { BlobStore } from "@/server/blob-store";
 import { runHandler } from "@/server/http";
+import { BlobStore } from "@/server/ports/blob-store";
 
 /**
  * `GET /v1/plugins/:name/v/:version/files/<path>` - serve a single file bundled

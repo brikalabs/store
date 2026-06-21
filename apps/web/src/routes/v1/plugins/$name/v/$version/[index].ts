@@ -3,8 +3,8 @@ import { notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { getRegistryFileList } from "@/lib/registry/registry-assets";
 import { isRegistryName } from "@/lib/registry/registry-source";
-import { BlobStore } from "@/server/blob-store";
 import { publicJson, runHandler } from "@/server/http";
+import { BlobStore } from "@/server/ports/blob-store";
 
 /**
  * `GET /v1/plugins/:name/v/:version/index` - the published file index (JSON),

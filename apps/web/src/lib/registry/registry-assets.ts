@@ -1,6 +1,6 @@
 import { readTarGzEntries, tarballPath } from "@brika/registry-core";
 import { contentTypeFor, REGISTRY_ORIGIN } from "@/lib/registry/registry-source";
-import type { BlobStore } from "@/server/blob-store";
+import type { BlobStore } from "@/server/ports/blob-store";
 
 /**
  * Serve a file bundled inside a registry tarball (icon, screenshots, readme,

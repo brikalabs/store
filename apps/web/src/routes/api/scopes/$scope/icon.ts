@@ -4,8 +4,8 @@ import { badRequest, okOrThrow, reply } from "@brika/router";
 import { onRollback, transaction } from "@brika/tx";
 import { createFileRoute } from "@tanstack/react-router";
 import { ICON_TYPES, MAX_ICON_BYTES } from "@/lib/scope-icon";
-import { BlobStore } from "@/server/blob-store";
 import { recordAudit, runAuthed, runHandler } from "@/server/http";
+import { BlobStore } from "@/server/ports/blob-store";
 import { streamScopeIcon } from "@/server/scope-icon";
 
 /**

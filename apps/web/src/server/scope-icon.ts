@@ -2,7 +2,7 @@ import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
 import { notFound } from "@brika/router";
 import { CONTENT_TYPE_BY_EXT } from "@/lib/scope-icon";
-import { BlobStore } from "@/server/blob-store";
+import { BlobStore } from "@/server/ports/blob-store";
 
 /**
  * Stream a scope's uploaded logo from R2 (ORG-009 GET). Throws `notFound()` (a 404, mapped by

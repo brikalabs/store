@@ -1,7 +1,8 @@
 import { env } from "cloudflare:workers";
 import type { Provider } from "@brika/di";
-import { BlobStore, CfR2BlobStore } from "@/server/blob-store";
+import { CfR2BlobStore } from "@/server/adapters/cf-r2-blob-store";
 import { Database, getDb } from "@/server/db/client";
+import { BlobStore } from "@/server/ports/blob-store";
 import { RegistryDatabase, registryDb, registryProviders } from "@/server/registry-services";
 
 /**
