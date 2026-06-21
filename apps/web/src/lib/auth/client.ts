@@ -6,16 +6,20 @@ import { createAuthClient } from "better-auth/react";
  * console can drive the linking surface - `listAccounts`, `linkSocial`,
  * `unlinkAccount` - directly against the live auth endpoints.
  *
- * The base URL is a build-time constant: by default we use a relative `/api/auth`
- * (same origin as the console), and `VITE_BETTER_AUTH_URL` overrides the origin
- * for setups that serve the auth handler elsewhere. This mirrors how the registry
- * facade reads `VITE_REGISTRY_URL` (Vite inlines the value), keeping the module
- * import-safe on both the SSR worker and during client navigation.
+ * `createAuthClient` validates `baseURL` as an ABSOLUTE url at construction (which
+ * also runs during SSR), so a relative `/api/auth` throws. The client only issues
+ * real requests in the browser, so: use `VITE_BETTER_AUTH_URL` when set, else the
+ * live `window.location.origin` (browser), else a valid SSR placeholder that is
+ * never actually called. Mirrors how the registry facade reads `VITE_REGISTRY_URL`.
  */
 const ORIGIN = (import.meta.env?.VITE_BETTER_AUTH_URL as string | undefined)?.replace(/\/+$/, "");
 
-export const authClient = createAuthClient({
-  baseURL: ORIGIN === undefined ? "/api/auth" : `${ORIGIN}/api/auth`,
-});
+function authBaseUrl(): string {
+  if (ORIGIN !== undefined) return `${ORIGIN}/api/auth`;
+  if (typeof window !== "undefined") return `${window.location.origin}/api/auth`;
+  return "http://localhost/api/auth";
+}
+
+export const authClient = createAuthClient({ baseURL: authBaseUrl() });
 
 export const { listAccounts, linkSocial, unlinkAccount } = authClient;
