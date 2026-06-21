@@ -1,10 +1,8 @@
-import { domainChallengeHost, scopeDomainSchema } from "@brika/registry-core";
+import { domainChallengeHost } from "@brika/registry-core";
 import { okOrThrow, parseBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
+import { DomainBody, shapeDomains } from "@/lib/scope-domains";
 import { authed, runHandler } from "@/server/http";
-
-const DomainBody = z.object({ domain: scopeDomainSchema });
 
 /**
  * Scope domain claims (ORG-010), all admin-gated except the member-readable list:
@@ -20,21 +18,13 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
         runHandler(async () => {
           const a = await authed(request);
           const result = okOrThrow(await a.svc.scopes.listDomains(a.identity, params.scope));
-          // Surface the (derived) TXT host + value each pending domain must publish.
-          const domains = await Promise.all(
-            result.domains.map(async (d) => ({
-              ...d,
-              host: domainChallengeHost(d.domain),
-              txt: await a.svc.scopes.domainChallenge(params.scope, d.domain),
-            })),
-          );
+          const domains = await shapeDomains(a.svc.scopes, params.scope, result.domains);
           return reply({ scope: params.scope, domains });
         }),
       PUT: ({ request, params }) =>
         runHandler(async () => {
           const a = await authed(request);
-          const parsed = parseBody(DomainBody, await request.json(), "Invalid domain");
-          const { domain } = parsed;
+          const { domain } = parseBody(DomainBody, await request.json(), "Invalid domain");
           const result = okOrThrow(await a.svc.scopes.addDomain(a.identity, params.scope, domain));
           await a.svc.audit.record({
             action: "scope_domain_add",
