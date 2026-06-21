@@ -13,12 +13,12 @@ import { getDb } from "@/server/db/client";
  * Test-safe: the factories close over `inject(ENV)`, not the `cloudflare:workers` import, so a
  * unit test can `import { DB }` and override it with an in-memory db without touching the runtime.
  */
-export const ENV = new InjectionToken<Cloudflare.Env>("ENV");
+export const ENV = new InjectionToken<Cloudflare.Env>();
 
 /** The store/social D1 client (drizzle over `ENV.DB`). */
-export const DB = new InjectionToken<Db>("DB", { factory: () => getDb(inject(ENV).DB) });
+export const DB = new InjectionToken<Db>({ factory: () => getDb(inject(ENV).DB) });
 
 /** The R2-backed object store for mirrored assets + scope icons (over `ENV.ASSETS`). */
-export const ASSETS = new InjectionToken<BlobStore>("ASSETS", {
+export const ASSETS = new InjectionToken<BlobStore>({
   factory: () => new CfR2BlobStore(inject(ENV).ASSETS),
 });

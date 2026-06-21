@@ -10,14 +10,26 @@ import { AsyncLocalStorage } from "node:async_hooks";
  */
 
 /** A DI key for something with no class to name it: an interface, a binding, a config value. */
+/** Optional config for an {@link InjectionToken}. Everything is optional - `new InjectionToken<T>()` is valid. */
+export interface InjectionTokenOptions<T> {
+  /** A default provider (Angular's `providedIn: 'root'` factory), used when nothing else provides it. */
+  readonly factory?: () => T;
+  /** A label for error messages. Optional - omit it and the token gets a generated id. */
+  readonly description?: string;
+}
+
+let tokenCounter = 0;
+
 export class InjectionToken<T> {
   /** Phantom: keeps `T` attached to the token for inference. Never read at runtime. */
   declare readonly _type: T;
-  constructor(
-    readonly description: string,
-    /** A default provider (like Angular's `providedIn: 'root'` factory), used when nothing else provides it. */
-    readonly options?: { readonly factory: () => T },
-  ) {}
+  readonly description: string;
+  readonly factory: (() => T) | undefined;
+  constructor(options: InjectionTokenOptions<T> = {}) {
+    tokenCounter += 1;
+    this.description = options.description ?? `token#${tokenCounter}`;
+    this.factory = options.factory;
+  }
   toString(): string {
     return `InjectionToken(${this.description})`;
   }
@@ -124,7 +136,7 @@ export class Injector {
       if (parent.#canResolve(token)) return parent.#resolve(token);
     }
     if (token instanceof InjectionToken) {
-      const factory = token.options?.factory;
+      const factory = token.factory;
       if (factory === undefined) throw new Error(`No provider for ${tokenName(token)}`);
       return this.#instantiate(token, factory);
     }

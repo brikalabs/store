@@ -8,7 +8,7 @@ import {
 } from "./injector";
 
 // A dependency with no class to name it (an interface / binding) -> an InjectionToken.
-const DB = new InjectionToken<{ readonly tag: string }>("DB");
+const DB = new InjectionToken<{ readonly tag: string }>();
 
 // Stores/services declare their deps with inject(), Angular-style - no constructor params.
 class ReviewStore {
@@ -44,8 +44,8 @@ describe("providers", () => {
         return "real";
       }
     }
-    const TOKEN = new InjectionToken<{ who(): string }>("svc");
-    const ALIAS = new InjectionToken<{ who(): string }>("alias");
+    const TOKEN = new InjectionToken<{ who(): string }>();
+    const ALIAS = new InjectionToken<{ who(): string }>();
     const injector = createInjector([
       { provide: TOKEN, useClass: Real },
       { provide: ALIAS, useExisting: TOKEN },
@@ -57,7 +57,7 @@ describe("providers", () => {
   });
 
   test("an InjectionToken's default factory acts like providedIn: 'root'", () => {
-    const CONFIG = new InjectionToken<number>("config", { factory: () => 42 });
+    const CONFIG = new InjectionToken<number>({ factory: () => 42 });
     expect(createInjector().get(CONFIG)).toBe(42);
   });
 });
@@ -108,7 +108,7 @@ describe("injection context", () => {
 
 describe("errors", () => {
   test("a missing provider throws", () => {
-    const MISSING = new InjectionToken<string>("missing");
+    const MISSING = new InjectionToken<string>();
     expect(() => createInjector().get(MISSING)).toThrow(/No provider for/);
   });
 
