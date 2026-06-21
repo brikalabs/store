@@ -36,14 +36,13 @@
     }
   ],
   // Mirrored icons + readmes. Create with `wrangler r2 bucket create brika-store-assets`.
-  // `remote: true` makes LOCAL dev read/write the REAL bucket (so uploaded avatars resolve at their
-  // public r2.dev URL in dev too, not just prod); ignored in deployment. Tradeoff: all dev R2 I/O
-  // (icons + the registry file-index cache) goes over the network. Needs wrangler auth.
+  // Local dev uses a fully LOCAL miniflare bucket (fast, offline, no auth); avatars still resolve
+  // because dev's ASSETS_PUBLIC_URL (.dev.vars) points at the worker `/assets/<key>` route, which
+  // streams the local bucket. In prod ASSETS_PUBLIC_URL is the bucket's r2.dev URL (served direct).
   "r2_buckets": [
     {
       "binding": "ASSETS",
-      "bucket_name": "brika-store-assets",
-      "remote": true
+      "bucket_name": "brika-store-assets"
     }
   ],
   // Public base URL of the ASSETS bucket (r2.dev public access, enabled with

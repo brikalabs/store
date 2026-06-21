@@ -37,6 +37,7 @@ import { Route as DashboardAccountsRouteImport } from './routes/dashboard/accoun
 import { Route as AuthMeRouteImport } from './routes/auth/me'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
+import { Route as AssetsSplatRouteImport } from './routes/assets/$'
 import { Route as ApiScopesRouteImport } from './routes/api/scopes'
 import { Route as DashboardPluginsIndexRouteImport } from './routes/dashboard/plugins/index'
 import { Route as V1PluginsNameRouteImport } from './routes/v1/plugins/$name'
@@ -216,6 +217,11 @@ const AuthLogoutRoute = AuthLogoutRouteImport.update({
 const AuthGithubRoute = AuthGithubRouteImport.update({
   id: '/auth/github',
   path: '/auth/github',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssetsSplatRoute = AssetsSplatRouteImport.update({
+  id: '/assets/$',
+  path: '/assets/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiScopesRoute = ApiScopesRouteImport.update({
@@ -439,6 +445,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/operator': typeof OperatorRouteWithChildren
   '/api/scopes': typeof ApiScopesRouteWithChildren
+  '/assets/$': typeof AssetsSplatRoute
   '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
@@ -507,6 +514,7 @@ export interface FileRoutesByTo {
   '/device': typeof DeviceRoute
   '/login': typeof LoginRoute
   '/api/scopes': typeof ApiScopesRouteWithChildren
+  '/assets/$': typeof AssetsSplatRoute
   '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
@@ -578,6 +586,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/operator': typeof OperatorRouteWithChildren
   '/api/scopes': typeof ApiScopesRouteWithChildren
+  '/assets/$': typeof AssetsSplatRoute
   '/auth/github': typeof AuthGithubRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/me': typeof AuthMeRoute
@@ -650,6 +659,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/operator'
     | '/api/scopes'
+    | '/assets/$'
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
@@ -718,6 +728,7 @@ export interface FileRouteTypes {
     | '/device'
     | '/login'
     | '/api/scopes'
+    | '/assets/$'
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
@@ -788,6 +799,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/operator'
     | '/api/scopes'
+    | '/assets/$'
     | '/auth/github'
     | '/auth/logout'
     | '/auth/me'
@@ -859,6 +871,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OperatorRoute: typeof OperatorRouteWithChildren
   ApiScopesRoute: typeof ApiScopesRouteWithChildren
+  AssetsSplatRoute: typeof AssetsSplatRoute
   AuthGithubRoute: typeof AuthGithubRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   AuthMeRoute: typeof AuthMeRoute
@@ -1084,6 +1097,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/github'
       fullPath: '/auth/github'
       preLoaderRoute: typeof AuthGithubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assets/$': {
+      id: '/assets/$'
+      path: '/assets/$'
+      fullPath: '/assets/$'
+      preLoaderRoute: typeof AssetsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/scopes': {
@@ -1555,6 +1575,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OperatorRoute: OperatorRouteWithChildren,
   ApiScopesRoute: ApiScopesRouteWithChildren,
+  AssetsSplatRoute: AssetsSplatRoute,
   AuthGithubRoute: AuthGithubRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   AuthMeRoute: AuthMeRoute,
