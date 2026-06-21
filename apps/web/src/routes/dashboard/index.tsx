@@ -40,7 +40,7 @@ function OverviewPage() {
   const verified = plugins.filter((p) => p.verified).length;
 
   return (
-    <AdminShell id={user.id} name={user.name} activeLabel="Overview">
+    <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="Overview">
       <section className="flex flex-col gap-6">
         <div>
           <h1 className="font-bold font-heading text-2xl tracking-tight">Overview</h1>

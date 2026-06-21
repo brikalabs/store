@@ -74,6 +74,7 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
       .update(regVersions)
       .set({ yanked })
       .where(and(eq(regVersions.name, name), eq(regVersions.version, version)));
+    await this.#refreshLatestTag(name);
   }
 
   async setTakedown(name: string, version: string, reason: string | null): Promise<void> {
@@ -81,5 +82,45 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
       .update(regVersions)
       .set({ takedown: reason })
       .where(and(eq(regVersions.name, name), eq(regVersions.version, version)));
+    await this.#refreshLatestTag(name);
+  }
+
+  /**
+   * Keep the `latest` dist-tag pointing at the newest *installable* version (not yanked, not
+   * taken down). Yank/takedown omit a version from the packument; if `latest` still pointed at
+   * it, `bun add` would resolve a version that isn't there and the storefront catalog (which
+   * joins `latest` then drops yanked rows) would hide the whole package even when older versions
+   * still install. When every version is hidden the tag is removed, so the package is unlisted
+   * publicly but its row survives for its owner to un-yank. Newest is by publish time, matching
+   * how publish advances `latest`.
+   */
+  async #refreshLatestTag(name: string): Promise<void> {
+    const rows = await this.#db
+      .select({
+        version: regVersions.version,
+        yanked: regVersions.yanked,
+        takedown: regVersions.takedown,
+        publishedAt: regVersions.publishedAt,
+      })
+      .from(regVersions)
+      .where(eq(regVersions.name, name));
+    const installable = rows.filter((row) => !row.yanked && row.takedown === null);
+    const newest = installable.reduce<(typeof installable)[number] | undefined>(
+      (a, b) => (a === undefined || b.publishedAt > a.publishedAt ? b : a),
+      undefined,
+    );
+    if (newest === undefined) {
+      await this.#db
+        .delete(regDistTags)
+        .where(and(eq(regDistTags.name, name), eq(regDistTags.tag, "latest")));
+      return;
+    }
+    await this.#db
+      .insert(regDistTags)
+      .values({ name, tag: "latest", version: newest.version })
+      .onConflictDoUpdate({
+        target: [regDistTags.name, regDistTags.tag],
+        set: { version: newest.version },
+      });
   }
 }

@@ -4,11 +4,27 @@ import { Archive, Ban, ChevronRight, RotateCcw } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { getPluginPage } from "@/lib/registry/registry";
+import { isRegistryName } from "@/lib/registry/registry-source";
 import { requireUser } from "@/server/require-user";
+
+interface ManageData {
+  readonly name: string;
+  /**
+   * The public detail, or null when the package currently has no installable (non-yanked)
+   * version. The owner must still reach this page to un-yank, so we never 404 a hosted
+   * package here - the detail just becomes unavailable and the versions panel (which reads
+   * every version directly) carries the management.
+   */
+  readonly detail: PluginDetail | null;
+}
 
 export const Route = createFileRoute("/dashboard/plugins/$")({
   beforeLoad: async ({ location }) => ({ user: await requireUser(location.href) }),
-  loader: ({ params }) => (params._splat ? getPluginPage(params._splat) : null),
+  loader: async ({ params }): Promise<ManageData | null> => {
+    const name = params._splat;
+    if (!name || !isRegistryName(name)) return null;
+    return { name, detail: (await getPluginPage(name))?.detail ?? null };
+  },
   component: ManagePluginPage,
 });
 
@@ -28,14 +44,14 @@ function ManagePluginPage() {
   }
 
   return (
-    <AdminShell id={user.id} name={user.name} activeLabel="My plugins">
-      <ManagePlugin detail={data.detail} />
+    <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="My plugins">
+      <ManagePlugin name={data.name} detail={data.detail} />
     </AdminShell>
   );
 }
 
-function ManagePlugin({ detail }: Readonly<{ detail: PluginDetail }>) {
-  const title = detail.displayName ?? detail.name;
+function ManagePlugin({ name, detail }: Readonly<ManageData>) {
+  const title = detail?.displayName ?? name;
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,7 +62,7 @@ function ManagePlugin({ detail }: Readonly<{ detail: PluginDetail }>) {
               My plugins
             </Link>
             <ChevronRight className="size-3" />
-            {detail.name}
+            {name}
           </div>
           <h1 className="mt-1.5 font-bold font-heading text-2xl tracking-tight">
             Manage · {title}
@@ -54,24 +70,33 @@ function ManagePlugin({ detail }: Readonly<{ detail: PluginDetail }>) {
         </div>
       </div>
 
+      {detail === null ? (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-700 text-sm dark:text-amber-300">
+          This package has no installable version right now, so it's hidden from the storefront and
+          new installs. It stays here for you to manage - un-yank a version below to relist it.
+        </p>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-[1fr_280px] lg:items-start">
         <div className="flex flex-col gap-5">
-          <VersionsCard name={detail.name} />
+          <VersionsCard name={name} />
         </div>
 
         {/* sidebar */}
         <aside className="flex flex-col gap-5 lg:sticky lg:top-20">
-          <Card>
-            <span className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
-              Synced from the registry
-            </span>
-            <SideRow label="Version" value={detail.version} mono />
-            {detail.license ? <SideRow label="License" value={detail.license} /> : null}
-            <SideRow label="Brika engine" value={detail.brikaEngine} mono />
-            <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-muted-foreground text-xs">
-              Code &amp; versions come from the published package and can't be edited here.
-            </p>
-          </Card>
+          {detail !== null ? (
+            <Card>
+              <span className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
+                Synced from the registry
+              </span>
+              <SideRow label="Version" value={detail.version} mono />
+              {detail.license ? <SideRow label="License" value={detail.license} /> : null}
+              <SideRow label="Brika engine" value={detail.brikaEngine} mono />
+              <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-muted-foreground text-xs">
+                Code &amp; versions come from the published package and can't be edited here.
+              </p>
+            </Card>
+          ) : null}
 
           <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
             <span className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">

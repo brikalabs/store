@@ -139,14 +139,15 @@ export function ReviewsSection({ pluginName, fallback = [] }: Props) {
           <article key={review.id} className="flex gap-3">
             <GradientAvatar
               seed={review.author.id}
-              label={review.author.name ?? review.author.login}
+              label={review.author.displayName}
+              imageUrl={review.author.avatarUrl}
               size={38}
               className="rounded-[10px]"
             />
             <div className="flex flex-1 flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold text-foreground text-sm">
-                  {review.author.name ?? review.author.login}
+                  {review.author.displayName}
                 </span>
                 <Stars value={review.rating} />
                 {review.versionReviewed ? (

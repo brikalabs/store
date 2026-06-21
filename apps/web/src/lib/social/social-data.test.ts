@@ -150,7 +150,7 @@ describe("comments", () => {
     await addComment(db, "p", "u1", "Top question", null);
     const top = (await listComments(db, "p"))[0];
     expect(top?.body).toBe("Top question");
-    expect(top?.author.name).toBe("Asker");
+    expect(top?.author.displayName).toBe("Asker");
 
     await addComment(db, "p", "u1", "A reply", top?.id ?? null);
     const all = await listComments(db, "p");

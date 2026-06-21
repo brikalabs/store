@@ -3,13 +3,19 @@
 # `.dev.vars` is gitignored. Required vars have no schema default and the server won't boot
 # without them.
 
-# Signs the stateless session cookie (HMAC). Any non-empty value locally.
+# BetterAuth secret: signs DB-backed sessions + CSRF tokens (AUTH-013). Any non-empty
+# value locally.
 SESSION_SECRET=dev-only-secret-not-for-production
 
 # GitHub OAuth app used for sign-in. Create a dev OAuth app and paste its credentials.
+# Its Authorization callback URL must be <BETTER_AUTH_URL>/api/auth/callback/github.
 GITHUB_CLIENT_ID=your-dev-oauth-client-id
 GITHUB_CLIENT_SECRET=your-dev-oauth-client-secret
 GITHUB_REDIRECT_URI=http://localhost:3000/auth/github/callback
+
+# BetterAuth base URL / CSRF trusted origin (AUTH-013). MUST match the vite dev origin;
+# without it the schema default is the prod URL and local sign-in (callback + CSRF) breaks.
+BETTER_AUTH_URL=http://localhost:3000
 
 # Operator allowlist for the /operator console (comma-separated provider:owner; a bare entry
 # defaults to github). Must match the registry worker's REGISTRY_ADMINS. Empty -> no operators.

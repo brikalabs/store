@@ -1,5 +1,5 @@
 import type { ScopeRole } from "@brika/registry-core";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import {
   regDistTags,
@@ -51,6 +51,21 @@ export async function listScopesForMember(
     role: row.role === "admin" ? "admin" : "member",
     displayName: row.displayName,
   }));
+}
+
+/**
+ * Every package name published under any of `scopes`, regardless of whether it still has an
+ * installable (non-yanked) version. Unlike the public catalog this includes fully-yanked
+ * packages, so the owner dashboard can list and relist them. Empty `scopes` short-circuits to
+ * no rows (a user who owns no scope owns no package).
+ */
+export async function listPackageNamesForScopes(db: Db, scopes: string[]): Promise<string[]> {
+  if (scopes.length === 0) return [];
+  const rows = await db
+    .select({ name: regPackages.name })
+    .from(regPackages)
+    .where(inArray(regPackages.scope, scopes));
+  return rows.map((row) => row.name);
 }
 
 /**

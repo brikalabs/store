@@ -28,7 +28,7 @@ function ProfilePage() {
   }, []);
 
   return (
-    <AdminShell id={user.id} name={user.name} activeLabel="Profile">
+    <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="Profile">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-bold font-heading text-2xl tracking-tight">Profile</h1>
@@ -124,20 +124,13 @@ function ProfileEditor({
       <h2 className="font-bold font-heading text-xl tracking-tight">Public profile</h2>
 
       <div className="flex items-center gap-4">
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={profile.displayName ?? profile.id}
-            className="size-16 rounded-[18px] border border-border object-cover"
-          />
-        ) : (
-          <GradientAvatar
-            seed={profile.id}
-            label={profile.displayName ?? profile.id}
-            size={64}
-            className="rounded-[18px]"
-          />
-        )}
+        <GradientAvatar
+          seed={profile.id}
+          label={profile.displayName}
+          imageUrl={avatarUrl}
+          size={64}
+          className="rounded-[18px]"
+        />
         <span className="text-muted-foreground text-xs">
           Your avatar comes from your GitHub account.
         </span>

@@ -1,9 +1,35 @@
-import type { PluginSummary } from "@brika/registry-contract";
+import type { PluginListingStatus, PluginSummary } from "@brika/registry-contract";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Box, Pencil, ShieldCheck } from "lucide-react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { useMyPlugins } from "@/hooks/use-my-plugins";
+
+/** Per-status pill: live states read positive (emerald/amber), hidden ones read as a warning. */
+const STATUS_BADGE: Record<PluginListingStatus, { label: string; className: string }> = {
+  published: {
+    label: "Published",
+    className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  },
+  deprecated: {
+    label: "Deprecated",
+    className: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  },
+  yanked: { label: "Yanked", className: "bg-destructive/15 text-destructive" },
+  taken_down: { label: "Taken down", className: "bg-destructive/15 text-destructive" },
+};
+
+function StatusBadge({ status }: Readonly<{ status: PluginListingStatus }>) {
+  const { label, className } = STATUS_BADGE[status];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold text-xs ${className}`}
+    >
+      <span className="size-1.5 rounded-full bg-current" />
+      <span>{label}</span>
+    </span>
+  );
+}
 
 export const Route = createFileRoute("/dashboard/plugins/")({
   component: MyPluginsPage,
@@ -14,7 +40,7 @@ function MyPluginsPage() {
   const plugins = useMyPlugins();
 
   return (
-    <AdminShell id={user.id} name={user.name} activeLabel="My plugins">
+    <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="My plugins">
       <section className="flex flex-col gap-6">
         <div>
           <h1 className="font-bold font-heading text-2xl tracking-tight">My plugins</h1>
@@ -76,10 +102,7 @@ function PluginRow({ plugin }: Readonly<{ plugin: PluginSummary }>) {
         </div>
       </div>
       <div>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 font-semibold text-emerald-600 text-xs dark:text-emerald-400">
-          <span className="size-1.5 rounded-full bg-current" />
-          <span>Published</span>
-        </span>
+        <StatusBadge status={plugin.listingStatus} />
       </div>
       <div className="text-muted-foreground text-sm">{caps > 0 ? `${caps} capabilities` : "·"}</div>
       <Link

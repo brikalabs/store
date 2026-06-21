@@ -64,7 +64,7 @@ function TokensPage() {
   }
 
   return (
-    <AdminShell id={user.id} name={user.name} activeLabel="API tokens">
+    <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="API tokens">
       <header className="flex flex-col gap-1">
         <h1 className="font-bold font-heading text-2xl tracking-tight">API tokens</h1>
         <p className="text-muted-foreground text-sm">

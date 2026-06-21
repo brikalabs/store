@@ -19,6 +19,7 @@ export { CloudflareDohResolver } from "./doh-resolver";
 export { HmacDomainChallenge } from "./hmac-domain-challenge";
 export {
   listAllPackages,
+  listPackageNamesForScopes,
   listScopesForMember,
   listSubjectTokens,
   type MemberScope,

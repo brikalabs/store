@@ -84,7 +84,7 @@ export function isSafeAssetPath(path: string): boolean {
 // Wire formats (npm-compatible packument subset + the catalog endpoint).
 // ---------------------------------------------------------------------------
 
-const Manifest = z
+export const Manifest = z
   .object({
     name: z.string(),
     ...manifestFields,

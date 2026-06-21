@@ -20,7 +20,7 @@ import { comments, plugins, reviews, users } from "@/server/db/schema";
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../drizzle");
-const MIGRATIONS = ["0000_parched_sauron.sql", "0001_betterauth.sql"];
+const MIGRATIONS = ["0000_parched_sauron.sql", "0001_betterauth.sql", "0002_user_profiles.sql"];
 
 function makeDb(): Db {
   const sqlite = new Database(":memory:");

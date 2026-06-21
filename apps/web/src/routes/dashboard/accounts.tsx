@@ -94,7 +94,12 @@ function AccountsPage() {
   }
 
   return (
-    <AdminShell id={user.id} name={user.name} activeLabel="Connected accounts">
+    <AdminShell
+      id={user.id}
+      name={user.name}
+      avatarUrl={user.avatarUrl}
+      activeLabel="Connected accounts"
+    >
       <div>
         <h1 className="font-bold font-heading text-2xl tracking-tight">Connected accounts</h1>
         <p className="mt-1 text-muted-foreground text-sm">

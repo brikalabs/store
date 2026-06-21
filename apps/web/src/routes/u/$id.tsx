@@ -80,21 +80,19 @@ function UserProfilePage() {
 
 function UserProfileView({ page }: Readonly<{ page: UserPage }>) {
   const { profile, plugins, reviews } = page;
-  const name = profile.displayName ?? profile.id;
+  const name = profile.displayName;
   const weekly = plugins.reduce((sum, plugin) => sum + plugin.downloadsWeekly, 0);
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-6 sm:flex-row sm:items-start">
-        {profile.avatarUrl ? (
-          <img
-            src={profile.avatarUrl}
-            alt={name}
-            className="size-[84px] shrink-0 rounded-[20px] border border-border object-cover"
-          />
-        ) : (
-          <GradientAvatar seed={profile.id} label={name} size={84} className="rounded-[20px]" />
-        )}
+        <GradientAvatar
+          seed={profile.id}
+          label={name}
+          imageUrl={profile.avatarUrl}
+          size={84}
+          className="rounded-[20px]"
+        />
         <div className="flex-1">
           <h1 className="font-bold font-heading text-3xl tracking-tight">{name}</h1>
           {profile.bio !== undefined && profile.bio.length > 0 ? (

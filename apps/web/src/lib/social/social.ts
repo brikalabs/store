@@ -19,26 +19,44 @@ import {
 } from "@/server/db/schema";
 
 /**
+ * Last-resort label when an account has no stored name at all. Should never be
+ * reached in practice: every write path stores a name (`name ?? login`), so this
+ * only guards a corrupt/legacy row. We never fall back to the opaque id or the
+ * GitHub username for a user-facing name.
+ */
+const FALLBACK_DISPLAY_NAME = "Anonymous";
+
+/**
+ * Resolve the one display name shown for an account: its user-set profile name,
+ * else its stored name, else the safety fallback. Never the opaque id or username.
+ */
+function displayNameOf(profileDisplayName: string | null, name: string | null): string {
+  return profileDisplayName ?? name ?? FALLBACK_DISPLAY_NAME;
+}
+
+/**
  * Upsert a user row directly. Sign-in no longer goes through here - BetterAuth
  * creates/updates the `users` row on GitHub sign-in - but seeds and tests still
  * insert users directly with a `login` (and now map the old `avatarUrl` to the
- * BetterAuth `image` column).
+ * BetterAuth `image` column). `name` is always stored (falling back to `login`) so
+ * a display name is guaranteed in the DB, mirroring `mapProfileToUser` at sign-in.
  */
 export async function upsertUser(
   database: Db,
   user: { id: string; login: string; name?: string; avatarUrl?: string },
 ): Promise<void> {
+  const name = user.name ?? user.login;
   await database
     .insert(users)
     .values({
       id: user.id,
       login: user.login,
-      name: user.name,
+      name,
       image: user.avatarUrl,
     })
     .onConflictDoUpdate({
       target: users.id,
-      set: { login: user.login, name: user.name, image: user.avatarUrl },
+      set: { login: user.login, name, image: user.avatarUrl },
     });
 }
 
@@ -124,12 +142,13 @@ export async function listReviews(
       createdAt: reviews.createdAt,
       edited: reviews.edited,
       userId: users.id,
-      login: users.login,
       name: users.name,
+      profileDisplayName: userProfiles.displayName,
       avatarUrl: users.image,
     })
     .from(reviews)
     .innerJoin(users, eq(reviews.userId, users.id))
+    .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
     .where(eq(reviews.pluginName, pluginName))
     .orderBy(desc(reviews.createdAt));
 
@@ -147,8 +166,7 @@ export async function listReviews(
       pluginName,
       author: {
         id: row.userId,
-        login: row.login,
-        name: row.name ?? undefined,
+        displayName: displayNameOf(row.profileDisplayName, row.name),
         avatarUrl: row.avatarUrl ?? undefined,
       },
       rating: row.rating,
@@ -276,12 +294,13 @@ export async function listComments(
       edited: comments.edited,
       deleted: comments.deleted,
       userId: users.id,
-      login: users.login,
       name: users.name,
+      profileDisplayName: userProfiles.displayName,
       avatarUrl: users.image,
     })
     .from(comments)
     .innerJoin(users, eq(comments.userId, users.id))
+    .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
     .where(eq(comments.pluginName, pluginName))
     .orderBy(comments.createdAt);
 
@@ -303,8 +322,7 @@ export async function listComments(
       parentId: row.parentId,
       author: {
         id: row.userId,
-        login: row.login,
-        name: row.name ?? undefined,
+        displayName: displayNameOf(row.profileDisplayName, row.name),
         avatarUrl: row.avatarUrl ?? undefined,
       },
       body: row.deleted ? "[deleted]" : row.body,
@@ -389,7 +407,7 @@ export async function getUserProfile(database: Db, id: string): Promise<UserProf
   if (row === undefined) return null;
   return UserProfile.parse({
     id: row.id,
-    displayName: row.displayName ?? row.name ?? undefined,
+    displayName: displayNameOf(row.displayName, row.name),
     avatarUrl: row.image ?? undefined,
     bio: row.bio ?? undefined,
     website: row.website ?? undefined,
@@ -441,12 +459,13 @@ export async function listReviewsByUser(database: Db, userId: string): Promise<R
       createdAt: reviews.createdAt,
       edited: reviews.edited,
       authorId: users.id,
-      login: users.login,
       name: users.name,
+      profileDisplayName: userProfiles.displayName,
       avatarUrl: users.image,
     })
     .from(reviews)
     .innerJoin(users, eq(reviews.userId, users.id))
+    .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
     .where(eq(reviews.userId, userId))
     .orderBy(desc(reviews.createdAt));
 
@@ -456,8 +475,7 @@ export async function listReviewsByUser(database: Db, userId: string): Promise<R
       pluginName: row.pluginName,
       author: {
         id: row.authorId,
-        login: row.login,
-        name: row.name ?? undefined,
+        displayName: displayNameOf(row.profileDisplayName, row.name),
         avatarUrl: row.avatarUrl ?? undefined,
       },
       rating: row.rating,
