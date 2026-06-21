@@ -3,6 +3,7 @@ import {
   displayNameSchema,
   domainChallengeHost,
   isCanonicalScope,
+  type PublishIdentity,
   ScopeService,
   scopeDescriptionSchema,
   scopeDomainSchema,
@@ -44,6 +45,17 @@ import { Audit } from "../services";
  * outcome, and map the result to a status. No database access or business logic here.
  */
 
+/** Record a scope audit entry. Every scope action shares packageName=scope, version=null, and the
+ *  caller as actor, varying only by action + detail. */
+function auditScope(
+  action: string,
+  scope: string,
+  actor: PublishIdentity,
+  detail: Record<string, unknown> | null = null,
+): Promise<void> {
+  return inject(Audit).record({ action, packageName: scope, version: null, actor, detail });
+}
+
 /**
  * `GET /-/scope/:scope` - public scope info (scope, display name, description, links, icon
  * key, verified domains) or 404. Pending domains + membership are never exposed.
@@ -78,13 +90,7 @@ export async function createScope({
   const identity = await requireWrite(req);
   const result = okOrThrow(await inject(ScopeService).claim(identity, scope));
   if (result.created) {
-    await inject(Audit).record({
-      action: "scope_create",
-      packageName: scope,
-      version: null,
-      actor: identity,
-      detail: null,
-    });
+    await auditScope("scope_create", scope, identity);
   }
   return reply({ ok: true, scope, created: result.created }, result.created ? 201 : 200);
 }
@@ -120,13 +126,7 @@ export async function putMember({
   const result = okOrThrow(
     await inject(ScopeService).setMember(identity, scope, { provider, id }, body.role),
   );
-  await inject(Audit).record({
-    action: "scope_member_set",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { provider, id, role: body.role },
-  });
+  await auditScope("scope_member_set", scope, identity, { provider, id, role: body.role });
   return reply({ ok: true, scope, member: result.member }, 200);
 }
 
@@ -143,13 +143,7 @@ export async function deleteMember({
   const result = okOrThrow(
     await inject(ScopeService).removeMember(identity, scope, { provider, id }),
   );
-  await inject(Audit).record({
-    action: "scope_member_remove",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { provider, id },
-  });
+  await auditScope("scope_member_remove", scope, identity, { provider, id });
   return reply({ ok: true, scope, removed: result.removed }, 200);
 }
 
@@ -171,13 +165,7 @@ export async function setDisplayName({
   const { scope } = params;
   const identity = await requireWrite(req);
   okOrThrow(await inject(ScopeService).setDisplayName(identity, scope, body.displayName));
-  await inject(Audit).record({
-    action: "scope_display_name",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { displayName: body.displayName },
-  });
+  await auditScope("scope_display_name", scope, identity, { displayName: body.displayName });
   return reply({ ok: true, scope, displayName: body.displayName }, 200);
 }
 
@@ -204,13 +192,7 @@ export async function setProfile({
       links: body.links,
     }),
   );
-  await inject(Audit).record({
-    action: "scope_profile_set",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { links: body.links.length },
-  });
+  await auditScope("scope_profile_set", scope, identity, { links: body.links.length });
   return reply({ ok: true, scope, profile: result.profile }, 200);
 }
 
@@ -256,13 +238,7 @@ export async function addDomain({
   const scopes = inject(ScopeService);
   const identity = await requireWrite(req);
   const result = okOrThrow(await scopes.addDomain(identity, scope, domain));
-  await inject(Audit).record({
-    action: "scope_domain_add",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { domain },
-  });
+  await auditScope("scope_domain_add", scope, identity, { domain });
   return reply(
     {
       ok: true,
@@ -288,13 +264,7 @@ export async function verifyDomain({
   const identity = await requireWrite(req);
   const result = okOrThrow(await inject(ScopeService).verifyDomain(identity, scope, domain));
   if (result.verified) {
-    await inject(Audit).record({
-      action: "scope_domain_verified",
-      packageName: scope,
-      version: null,
-      actor: identity,
-      detail: { domain },
-    });
+    await auditScope("scope_domain_verified", scope, identity, { domain });
   }
   return reply({ ok: true, scope, domain, verified: result.verified }, 200);
 }
@@ -311,13 +281,7 @@ export async function deleteDomain({
   const domain = parseDomain(params.domain);
   const identity = await requireWrite(req);
   okOrThrow(await inject(ScopeService).removeDomain(identity, scope, domain));
-  await inject(Audit).record({
-    action: "scope_domain_remove",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { domain },
-  });
+  await auditScope("scope_domain_remove", scope, identity, { domain });
   return reply({ ok: true, scope, removed: domain }, 200);
 }
 
@@ -359,13 +323,7 @@ export async function addTrustedPublisher({
   const { scope } = params;
   const identity = await requireWrite(req);
   const result = okOrThrow(await inject(ScopeService).addTrustedPublisher(identity, scope, body));
-  await inject(Audit).record({
-    action: "scope_trusted_publisher_add",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { ...body },
-  });
+  await auditScope("scope_trusted_publisher_add", scope, identity, { ...body });
   return reply({ ok: true, scope, publisher: result.publisher }, 201);
 }
 
@@ -384,13 +342,7 @@ export async function removeTrustedPublisher({
   const result = okOrThrow(
     await inject(ScopeService).removeTrustedPublisher(identity, scope, body),
   );
-  await inject(Audit).record({
-    action: "scope_trusted_publisher_remove",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { ...body },
-  });
+  await auditScope("scope_trusted_publisher_remove", scope, identity, { ...body });
   return reply({ ok: true, scope, removed: result.removed }, 200);
 }
 
@@ -413,13 +365,7 @@ export async function takedownScope({
   const { scope } = params;
   const identity = await requireAdmin(req);
   okOrThrow(await inject(ScopeService).takedown(scope, body.reason));
-  await inject(Audit).record({
-    action: "scope_takedown",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: { reason: body.reason },
-  });
+  await auditScope("scope_takedown", scope, identity, { reason: body.reason });
   return reply({ ok: true, scope, takedown: body.reason }, 200);
 }
 
@@ -434,13 +380,7 @@ export async function restoreScope({
   const { scope } = params;
   const identity = await requireAdmin(req);
   okOrThrow(await inject(ScopeService).restore(scope));
-  await inject(Audit).record({
-    action: "scope_restore",
-    packageName: scope,
-    version: null,
-    actor: identity,
-    detail: null,
-  });
+  await auditScope("scope_restore", scope, identity);
   return reply({ ok: true, scope, takedown: null }, 200);
 }
 
