@@ -17,8 +17,10 @@ function AuthArea({ loading, user }: Readonly<{ loading: boolean; user: CurrentU
           Dashboard
         </Link>
         <Avatar className="size-8">
-          {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.login} /> : null}
-          <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
+          {user.avatarUrl ? (
+            <AvatarImage src={user.avatarUrl} alt={user.name ?? "Your account"} />
+          ) : null}
+          <AvatarFallback>{(user.name ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <a
           href="/auth/logout"

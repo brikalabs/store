@@ -31,7 +31,14 @@ const DeviceCodeSchema = z.object({
 const DeviceTokenSchema = z.object({
   access_token: z.string().optional(),
   github_login: z.string().optional(),
+  // Human display name resolved by the registry (null when the account has none).
+  display_name: z.string().nullish(),
   error: z.string().optional(),
+});
+
+const WhoamiSchema = z.object({
+  github_login: z.string(),
+  display_name: z.string().nullish(),
 });
 
 const PublishResponseSchema = z.object({
@@ -81,6 +88,14 @@ export type DeviceCode = z.infer<typeof DeviceCodeSchema>;
 export interface DeviceLogin {
   readonly token: string;
   readonly githubLogin: string;
+  /** Resolved human display name, or null when the account has none (fall back to the login). */
+  readonly displayName: string | null;
+}
+
+export interface WhoamiResult {
+  readonly githubLogin: string;
+  /** Resolved human display name, or null when the account has none. */
+  readonly displayName: string | null;
 }
 
 export interface PublishRequest {
@@ -140,7 +155,11 @@ export class RegistryClient {
       // RFC 8628 outcomes: a token (approved), `authorization_pending` (keep
       // waiting), `slow_down` (poll less often), or any other error (give up).
       if (res.ok && body.access_token !== undefined) {
-        return { token: body.access_token, githubLogin: body.github_login ?? "unknown" };
+        return {
+          token: body.access_token,
+          githubLogin: body.github_login ?? "unknown",
+          displayName: body.display_name ?? null,
+        };
       }
       if (body.error === "slow_down") {
         interval += SLOW_DOWN_BACKOFF_S;
@@ -151,6 +170,18 @@ export class RegistryClient {
       throw new CliError(`login failed: ${reason}`);
     }
     throw new CliError("login timed out - run `brika login` again");
+  }
+
+  /**
+   * Resolve the signed-in account for the presented token (`GET /-/whoami`): the
+   * github login plus its display name (null when the account has none). Throws a
+   * `CliError` when the token is missing or rejected.
+   */
+  async whoami(token: string): Promise<WhoamiResult> {
+    const res = await this.#send("/-/whoami", { method: "GET", headers: bearer(token) });
+    if (!res.ok) throw new CliError(`could not resolve the signed-in account (${res.status})`);
+    const body = await this.#parse(res, WhoamiSchema);
+    return { githubLogin: body.github_login, displayName: body.display_name ?? null };
   }
 
   /** Publish a version, returning its integrity. Throws a `CliError` on rejection. */

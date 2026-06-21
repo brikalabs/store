@@ -162,12 +162,12 @@ function DeviceBody({
         <span>Signed in as</span>
         <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
           <Avatar className="size-[18px]">
-            <AvatarImage src={user.avatarUrl ?? undefined} alt={user.login} />
+            <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name ?? "Your account"} />
             <AvatarFallback className="text-[8px]">
-              {user.login.slice(0, 2).toUpperCase()}
+              {(user.name ?? "?").slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          {user.login}
+          {user.name ?? "your account"}
         </span>
       </p>
     </form>

@@ -23,6 +23,7 @@ export {
   listSubjectTokens,
   type MemberScope,
   type OperatorPackage,
+  resolveDisplayName,
   revokeTokenByHash,
   type SubjectToken,
 } from "./queries";

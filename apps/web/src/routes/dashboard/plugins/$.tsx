@@ -28,7 +28,7 @@ function ManagePluginPage() {
   }
 
   return (
-    <AdminShell login={user.login} activeLabel="My plugins">
+    <AdminShell id={user.id} name={user.name} activeLabel="My plugins">
       <ManagePlugin detail={data.detail} />
     </AdminShell>
   );

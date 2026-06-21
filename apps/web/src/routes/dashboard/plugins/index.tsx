@@ -14,7 +14,7 @@ function MyPluginsPage() {
   const plugins = useMyPlugins();
 
   return (
-    <AdminShell login={user.login} activeLabel="My plugins">
+    <AdminShell id={user.id} name={user.name} activeLabel="My plugins">
       <section className="flex flex-col gap-6">
         <div>
           <h1 className="font-bold font-heading text-2xl tracking-tight">My plugins</h1>

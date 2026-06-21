@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { sql } from "drizzle-orm";
 import type { Db } from "../client";
 import {
   regDistTags,
@@ -13,6 +14,7 @@ import {
   listAllPackages,
   listScopesForMember,
   listSubjectTokens,
+  resolveDisplayName,
   revokeTokenByHash,
 } from "./queries";
 
@@ -149,5 +151,56 @@ describe("listSubjectTokens / revokeTokenByHash", () => {
 
   test("revoke returns false for an unknown token", async () => {
     expect(await revokeTokenByHash(db, "github", "alice", "nope")).toBe(false);
+  });
+});
+
+describe("resolveDisplayName", () => {
+  // The store's `users`/`user_profiles` tables are NOT in this package's `reg_*`
+  // schema (they belong to the web app) but live in the SAME D1, so the resolver
+  // reads them with raw SQL. Create them by hand here to exercise that path.
+  beforeEach(async () => {
+    await db.run(sql`CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT, login TEXT)`);
+    await db.run(sql`CREATE TABLE user_profiles (user_id TEXT PRIMARY KEY, display_name TEXT)`);
+  });
+
+  async function user(id: string, login: string, name: string | null) {
+    await db.run(sql`INSERT INTO users (id, name, login) VALUES (${id}, ${name}, ${login})`);
+  }
+  async function profile(userId: string, displayName: string | null) {
+    await db.run(
+      sql`INSERT INTO user_profiles (user_id, display_name) VALUES (${userId}, ${displayName})`,
+    );
+  }
+
+  test("prefers the profile display name", async () => {
+    await user("u1", "octocat", "Mona Lisa");
+    await profile("u1", "Mona the Octocat");
+    expect(await resolveDisplayName(db, "octocat")).toBe("Mona the Octocat");
+  });
+
+  test("falls back to users.name when no profile display name", async () => {
+    await user("u1", "octocat", "Mona Lisa");
+    await profile("u1", null);
+    expect(await resolveDisplayName(db, "octocat")).toBe("Mona Lisa");
+  });
+
+  test("falls back to users.name when there is no profile row at all", async () => {
+    await user("u1", "octocat", "Mona Lisa");
+    expect(await resolveDisplayName(db, "octocat")).toBe("Mona Lisa");
+  });
+
+  test("returns null when the account has neither a display name nor a name", async () => {
+    await user("u1", "octocat", null);
+    expect(await resolveDisplayName(db, "octocat")).toBeNull();
+  });
+
+  test("returns null for an unknown login", async () => {
+    expect(await resolveDisplayName(db, "ghost")).toBeNull();
+  });
+
+  test("treats a whitespace-only display name as absent", async () => {
+    await user("u1", "octocat", "Mona Lisa");
+    await profile("u1", "   ");
+    expect(await resolveDisplayName(db, "octocat")).toBe("Mona Lisa");
   });
 });

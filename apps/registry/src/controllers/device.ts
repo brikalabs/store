@@ -1,6 +1,7 @@
 import { badRequest, rateLimit, reply, unauthorized } from "@brika/router";
 import { z } from "zod";
 import { cf, clientKey } from "../adapters/cf-rate-limiter";
+import { requireWrite } from "../auth";
 import { vars } from "../env";
 import { controller, route } from "../http/router";
 import type { Services } from "../services";
@@ -42,10 +43,30 @@ export async function handleDeviceToken(req: Request, services: Services): Promi
   if (!result.ok) throw badRequest(result.error);
 
   const token = await services.tokens.issue(result.githubLogin);
+  // Resolve a human display name for the CLI's "Logged in as ..." line. Null when the
+  // login has no store account/profile yet; the CLI then shows the github login.
+  const displayName = await services.resolveDisplayName(result.githubLogin);
   return reply(
-    { access_token: token, token_type: "bearer", github_login: result.githubLogin },
+    {
+      access_token: token,
+      token_type: "bearer",
+      github_login: result.githubLogin,
+      display_name: displayName,
+    },
     200,
   );
+}
+
+/**
+ * `GET /-/whoami` - token-authed identity for `brika whoami`. Returns the
+ * authenticated github login plus its resolved display name (null when none),
+ * so the CLI can render the signed-in account without re-running the device flow.
+ */
+export async function handleWhoami(req: Request, services: Services): Promise<Response> {
+  const identity = await requireWrite(req, services.tokens);
+  const githubLogin = identity.owner;
+  const displayName = await services.resolveDisplayName(githubLogin);
+  return reply({ github_login: githubLogin, display_name: displayName }, 200);
 }
 
 /** Revoke the presented publish token (used by `brika logout`). Idempotent. */
@@ -69,6 +90,7 @@ export const deviceController = controller({
       handler: ({ ctx }) => handleDeviceCode(ctx),
     }),
     route.post({ path: "/-/device/token", handler: ({ req, ctx }) => handleDeviceToken(req, ctx) }),
+    route.get({ path: "/-/whoami", handler: ({ req, ctx }) => handleWhoami(req, ctx) }),
     route.post({ path: "/-/token/revoke", handler: ({ req, ctx }) => handleRevoke(req, ctx) }),
   ],
 });

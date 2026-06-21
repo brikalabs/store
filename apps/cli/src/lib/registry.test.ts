@@ -27,11 +27,27 @@ describe("RegistryClient", () => {
     expect((await client.requestDeviceCode()).user_code).toBe("U-1");
   });
 
-  test("waitForToken returns the issued token once approved", async () => {
+  test("waitForToken returns the issued token, login, and display name once approved", async () => {
+    const client = new RegistryClient("https://r.test", {
+      fetch: async () =>
+        json({ access_token: "brika_x", github_login: "me", display_name: "Me Myself" }),
+    });
+    expect(await client.waitForToken(device)).toEqual({
+      token: "brika_x",
+      githubLogin: "me",
+      displayName: "Me Myself",
+    });
+  });
+
+  test("waitForToken defaults the display name to null when the registry omits it", async () => {
     const client = new RegistryClient("https://r.test", {
       fetch: async () => json({ access_token: "brika_x", github_login: "me" }),
     });
-    expect(await client.waitForToken(device)).toEqual({ token: "brika_x", githubLogin: "me" });
+    expect(await client.waitForToken(device)).toEqual({
+      token: "brika_x",
+      githubLogin: "me",
+      displayName: null,
+    });
   });
 
   test("waitForToken throws when the device flow is denied", async () => {

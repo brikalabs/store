@@ -15,18 +15,20 @@ const NAV: NavItem[] = [
 
 /** Signed-in developer dashboard chrome: a sticky sidebar nav + main column. */
 export function AdminShell({
-  login,
+  id,
+  name,
   activeLabel,
   children,
-}: Readonly<{ login: string; activeLabel: string; children: ReactNode }>) {
+}: Readonly<{ id: string; name: string | null; activeLabel: string; children: ReactNode }>) {
+  const displayName = name ?? "Your account";
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <div className="grid gap-8 lg:grid-cols-[208px_1fr] lg:items-start">
         <aside className="flex flex-col gap-1 lg:sticky lg:top-20">
           <div className="flex items-center gap-2.5 px-2 pb-3">
-            <GradientAvatar seed={login} label={login} size={32} />
+            <GradientAvatar seed={id} label={displayName} size={32} />
             <div className="min-w-0">
-              <div className="truncate font-semibold text-foreground text-sm">{login}</div>
+              <div className="truncate font-semibold text-foreground text-sm">{displayName}</div>
               <div className="text-muted-foreground text-xs">Developer</div>
             </div>
           </div>

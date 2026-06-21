@@ -57,7 +57,7 @@ function ScopesPage() {
   }
 
   return (
-    <AdminShell login={user.login} activeLabel="Scopes">
+    <AdminShell id={user.id} name={user.name} activeLabel="Scopes">
       <header className="flex flex-col gap-1">
         <h1 className="font-bold font-heading text-2xl tracking-tight">Scopes</h1>
         <p className="text-muted-foreground text-sm">

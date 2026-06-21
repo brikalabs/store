@@ -28,7 +28,7 @@ function ProfilePage() {
   }, []);
 
   return (
-    <AdminShell login={user.login} activeLabel="Profile">
+    <AdminShell id={user.id} name={user.name} activeLabel="Profile">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-bold font-heading text-2xl tracking-tight">Profile</h1>

@@ -154,6 +154,9 @@ describe("handleDeviceToken", () => {
     expect(body.token_type).toBe("bearer");
     expect(body.github_login).toBe("octocat");
     expect(body.access_token).toMatch(/^brika_/);
+    // No store `users` row in this harness, so the display name resolves to null and the
+    // CLI falls back to the github login.
+    expect(body.display_name).toBeNull();
 
     // The token was persisted and the grant consumed.
     expect(await db.select().from(regTokens)).toHaveLength(1);
