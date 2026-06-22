@@ -1,12 +1,14 @@
 import { expect, test } from "bun:test";
+import { type Provider, provide, testBed } from "@brika/di";
 import {
-  type ManifestValidator,
-  type MetadataWriter,
-  type OwnershipPolicy,
+  ManifestValidator,
+  MetadataWriter,
+  OwnershipPolicy,
+  PublishConfig,
   type PublishInput,
   PublishService,
-  type TarballScanner,
-  type TarballWriter,
+  TarballScanner,
+  TarballWriter,
 } from "./publish";
 import type { PackageVersion } from "./types";
 
@@ -53,11 +55,30 @@ const input: PublishInput = {
   identity: { userId: null, provider: "github", repository: "brika/plugin-x" },
 };
 
+/** A PublishService over the fake stores + the given validator/ownership; `extra` adds optional seams. */
+function publishService(
+  f: ReturnType<typeof fakes>,
+  validator: ManifestValidator,
+  ownership: OwnershipPolicy,
+  ...extra: Provider[]
+): PublishService {
+  return testBed(
+    provide(MetadataWriter, f.meta),
+    provide(TarballWriter, f.tarballs),
+    provide(ManifestValidator, validator),
+    provide(OwnershipPolicy, ownership),
+    ...extra,
+  ).inject(PublishService);
+}
+
 test("publishes: integrity computed, tarball + version + dist-tag written", async () => {
   const f = fakes();
-  const service = new PublishService(f.meta, f.tarballs, validManifest, allow, {
-    clock: () => "2026-01-01T00:00:00.000Z",
-  });
+  const service = publishService(
+    f,
+    validManifest,
+    allow,
+    provide(PublishConfig, { clock: () => "2026-01-01T00:00:00.000Z" }),
+  );
   const result = await service.publish(input);
   expect(result.ok).toBe(true);
   if (result.ok) {
@@ -72,7 +93,7 @@ test("publishes: integrity computed, tarball + version + dist-tag written", asyn
 
 test("persists CI provenance from the publish identity", async () => {
   const f = fakes();
-  const service = new PublishService(f.meta, f.tarballs, validManifest, allow);
+  const service = publishService(f, validManifest, allow);
   const result = await service.publish({
     ...input,
     identity: {
@@ -92,7 +113,7 @@ test("persists CI provenance from the publish identity", async () => {
 
 test("rejects when ownership denies, without writing", async () => {
   const f = fakes();
-  const result = await new PublishService(f.meta, f.tarballs, validManifest, deny).publish(input);
+  const result = await publishService(f, validManifest, deny).publish(input);
   expect(result).toEqual({ ok: false, code: "forbidden", message: "not your scope" });
   expect(f.puts).toEqual([]);
   expect(f.versions).toEqual([]);
@@ -100,18 +121,19 @@ test("rejects when ownership denies, without writing", async () => {
 
 test("rejects an invalid manifest (data gate), without writing", async () => {
   const f = fakes();
-  const result = await new PublishService(f.meta, f.tarballs, invalidManifest, allow).publish(
-    input,
-  );
+  const result = await publishService(f, invalidManifest, allow).publish(input);
   expect(result).toEqual({ ok: false, code: "invalid", message: "icon required" });
   expect(f.puts).toEqual([]);
 });
 
 test("rejects an oversized tarball (413) before validating or writing", async () => {
   const f = fakes();
-  const service = new PublishService(f.meta, f.tarballs, validManifest, allow, {
-    maxTarballBytes: 4,
-  });
+  const service = publishService(
+    f,
+    validManifest,
+    allow,
+    provide(PublishConfig, { maxTarballBytes: 4 }),
+  );
   const result = await service.publish({
     ...input,
     tarball: new TextEncoder().encode("more than four bytes"),
@@ -124,9 +146,12 @@ test("rejects an oversized tarball (413) before validating or writing", async ()
 
 test("rejects when the scanner refuses the bytes, without writing", async () => {
   const f = fakes();
-  const service = new PublishService(f.meta, f.tarballs, validManifest, allow, {
-    scanner: rejectingScanner,
-  });
+  const service = publishService(
+    f,
+    validManifest,
+    allow,
+    provide(TarballScanner, rejectingScanner),
+  );
   const result = await service.publish(input);
   expect(result).toEqual({
     ok: false,
@@ -157,9 +182,12 @@ test("scans only after immutability: an existing version is rejected before the 
     deprecated: null,
     yanked: false,
   });
-  const result = await new PublishService(f.meta, f.tarballs, validManifest, allow, {
-    scanner: spyScanner,
-  }).publish(input);
+  const result = await publishService(
+    f,
+    validManifest,
+    allow,
+    provide(TarballScanner, spyScanner),
+  ).publish(input);
   expect(result.ok).toBe(false);
   if (!result.ok) expect(result.code).toBe("exists");
   expect(scanned).toBe(false);
@@ -167,10 +195,13 @@ test("scans only after immutability: an existing version is rejected before the 
 
 test("publishes when the scanner passes (explicit scanner wired)", async () => {
   const f = fakes();
-  const service = new PublishService(f.meta, f.tarballs, validManifest, allow, {
-    scanner: { scan: () => Promise.resolve({ ok: true }) },
-    clock: () => "2026-01-01T00:00:00.000Z",
-  });
+  const service = publishService(
+    f,
+    validManifest,
+    allow,
+    provide(TarballScanner, { scan: () => Promise.resolve({ ok: true }) }),
+    provide(PublishConfig, { clock: () => "2026-01-01T00:00:00.000Z" }),
+  );
   const result = await service.publish(input);
   expect(result.ok).toBe(true);
   expect(f.puts).toEqual(["@brika/plugin-x/-/plugin-x-1.0.0.tgz"]);
@@ -190,7 +221,7 @@ test("rejects re-publishing an existing version (immutability), without writing"
     deprecated: null,
     yanked: false,
   });
-  const result = await new PublishService(f.meta, f.tarballs, validManifest, allow).publish(input);
+  const result = await publishService(f, validManifest, allow).publish(input);
   expect(result.ok).toBe(false);
   if (!result.ok) expect(result.code).toBe("exists");
   expect(f.puts).toEqual([]);

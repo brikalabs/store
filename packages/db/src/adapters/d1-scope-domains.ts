@@ -1,6 +1,7 @@
+import { inject } from "@brika/di";
 import type { ScopeDomainRecord, ScopeDomains, ScopeScopedDomain } from "@brika/registry-core";
 import { and, eq } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regScopeDomains } from "../schema";
 
 /**
@@ -9,11 +10,7 @@ import { regScopeDomains } from "../schema";
  * DNS (ORG-010). No challenge is stored - it is recomputed statelessly from a secret.
  */
 export class D1ScopeDomains implements ScopeDomains {
-  readonly #db: Db;
-
-  constructor(db: Db) {
-    this.#db = db;
-  }
+  readonly #db = inject(Db);
 
   async list(scope: string): Promise<ScopeDomainRecord[]> {
     const rows = await this.#db

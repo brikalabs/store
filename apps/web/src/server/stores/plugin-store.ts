@@ -12,7 +12,7 @@ import { plugins, reviews } from "@/server/db/schema";
  * is orchestration and lives in {@link SocialService}, not here - this store is pure SQL.
  */
 export class PluginStore {
-  readonly #db = inject(Database).orm;
+  readonly #db = inject(Database);
 
   /** Whether a cache row already exists for this package. */
   async exists(name: string): Promise<boolean> {

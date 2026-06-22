@@ -66,20 +66,22 @@ export interface FactoryProvider<T> {
 }
 export interface ClassProvider<T> {
   readonly provide: ProviderToken<T>;
+  /** A field-injected class to build for this token: `{ provide: Port, useClass: D1Adapter }`. */
   readonly useClass: new () => T;
 }
-export interface ExistingProvider<T> {
-  readonly provide: ProviderToken<T>;
-  /** Alias: `provide` resolves to whatever `useExisting` resolves to. */
-  readonly useExisting: ProviderToken<T>;
-}
-/** A bare class is shorthand for `{ provide: Class, useClass: Class }`. */
+/**
+ * A bare class is shorthand for "provide this class as itself" (the container `new`s it and field
+ * injection wires its deps). `useValue` binds a ready instance; `useFactory` builds one lazily (and
+ * can `inject()` inside, so a factory `() => inject(Other)` is also how you alias one token to
+ * another); `useClass` binds a PORT token to a field-injected adapter class (the canonical
+ * port->adapter wiring). Angular's `useExisting` is omitted - a re-injecting factory covers it; add
+ * it back the day a real case needs one.
+ */
 export type Provider<T = unknown> =
   | (new () => T)
   | ValueProvider<T>
   | FactoryProvider<T>
-  | ClassProvider<T>
-  | ExistingProvider<T>;
+  | ClassProvider<T>;
 
 /**
  * Value-provider shorthand: `provide(Token, value)` ≡ `{ provide: Token, useValue: value }`, with
@@ -93,17 +95,24 @@ export function provide<T>(token: ProviderToken<T>, value: T): ValueProvider<T> 
 const ACTIVE = new AsyncLocalStorage<Injector>();
 
 /**
- * Sugar for an interface token. Declare the interface and a same-named token so the one
+ * The ergonomic way to declare a token - the same shape as Angular's `new InjectionToken('desc',
+ * { factory })`, minus the ceremony. Declare the interface and a same-named token so the one
  * identifier is both the type and the runtime value (TypeScript merges a type and a value):
  *
  *   export interface Clock { now(): number; }
- *   export const Clock = token<Clock>();   // inject(Clock) is typed Clock
+ *   export const Clock = token<Clock>("Clock");   // inject(Clock) is typed Clock
  *
- * An interface has no runtime identity to inject by; this is the minimal token that gives it one
- * without an abstract class.
+ * Pass a `factory` for a `providedIn: 'root'` default (the token self-builds when nothing else
+ * provides it, and `T` is inferred from the factory):
+ *
+ *   export const Audit = token("Audit", () => new D1AuditLog(inject(Db)));
+ *
+ * `description` names the token in errors ("No provider for Clock"); omit it and the token is named
+ * by its declaration site instead. An interface has no runtime identity to inject by - this is the
+ * minimal token that gives it one, with no abstract class.
  */
-export function token<T>(): InjectionToken<T> {
-  return new InjectionToken<T>();
+export function token<T>(description?: string, factory?: () => T): InjectionToken<T> {
+  return new InjectionToken<T>({ description, factory });
 }
 
 /** True when called inside an injection context (a provider build, or {@link runInInjectionContext}). */
@@ -132,6 +141,16 @@ export function inject<T>(token: ProviderToken<T>, options?: InjectOptions): T |
     throw new Error(`inject(${tokenName(token)}) called outside an injection context`);
   }
   return options?.optional === true ? injector.get(token, { optional: true }) : injector.get(token);
+}
+
+/**
+ * Resolve `token`, or `fallback` when nothing provides it - the one-liner for an optional seam with
+ * an in-class default: `injectOr(MaxScopes, REGISTRY_LIMITS.maxScopes)` instead of the noisier
+ * `inject(MaxScopes, { optional: true }) ?? REGISTRY_LIMITS.maxScopes`. A provided `null`/`undefined`
+ * value also takes the fallback (it is a `??`, not a presence check), which is what a default wants.
+ */
+export function injectOr<T>(token: ProviderToken<T>, fallback: T): T {
+  return inject(token, { optional: true }) ?? fallback;
 }
 
 /** Run `fn` with `injector` active, so `inject()` inside it (and its awaits) resolves against it. */
@@ -238,8 +257,7 @@ export class Injector {
     if (typeof provider === "function") return construct(provider);
     if ("useValue" in provider) return provider.useValue;
     if ("useFactory" in provider) return provider.useFactory();
-    if ("useClass" in provider) return new provider.useClass();
-    return this.#resolve(provider.useExisting);
+    return new provider.useClass();
   }
 }
 

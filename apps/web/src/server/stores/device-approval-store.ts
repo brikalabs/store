@@ -1,7 +1,7 @@
 import { inject } from "@brika/di";
+import { RegistryDb } from "@brika/registry-runtime";
 import { regDeviceAuth } from "@brika/store-db";
 import { and, eq, gt } from "drizzle-orm";
-import { RegistryDb } from "@/server/registry-services";
 
 /**
  * The store's one write into the registry's shared `reg_device_auth` table: approve a pending

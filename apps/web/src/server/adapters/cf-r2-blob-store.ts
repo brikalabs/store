@@ -1,19 +1,20 @@
+import { inject, token } from "@brika/di";
 import { joinUrl } from "@/lib/url";
 import type { BlobObject, BlobStore } from "@/server/ports/blob-store";
 
+/** The R2 bucket holding the web's mirrored assets + icons (`env.ASSETS`); the app provides it. */
+export const AssetsBucket = token<R2Bucket>("AssetsBucket");
+/** The assets bucket's public CDN base URL (`ASSETS_PUBLIC_URL`), or undefined when unconfigured. */
+export const AssetsPublicUrl = token<string | undefined>("AssetsPublicUrl");
+
 /**
- * Cloudflare R2 adapter for the {@link BlobStore} port (the integration layer). The composition
- * root passes the request's bucket (`env.ASSETS`) and the bucket's public base URL (its CDN custom
- * domain, `ASSETS_PUBLIC_URL`); nothing else in the app touches R2 directly.
+ * Cloudflare R2 adapter for the {@link BlobStore} port (the integration layer). Field-injects the
+ * request's bucket ({@link AssetsBucket}) and the bucket's public base URL ({@link AssetsPublicUrl},
+ * its CDN custom domain); nothing else in the app touches R2 directly.
  */
 export class CfR2BlobStore implements BlobStore {
-  readonly #bucket: R2Bucket;
-  readonly #publicBaseUrl: string | undefined;
-
-  constructor(bucket: R2Bucket, publicBaseUrl: string | undefined) {
-    this.#bucket = bucket;
-    this.#publicBaseUrl = publicBaseUrl;
-  }
+  readonly #bucket = inject(AssetsBucket);
+  readonly #publicBaseUrl = inject(AssetsPublicUrl);
 
   url(key: string): string | undefined {
     return this.#publicBaseUrl === undefined ? undefined : joinUrl(this.#publicBaseUrl, key);

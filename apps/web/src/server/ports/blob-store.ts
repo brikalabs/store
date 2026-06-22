@@ -43,4 +43,4 @@ export interface BlobObject {
 }
 
 /** The DI token for the {@link BlobStore} port (merged with the interface: `inject(BlobStore)`). */
-export const BlobStore = token<BlobStore>();
+export const BlobStore = token<BlobStore>("BlobStore");

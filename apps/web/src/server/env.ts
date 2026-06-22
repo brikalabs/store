@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { InjectionToken, inject } from "@brika/di";
+import { inject, token } from "@brika/di";
 import { defineEnv } from "@brika/env";
 import { parseOperatorAdmins } from "@brika/registry-core";
 import { z } from "zod";
@@ -48,7 +48,7 @@ export type Vars = ReturnType<typeof readEnv>;
 
 /** The validated config as an isolate-singleton injectable (built once from the binding). Private:
  *  app code reads it through {@link config}, not `inject(Env)`. */
-const Env = new InjectionToken<Vars>({ description: "Env", factory: readEnv });
+const Env = token<Vars>("Env", readEnv);
 
 /** The validated config ({@link Vars}) for the current request, from the DI context. THE way to read
  *  config anywhere on the server - replaces touching `cloudflare:workers` env / a raw reader. */

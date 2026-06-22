@@ -1,6 +1,7 @@
+import { inject } from "@brika/di";
 import type { CatalogEntry, CatalogReader } from "@brika/registry-core";
 import { and, eq } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
 
 /**
@@ -10,11 +11,7 @@ import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
  * every latest row and letting the caller filter/paginate in memory is cheap and exact.
  */
 export class D1CatalogReader implements CatalogReader {
-  readonly #db: Db;
-
-  constructor(db: Db) {
-    this.#db = db;
-  }
+  readonly #db = inject(Db);
 
   async list(): Promise<CatalogEntry[]> {
     const rows = await this.#db

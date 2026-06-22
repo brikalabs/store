@@ -26,6 +26,7 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@brika/di": "workspace:*",
     "@brika/registry-core": "workspace:*",
     "@brika/tx": "workspace:*",
     "drizzle-orm": "^0.45.2"

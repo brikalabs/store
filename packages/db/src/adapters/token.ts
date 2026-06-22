@@ -1,6 +1,7 @@
+import { inject } from "@brika/di";
 import type { TokenPrincipal, TokenStore } from "@brika/registry-core";
 import { eq } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regTokens } from "../schema";
 
 /**
@@ -64,11 +65,7 @@ export async function verifyToken(db: Db, token: string): Promise<{ userId: stri
  * device flow depend on this port, not on the database.
  */
 export class D1TokenStore implements TokenStore {
-  readonly #db: Db;
-
-  constructor(db: Db) {
-    this.#db = db;
-  }
+  readonly #db = inject(Db);
 
   issue(userId: string): Promise<string> {
     return issueToken(this.#db, userId);

@@ -1,6 +1,6 @@
 import { inject } from "@brika/di";
+import { RegistryDb } from "@brika/registry-runtime";
 import { listSubjectTokens, revokeTokenByHash, type SubjectToken } from "@brika/store-db/adapters";
-import { RegistryDb } from "@/server/registry-services";
 
 /**
  * The web account UI's reads + revocation over the registry's `reg_tokens` table, always scoped to

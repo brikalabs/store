@@ -10,7 +10,7 @@ import { users } from "@/server/db/schema";
  * {@link SocialService}.
  */
 export class UserStore {
-  readonly #db = inject(Database).orm;
+  readonly #db = inject(Database);
 
   /** Insert or update an account row (id + the provider-synced name/avatar). */
   async upsert(user: { id: string; name?: string; avatarUrl?: string }): Promise<void> {

@@ -1,10 +1,10 @@
 import { inject } from "@brika/di";
 import { auditEntry, isOperator, type PublishIdentity } from "@brika/registry-core";
+import { Audit } from "@brika/registry-runtime";
 import { forbidden, HttpError, json, reply, unauthorized } from "@brika/router";
 import { getCurrentUser, getSessionUserId, type SessionUser } from "@/lib/auth/auth";
 import { operatorAdmins } from "@/server/env";
 import { sessionIdentity } from "@/server/registry-identity";
-import { Audit } from "@/server/registry-services";
 
 /**
  * The TanStack-Start side of the shared HTTP toolkit. The generic primitives - `HttpError`

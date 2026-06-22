@@ -1,4 +1,4 @@
-import { InjectionToken, inject } from "@brika/di";
+import { inject, token } from "@brika/di";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { Database } from "@/server/db/client";
@@ -15,7 +15,7 @@ function buildAuth() {
   return betterAuth({
     // The adapter resolves each BetterAuth model by key in `schema`: `user` -> `users` (see
     // `modelName`), `session`/`account`/`verification` -> the matching exports.
-    database: drizzleAdapter(inject(Database).orm, { provider: "sqlite", schema }),
+    database: drizzleAdapter(inject(Database), { provider: "sqlite", schema }),
     secret: SESSION_SECRET,
     baseURL: BETTER_AUTH_URL,
     trustedOrigins: [BETTER_AUTH_URL],
@@ -46,4 +46,4 @@ type Auth = ReturnType<typeof buildAuth>;
  * it self-provides via {@link buildAuth}, so resolving `inject(Auth)` in any `runWeb` context builds
  * it once and caches it - no provider entry needed.
  */
-export const Auth = new InjectionToken<Auth>({ description: "Auth", factory: buildAuth });
+export const Auth = token<Auth>("Auth", buildAuth);

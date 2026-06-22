@@ -1,6 +1,7 @@
+import { inject } from "@brika/di";
 import type { ScopeMember, ScopeMembers, ScopeRole } from "@brika/registry-core";
 import { and, countDistinct, eq, sql } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regScopeMembers } from "../schema";
 
 /** Narrow a stored role string to the `ScopeRole` union (the column only ever holds these). */
@@ -16,11 +17,7 @@ function toRole(value: string): ScopeRole {
  * invariant is enforced here in SQL (see {@link demoteFromAdmin}/{@link remove}).
  */
 export class D1ScopeMembers implements ScopeMembers {
-  readonly #db: Db;
-
-  constructor(db: Db) {
-    this.#db = db;
-  }
+  readonly #db = inject(Db);
 
   /** This account's role in the scope, or null when it is not a member. */
   async roleOf(scope: string, userId: string): Promise<ScopeRole | null> {

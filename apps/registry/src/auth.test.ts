@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { HttpError } from "@brika/router";
 import type { Db } from "@brika/store-db";
 import { D1TokenStore, issueToken } from "@brika/store-db/adapters";
+import { makeAdapter } from "@brika/store-db/test-harness";
 import { AUDIENCE, authenticateWrite, requireAdmin, requireWrite } from "./auth";
 import { makeDb } from "./test-harness";
 
@@ -63,7 +64,7 @@ let db: Db;
 let tokens: D1TokenStore;
 beforeEach(() => {
   db = makeDb();
-  tokens = new D1TokenStore(db);
+  tokens = makeAdapter(db, D1TokenStore);
 });
 
 const realFetch = globalThis.fetch;

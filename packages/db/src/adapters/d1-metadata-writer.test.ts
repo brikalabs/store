@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { Db } from "../client";
 import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
-import { makeDb } from "../test-harness";
+import { makeAdapter, makeDb } from "../test-harness";
 import { D1MetadataReader } from "./d1-metadata";
 import { D1MetadataWriter } from "./d1-metadata-writer";
 
@@ -15,7 +15,7 @@ import { D1MetadataWriter } from "./d1-metadata-writer";
 const NAME = "@brika/x";
 
 async function latestTag(db: Db): Promise<string | undefined> {
-  const record = await new D1MetadataReader(db).getPackage(NAME);
+  const record = await makeAdapter(db, D1MetadataReader).getPackage(NAME);
   return record?.distTags.latest;
 }
 
@@ -23,7 +23,7 @@ let db: Db;
 let writer: D1MetadataWriter;
 beforeEach(async () => {
   db = makeDb();
-  writer = new D1MetadataWriter(db);
+  writer = makeAdapter(db, D1MetadataWriter);
   await db.insert(regScopes).values({ scope: "@brika", displayName: "Brika Labs" });
   await db.insert(regPackages).values({ name: NAME, scope: "@brika", createdAt: 1_700_000 });
   await db.insert(regVersions).values([

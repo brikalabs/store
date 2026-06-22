@@ -1,3 +1,4 @@
+import { inject } from "@brika/di";
 import {
   type MetadataReader,
   type PackageRecord,
@@ -6,16 +7,12 @@ import {
   type ScopePublisher,
 } from "@brika/registry-core";
 import { eq } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
 
 /** Reads package metadata from D1 and assembles the domain `PackageRecord`. */
 export class D1MetadataReader implements MetadataReader {
-  readonly #db: Db;
-
-  constructor(db: Db) {
-    this.#db = db;
-  }
+  readonly #db = inject(Db);
 
   async getPackage(name: string): Promise<PackageRecord | null> {
     const packageRows = await this.#db

@@ -1,8 +1,8 @@
 import { inject } from "@brika/di";
+import { Packages } from "@brika/registry-runtime";
 import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runOperator } from "@/server/http";
-import { Packages } from "@/server/registry-services";
 
 /**
  * `GET /api/operator/packages` - every package with moderation counts (taken-down/yanked

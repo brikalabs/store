@@ -1,9 +1,10 @@
+import { inject } from "@brika/di";
 import {
   type OwnershipPolicy,
   type PublishIdentity,
-  type ScopeMembers,
+  ScopeMembers,
   scopeOf,
-  type TrustedPublishers,
+  TrustedPublishers,
   trustedPublisherMatches,
 } from "@brika/registry-core";
 
@@ -25,13 +26,8 @@ import {
  * absence of any member.
  */
 export class D1OwnershipPolicy implements OwnershipPolicy {
-  readonly #members: ScopeMembers;
-  readonly #trusted: TrustedPublishers;
-
-  constructor(members: ScopeMembers, trusted: TrustedPublishers) {
-    this.#members = members;
-    this.#trusted = trusted;
-  }
+  readonly #members = inject(ScopeMembers);
+  readonly #trusted = inject(TrustedPublishers);
 
   async canPublish(
     identity: PublishIdentity,

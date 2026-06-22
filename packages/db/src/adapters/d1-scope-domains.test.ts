@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { Db } from "../client";
 import { regScopes } from "../schema";
-import { makeDb } from "../test-harness";
+import { makeAdapter, makeDb } from "../test-harness";
 import { D1ScopeDomains } from "./d1-scope-domains";
 
 /** D1 adapter tests for scope domain claims + verification state (ORG-010). */
@@ -10,7 +10,7 @@ let db: Db;
 let domains: D1ScopeDomains;
 beforeEach(async () => {
   db = makeDb();
-  domains = new D1ScopeDomains(db);
+  domains = makeAdapter(db, D1ScopeDomains);
   await db.insert(regScopes).values([{ scope: "@acme" }, { scope: "@other" }]);
 });
 

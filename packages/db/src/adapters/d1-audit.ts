@@ -1,3 +1,4 @@
+import { inject } from "@brika/di";
 import type {
   Actor,
   AuditEntry,
@@ -7,7 +8,7 @@ import type {
   PublishIdentity,
 } from "@brika/registry-core";
 import { desc } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regAudit } from "../schema";
 import { resolveActor } from "./queries";
 
@@ -19,11 +20,7 @@ import { resolveActor } from "./queries";
  * best-effort recorder.
  */
 export class D1AuditLog implements AuditLog, AuditReader {
-  readonly #db: Db;
-
-  constructor(db: Db) {
-    this.#db = db;
-  }
+  readonly #db = inject(Db);
 
   /** The most recent entries, newest first (by `at`, then `id` to break ties stably). */
   async recent(limit: number): Promise<AuditRecord[]> {

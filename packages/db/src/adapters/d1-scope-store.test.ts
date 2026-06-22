@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { Db } from "../client";
-import { makeDb } from "../test-harness";
+import { makeAdapter, makeDb } from "../test-harness";
 import { D1ScopeMembers } from "./d1-scope-members";
 import { D1ScopeStore } from "./d1-scope-store";
 
@@ -11,8 +11,8 @@ let store: D1ScopeStore;
 let members: D1ScopeMembers;
 beforeEach(() => {
   db = makeDb();
-  store = new D1ScopeStore(db);
-  members = new D1ScopeMembers(db);
+  store = makeAdapter(db, D1ScopeStore);
+  members = makeAdapter(db, D1ScopeMembers);
 });
 
 describe("D1ScopeStore", () => {

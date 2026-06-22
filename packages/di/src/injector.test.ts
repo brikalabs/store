@@ -3,8 +3,10 @@ import {
   createInjector,
   InjectionToken,
   inject,
+  injectOr,
   isInInjectionContext,
   runInInjectionContext,
+  token,
 } from "./injector";
 
 // A dependency with no class to name it (an interface / binding) -> an InjectionToken.
@@ -38,7 +40,24 @@ describe("inject + auto-provide", () => {
 });
 
 describe("providers", () => {
-  test("useClass + useExisting + useFactory + useValue", () => {
+  test("useClass binds a (field-injected) class to a port token", () => {
+    const PORT = new InjectionToken<{ who(): string }>();
+    // A field-injected adapter, the shape useClass exists for.
+    class Adapter {
+      readonly db = inject(DB);
+      who(): string {
+        return `adapter@${this.db.tag}`;
+      }
+    }
+    const injector = createInjector([
+      { provide: DB, useValue: { tag: "prod" } },
+      { provide: PORT, useClass: Adapter },
+    ]);
+    expect(injector.get(PORT).who()).toBe("adapter@prod");
+    expect(injector.get(PORT)).toBe(injector.get(PORT)); // singleton
+  });
+
+  test("useFactory + useValue, and aliasing via a re-injecting factory", () => {
     class Real {
       who(): string {
         return "real";
@@ -47,9 +66,10 @@ describe("providers", () => {
     const TOKEN = new InjectionToken<{ who(): string }>();
     const ALIAS = new InjectionToken<{ who(): string }>();
     const injector = createInjector([
-      { provide: TOKEN, useClass: Real },
-      { provide: ALIAS, useExisting: TOKEN },
-      { provide: DB, useFactory: () => ({ tag: "f" }) },
+      { provide: TOKEN, useFactory: () => new Real() },
+      // No `useExisting`: a factory that re-injects the target is the alias - same singleton.
+      { provide: ALIAS, useFactory: () => inject(TOKEN) },
+      { provide: DB, useValue: { tag: "f" } },
     ]);
     expect(injector.get(TOKEN).who()).toBe("real");
     expect(injector.get(ALIAS)).toBe(injector.get(TOKEN)); // an alias shares the one instance
@@ -119,6 +139,28 @@ describe("injection context", () => {
     expect(isInInjectionContext()).toBe(false);
     runInInjectionContext(createInjector(), () => {
       expect(isInInjectionContext()).toBe(true);
+    });
+  });
+});
+
+describe("token() + injectOr() sugar", () => {
+  test("token(desc) names the token in its missing-provider error", () => {
+    const Clock = token<{ now(): number }>("Clock");
+    expect(() => createInjector().get(Clock)).toThrow(/No provider for InjectionToken\(Clock\)/);
+  });
+
+  test("token(desc, factory) is a providedIn:'root' default", () => {
+    const Config = token("Config", () => ({ n: 42 }));
+    expect(createInjector().get(Config).n).toBe(42);
+  });
+
+  test("injectOr returns the provided value, else the fallback", () => {
+    const Max = token<number>("Max");
+    runInInjectionContext(createInjector([{ provide: Max, useValue: 7 }]), () => {
+      expect(injectOr(Max, 3)).toBe(7);
+    });
+    runInInjectionContext(createInjector(), () => {
+      expect(injectOr(Max, 3)).toBe(3);
     });
   });
 });

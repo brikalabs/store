@@ -16,7 +16,7 @@ import { BlobStore } from "@/server/ports/blob-store";
  * npm-derived).
  */
 export class UserProfileStore {
-  readonly #db = inject(Database).orm;
+  readonly #db = inject(Database);
   readonly #blob = inject(BlobStore);
 
   /** The account's public profile by opaque account id, or null when the account is unknown. */

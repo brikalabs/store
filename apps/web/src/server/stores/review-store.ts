@@ -22,7 +22,7 @@ export interface ReviewInput {
  * {@link PluginStore} after a write (orchestrated by the service).
  */
 export class ReviewStore {
-  readonly #db = inject(Database).orm;
+  readonly #db = inject(Database);
   readonly #blob = inject(BlobStore);
 
   /** Every review of a plugin, newest first, with the viewer's helpful-vote state. */

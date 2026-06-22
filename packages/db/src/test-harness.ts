@@ -1,8 +1,9 @@
 import { Database } from "bun:sqlite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { type Provider, type ProviderToken, provide, testBed } from "@brika/di";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import type { Db } from "./client";
+import { Db } from "./client";
 import { regDistTags, regPackages, regScopeMembers, regScopes, regVersions, schema } from "./index";
 
 /**
@@ -28,6 +29,16 @@ export function makeDb(): Db {
     }
   }
   return drizzle(sqlite, { schema }) as unknown as Db;
+}
+
+/**
+ * Build a field-injected D1 adapter over `db` for a test - the test analog of the app's
+ * composition root: `makeAdapter(db, D1ScopeStore)`. The adapters resolve `Db` (and any sibling
+ * port) from the injector. Pass `extra` providers for an adapter that injects more (e.g. the
+ * ownership policy's member/trusted ports).
+ */
+export function makeAdapter<T>(db: Db, adapter: ProviderToken<T>, ...extra: Provider[]): T {
+  return testBed(provide(Db, db), ...extra).inject(adapter);
 }
 
 /**

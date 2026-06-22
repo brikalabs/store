@@ -1,8 +1,9 @@
+import { inject } from "@brika/di";
 import type { CommitVersionInput, MetadataWriter, VersionManager } from "@brika/registry-core";
-import { type TransactionalDb, transactionalDb } from "@brika/tx";
+import { transactionalDb } from "@brika/tx";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regDistTags, regPackages, regVersions } from "../schema";
 
 /**
@@ -16,11 +17,8 @@ import { regDistTags, regPackages, regVersions } from "../schema";
  * when one is open, immediately otherwise) - no batch/timing logic here.
  */
 export class D1MetadataWriter implements MetadataWriter, VersionManager {
-  readonly #db: Db & TransactionalDb<BatchItem<"sqlite">>;
-
-  constructor(db: Db) {
-    this.#db = transactionalDb<Db, BatchItem<"sqlite">>(db);
-  }
+  // The injected client overlaid with `@brika/tx` so the writer is transaction-aware for free.
+  readonly #db = transactionalDb<Db, BatchItem<"sqlite">>(inject(Db));
 
   async versionExists(name: string, version: string): Promise<boolean> {
     const rows = await this.#db

@@ -18,11 +18,12 @@ export {
 } from "./audit";
 export type { CatalogEntry, CatalogReader } from "./catalog";
 export {
+  DeviceConfig,
   type DeviceGrant,
   type DeviceRedeemResult,
   DeviceService,
   type DeviceServiceOptions,
-  type DeviceStore,
+  DeviceStore,
   type IssuedDeviceCode,
 } from "./device";
 export {
@@ -71,7 +72,7 @@ export {
   trimTrailingSlash,
   unscopedName,
 } from "./packument";
-export type { MetadataReader, TarballReader } from "./ports";
+export { MetadataReader, TarballReader } from "./ports";
 export {
   type ScopeLink,
   type ScopeProfileInput,
@@ -83,19 +84,20 @@ export {
 } from "./profile";
 export {
   type CommitVersionInput,
-  type ManifestValidator,
-  type MetadataWriter,
+  ManifestValidator,
+  MetadataWriter,
   OwnershipPolicy,
+  PublishConfig,
   type PublishErrorCode,
   type PublishIdentity,
   type PublishInput,
   type PublishOptions,
   type PublishResult,
   PublishService,
-  type TarballScanner,
-  type TarballWriter,
+  TarballScanner,
+  TarballWriter,
 } from "./publish";
-export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
+export { type PackumentOptions, RegistryBaseUrl, ResolveService } from "./resolve";
 export {
   ClaimVerifier,
   DnsResolver,

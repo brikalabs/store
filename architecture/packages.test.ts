@@ -30,10 +30,12 @@ describe("packages", () => {
       .assert();
   });
 
-  test("shared packages are database-free (only the db package touches the ORM)", () => {
+  test("shared packages are database-free (only the db + wiring packages touch the ORM)", () => {
     rule()
       .filesMatching("packages/*/src")
-      .except("packages/db/src")
+      // db owns the ORM; registry-runtime is the composition/wiring tier that binds domain
+      // ports to the db adapters, so it legitimately imports both (no domain logic lives here).
+      .except("packages/db/src", "packages/registry-runtime/src")
       .mayNotImport(ORM)
       .assert();
   });

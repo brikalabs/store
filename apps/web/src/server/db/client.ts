@@ -14,12 +14,9 @@ export function getDb(d1: D1Database) {
 export type Db = ReturnType<typeof getDb>;
 
 /**
- * The store-schema drizzle client as an injectable: a store reads `inject(Database).orm`. A plain
- * token with no factory - it reads no binding, so this module stays free of `cloudflare:workers`
- * and unit-test-importable; the composition root (`injector.ts`) provides it from the D1 binding,
- * and a test overrides it with `{ provide: Database, useValue: { orm: inMemoryDb } }`.
+ * The store-schema drizzle client as an injectable: a store reads `inject(Database)`. A plain token
+ * with no factory - it reads no binding, so this module stays free of `cloudflare:workers` and
+ * unit-test-importable; the composition root (`injector.ts`) provides it from the D1 binding, and a
+ * test overrides it with `{ provide: Database, useValue: inMemoryDb }`.
  */
-export interface Database {
-  readonly orm: Db;
-}
-export const Database = token<Database>();
+export const Database = token<Db>("Database");

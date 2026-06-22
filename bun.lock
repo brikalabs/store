@@ -124,6 +124,7 @@
       "name": "@brika/store-db",
       "version": "0.1.0",
       "dependencies": {
+        "@brika/di": "workspace:*",
         "@brika/registry-core": "workspace:*",
         "@brika/tx": "workspace:*",
         "drizzle-orm": "^0.45.2",

@@ -1,15 +1,12 @@
+import { inject } from "@brika/di";
 import type { TrustedPublisher, TrustedPublishers } from "@brika/registry-core";
 import { and, eq } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regTrustedPublishers } from "../schema";
 
 /** Cloudflare D1 implementation of {@link TrustedPublishers} (`reg_trusted_publishers`). */
 export class D1TrustedPublishers implements TrustedPublishers {
-  readonly #db: Db;
-
-  constructor(db: Db) {
-    this.#db = db;
-  }
+  readonly #db = inject(Db);
 
   async listForScope(scope: string): Promise<TrustedPublisher[]> {
     const rows = await this.#db

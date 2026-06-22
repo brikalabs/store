@@ -1,4 +1,4 @@
-import { InjectionToken } from "@brika/di";
+import { inject, injectOr, token } from "@brika/di";
 import { sha1Hex, sha512Integrity } from "./integrity";
 import { REGISTRY_LIMITS } from "./limits";
 import { isCanonicalName, scopeOf } from "./names";
@@ -54,6 +54,8 @@ export interface ManifestValidator {
     tarball: Uint8Array,
   ): Promise<{ ok: true } | { ok: false; message: string }>;
 }
+/** DI token for the {@link ManifestValidator} port (an app binds the `@brika/schema` adapter). */
+export const ManifestValidator = token<ManifestValidator>("ManifestValidator");
 
 /**
  * Malware/abuse gate over the raw tarball bytes, run before any bytes are stored.
@@ -65,6 +67,8 @@ export interface TarballScanner {
   /** Inspect raw tarball bytes; reject (`ok: false`) to block the publish. */
   scan(tarball: Uint8Array): Promise<{ ok: true } | { ok: false; message: string }>;
 }
+/** Optional DI token for the {@link TarballScanner} port; defaults to allow-all in {@link PublishService}. */
+export const TarballScanner = token<TarballScanner>("TarballScanner");
 
 /** Ownership gate: may this identity publish this package? */
 export interface OwnershipPolicy {
@@ -74,9 +78,7 @@ export interface OwnershipPolicy {
   ): Promise<{ ok: true } | { ok: false; message: string }>;
 }
 /** DI token for the {@link OwnershipPolicy} port (an app binds the concrete D1 adapter). */
-export const OwnershipPolicy = new InjectionToken<OwnershipPolicy>({
-  description: "OwnershipPolicy",
-});
+export const OwnershipPolicy = token<OwnershipPolicy>("OwnershipPolicy");
 
 /** The package + version + tag a publish writes as one atomic unit. */
 export interface CommitVersionInput {
@@ -95,6 +97,8 @@ export interface MetadataWriter {
    */
   commitVersion(input: CommitVersionInput): Promise<void>;
 }
+/** DI token for the {@link MetadataWriter} port (an app binds the concrete D1 adapter). */
+export const MetadataWriter = token<MetadataWriter>("MetadataWriter");
 
 /** Write side of tarball storage. */
 export interface TarballWriter {
@@ -102,15 +106,17 @@ export interface TarballWriter {
   /** Remove an object, e.g. to compensate a publish whose metadata write failed. */
   delete(key: string): Promise<void>;
 }
+/** DI token for the {@link TarballWriter} port (an app binds the concrete R2 adapter). */
+export const TarballWriter = token<TarballWriter>("TarballWriter");
 
 export interface PublishOptions {
   /** Returns the publish timestamp; injected for deterministic tests. */
   readonly clock?: () => string;
   /** Max accepted tarball size in bytes (defaults to `REGISTRY_LIMITS.maxTarballBytes`). */
   readonly maxTarballBytes?: number;
-  /** Malware/abuse gate over the tarball bytes (defaults to allow-all). */
-  readonly scanner?: TarballScanner;
 }
+/** Optional DI token for the {@link PublishOptions} (clock + size cap); defaults applied in-class. */
+export const PublishConfig = token<PublishOptions>("PublishConfig");
 
 /** Allow-all scanner: the default until a real {@link TarballScanner} is wired in. */
 const allowAllScanner: TarballScanner = { scan: () => Promise.resolve({ ok: true }) };
@@ -121,29 +127,17 @@ const allowAllScanner: TarballScanner = { scan: () => Promise.resolve({ ok: true
  * immutability BEFORE any write, so a rejected publish never touches storage.
  */
 export class PublishService {
-  readonly #meta: MetadataWriter;
-  readonly #tarballs: TarballWriter;
-  readonly #validator: ManifestValidator;
-  readonly #ownership: OwnershipPolicy;
-  readonly #scanner: TarballScanner;
-  readonly #clock: () => string;
-  readonly #maxTarballBytes: number;
-
-  constructor(
-    meta: MetadataWriter,
-    tarballs: TarballWriter,
-    validator: ManifestValidator,
-    ownership: OwnershipPolicy,
-    options: PublishOptions = {},
-  ) {
-    this.#meta = meta;
-    this.#tarballs = tarballs;
-    this.#validator = validator;
-    this.#ownership = ownership;
-    this.#scanner = options.scanner ?? allowAllScanner;
-    this.#clock = options.clock ?? (() => new Date().toISOString());
-    this.#maxTarballBytes = options.maxTarballBytes ?? REGISTRY_LIMITS.maxTarballBytes;
-  }
+  // Field injection, no constructor: the app binds the four required ports; the scanner + clock +
+  // size cap are optional seams that default here, so production wires only the ports. A test runs
+  // it in an injection context that provides them.
+  readonly #meta = inject(MetadataWriter);
+  readonly #tarballs = inject(TarballWriter);
+  readonly #validator = inject(ManifestValidator);
+  readonly #ownership = inject(OwnershipPolicy);
+  readonly #scanner = injectOr(TarballScanner, allowAllScanner);
+  readonly #options = injectOr(PublishConfig, {});
+  readonly #clock = this.#options.clock ?? (() => new Date().toISOString());
+  readonly #maxTarballBytes = this.#options.maxTarballBytes ?? REGISTRY_LIMITS.maxTarballBytes;
 
   async publish(input: PublishInput): Promise<PublishResult> {
     // 0. Name: a canonical scoped name, and a manifest that matches the published

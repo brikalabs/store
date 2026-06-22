@@ -13,7 +13,7 @@ import { votedIds } from "@/server/stores/voted-ids";
  * deleted comment keeps its row (for thread structure) but its body reads as `[deleted]`.
  */
 export class CommentStore {
-  readonly #db = inject(Database).orm;
+  readonly #db = inject(Database);
   readonly #blob = inject(BlobStore);
 
   /** Every comment of a plugin, oldest first, with upvote totals + the viewer's vote state. */

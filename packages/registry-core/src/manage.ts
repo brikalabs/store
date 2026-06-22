@@ -1,4 +1,4 @@
-import { InjectionToken, inject } from "@brika/di";
+import { inject, token } from "@brika/di";
 import { HttpStatus } from "./http-status";
 import { OwnershipPolicy, type PublishIdentity } from "./publish";
 
@@ -27,7 +27,7 @@ export interface VersionManager {
   setTakedown(name: string, version: string, reason: string | null): Promise<void>;
 }
 /** DI token for the {@link VersionManager} port (an app binds the concrete D1 adapter). */
-export const VersionManager = new InjectionToken<VersionManager>({ description: "VersionManager" });
+export const VersionManager = token<VersionManager>("VersionManager");
 
 export type ManageResult =
   | { readonly ok: true }

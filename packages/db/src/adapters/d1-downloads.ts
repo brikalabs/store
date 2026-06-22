@@ -1,3 +1,4 @@
+import { inject, injectOr, token } from "@brika/di";
 import {
   type DownloadStats,
   type DownloadStore,
@@ -6,8 +7,11 @@ import {
   summarizeDownloads,
 } from "@brika/registry-core";
 import { eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regDownloads } from "../schema";
+
+/** Optional clock seam (unix ms) for deterministic tests; defaults to `Date.now`. */
+export const DownloadsClock = token<() => number>("DownloadsClock");
 
 /**
  * D1 implementation of the {@link DownloadStore} port. Each tarball download increments
@@ -15,13 +19,8 @@ import { regDownloads } from "../schema";
  * all-time + trailing-week totals via the domain `summarizeDownloads`.
  */
 export class D1DownloadStore implements DownloadStore {
-  readonly #db: Db;
-  readonly #now: () => number;
-
-  constructor(db: Db, now: () => number = Date.now) {
-    this.#db = db;
-    this.#now = now;
-  }
+  readonly #db = inject(Db);
+  readonly #now = injectOr(DownloadsClock, Date.now);
 
   /** Increment today's count for a package (idempotent per day via upsert). */
   async record(name: string): Promise<void> {

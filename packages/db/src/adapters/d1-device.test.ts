@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import type { Db } from "../client";
 import { regDeviceAuth } from "../schema";
-import { makeDb } from "../test-harness";
+import { makeAdapter, makeDb } from "../test-harness";
 import { D1DeviceStore } from "./d1-device";
 
 /**
@@ -17,7 +17,7 @@ beforeEach(() => {
 
 describe("D1DeviceStore", () => {
   test("create inserts a pending grant (unapproved, no login)", async () => {
-    const store = new D1DeviceStore(db);
+    const store = makeAdapter(db, D1DeviceStore);
     await store.create({ deviceCode: "dev-1", userCode: "ABCD-1234", expiresAt: 1000 });
 
     const rows = await db.select().from(regDeviceAuth).where(eq(regDeviceAuth.deviceCode, "dev-1"));
@@ -30,12 +30,12 @@ describe("D1DeviceStore", () => {
   });
 
   test("find returns null for an unknown device code", async () => {
-    const store = new D1DeviceStore(db);
+    const store = makeAdapter(db, D1DeviceStore);
     expect(await store.find("missing")).toBeNull();
   });
 
   test("find returns the full grant for a created device code", async () => {
-    const store = new D1DeviceStore(db);
+    const store = makeAdapter(db, D1DeviceStore);
     await store.create({ deviceCode: "dev-2", userCode: "WXYZ-9876", expiresAt: 2000 });
 
     const grant = await store.find("dev-2");
@@ -49,7 +49,7 @@ describe("D1DeviceStore", () => {
   });
 
   test("find reflects an approval written out of band (login + approved)", async () => {
-    const store = new D1DeviceStore(db);
+    const store = makeAdapter(db, D1DeviceStore);
     await store.create({ deviceCode: "dev-3", userCode: "MNOP-5555", expiresAt: 3000 });
     await db
       .update(regDeviceAuth)
@@ -62,7 +62,7 @@ describe("D1DeviceStore", () => {
   });
 
   test("remove deletes the grant; a later find returns null", async () => {
-    const store = new D1DeviceStore(db);
+    const store = makeAdapter(db, D1DeviceStore);
     await store.create({ deviceCode: "dev-4", userCode: "QRST-0000", expiresAt: 4000 });
     await store.remove("dev-4");
 
@@ -71,7 +71,7 @@ describe("D1DeviceStore", () => {
   });
 
   test("remove is a no-op for an unknown device code", async () => {
-    const store = new D1DeviceStore(db);
+    const store = makeAdapter(db, D1DeviceStore);
     await store.create({ deviceCode: "dev-5", userCode: "UVWX-1111", expiresAt: 5000 });
     await store.remove("not-there");
 

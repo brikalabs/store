@@ -1,10 +1,10 @@
 import { inject } from "@brika/di";
+import { RegistryDb } from "@brika/registry-runtime";
 import {
   listPackageNamesForScopes,
   listScopesForMember,
   type MemberScope,
 } from "@brika/store-db/adapters";
-import { RegistryDb } from "@/server/registry-services";
 
 /**
  * The web's reads over the registry's `reg_*` scope/ownership tables (the scope IS the ownership

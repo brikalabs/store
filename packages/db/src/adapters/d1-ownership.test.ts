@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { PublishIdentity } from "@brika/registry-core";
+import { ScopeMembers, TrustedPublishers } from "@brika/registry-core";
 import type { Db } from "../client";
 import { regScopeMembers, regScopes, regTrustedPublishers } from "../schema";
-import { makeDb } from "../test-harness";
+import { makeAdapter, makeDb } from "../test-harness";
 import { D1OwnershipPolicy } from "./d1-ownership";
 import { D1ScopeMembers } from "./d1-scope-members";
 import { D1TrustedPublishers } from "./d1-trusted-publishers";
@@ -42,7 +43,12 @@ let db: Db;
 let policy: D1OwnershipPolicy;
 beforeEach(() => {
   db = makeDb();
-  policy = new D1OwnershipPolicy(new D1ScopeMembers(db), new D1TrustedPublishers(db));
+  policy = makeAdapter(
+    db,
+    D1OwnershipPolicy,
+    { provide: ScopeMembers, useClass: D1ScopeMembers },
+    { provide: TrustedPublishers, useClass: D1TrustedPublishers },
+  );
 });
 
 describe("D1OwnershipPolicy.canPublish", () => {

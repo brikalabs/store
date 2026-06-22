@@ -1,4 +1,9 @@
+import { token as diToken, inject } from "@brika/di";
 import type { DomainChallenge } from "@brika/registry-core";
+
+/** HMAC secret for scope-domain verification challenges (ORG-010). Each app provides it; injected
+ *  by {@link HmacDomainChallenge}. `@brika/registry-runtime` re-exports it for the composition roots. */
+export const DomainSecret = diToken<string>("DomainSecret");
 
 /** base64url (no padding) of raw bytes, for a compact DNS-TXT-safe token. */
 function base64url(bytes: ArrayBuffer): string {
@@ -14,12 +19,8 @@ function base64url(bytes: ArrayBuffer): string {
  * Shared by both Workers (constructed in each composition root with `DOMAIN_VERIFY_SECRET`).
  */
 export class HmacDomainChallenge implements DomainChallenge {
-  readonly #secret: string;
+  readonly #secret = inject(DomainSecret);
   #keyPromise: Promise<CryptoKey> | null = null;
-
-  constructor(secret: string) {
-    this.#secret = secret;
-  }
 
   // Import the HMAC key lazily (and once): construction stays cheap and cannot throw, and
   // the key is only materialized when a challenge is actually computed.

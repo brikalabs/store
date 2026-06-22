@@ -1,4 +1,4 @@
-import { InjectionToken, inject } from "@brika/di";
+import { inject, injectOr, token } from "@brika/di";
 import { HttpStatus } from "./http-status";
 import { REGISTRY_LIMITS } from "./limits";
 import { type ScopeMember, ScopeMembers, type ScopeRole } from "./membership";
@@ -18,9 +18,7 @@ import {
 import { type TrustedPublisher, TrustedPublishers } from "./trusted-publishers";
 
 /** Max scopes one account may administer (anti-squat cap, ORG-005); optional, defaults to limits. */
-export const MaxScopesPerAccount = new InjectionToken<number>({
-  description: "MaxScopesPerAccount",
-});
+export const MaxScopesPerAccount = token<number>("MaxScopesPerAccount");
 
 // Re-export the ports so `@brika/registry-core`'s index (and any consumer) can keep
 // importing them from "./scope" - the split is internal to this module.
@@ -99,12 +97,14 @@ export class ScopeService {
   readonly #scopes = inject(ScopeStore);
   readonly #members = inject(ScopeMembers);
   readonly #domains = inject(ScopeDomains);
-  readonly #maxScopesPerAccount =
-    inject(MaxScopesPerAccount, { optional: true }) ?? REGISTRY_LIMITS.maxScopesPerAccount;
-  readonly #verifier = inject(ClaimVerifier, { optional: true }) ?? allowAllClaimVerifier;
-  readonly #dns = inject(DnsResolver, { optional: true }) ?? nullDnsResolver;
-  readonly #challenge = inject(DomainChallenge, { optional: true }) ?? nullDomainChallenge;
-  readonly #trusted = inject(TrustedPublishers, { optional: true }) ?? nullTrustedPublishers;
+  readonly #maxScopesPerAccount = injectOr(
+    MaxScopesPerAccount,
+    REGISTRY_LIMITS.maxScopesPerAccount,
+  );
+  readonly #verifier = injectOr(ClaimVerifier, allowAllClaimVerifier);
+  readonly #dns = injectOr(DnsResolver, nullDnsResolver);
+  readonly #challenge = injectOr(DomainChallenge, nullDomainChallenge);
+  readonly #trusted = injectOr(TrustedPublishers, nullTrustedPublishers);
 
   /** The challenge TXT value a scope must publish at {@link domainChallengeHost} (ORG-010). */
   domainChallenge(scope: string, domain: string): Promise<string> {

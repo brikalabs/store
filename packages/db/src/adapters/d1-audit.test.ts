@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { Db } from "../client";
-import { makeDb } from "../test-harness";
+import { makeAdapter, makeDb } from "../test-harness";
 import { D1AuditLog } from "./d1-audit";
 
 describe("D1AuditLog.recent (operator audit view)", () => {
   test("returns entries newest first with target/version/actor/detail mapped", async () => {
     const db = makeDb();
-    const log = new D1AuditLog(db);
+    const log = makeAdapter(db, D1AuditLog);
     await log.record({
       action: "org_takedown",
       packageName: "squatter",
@@ -41,7 +41,7 @@ describe("D1AuditLog.recent (operator audit view)", () => {
 
   test("respects the limit", async () => {
     const db = makeDb();
-    const log = new D1AuditLog(db);
+    const log = makeAdapter(db, D1AuditLog);
     for (let i = 0; i < 5; i++) {
       await log.record({
         action: "publish",
@@ -70,7 +70,7 @@ describe("D1AuditLog.record", () => {
     console.error = (...args: unknown[]) => captured.push(args);
     try {
       await expect(
-        new D1AuditLog(failingDb).record({
+        makeAdapter(failingDb, D1AuditLog).record({
           action: "publish",
           packageName: "@brika/x",
           version: "1.0.0",

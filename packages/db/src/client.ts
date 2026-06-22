@@ -1,3 +1,4 @@
+import { token } from "@brika/di";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";
 
@@ -21,3 +22,11 @@ export function getDb(d1: D1Database) {
 }
 
 export type Db = ReturnType<typeof getDb>;
+
+/**
+ * DI token for the reg_* drizzle client - the one dependency every D1 adapter field-injects
+ * (`readonly #db = inject(Db)`). Each app provides it from its binding (web `env.DB`, registry
+ * `config.db`); `@brika/registry-runtime` re-exports it as `RegistryDb`. Lives here, with the
+ * `Db` type, so the adapters in this package can inject it without a cross-package cycle.
+ */
+export const Db = token<Db>("Db");

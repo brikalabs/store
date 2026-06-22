@@ -1,4 +1,4 @@
-export { createClient, type Db, getDb } from "./client";
+export { createClient, Db, getDb } from "./client";
 export * as schema from "./schema";
 export {
   regAudit,

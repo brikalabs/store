@@ -1,4 +1,4 @@
-import { InjectionToken } from "@brika/di";
+import { token } from "@brika/di";
 
 /**
  * Scope membership port. The domain defines WHO belongs to a scope and with what role; a
@@ -38,4 +38,4 @@ export interface ScopeMembers {
   countScopesAdminedBy(userId: string): Promise<number>;
 }
 /** DI token for the {@link ScopeMembers} port. */
-export const ScopeMembers = new InjectionToken<ScopeMembers>({ description: "ScopeMembers" });
+export const ScopeMembers = token<ScopeMembers>("ScopeMembers");

@@ -1,6 +1,7 @@
+import { inject } from "@brika/di";
 import type { ScopeProfileInput, ScopeRecord, ScopeStore } from "@brika/registry-core";
 import { desc, eq } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regScopes } from "../schema";
 
 type ScopeRow = typeof regScopes.$inferSelect;
@@ -18,11 +19,7 @@ function toRecord(row: ScopeRow): ScopeRecord {
 
 /** Cloudflare D1 implementation of the {@link ScopeStore} port (the `reg_scopes` table). */
 export class D1ScopeStore implements ScopeStore {
-  readonly #db: Db;
-
-  constructor(db: Db) {
-    this.#db = db;
-  }
+  readonly #db = inject(Db);
 
   async get(scope: string): Promise<ScopeRecord | null> {
     const rows = await this.#db.select().from(regScopes).where(eq(regScopes.scope, scope)).limit(1);

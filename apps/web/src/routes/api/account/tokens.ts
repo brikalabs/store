@@ -1,8 +1,8 @@
 import { inject } from "@brika/di";
+import { Tokens } from "@brika/registry-runtime";
 import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runAuthed } from "@/server/http";
-import { Tokens } from "@/server/registry-services";
 import { PublishTokenStore } from "@/server/stores/publish-token-store";
 
 /**
