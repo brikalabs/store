@@ -1,3 +1,4 @@
+import { token } from "@brika/di";
 import { createClient } from "@brika/store-db";
 import * as schema from "./schema";
 
@@ -13,11 +14,12 @@ export function getDb(d1: D1Database) {
 export type Db = ReturnType<typeof getDb>;
 
 /**
- * The store-schema drizzle client as an injectable: a store reads `inject(Database).orm`.
- * Plain class (no binding read here, so it stays test-safe); the composition root provides it
- * from the request's D1 (`useFactory: () => new Database(getDb(env.DB))`), and a unit test
- * overrides it with `{ provide: Database, useValue: { orm: inMemoryDb } }`.
+ * The store-schema drizzle client as an injectable: a store reads `inject(Database).orm`. A plain
+ * token with no factory - it reads no binding, so this module stays free of `cloudflare:workers`
+ * and unit-test-importable; the composition root (`injector.ts`) provides it from the D1 binding,
+ * and a test overrides it with `{ provide: Database, useValue: { orm: inMemoryDb } }`.
  */
-export class Database {
-  constructor(readonly orm: Db) {}
+export interface Database {
+  readonly orm: Db;
 }
+export const Database = token<Database>();

@@ -1,3 +1,4 @@
+import { InjectionToken } from "@brika/di";
 import { sha1Hex, sha512Integrity } from "./integrity";
 import { REGISTRY_LIMITS } from "./limits";
 import { isCanonicalName, scopeOf } from "./names";
@@ -72,6 +73,10 @@ export interface OwnershipPolicy {
     name: string,
   ): Promise<{ ok: true } | { ok: false; message: string }>;
 }
+/** DI token for the {@link OwnershipPolicy} port (an app binds the concrete D1 adapter). */
+export const OwnershipPolicy = new InjectionToken<OwnershipPolicy>({
+  description: "OwnershipPolicy",
+});
 
 /** The package + version + tag a publish writes as one atomic unit. */
 export interface CommitVersionInput {

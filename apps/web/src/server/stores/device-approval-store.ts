@@ -1,7 +1,7 @@
 import { inject } from "@brika/di";
 import { regDeviceAuth } from "@brika/store-db";
 import { and, eq, gt } from "drizzle-orm";
-import { RegistryDatabase } from "@/server/registry-services";
+import { RegistryDb } from "@/server/registry-services";
 
 /**
  * The store's one write into the registry's shared `reg_device_auth` table: approve a pending
@@ -10,7 +10,7 @@ import { RegistryDatabase } from "@/server/registry-services";
  * the repository layer rather than a `lib/` helper.
  */
 export class DeviceApprovalStore {
-  readonly #db = inject(RegistryDatabase).orm;
+  readonly #db = inject(RegistryDb);
 
   /**
    * Approve a pending device code for `userId`. A single conditional UPDATE read back via

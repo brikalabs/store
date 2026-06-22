@@ -10,8 +10,8 @@ import { z } from "zod";
  */
 
 /** A document declared in the manifest: a single path, or a locale -> path map. */
-export const LocalizedDoc = z.union([z.string(), z.record(z.string(), z.string())]);
-export type LocalizedDoc = z.infer<typeof LocalizedDoc>;
+const LocalizedDoc = z.union([z.string(), z.record(z.string(), z.string())]);
+type LocalizedDoc = z.infer<typeof LocalizedDoc>;
 
 /** npm `person` field: `"Name <email> (url)"` or an object. */
 export const Person = z.union([

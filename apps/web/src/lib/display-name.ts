@@ -9,7 +9,7 @@
  * Last-resort label when an account has no stored name at all. Should never be reached: every
  * write path stores `name ?? login`, so this only guards a corrupt/legacy row.
  */
-export const FALLBACK_DISPLAY_NAME = "Anonymous";
+const FALLBACK_DISPLAY_NAME = "Anonymous";
 
 /** Resolve the display name from a profile override and the stored account name. */
 export function displayNameOf(profileDisplayName: string | null, name: string | null): string {

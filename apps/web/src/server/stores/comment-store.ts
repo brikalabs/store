@@ -1,11 +1,10 @@
 import { inject } from "@brika/di";
 import { Comment } from "@brika/registry-contract";
 import { and, eq, sql } from "drizzle-orm";
-import { avatarUrlOf } from "@/lib/avatar";
-import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
 import { comments, commentVotes, users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
+import { authorColumns, toAuthor } from "@/server/stores/author";
 import { votedIds } from "@/server/stores/voted-ids";
 
 /**
@@ -27,11 +26,7 @@ export class CommentStore {
         createdAt: comments.createdAt,
         edited: comments.edited,
         deleted: comments.deleted,
-        userId: users.id,
-        name: users.name,
-        profileDisplayName: users.displayName,
-        image: users.image,
-        avatarVersion: users.avatarVersion,
+        ...authorColumns,
       })
       .from(comments)
       .innerJoin(users, eq(comments.userId, users.id))
@@ -57,12 +52,8 @@ export class CommentStore {
         pluginName,
         parentId: row.parentId,
         author: row.deleted
-          ? { id: row.userId, displayName: "[deleted]", avatarUrl: undefined }
-          : {
-              id: row.userId,
-              displayName: displayNameOf(row.profileDisplayName, row.name),
-              avatarUrl: avatarUrlOf(this.#blob, row.avatarVersion, row.userId, row.image),
-            },
+          ? { id: row.authorId, displayName: "[deleted]", avatarUrl: undefined }
+          : toAuthor(this.#blob, row),
         body: row.deleted ? "[deleted]" : row.body,
         upvotes: row.deleted ? 0 : (upvotes.get(row.id) ?? 0),
         viewerUpvoted: row.deleted ? false : voted.has(row.id),

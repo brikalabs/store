@@ -1,5 +1,6 @@
+import { InjectionToken, inject } from "@brika/di";
 import { HttpStatus } from "./http-status";
-import type { OwnershipPolicy, PublishIdentity } from "./publish";
+import { OwnershipPolicy, type PublishIdentity } from "./publish";
 
 /**
  * Post-publish package management: deprecate, yank, and operator takedown. All
@@ -25,6 +26,8 @@ export interface VersionManager {
   /** Set the operator takedown reason, or null to restore. */
   setTakedown(name: string, version: string, reason: string | null): Promise<void>;
 }
+/** DI token for the {@link VersionManager} port (an app binds the concrete D1 adapter). */
+export const VersionManager = new InjectionToken<VersionManager>({ description: "VersionManager" });
 
 export type ManageResult =
   | { readonly ok: true }
@@ -33,14 +36,14 @@ export type ManageResult =
 /** Maximum length of a deprecation message / takedown reason. */
 const MAX_MESSAGE = 1024;
 
+/**
+ * Injectable (`@brika/di`): field injection, no constructor. The container auto-creates it and the
+ * fields resolve their ports from the active injector. Wiring never writes `new` - it
+ * `inject(ManagementService)`. A test runs it in an injection context that provides the ports.
+ */
 export class ManagementService {
-  readonly #meta: VersionManager;
-  readonly #ownership: OwnershipPolicy;
-
-  constructor(meta: VersionManager, ownership: OwnershipPolicy) {
-    this.#meta = meta;
-    this.#ownership = ownership;
-  }
+  readonly #meta = inject(VersionManager);
+  readonly #ownership = inject(OwnershipPolicy);
 
   /** Shared gate: the identity must own the scope and the version must exist. */
   async #authorize(

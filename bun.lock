@@ -37,6 +37,7 @@
         "@brika/di": "workspace:*",
         "@brika/env": "workspace:*",
         "@brika/registry-core": "workspace:*",
+        "@brika/registry-runtime": "workspace:*",
         "@brika/router": "workspace:*",
         "@brika/schema": "workspace:*",
         "@brika/store-db": "workspace:*",
@@ -60,6 +61,7 @@
         "@brika/env": "workspace:*",
         "@brika/registry-contract": "workspace:*",
         "@brika/registry-core": "workspace:*",
+        "@brika/registry-runtime": "workspace:*",
         "@brika/router": "workspace:*",
         "@brika/schema": "workspace:*",
         "@brika/store-db": "workspace:*",
@@ -167,7 +169,24 @@
       "name": "@brika/registry-core",
       "version": "0.1.0",
       "dependencies": {
+        "@brika/di": "workspace:*",
         "zod": "^4.4.3",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.5",
+      },
+    },
+    "packages/registry-runtime": {
+      "name": "@brika/registry-runtime",
+      "version": "0.1.0",
+      "dependencies": {
+        "@brika/di": "workspace:*",
+        "@brika/registry-core": "workspace:*",
+        "@brika/store-db": "workspace:*",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "^4.20260613.1",
+        "@types/bun": "^1.3.5",
       },
     },
     "packages/router": {
@@ -294,6 +313,8 @@
     "@brika/registry-contract": ["@brika/registry-contract@workspace:packages/contract"],
 
     "@brika/registry-core": ["@brika/registry-core@workspace:packages/registry-core"],
+
+    "@brika/registry-runtime": ["@brika/registry-runtime@workspace:packages/registry-runtime"],
 
     "@brika/router": ["@brika/router@workspace:packages/router"],
 

@@ -39,8 +39,8 @@ export { HttpStatus } from "./http-status";
 export { sha1Hex, sha512Integrity } from "./integrity";
 export { displayNameSchema, hasUnsafeLabelChars } from "./labels";
 export { REGISTRY_LIMITS, type RegistryLimits } from "./limits";
-export { ManagementService, type ManageResult, type VersionManager } from "./manage";
-export type { ScopeMember, ScopeMembers, ScopeRole } from "./membership";
+export { ManagementService, type ManageResult, VersionManager } from "./manage";
+export { type ScopeMember, ScopeMembers, type ScopeRole } from "./membership";
 export { isCanonicalName, isCanonicalScope, scopeOf } from "./names";
 export {
   BaseClaims,
@@ -85,7 +85,7 @@ export {
   type CommitVersionInput,
   type ManifestValidator,
   type MetadataWriter,
-  type OwnershipPolicy,
+  OwnershipPolicy,
   type PublishErrorCode,
   type PublishIdentity,
   type PublishInput,
@@ -97,25 +97,26 @@ export {
 } from "./publish";
 export { type PackumentOptions, type ResolveOptions, ResolveService } from "./resolve";
 export {
-  type ClaimVerifier,
-  type DnsResolver,
-  type DomainChallenge,
+  ClaimVerifier,
+  DnsResolver,
+  DomainChallenge,
   domainChallengeHost,
+  MaxScopesPerAccount,
   type ScopeDomainRecord,
-  type ScopeDomains,
+  ScopeDomains,
   type ScopePublic,
   type ScopeRecord,
   type ScopeResult,
   type ScopeScopedDomain,
   ScopeService,
   type ScopeServiceOptions,
-  type ScopeStore,
+  ScopeStore,
 } from "./scope";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export type { TokenPrincipal, TokenStore } from "./tokens";
 export {
   type TrustedPublisher,
-  type TrustedPublishers,
+  TrustedPublishers,
   trustedPublisherMatches,
   trustedPublisherSchema,
 } from "./trusted-publishers";

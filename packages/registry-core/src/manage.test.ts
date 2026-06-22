@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { ManagementService, type VersionManager } from "./manage";
-import type { OwnershipPolicy, PublishIdentity } from "./publish";
+import { provide, testBed } from "@brika/di";
+import { ManagementService, VersionManager } from "./manage";
+import { OwnershipPolicy, type PublishIdentity } from "./publish";
 
 const OWNER: PublishIdentity = { userId: "brikalabs", provider: null, repository: null };
 const STRANGER: PublishIdentity = { userId: "someone-else", provider: null, repository: null };
@@ -43,7 +44,10 @@ const VERSION = "0.1.0";
 
 function service(existing: string[] = [`${NAME}@${VERSION}`]) {
   const meta = new FakeVersions(new Set(existing));
-  return { meta, svc: new ManagementService(meta, allowOwner()) };
+  const svc = testBed(provide(VersionManager, meta), provide(OwnershipPolicy, allowOwner())).inject(
+    ManagementService,
+  );
+  return { meta, svc };
 }
 
 describe("deprecate", () => {

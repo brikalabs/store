@@ -1,32 +1,38 @@
+import { InjectionToken, inject } from "@brika/di";
 import { HttpStatus } from "./http-status";
 import { REGISTRY_LIMITS } from "./limits";
-import type { ScopeMember, ScopeMembers, ScopeRole } from "./membership";
+import { type ScopeMember, ScopeMembers, type ScopeRole } from "./membership";
 import type { ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
-import type {
+import {
   ClaimVerifier,
   DnsResolver,
   DomainChallenge,
-  ScopeDomainRecord,
+  type ScopeDomainRecord,
   ScopeDomains,
-  ScopePublic,
-  ScopeRecord,
-  ScopeScopedDomain,
+  type ScopePublic,
+  type ScopeRecord,
+  type ScopeScopedDomain,
   ScopeStore,
 } from "./scope-ports";
-import type { TrustedPublisher, TrustedPublishers } from "./trusted-publishers";
+import { type TrustedPublisher, TrustedPublishers } from "./trusted-publishers";
+
+/** Max scopes one account may administer (anti-squat cap, ORG-005); optional, defaults to limits. */
+export const MaxScopesPerAccount = new InjectionToken<number>({
+  description: "MaxScopesPerAccount",
+});
 
 // Re-export the ports so `@brika/registry-core`'s index (and any consumer) can keep
 // importing them from "./scope" - the split is internal to this module.
-export type {
+export {
   ClaimVerifier,
   DnsResolver,
   DomainChallenge,
-  ScopeDomainRecord,
+  type ScopeDomainRecord,
   ScopeDomains,
-  ScopePublic,
-  ScopeRecord,
-  ScopeScopedDomain,
+  type ScopePublic,
+  type ScopeRecord,
+  type ScopeScopedDomain,
   ScopeStore,
 } from "./scope-ports";
 
@@ -87,30 +93,18 @@ function refuse(status: number, message: string): { ok: false; status: number; m
  * admin" invariant is enforced atomically by the members port.
  */
 export class ScopeService {
-  readonly #scopes: ScopeStore;
-  readonly #members: ScopeMembers;
-  readonly #domains: ScopeDomains;
-  readonly #maxScopesPerAccount: number;
-  readonly #verifier: ClaimVerifier;
-  readonly #dns: DnsResolver;
-  readonly #challenge: DomainChallenge;
-  readonly #trusted: TrustedPublishers;
-
-  constructor(
-    scopes: ScopeStore,
-    members: ScopeMembers,
-    domains: ScopeDomains,
-    options: ScopeServiceOptions = {},
-  ) {
-    this.#scopes = scopes;
-    this.#members = members;
-    this.#domains = domains;
-    this.#maxScopesPerAccount = options.maxScopesPerAccount ?? REGISTRY_LIMITS.maxScopesPerAccount;
-    this.#verifier = options.claimVerifier ?? allowAllClaimVerifier;
-    this.#dns = options.dnsResolver ?? nullDnsResolver;
-    this.#challenge = options.domainChallenge ?? nullDomainChallenge;
-    this.#trusted = options.trustedPublishers ?? nullTrustedPublishers;
-  }
+  // Field injection, no constructor: the container auto-creates it. Required ports are bound by the
+  // app; the optional seams default here (allow-all verifier, null DNS/challenge/trusted) so a test
+  // (or a minimal app) need only provide the three stores. A test runs it in an injection context.
+  readonly #scopes = inject(ScopeStore);
+  readonly #members = inject(ScopeMembers);
+  readonly #domains = inject(ScopeDomains);
+  readonly #maxScopesPerAccount =
+    inject(MaxScopesPerAccount, { optional: true }) ?? REGISTRY_LIMITS.maxScopesPerAccount;
+  readonly #verifier = inject(ClaimVerifier, { optional: true }) ?? allowAllClaimVerifier;
+  readonly #dns = inject(DnsResolver, { optional: true }) ?? nullDnsResolver;
+  readonly #challenge = inject(DomainChallenge, { optional: true }) ?? nullDomainChallenge;
+  readonly #trusted = inject(TrustedPublishers, { optional: true }) ?? nullTrustedPublishers;
 
   /** The challenge TXT value a scope must publish at {@link domainChallengeHost} (ORG-010). */
   domainChallenge(scope: string, domain: string): Promise<string> {

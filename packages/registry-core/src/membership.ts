@@ -1,3 +1,5 @@
+import { InjectionToken } from "@brika/di";
+
 /**
  * Scope membership port. The domain defines WHO belongs to a scope and with what role; a
  * concrete adapter (Cloudflare D1 today) implements it in the registry app. Publishing under
@@ -35,3 +37,5 @@ export interface ScopeMembers {
   /** How many scopes this account administers, for the per-account scope cap (ORG-005). */
   countScopesAdminedBy(userId: string): Promise<number>;
 }
+/** DI token for the {@link ScopeMembers} port. */
+export const ScopeMembers = new InjectionToken<ScopeMembers>({ description: "ScopeMembers" });

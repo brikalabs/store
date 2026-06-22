@@ -81,6 +81,15 @@ export type Provider<T = unknown> =
   | ClassProvider<T>
   | ExistingProvider<T>;
 
+/**
+ * Value-provider shorthand: `provide(Token, value)` ≡ `{ provide: Token, useValue: value }`, with
+ * `value` type-checked against the token's `T`. Cuts the `{ provide, useValue }` noise from provider
+ * lists - composition roots, and especially tests, where most overrides are just a fake value.
+ */
+export function provide<T>(token: ProviderToken<T>, value: T): ValueProvider<T> {
+  return { provide: token, useValue: value };
+}
+
 const ACTIVE = new AsyncLocalStorage<Injector>();
 
 /**

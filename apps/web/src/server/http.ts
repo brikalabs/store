@@ -1,9 +1,8 @@
-import { inject, runInContext } from "@brika/di";
+import { inject } from "@brika/di";
 import { auditEntry, isOperator, type PublishIdentity } from "@brika/registry-core";
 import { forbidden, HttpError, json, reply, unauthorized } from "@brika/router";
 import { getCurrentUser, getSessionUserId, type SessionUser } from "@/lib/auth/auth";
 import { operatorAdmins } from "@/server/env";
-import { webProviders } from "@/server/injector";
 import { sessionIdentity } from "@/server/registry-identity";
 import { Audit } from "@/server/registry-services";
 
@@ -28,13 +27,16 @@ export interface ConsoleContext {
  * Run a route handler body, turning a thrown {@link HttpError} into its JSON error response
  * (`no-store`). The framework counterpart to the registry router's catch: handler bodies use
  * the throwing helpers ({@link authed}, `okOrThrow`, `readBody`, `notFound`, ...) and read
- * top-to-bottom. Any non-`HttpError` throw is a real bug and surfaces as a 500.
+ * top-to-bottom. Any non-`HttpError` throw is a real bug and surfaces as a 500. The DI context is
+ * already active (the global request middleware in `start.ts`), so this only adds the error catch.
  */
 export function runHandler(body: () => Promise<Response>): Promise<Response> {
-  return runInContext(webProviders, body).catch((error: unknown) => {
-    if (error instanceof HttpError) return reply(error.body, error.status, error.headers);
-    throw error;
-  });
+  return Promise.resolve()
+    .then(body)
+    .catch((error: unknown) => {
+      if (error instanceof HttpError) return reply(error.body, error.status, error.headers);
+      throw error;
+    });
 }
 
 /** A public, cacheable JSON read (the `/v1` contract surface). Mutations use `reply` (no-store). */

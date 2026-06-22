@@ -1,6 +1,6 @@
 import { inject } from "@brika/di";
 import { listSubjectTokens, revokeTokenByHash, type SubjectToken } from "@brika/store-db/adapters";
-import { RegistryDatabase } from "@/server/registry-services";
+import { RegistryDb } from "@/server/registry-services";
 
 /**
  * The web account UI's reads + revocation over the registry's `reg_tokens` table, always scoped to
@@ -8,7 +8,7 @@ import { RegistryDatabase } from "@/server/registry-services";
  * `inject(PublishTokenStore).listSubjectTokens(...)` rather than threading the drizzle client.
  */
 export class PublishTokenStore {
-  readonly #db = inject(RegistryDatabase).orm;
+  readonly #db = inject(RegistryDb);
 
   /** The caller's publish tokens (hash + timestamps), newest first. */
   listSubjectTokens(userId: string): Promise<SubjectToken[]> {

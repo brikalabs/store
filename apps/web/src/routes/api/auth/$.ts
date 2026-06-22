@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getAuth } from "@/server/auth";
+import { authHandler } from "@/lib/auth/auth";
 
 /**
  * `GET|POST /api/auth/*` - the single BetterAuth handler mounting every auth
@@ -10,8 +10,8 @@ import { getAuth } from "@/server/auth";
 export const Route = createFileRoute("/api/auth/$")({
   server: {
     handlers: {
-      GET: ({ request }) => getAuth().handler(request),
-      POST: ({ request }) => getAuth().handler(request),
+      GET: ({ request }) => authHandler(request),
+      POST: ({ request }) => authHandler(request),
     },
   },
 });

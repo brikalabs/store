@@ -1,20 +1,22 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import type { ScopeMember, ScopeMembers, ScopeRole } from "./membership";
+import { provide, type TestBed, testBed } from "@brika/di";
+import { type ScopeMember, ScopeMembers, type ScopeRole } from "./membership";
 import type { ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 import {
-  type ClaimVerifier,
-  type DnsResolver,
-  type DomainChallenge,
+  ClaimVerifier,
+  DnsResolver,
+  DomainChallenge,
   domainChallengeHost,
+  MaxScopesPerAccount,
   type ScopeDomainRecord,
-  type ScopeDomains,
+  ScopeDomains,
   type ScopeRecord,
   type ScopeScopedDomain,
   ScopeService,
-  type ScopeStore,
+  ScopeStore,
 } from "./scope";
-import type { TrustedPublisher, TrustedPublishers } from "./trusted-publishers";
+import { type TrustedPublisher, TrustedPublishers } from "./trusted-publishers";
 
 /**
  * ScopeService is pure domain logic over the ScopeStore + ScopeMembers + ScopeDomains ports,
@@ -171,13 +173,22 @@ let scopes: FakeScopeStore;
 let members: FakeScopeMembers;
 let domains: FakeScopeDomains;
 let trusted: FakeTrustedPublishers;
+let bed: TestBed;
 let service: ScopeService;
+
 beforeEach(() => {
   scopes = new FakeScopeStore();
   members = new FakeScopeMembers();
   domains = new FakeScopeDomains();
   trusted = new FakeTrustedPublishers();
-  service = new ScopeService(scopes, members, domains, { trustedPublishers: trusted });
+  // The fake ports shared by every test; a test that needs more does `bed.with(provide(...))`.
+  bed = testBed(
+    provide(ScopeStore, scopes),
+    provide(ScopeMembers, members),
+    provide(ScopeDomains, domains),
+    provide(TrustedPublishers, trusted),
+  );
+  service = bed.inject(ScopeService);
 });
 
 describe("claim", () => {
@@ -197,7 +208,7 @@ describe("claim", () => {
 
 describe("per-account scope cap (ORG-005, anti-squatting)", () => {
   test("ORG-005-AC1: a new claim is refused once the per-account cap is reached", async () => {
-    const capped = new ScopeService(scopes, members, domains, { maxScopesPerAccount: 2 });
+    const capped = bed.with(provide(MaxScopesPerAccount, 2)).inject(ScopeService);
     expect(await capped.claim(gh("alice"), "@a")).toMatchObject({ ok: true, created: true });
     expect(await capped.claim(gh("alice"), "@b")).toMatchObject({ ok: true, created: true });
     const third = await capped.claim(gh("alice"), "@c");
@@ -207,22 +218,22 @@ describe("per-account scope cap (ORG-005, anti-squatting)", () => {
   });
 
   test("the cap is per identity, not global", async () => {
-    const capped = new ScopeService(scopes, members, domains, { maxScopesPerAccount: 1 });
+    const capped = bed.with(provide(MaxScopesPerAccount, 1)).inject(ScopeService);
     expect(await capped.claim(gh("alice"), "@a")).toMatchObject({ ok: true });
     // bob is a different identity, so he still has headroom
     expect(await capped.claim(gh("bob"), "@b")).toMatchObject({ ok: true, created: true });
   });
 
   test("ORG-005-AC2: the cap is raisable (a higher-limit service lets the claim through)", async () => {
-    const capped = new ScopeService(scopes, members, domains, { maxScopesPerAccount: 1 });
+    const capped = bed.with(provide(MaxScopesPerAccount, 1)).inject(ScopeService);
     await capped.claim(gh("alice"), "@a");
     expect(await capped.claim(gh("alice"), "@b")).toMatchObject({ ok: false, status: 429 });
-    const raised = new ScopeService(scopes, members, domains, { maxScopesPerAccount: 2 });
+    const raised = bed.with(provide(MaxScopesPerAccount, 2)).inject(ScopeService);
     expect(await raised.claim(gh("alice"), "@b")).toMatchObject({ ok: true, created: true });
   });
 
   test("re-claiming a scope you already administer is exempt from the cap", async () => {
-    const capped = new ScopeService(scopes, members, domains, { maxScopesPerAccount: 1 });
+    const capped = bed.with(provide(MaxScopesPerAccount, 1)).inject(ScopeService);
     await capped.claim(gh("alice"), "@a");
     expect(await capped.claim(gh("alice"), "@a")).toMatchObject({ ok: true, created: false });
   });
@@ -237,7 +248,7 @@ describe("claim verifier (ORG-006 seam)", () => {
     const denying: ClaimVerifier = {
       verify: () => Promise.resolve({ ok: false, message: "not verifiably yours" }),
     };
-    const gated = new ScopeService(scopes, members, domains, { claimVerifier: denying });
+    const gated = bed.with(provide(ClaimVerifier, denying)).inject(ScopeService);
     expect(await gated.claim(gh("alice"), "@microsoft")).toMatchObject({
       ok: false,
       status: 403,
@@ -430,10 +441,9 @@ describe("domains (ORG-010, badge-only, stateless HMAC challenge)", () => {
   test("ORG-010-AC1: the derived TXT verifies the domain at the _brika-challenge host", async () => {
     const host = domainChallengeHost("brika.dev");
     const dns = dnsReturning({ [host]: ["tok:@acme:brika.dev"] });
-    const svc = new ScopeService(scopes, members, domains, {
-      dnsResolver: dns,
-      domainChallenge: challenge,
-    });
+    const svc = bed
+      .with(provide(DnsResolver, dns), provide(DomainChallenge, challenge))
+      .inject(ScopeService);
     await svc.claim(gh("alice"), "@acme");
     await svc.addDomain(gh("alice"), "@acme", "brika.dev");
     // The expected token is derived (nothing stored), and exposed for display.
@@ -449,10 +459,9 @@ describe("domains (ORG-010, badge-only, stateless HMAC challenge)", () => {
     const throwing: DnsResolver = {
       txt: () => Promise.reject(new Error("network down")),
     };
-    const svc = new ScopeService(scopes, members, domains, {
-      dnsResolver: throwing,
-      domainChallenge: challenge,
-    });
+    const svc = bed
+      .with(provide(DnsResolver, throwing), provide(DomainChallenge, challenge))
+      .inject(ScopeService);
     await svc.claim(gh("alice"), "@acme");
     await svc.addDomain(gh("alice"), "@acme", "brika.dev");
     // A transport failure is treated as "not found", not an error.
@@ -489,27 +498,27 @@ describe("domains (ORG-010, badge-only, stateless HMAC challenge)", () => {
     const host = domainChallengeHost("brika.dev");
     // First verify it (TXT present), then re-verify with the TXT gone -> revoked.
     const present = dnsReturning({ [host]: ["tok:@acme:brika.dev"] });
-    let svc = new ScopeService(scopes, members, domains, {
-      dnsResolver: present,
-      domainChallenge: challenge,
-    });
+    let svc = bed
+      .with(provide(DnsResolver, present), provide(DomainChallenge, challenge))
+      .inject(ScopeService);
     await svc.claim(gh("alice"), "@acme");
     await svc.addDomain(gh("alice"), "@acme", "brika.dev");
     await svc.verifyDomain(gh("alice"), "@acme", "brika.dev");
 
     // A transport error during the sweep must NOT revoke (skip).
-    const throwing = new ScopeService(scopes, members, domains, {
-      dnsResolver: { txt: () => Promise.reject(new Error("dns down")) },
-      domainChallenge: challenge,
-    });
+    const throwing = bed
+      .with(
+        provide(DnsResolver, { txt: () => Promise.reject(new Error("dns down")) }),
+        provide(DomainChallenge, challenge),
+      )
+      .inject(ScopeService);
     expect(await throwing.reverifyDomains()).toEqual([]);
     expect((await svc.getPublic("@acme"))?.verifiedDomains).toEqual(["brika.dev"]);
 
     // The TXT is now genuinely gone -> the sweep revokes the badge.
-    svc = new ScopeService(scopes, members, domains, {
-      dnsResolver: dnsReturning({}),
-      domainChallenge: challenge,
-    });
+    svc = bed
+      .with(provide(DnsResolver, dnsReturning({})), provide(DomainChallenge, challenge))
+      .inject(ScopeService);
     expect(await svc.reverifyDomains()).toEqual([{ scope: "@acme", domain: "brika.dev" }]);
     expect((await svc.getPublic("@acme"))?.verifiedDomains).toEqual([]);
   });

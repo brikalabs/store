@@ -1,16 +1,13 @@
-import { type Provider, token } from "@brika/di";
+import { inject, type Provider, token } from "@brika/di";
 import {
-  type AuditLog,
-  type CatalogReader,
   DeviceService,
   type DownloadStore,
-  ManagementService,
+  OwnershipPolicy,
   PublishService,
   ResolveService,
-  ScopeService,
-  type TokenStore,
 } from "@brika/registry-core";
-import { buildRegistryGraph, type Db } from "@brika/store-db";
+import { DomainSecret, Metadata, RegistryDb, registryBindings } from "@brika/registry-runtime";
+import type { Db } from "@brika/store-db";
 import {
   D1DeviceStore,
   D1DownloadStore,
@@ -26,11 +23,13 @@ import { R2TarballWriter } from "./adapters/r2-tarball-writer";
 export const Admins = token<ReadonlySet<string>>();
 /** Display-name resolver for the CLI's login/whoami (reads the web app's `users` table on the same D1). */
 export const ResolveDisplayName = token<(userId: string) => Promise<string | null>>();
-// Persistence ports as tokens, so a handler depends on the registry-core interface, not the D1 class.
-export const Tokens = token<TokenStore>();
-export const Catalog = token<CatalogReader>();
+/** Download-counter store (registry-only). */
 export const Downloads = token<DownloadStore>();
-export const Audit = token<AuditLog>();
+
+// The shared registry domain tokens (Audit/Catalog/Tokens) come from the `@brika/registry-runtime`
+// feature library; re-exported so controllers `inject(...)` them by the same names. They self-provide
+// off `RegistryDb` (provided below).
+export { Audit, Catalog, Tokens } from "@brika/registry-runtime";
 
 /** The runtime values the platform hands the registry per request (or a test supplies). */
 export interface RegistryConfig {
@@ -43,44 +42,45 @@ export interface RegistryConfig {
 
 /**
  * The registry's composition root as `@brika/di` providers (Angular's `provideX()` shape). The
- * shared D1-backed services come from `buildRegistryGraph` (one place wires the adapters + service
- * constructors for both apps); this adds the registry's own R2-backed resolve/publish, the device
- * flow, downloads, and operator admins. Domain services bind under their own class; persistence
- * ports bind under their PORT token (the registry-core interface), keeping controllers off the
- * concrete `D1*` and the ORM. A test passes a fake db + bucket and appends a later provider.
+ * shared `reg_*` domain services come from the `@brika/registry-runtime` library: provide its two
+ * inputs (`RegistryDb`, `DomainSecret`) and alias the `@brika/registry-core` classes to its wired
+ * tokens; `Audit`/`Catalog`/`Tokens` self-provide. This file adds only the registry's OWN services -
+ * the R2-backed resolve/publish, the device flow, downloads, operator admins. A test passes a fake
+ * db + bucket and appends a later provider.
  *
  * Rate limiting is intentionally NOT here: it is an inline edge concern on the routes that opt in.
  */
 export function provideRegistry(config: RegistryConfig): Provider[] {
   const { db, tarballs, baseUrl } = config;
-  const g = buildRegistryGraph(db, { domainSecret: config.domainSecret ?? "test-domain-secret" });
 
   return [
+    { provide: RegistryDb, useValue: db },
+    { provide: DomainSecret, useValue: config.domainSecret ?? "test-domain-secret" },
     { provide: Admins, useValue: config.admins ?? new Set() },
     {
       provide: ResolveDisplayName,
       useValue: (userId: string) => resolveActor(db, userId).then((a) => a.displayName),
     },
+    // The registry domain: `ScopeService`/`ManagementService` self-resolve (field injection); these
+    // bind the ports they inject to the D1 adapters.
+    ...registryBindings,
     {
       provide: ResolveService,
-      useValue: new ResolveService(g.metadata, new R2TarballReader(tarballs), { baseUrl }),
+      useFactory: () =>
+        new ResolveService(inject(Metadata), new R2TarballReader(tarballs), { baseUrl }),
     },
     {
       provide: PublishService,
-      useValue: new PublishService(
-        new D1MetadataWriter(db),
-        new R2TarballWriter(tarballs),
-        new SchemaManifestValidator(),
-        g.ownership,
-        { scanner: new NoopTarballScanner() },
-      ),
+      useFactory: () =>
+        new PublishService(
+          new D1MetadataWriter(db),
+          new R2TarballWriter(tarballs),
+          new SchemaManifestValidator(),
+          inject(OwnershipPolicy),
+          { scanner: new NoopTarballScanner() },
+        ),
     },
-    { provide: ManagementService, useValue: g.management },
-    { provide: ScopeService, useValue: g.scopes },
     { provide: DeviceService, useValue: new DeviceService(new D1DeviceStore(db)) },
-    { provide: Catalog, useValue: g.catalog },
-    { provide: Tokens, useValue: g.tokens },
     { provide: Downloads, useValue: new D1DownloadStore(db) },
-    { provide: Audit, useValue: g.audit },
   ];
 }

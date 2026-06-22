@@ -1,3 +1,4 @@
+import { InjectionToken } from "@brika/di";
 import type { ScopeLink, ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 
@@ -47,6 +48,8 @@ export interface ScopeStore {
   /** Set the operator takedown reason (null restores the scope); ORG-007. */
   setTakedown(scope: string, reason: string | null): Promise<void>;
 }
+/** DI token for the {@link ScopeStore} port. */
+export const ScopeStore = new InjectionToken<ScopeStore>({ description: "ScopeStore" });
 
 /** A domain a scope has claimed and (once its challenge TXT is found) verified. */
 export interface ScopeDomainRecord {
@@ -78,6 +81,8 @@ export interface ScopeDomains {
   /** Every currently-verified domain across all scopes, for the re-verification cron. */
   listAllVerified(): Promise<ScopeScopedDomain[]>;
 }
+/** DI token for the {@link ScopeDomains} port. */
+export const ScopeDomains = new InjectionToken<ScopeDomains>({ description: "ScopeDomains" });
 
 /**
  * DNS TXT lookup, injected so domain verification (ORG-010) does not bake in a transport.
@@ -88,6 +93,8 @@ export interface ScopeDomains {
 export interface DnsResolver {
   txt(hostname: string): Promise<string[]>;
 }
+/** DI token for the {@link DnsResolver} port. */
+export const DnsResolver = new InjectionToken<DnsResolver>({ description: "DnsResolver" });
 
 /**
  * Computes the stateless domain-verification challenge: a deterministic token derived from
@@ -99,6 +106,10 @@ export interface DnsResolver {
 export interface DomainChallenge {
   token(scope: string, domain: string): Promise<string>;
 }
+/** DI token for the {@link DomainChallenge} port. */
+export const DomainChallenge = new InjectionToken<DomainChallenge>({
+  description: "DomainChallenge",
+});
 
 /**
  * Anti-squat seam (ORG-006): may this identity claim this scope (`@name`)? Injected so a
@@ -112,6 +123,8 @@ export interface ClaimVerifier {
     name: string,
   ): Promise<{ ok: true } | { ok: false; message: string }>;
 }
+/** DI token for the {@link ClaimVerifier} port (optional; defaults to allow-all in {@link import("./scope").ScopeService}). */
+export const ClaimVerifier = new InjectionToken<ClaimVerifier>({ description: "ClaimVerifier" });
 
 /** The public view of a scope (what the unauthenticated `/@:scope` page renders). */
 export interface ScopePublic {

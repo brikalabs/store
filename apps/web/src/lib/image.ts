@@ -8,9 +8,9 @@
  * function so the geometry is verifiable without a canvas.
  */
 
-export type Fit = "inside" | "cover";
+type Fit = "inside" | "cover";
 
-export interface ResizeOptions {
+interface ResizeOptions {
   readonly width?: number;
   readonly height?: number;
   /**
@@ -20,7 +20,7 @@ export interface ResizeOptions {
   readonly fit?: Fit;
 }
 
-export interface EncodeOptions {
+interface EncodeOptions {
   /** Encoder quality, 0..1 (WebP and JPEG only; ignored for PNG). */
   readonly quality?: number;
 }

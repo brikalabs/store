@@ -4,7 +4,7 @@ import {
   listScopesForMember,
   type MemberScope,
 } from "@brika/store-db/adapters";
-import { RegistryDatabase } from "@/server/registry-services";
+import { RegistryDb } from "@/server/registry-services";
 
 /**
  * The web's reads over the registry's `reg_*` scope/ownership tables (the scope IS the ownership
@@ -13,7 +13,7 @@ import { RegistryDatabase } from "@/server/registry-services";
  * client through a free function.
  */
 export class ScopeMembershipStore {
-  readonly #db = inject(RegistryDatabase).orm;
+  readonly #db = inject(RegistryDb);
 
   /** The scopes the account `userId` belongs to, each with the member's role. */
   listScopesForMember(userId: string): Promise<MemberScope[]> {

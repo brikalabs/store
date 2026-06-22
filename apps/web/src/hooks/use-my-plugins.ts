@@ -1,6 +1,7 @@
 import { PluginSummary } from "@brika/registry-contract";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { fetchJson } from "@/lib/fetch-json";
 
 /** The `GET /api/plugins/mine` payload: the catalog plugins under the user's owned scopes. */
 const MinePlugins = z.object({ plugins: z.array(PluginSummary) });
@@ -15,12 +16,9 @@ export function useMyPlugins(): PluginSummary[] {
   const [plugins, setPlugins] = useState<PluginSummary[]>([]);
   useEffect(() => {
     let active = true;
-    fetch("/api/plugins/mine")
-      .then((res) => res.json())
-      .then((json: unknown) => {
-        const parsed = MinePlugins.safeParse(json);
-        if (active && parsed.success) setPlugins(parsed.data.plugins);
-      });
+    fetchJson("/api/plugins/mine", MinePlugins).then((data) => {
+      if (active && data) setPlugins(data.plugins);
+    });
     return () => {
       active = false;
     };

@@ -11,9 +11,11 @@ export {
   isInInjectionContext,
   type Provider,
   type ProviderToken,
+  provide,
   runInContext,
   runInInjectionContext,
   type Type,
   token,
   type ValueProvider,
 } from "./injector";
+export { TestBed, testBed } from "./testing";

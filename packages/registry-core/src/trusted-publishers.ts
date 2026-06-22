@@ -1,3 +1,4 @@
+import { InjectionToken } from "@brika/di";
 import { z } from "zod";
 import type { PublishIdentity } from "./publish";
 
@@ -49,6 +50,10 @@ export interface TrustedPublishers {
   /** Remove a binding; returns whether one was removed. */
   remove(scope: string, provider: string, repository: string, workflow: string): Promise<boolean>;
 }
+/** DI token for the {@link TrustedPublishers} port. */
+export const TrustedPublishers = new InjectionToken<TrustedPublishers>({
+  description: "TrustedPublishers",
+});
 
 /** The workflow filename component of an OIDC `workflow_ref`, or null if unparyable. */
 function workflowFilename(workflowRef: string | undefined): string | null {
