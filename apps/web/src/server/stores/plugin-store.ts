@@ -6,13 +6,11 @@ import { plugins, reviews } from "@/server/db/schema";
 
 /**
  * Repository for the `plugins` cache table - the relational mirror of a published package that
- * reviews/comments reference (npm/registry stays the source of truth for code). Also owns the
- * denormalized rating fields (`rating_average`/`rating_count`), recomputed from the review rows
- * whenever a review changes. The cache-aside FETCH (reading the registry when a row is missing)
- * is orchestration and lives in {@link SocialService}, not here - this store is pure SQL.
+ * reviews/comments reference (the registry stays the source of truth for code). Also owns the
+ * denormalized rating fields, recomputed from the review rows whenever a review changes.
  */
 export class PluginStore {
-  readonly #db = inject(Database).orm;
+  readonly #db = inject(Database);
 
   /** Whether a cache row already exists for this package. */
   async exists(name: string): Promise<boolean> {

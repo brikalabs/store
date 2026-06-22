@@ -1,10 +1,6 @@
 import { LinkIcon } from "@/components/clay/link-icon";
 
-/**
- * A row of labelled external-link pills, shared by the scope page and the user
- * profile page (`/u/:id`). Each link's icon is inferred from its URL. Renders
- * nothing when there are no links.
- */
+/** A row of labelled external-link pills; each link's icon is inferred from its URL. */
 export function ProfileLinks({
   links,
 }: Readonly<{ links: readonly { label: string; url: string }[] }>) {

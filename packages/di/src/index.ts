@@ -1,19 +1,21 @@
 export {
   type ClassProvider,
   createInjector,
-  type ExistingProvider,
   type FactoryProvider,
   InjectionToken,
   type InjectionTokenOptions,
   type InjectOptions,
   Injector,
   inject,
+  injectOr,
   isInInjectionContext,
   type Provider,
   type ProviderToken,
+  provide,
   runInContext,
   runInInjectionContext,
   type Type,
   token,
   type ValueProvider,
 } from "./injector";
+export { TestBed, testBed } from "./testing";

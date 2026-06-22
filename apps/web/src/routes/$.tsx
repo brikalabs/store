@@ -5,8 +5,7 @@ import { DETAIL_TAB_IDS, PluginDetailPage } from "@/components/plugin/detail/plu
 import { ScopeView } from "@/components/plugin/scope-page";
 import { getPluginPage, getScopePage } from "@/lib/registry/registry";
 
-// The active tab lives in the URL (`?tab=`), so it is deep-linkable and the back
-// button steps through panels. Invalid/absent -> Overview (kept out of the URL).
+// The active tab lives in the URL (`?tab=`) so it is deep-linkable; invalid/absent -> Overview.
 const detailSearch = z.object({
   lang: z.string().optional(),
   tab: z.enum(DETAIL_TAB_IDS).optional().catch(undefined),

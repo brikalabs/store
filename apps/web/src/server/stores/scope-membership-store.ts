@@ -1,19 +1,14 @@
 import { inject } from "@brika/di";
+import { RegistryDb } from "@brika/registry-runtime";
 import {
   listPackageNamesForScopes,
   listScopesForMember,
   type MemberScope,
 } from "@brika/store-db/adapters";
-import { RegistryDatabase } from "@/server/registry-services";
 
-/**
- * The web's reads over the registry's `reg_*` scope/ownership tables (the scope IS the ownership
- * entity). The one place the web touches that schema for membership, so a route asks
- * `inject(ScopeMembershipStore).listScopesForMember(...)` instead of threading the raw drizzle
- * client through a free function.
- */
+/** The web's reads over the registry's `reg_*` scope/ownership tables (the scope IS the ownership entity). */
 export class ScopeMembershipStore {
-  readonly #db = inject(RegistryDatabase).orm;
+  readonly #db = inject(RegistryDb);
 
   /** The scopes the account `userId` belongs to, each with the member's role. */
   listScopesForMember(userId: string): Promise<MemberScope[]> {

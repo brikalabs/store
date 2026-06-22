@@ -9,11 +9,7 @@ const NAV: NavItem[] = [
   { label: "Audit log", icon: ScrollText, href: "/operator/audit" },
 ];
 
-/**
- * Chrome for the operator console: the same sticky-sidebar layout as the developer
- * dashboard, but visually marked as a privileged moderation surface (a warning-toned
- * header) so it never reads as ordinary self-service. Each page sets its own `activeLabel`.
- */
+/** Chrome for the operator console: a sticky-sidebar layout marked as a privileged moderation surface. */
 export function OperatorShell({
   activeLabel,
   children,

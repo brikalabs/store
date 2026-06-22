@@ -1,7 +1,7 @@
 /**
- * A tiny ArchUnit-style architecture-rule engine. Declare rules fluently, by package/folder
- * glob, so they scale as packages/controllers/adapters are added. Rules check imports,
- * filenames, or class names:
+ * A tiny ArchUnit-style architecture-rule engine: declare rules fluently by package/folder glob to
+ * check imports, filenames, or class names. `assert()` throws on violation, `check()` returns the
+ * violation lines. Comments are stripped, so an `import` inside a JSDoc example is not counted.
  *
  *   // layering: the domain core imports no database
  *   rule().filesMatching("packages/*-core/src").mayNotImport(modules("drizzle-orm")).assert();
@@ -11,14 +11,6 @@
  *
  *   // class-name convention: D1-backed adapters are prefixed "D1"
  *   rule().filesMatching("apps/registry/src/adapters/d1-*.ts").classesMustBePrefixed("D1").assert();
- *
- * Class-name checks come as `classesMustBePrefixed` / `classesMustBeSuffixed` and the general
- * `classesMustBeNamed(regexp)` / `classesMustNotBeNamed(regexp)` (e.g. forbid an infra prefix
- * leaking into the domain core).
- *
- * `assert()` throws on violation (call it inside your own `test()` - any runner); `check()`
- * returns the violation lines for other uses. Import-aware: comments are stripped, so an
- * `import` inside a JSDoc example is not counted. Bun runtime (uses `Bun.Glob`).
  */
 
 export { type Category, category, modules } from "./categories";

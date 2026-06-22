@@ -2,13 +2,9 @@ import { KINDS } from "./kinds";
 import type { Marker, MarkerKindSpec } from "./types";
 
 /**
- * Pure marker parser: given a line of source, return the markers on it. No file
- * system, no git, no editor: it turns text into {@link Marker}s and nothing
- * else, so it is trivially unit-testable and is shared verbatim by the CLI
- * scanner and the VSCode extension.
- *
- * A marker is a `// @kind: reason` comment (see docs/CONVENTIONS.md). The tag may
- * sit in a line comment, a block comment, or a JSDoc continuation line.
+ * Pure marker parser: turn a line of source into its {@link Marker}s (no fs/git/editor), so it is
+ * unit-testable and shared verbatim by the CLI scanner and the VSCode extension. A marker is a
+ * `// @kind: reason` comment, in a line comment, a block comment, or a JSDoc continuation line.
  */
 
 function escapeRe(name: string): string {
@@ -17,8 +13,8 @@ function escapeRe(name: string): string {
 
 /** A `// @name: reason` annotation living inside a comment. */
 function commentMarker(raw: string, kind: MarkerKindSpec): Marker | null {
-  // The trailing `\b` rejects a longer word (so `@mock` matches, `@mockup` does
-  // not); scan every occurrence so a valid tag is not hidden by an earlier miss.
+  // The trailing `\b` rejects a longer word (`@mock` matches, `@mockup` does not); scan every
+  // occurrence so a valid tag is not hidden by an earlier miss.
   const re = new RegExp(String.raw`@${escapeRe(kind.name)}\b`, "g");
   let match = re.exec(raw);
   while (match !== null) {

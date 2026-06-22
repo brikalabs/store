@@ -2,12 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { streamBlob } from "@/server/asset-serve";
 import { runHandler } from "@/server/http";
 
-/**
- * `GET /assets/<key>`: stream a public object from the blob store by key. This is the worker-served
- * path that a fully-local dev points `ASSETS_PUBLIC_URL` at (so uploaded avatars resolve off the
- * LOCAL bucket); in prod `ASSETS_PUBLIC_URL` is the bucket's r2.dev URL and objects are served
- * straight from R2's CDN, so this route is not used for them.
- */
+/** `GET /assets/<key>`: stream a public blob by key. The dev-only fallback when `ASSETS_PUBLIC_URL`
+ * points here; in prod it is R2's r2.dev CDN URL and this route is unused. */
 export const Route = createFileRoute("/assets/$")({
   server: {
     handlers: {

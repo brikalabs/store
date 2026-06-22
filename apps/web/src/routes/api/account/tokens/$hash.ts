@@ -5,9 +5,8 @@ import { runAuthed } from "@/server/http";
 import { PublishTokenStore } from "@/server/stores/publish-token-store";
 
 /**
- * `DELETE /api/account/tokens/:hash` - revoke one of the signed-in user's tokens by its
- * hash. The query is account-scoped, so a user can only revoke their own token; an unknown
- * or someone else's token is a 404.
+ * `DELETE /api/account/tokens/:hash` - revoke one of the signed-in user's tokens by hash. The query
+ * is account-scoped, so a user can only revoke their own; an unknown or someone else's token is a 404.
  */
 export const Route = createFileRoute("/api/account/tokens/$hash")({
   server: {

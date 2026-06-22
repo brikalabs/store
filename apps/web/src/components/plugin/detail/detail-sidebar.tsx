@@ -71,8 +71,7 @@ function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
 /** Author profile card; hidden when the plugin has no resolved author. */
 function SidebarAuthor({ detail }: Readonly<{ detail: PluginDetail }>) {
   if (!detail.author) return null;
-  // The author of a scoped package IS its scope, so show the scope's uploaded logo; clay falls
-  // back to the gradient tile when the scope has none (404).
+  // The author of a scoped package IS its scope, so show the scope's uploaded logo.
   const scope = scopeOf(detail.name);
   return (
     <Card interactive className="p-0">

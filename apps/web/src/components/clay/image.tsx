@@ -5,11 +5,9 @@ import { type ReactNode, useEffect, useState } from "react";
 type Status = "loading" | "loaded" | "error";
 
 /**
- * Image with a muted skeleton while loading and a graceful fallback when the
- * source fails or stalls. Lazy-loads by default. The wrapper carries the box
- * sizing/rounding; the <img> fills it with `object-cover`. A load that neither
- * succeeds nor errors within `timeoutMs` is treated as failed so the fallback
- * still shows (e.g. an image host that hangs).
+ * Image with a muted skeleton while loading and a fallback when the source fails or stalls.
+ * A load that neither succeeds nor errors within `timeoutMs` counts as failed, so a hanging
+ * image host still shows the fallback.
  */
 export function Image({
   src,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { fetchJson } from "@/lib/fetch-json";
 
 /** Client-side current-user state, fetched once from `/auth/me`. */
 
@@ -17,17 +18,10 @@ let inflight: Promise<CurrentUser | null> | undefined;
 
 async function load(): Promise<CurrentUser | null> {
   if (cached !== undefined) return cached;
-  inflight ??= fetch("/auth/me", { credentials: "same-origin" })
-    .then((res) => res.json())
-    .then((json: unknown) => {
-      const parsed = MeResponse.safeParse(json);
-      cached = parsed.success ? parsed.data.user : null;
-      return cached;
-    })
-    .catch(() => {
-      cached = null;
-      return cached;
-    });
+  inflight ??= fetchJson("/auth/me", MeResponse, { credentials: "same-origin" }).then((data) => {
+    cached = data?.user ?? null;
+    return cached;
+  });
   return inflight;
 }
 

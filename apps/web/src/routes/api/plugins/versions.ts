@@ -1,16 +1,15 @@
 import { inject } from "@brika/di";
 import { scopeOf } from "@brika/registry-core";
+import { MetadataReader } from "@brika/registry-runtime";
 import { badRequest, notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runAuthed } from "@/server/http";
-import { Metadata } from "@/server/registry-services";
 import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
- * `GET /api/plugins/versions?name=<encoded>` - a registry-hosted package's versions with
- * their management flags, plus whether the signed-in user may manage them (is a member of
- * the package's scope). Drives the plugin management page; mutations are still gated by the
- * domain ownership policy server-side.
+ * `GET /api/plugins/versions?name=<encoded>` - a package's versions with their management flags,
+ * plus whether the signed-in user may manage them (scope member). `canManage` is advisory: mutations
+ * are still gated by the ownership policy server-side.
  */
 export const Route = createFileRoute("/api/plugins/versions")({
   server: {
@@ -20,7 +19,7 @@ export const Route = createFileRoute("/api/plugins/versions")({
           const name = new URL(request.url).searchParams.get("name");
           if (name === null || name === "") throw badRequest("Missing package name");
 
-          const record = await inject(Metadata).getPackage(name);
+          const record = await inject(MetadataReader).getPackage(name);
           if (record === null) throw notFound();
 
           const scope = scopeOf(name);

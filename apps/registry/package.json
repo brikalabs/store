@@ -25,6 +25,7 @@
     "@brika/di": "workspace:*",
     "@brika/env": "workspace:*",
     "@brika/registry-core": "workspace:*",
+    "@brika/registry-runtime": "workspace:*",
     "@brika/router": "workspace:*",
     "@brika/schema": "workspace:*",
     "@brika/store-db": "workspace:*",

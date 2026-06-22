@@ -4,37 +4,22 @@ import { parseOperatorAdmins } from "@brika/registry-core";
 import { z } from "zod";
 import type { CfRateLimitBinding } from "./adapters/cf-rate-limiter";
 
-/**
- * The registry's environment, in one place.
- *
- * - Bindings (DB, TARBALLS) are runtime objects from wrangler.jsonc; their types
- *   augment `Cloudflare.Env` at the bottom of this file.
- * - String config is validated and defaulted by the schema below; read it
- *   through `vars()`.
- */
+/** The registry's environment: bindings augment `Cloudflare.Env` below; string config read via `vars()`. */
 export const vars = defineEnv(
   {
-    // Base URL of the store that hosts the device-approval page. Defaults to
-    // prod; set in .dev.vars (http://localhost:3000) to run the flow locally.
+    // Base URL of the store hosting the device-approval page.
     STORE_URL: z.url().min(1).default("https://store.brika.dev"),
-    // Canonical public origin of THIS registry, used to build the `dist.tarball`
-    // URLs in every packument. Pinning it here (rather than trusting the request
-    // `Host`) means a spoofed `Host` header can never make us advertise tarballs
-    // on another origin, and it lets local dev point bun at `localhost` (set
-    // REGISTRY_URL=http://localhost:8787 in .dev.vars). Empty -> fall back to the
-    // request origin, which is correct once a single custom domain is attached.
+    // Canonical public origin of THIS registry, used to build `dist.tarball` URLs. Pinned (not the
+    // request `Host`) so a spoofed `Host` can never make us advertise tarballs on another origin.
+    // Empty -> fall back to the request origin (correct once a single custom domain is attached).
     REGISTRY_URL: z.union([z.url(), z.literal("")]).default(""),
-    // Comma-separated operator admins allowed to take down / restore versions
-    // (distinct from scope ownership). Each entry is a Brika account id (`users.id`).
-    // Empty -> no admins, so the takedown endpoints reject everyone until set via
-    // `wrangler secret`/`.dev.vars`.
+    // Operator admins (Brika account ids) for takedown/restore, distinct from scope ownership.
+    // Empty -> no admins, so the takedown endpoints reject everyone until set.
     REGISTRY_ADMINS: z.string().default(""),
-    // Secret for deriving stateless scope domain-verification challenges (ORG-010): the TXT
-    // token is HMAC(secret, scope:domain). MUST match the store worker's value (both derive
-    // the same token) and stay STABLE (rotating it invalidates every published TXT). The
-    // token's security comes from DNS control, not secrecy, so a dev default is acceptable;
-    // set a real shared value in production via `wrangler secret`.
-    DOMAIN_VERIFY_SECRET: z.string().min(1).default("brika-dev-domain-verify-secret"),
+    // Secret deriving stateless scope domain-verification TXT challenges, HMAC(secret, scope:domain)
+    // (ORG-010). REQUIRED (set per deployment): MUST match the store worker's value and stay STABLE
+    // (rotating invalidates every published TXT). Security is DNS control, not the secret's secrecy.
+    DOMAIN_VERIFY_SECRET: z.string().min(1),
   },
   () => env,
 );

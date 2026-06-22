@@ -16,11 +16,7 @@ import { registryAdmins, vars } from "./env";
 import { logRoutes, mount, type RegistryEnv } from "./http/router";
 import { provideRegistry } from "./services";
 
-/**
- * Run `fn` in the registry's per-request DI context, built from the request bindings. The one place
- * `env` is read; a handler then just `inject(...)`s. Used by both the router (`mount({ around })`)
- * and the cron handler.
- */
+/** Run `fn` in the registry's per-request DI context, built from the request bindings (the one place `env` is read). */
 function withRegistry<R>(bindings: Cloudflare.Env, baseUrl: string, fn: () => R): R {
   return runInContext(
     provideRegistry({
@@ -35,31 +31,19 @@ function withRegistry<R>(bindings: Cloudflare.Env, baseUrl: string, fn: () => R)
 }
 
 /**
- * The Brika registry: an npm-compatible resolve surface so `bun add` installs
- * `@brika/*` from us, plus authenticated publish and device-flow endpoints.
- *
- * Routing is `@brika/router`, a thin typed superset over Hono: handlers live in
- * feature controllers, each declaring its routes next to its handlers and
- * receiving typed params + a validated body. All domain logic lives in
- * `@brika/registry-core`; this worker is the HTTP + Cloudflare adapter layer. The
- * Cloudflare bindings are read in exactly one place ({@link withRegistry}), so a
- * handler resolves its dependencies via `inject(...)`, never the ambient env.
+ * The Brika registry: an npm-compatible resolve surface so `bun add` installs `@brika/*` from us,
+ * plus authenticated publish and device-flow endpoints. Domain logic lives in `@brika/registry-core`;
+ * this worker is the HTTP + Cloudflare adapter layer.
  */
 
-/**
- * The public origin tarball URLs are built from: the pinned `REGISTRY_URL` when
- * configured, otherwise the request origin (correct once a single custom domain
- * is attached). Pinning avoids trusting a client-supplied `Host` header.
- */
+/** The origin tarball URLs are built from: pinned `REGISTRY_URL`, else the request origin (avoids trusting `Host`). */
 function baseUrlFor(requestUrl: string): string {
   return vars().REGISTRY_URL || new URL(requestUrl).origin;
 }
 
 const app = new Hono<RegistryEnv>();
 
-// Public, read-only npm protocol: open CORS so the storefront (and any browser
-// client) can read packuments, tarballs, and the catalog cross-origin, exactly
-// as the public npm registry does.
+// Open CORS so any browser client can read the read-only npm protocol cross-origin, as npm does.
 app.use("/*", cors({ origin: "*", allowMethods: ["GET", "HEAD", "OPTIONS"] }));
 
 app.get("/", (c) => c.json({ name: "Brika registry", protocol: "npm" }));
@@ -74,26 +58,18 @@ const controllers = [
   packagesController,
 ];
 
-// Mount the feature controllers, each handler run inside the per-request DI context via the
-// router's `around` hook. Package routes use the npm `PKG` pattern (an optional `@scope` segment,
-// regex-constrained so it never shadows the `/-/...` endpoints); registration order is not
-// load-bearing. Each request is logged as a structured JSON line (method, route, status, timing,
-// controller/handler, client IP).
+// The `PKG` pattern is regex-constrained so package routes never shadow the `/-/...` endpoints.
 mount(app, controllers, {
   around: (c, run) => withRegistry(c.env, baseUrlFor(c.req.url), run),
   logger: jsonLogger("registry request"),
 });
 
-// Log the full route table once on cold start (read back from Hono, so it includes
-// `GET /` and every concrete pattern), so the deployed worker's logs show exactly
-// what it serves.
+// Log the full route table once on cold start, so the deployed worker's logs show what it serves.
 logRoutes(app);
 
 /**
- * Scheduled re-verification of scope domains (ORG-010-AC3): on each cron tick, re-check every
- * currently-verified domain's challenge TXT and revoke the badge for any that no longer
- * resolve (a transient DNS failure is skipped, never revoked). Keeps the verified set honest
- * as DNS changes over time, rather than trusting a one-time check forever.
+ * Cron re-verification of scope domains (ORG-010-AC3): re-check every verified domain's TXT and
+ * revoke any that no longer resolve. A transient DNS failure is skipped, never revoked.
  */
 async function scheduled(): Promise<void> {
   const revoked = await withRegistry(env, vars().REGISTRY_URL, () =>

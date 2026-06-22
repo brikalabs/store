@@ -1,6 +1,7 @@
+import { inject } from "@brika/di";
 import type { TokenPrincipal, TokenStore } from "@brika/registry-core";
 import { eq } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regTokens } from "../schema";
 
 /**
@@ -58,17 +59,9 @@ export async function verifyToken(db: Db, token: string): Promise<{ userId: stri
   return { userId: row.userId };
 }
 
-/**
- * D1 implementation of the {@link TokenStore} port over `reg_tokens`. Thin adapter over the
- * issue/verify/revoke functions above (which own the crypto + hashing); auth and the
- * device flow depend on this port, not on the database.
- */
+/** D1 {@link TokenStore} over `reg_tokens`; thin adapter over the issue/verify/revoke functions above. */
 export class D1TokenStore implements TokenStore {
-  readonly #db: Db;
-
-  constructor(db: Db) {
-    this.#db = db;
-  }
+  readonly #db = inject(Db);
 
   issue(userId: string): Promise<string> {
     return issueToken(this.#db, userId);

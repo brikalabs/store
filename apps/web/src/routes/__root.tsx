@@ -1,21 +1,15 @@
-import {
-  createRootRoute,
-  HeadContent,
-  Outlet,
-  Scripts,
-  useRouterState,
-} from "@tanstack/react-router";
+import { createRootRoute } from "@tanstack/react-router";
 import { NotFoundPage, ServerErrorPage } from "@/components/feedback/error-pages";
-import { SearchProvider } from "@/components/layout/search-context";
-import { SiteFooter } from "@/components/layout/site-footer";
-import { SiteHeader } from "@/components/layout/site-header";
-import { themeBootScript } from "@/hooks/use-theme";
+import { RootDocument } from "@/components/layout/root-document";
+import { fetchThemeMode } from "@/server/theme";
 import appCss from "@/styles.css?url";
 
 const FONTS_HREF =
   "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap";
 
 export const Route = createRootRoute({
+  // Read the theme-mode cookie at SSR so the document root renders the matching data-mode (no mismatch).
+  loader: () => fetchThemeMode(),
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -38,32 +32,3 @@ export const Route = createRootRoute({
   notFoundComponent: NotFoundPage,
   errorComponent: ({ reset }) => <ServerErrorPage onRetry={reset} />,
 });
-
-function RootDocument() {
-  // The footer belongs on the public browsing pages, not the admin/login app.
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const showFooter = !pathname.startsWith("/dashboard");
-
-  return (
-    <html lang="en">
-      <head>
-        {/* Apply the persisted theme before paint to avoid a flash. */}
-        <script
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: tiny trusted boot script
-          dangerouslySetInnerHTML={{ __html: themeBootScript }}
-        />
-        <HeadContent />
-      </head>
-      <body className="flex min-h-dvh flex-col bg-background font-sans text-foreground antialiased">
-        <SearchProvider>
-          <SiteHeader />
-          <div className="flex-1">
-            <Outlet />
-          </div>
-          {showFooter ? <SiteFooter /> : null}
-        </SearchProvider>
-        <Scripts />
-      </body>
-    </html>
-  );
-}

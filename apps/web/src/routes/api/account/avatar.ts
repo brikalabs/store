@@ -5,11 +5,9 @@ import { runAuthed } from "@/server/http";
 import { clearUserAvatar, uploadUserAvatar } from "@/server/user-avatar";
 
 /**
- * Scope-style avatar endpoints for the signed-in account (USER-002):
- *   POST   /api/account/avatar  upload a WebP avatar (client-resized) -> stored in R2, served by its
- *                               public URL; the profile points at that URL.
- *   DELETE /api/account/avatar  clear it, falling back to the provider (GitHub) image.
- * A user only ever writes their own row (keyed by the session `users.id`).
+ * Avatar endpoints for the signed-in account (USER-002): POST uploads a WebP avatar to R2, DELETE
+ * clears it (falling back to the provider image). Keyed by the session `users.id`, so a user only
+ * ever writes their own row.
  */
 export const Route = createFileRoute("/api/account/avatar")({
   server: {

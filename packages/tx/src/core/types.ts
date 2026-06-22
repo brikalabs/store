@@ -8,9 +8,8 @@ export type CommitAction = () => Promise<void> | void;
 export type TxOutcome = "committed" | "rolledBack";
 
 /**
- * A step run at the very end of a transaction, after it has committed or rolled
- * back (Spring's `afterCompletion`). Its failure is logged, never propagated, and
- * never affects the outcome. Good for notifications, cache busting, enqueuing work.
+ * A step run at the very end of a transaction, after commit or rollback (Spring's `afterCompletion`).
+ * Its failure is logged, never propagated, and never affects the outcome.
  */
 export type CompletionAction = (outcome: TxOutcome) => Promise<void> | void;
 
@@ -18,12 +17,9 @@ export interface TxConfig {
   /** Roll back only when this returns true (default: roll back on any error). */
   readonly rollbackOn?: (error: unknown) => boolean;
   /**
-   * Mark the unit of work read-only (Spring's `@Transactional(readOnly = true)`).
-   * Enforced, not just a hint: registering any write step inside it - a rollback
-   * compensation (`onRollback`), a commit action (`onCommit`), or a deferred DB batch
-   * (`deferBatch`) - throws. Completion hooks (`onComplete`/`afterCommit`) still run,
-   * since logging/metrics are not mutations. A read path wrapped this way is proven
-   * side-effect-free.
+   * Mark the unit of work read-only. Enforced, not just a hint: registering any write step inside it
+   * (`onRollback`/`onCommit`/`deferBatch`) throws, so a read path wrapped this way is proven
+   * side-effect-free. Completion hooks still run, since logging/metrics are not mutations.
    */
   readonly readOnly?: boolean;
 }

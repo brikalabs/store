@@ -1,19 +1,12 @@
+import { inject, token } from "@brika/di";
 import { HttpStatus } from "./http-status";
-import type { OwnershipPolicy, PublishIdentity } from "./publish";
+import { OwnershipPolicy, type PublishIdentity } from "./publish";
 
 /**
- * Post-publish package management: deprecate, yank, and operator takedown. All
- * mutate an already-published version's metadata (never its bytes, which stay
- * immutable).
- *
- * - **deprecate**: attach (or clear) a message. The version still installs; bun
- *   surfaces the warning. Owner-gated. Reversible.
- * - **yank**: hide a version from new installs (the packument omits it) without
- *   deleting the bytes, so existing lockfiles that pin its integrity still
- *   resolve. Owner-gated. Reversible.
- * - **takedown**: like yank, but operator-initiated (against the owner, so NOT
- *   ownership-gated; the caller authorizes an admin at the HTTP edge) and carrying
- *   a public reason that is surfaced in the packument. Reversible via `restore`.
+ * Post-publish package management: deprecate, yank, and operator takedown. All mutate an
+ * already-published version's metadata, never its bytes (which stay immutable). Yank hides a version
+ * from new installs without deleting the bytes, so existing lockfiles that pin its integrity still
+ * resolve. Takedown is the operator-initiated variant, carrying a public reason.
  */
 
 /** Write access to a published version's mutable management flags. */
@@ -25,6 +18,8 @@ export interface VersionManager {
   /** Set the operator takedown reason, or null to restore. */
   setTakedown(name: string, version: string, reason: string | null): Promise<void>;
 }
+/** DI token for the {@link VersionManager} port (an app binds the concrete D1 adapter). */
+export const VersionManager = token<VersionManager>("VersionManager");
 
 export type ManageResult =
   | { readonly ok: true }
@@ -33,14 +28,10 @@ export type ManageResult =
 /** Maximum length of a deprecation message / takedown reason. */
 const MAX_MESSAGE = 1024;
 
+/** Post-publish management operations (deprecate, yank, takedown, restore), owner-gated except takedown. */
 export class ManagementService {
-  readonly #meta: VersionManager;
-  readonly #ownership: OwnershipPolicy;
-
-  constructor(meta: VersionManager, ownership: OwnershipPolicy) {
-    this.#meta = meta;
-    this.#ownership = ownership;
-  }
+  readonly #meta = inject(VersionManager);
+  readonly #ownership = inject(OwnershipPolicy);
 
   /** Shared gate: the identity must own the scope and the version must exist. */
   async #authorize(
@@ -86,9 +77,8 @@ export class ManagementService {
   }
 
   /**
-   * Operator takedown: remove a version from new installs with a public reason.
-   * NOT ownership-gated (an admin acts against the owner); the caller must have
-   * authorized an admin already. Only checks the version exists.
+   * Operator takedown: remove a version from new installs with a public reason. NOT ownership-gated
+   * (an admin acts against the owner) - the caller must have authorized an admin already.
    */
   async takedown(name: string, version: string, reason: string): Promise<ManageResult> {
     if (!(await this.#meta.versionExists(name, version))) {

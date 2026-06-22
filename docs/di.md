@@ -1,8 +1,9 @@
 # Dependency injection (`@brika/di`): the one right way
 
-Both apps (`apps/web`, `apps/registry`) use one DI primitive, `@brika/di` - Angular's *functional*
-DI, with no decorators and no reflection. There is **one way to use** a dependency and a short
-decision for **how to create** one. Use this as the single reference; do not invent variants.
+Both apps (`apps/web`, `apps/registry`) and the domain/adapter packages use one DI primitive,
+`@brika/di` - Angular's *functional* DI, with no decorators and no reflection. There is **one way to
+use** a dependency and a short decision for **how to create** one. Use this as the single reference;
+do not invent variants.
 
 ## Using a dependency: `inject(Token)`
 
@@ -18,73 +19,109 @@ class SocialService {
 runHandler(() => inject(SocialService).listReviews(name, viewerId)); // handler
 ```
 
+For an OPTIONAL dependency with an in-class default, use `injectOr`, never the `{ optional: true }`
++ `??` long form:
+
+```ts
+readonly #verifier = injectOr(ClaimVerifier, allowAllClaimVerifier); // bound impl, else the default
+```
+
 Never thread a `ctx` / `services` argument, never `new` a service by hand in a handler, never read
 `env` in a handler.
+
+## Field injection: every injectable is a constructor-less class
+
+Services (`ScopeService`, `PublishService`, ...), stores (`ReviewStore`, ...), and adapters
+(`D1ScopeStore`, `CfR2BlobStore`, ...) declare their dependencies as **field initializers** and have
+**no constructor**. The container builds the class and the fields resolve from the active injector.
+
+```ts
+export class D1ScopeStore implements ScopeStore {
+  readonly #db = inject(Db); // no constructor, no `new D1ScopeStore(db)` anywhere
+}
+```
+
+This is why the composition root is a flat list of bindings with no `new X(dep)` wiring: the graph
+self-resolves (`ScopeService` -> `ScopeStore` -> `D1ScopeStore` -> `Db`).
 
 ## Creating an injectable: pick the first case that fits
 
 ### 1. An app class that depends on other injectables -> just write it (auto-builds)
 
 A concrete class is its own token. If it only depends on things it can `inject()`, it needs **no
-registration** - asking for it builds it, once per request. This is the default and the common case.
+registration** - asking for it builds it, once per request. This is the default and the common case
+(every store and domain service).
 
 ```ts
 // apps/web/src/server/stores/review-store.ts
 export class ReviewStore {
-  readonly #db = inject(Database).orm;
+  readonly #db = inject(Database);
   listForPlugin(name: string) { /* ...drizzle... */ }
 }
 // use it:  inject(ReviewStore)
 ```
 
-### 2. An interface (to swap implementations, or for tests) -> `token<T>()`
+### 2. An interface port (to swap implementations, and for tests) -> `token<T>("Name")`
 
-A TypeScript interface has no runtime identity, so give it one with `token<T>()`, declared under the
-SAME name (TypeScript merges a type and a value):
-
-```ts
-export interface Clock { now(): number }
-export const Clock = token<Clock>(); // inject(Clock) is typed Clock
-```
-
-Bind an implementation once in the config (below); a test binds a fake. An abstract class works too
-(`inject(BlobStore)` where `BlobStore` is an `abstract class`) and is preferred when the interface
-already wants a base class.
-
-### 3. A value, a function, or an external / pure class (can't use `inject()`) -> provide it
-
-Cloudflare bindings, a config string, a `@brika/registry-core` service (pure, constructor-injected),
-a `@brika/store-db` adapter - none of these can auto-build. Give them a token and bind them in the
-config:
+A TypeScript interface has no runtime identity, so give it one with `token<T>("Name")`, declared
+under the SAME name (TypeScript merges a type and a value). **Always pass the name** - it is the
+token's label in a missing-provider error.
 
 ```ts
-export const BaseUrl = token<string>();
-// in the config:
-{ provide: BaseUrl, useValue: "https://registry.brika.dev" }
-{ provide: ScopeService, useFactory: () => new ScopeService(new D1ScopeStore(inject(Db)), /* ... */) }
+export interface ScopeStore { get(scope: string): Promise<ScopeRecord | null>; /* ... */ }
+export const ScopeStore = token<ScopeStore>("ScopeStore"); // inject(ScopeStore) is typed ScopeStore
 ```
 
-A concrete class used as its own token (`provide: ScopeService`) keeps the call site
-`inject(ScopeService)`. A persistence adapter is bound under its **port** token
-(`provide: Tokens`, where `Tokens = token<TokenStore>()`) so handlers depend on the interface from
-`@brika/registry-core`, never the concrete `D1*` class - which keeps the registry hexagonal.
+Bind the implementation once in the composition root (case 3); a test binds a fake.
+
+### 3. A value, a runtime seam, or a port's adapter -> bind it in the composition root
+
+Cloudflare bindings, a config string, and the concrete `D1*` / `R2*` / `Hmac*` adapter for a port
+cannot auto-build (a token has no class; an adapter must map to its port). Bind them:
+
+- **`useClass`** maps a port token to its field-injected adapter (the canonical port -> adapter wiring):
+  ```ts
+  { provide: ScopeStore, useClass: D1ScopeStore }
+  ```
+- **`useValue`** binds a ready value - the runtime seams (the db handle, a bucket, a secret):
+  ```ts
+  { provide: RegistryDb, useValue: db }
+  { provide: TarballBucket, useValue: tarballs }
+  ```
+- **`useFactory`** builds lazily and may `inject()` inside (also how you alias one token to another,
+  `useFactory: () => inject(Other)`):
+  ```ts
+  { provide: AssetsPublicUrl, useFactory: () => config().ASSETS_PUBLIC_URL }
+  ```
+
+A `providedIn: 'root'` token self-builds with no binding - pass a factory to `token`:
+
+```ts
+export const Audit = token("Audit", () => new D1AuditLog()); // handler `inject(Audit)`, no binding needed
+```
 
 ## The composition root: a `providers` array (Angular's shape)
 
 The ONE place runtime values enter is a providers array handed to `runInContext`. There is no
-`createInjector` in app code.
+`createInjector` in app code. The registry domain's port -> adapter bindings are shared by both apps
+as `registryBindings` (in `@brika/registry-runtime`); an app spreads them and adds its own seams.
 
-`apps/web` declares only the seams; the stores and services auto-build:
+`apps/web` (`webProviders`, one isolate-lived injector): declares the seams; stores/services auto-build:
 
 ```ts
-export const webProviders: Provider[] = [
-  { provide: Database, useFactory: () => new Database(getDb(env.DB)) },
-  { provide: RegistryDatabase, useFactory: () => new RegistryDatabase(registryDb()) },
-  { provide: BlobStore, useFactory: () => new CfR2BlobStore(env.ASSETS) },
+const webProviders: Provider[] = [
+  { provide: Database, useFactory: () => getDb(env.DB) },
+  { provide: AssetsBucket, useFactory: () => env.ASSETS },
+  { provide: AssetsPublicUrl, useFactory: () => config().ASSETS_PUBLIC_URL },
+  { provide: BlobStore, useClass: CfR2BlobStore },
+  { provide: RegistryDb, useFactory: () => getRegistryDb(env.DB) },
+  { provide: DomainSecret, useFactory: () => config().DOMAIN_VERIFY_SECRET },
+  ...registryBindings, // ScopeService/ManagementService ports -> D1 adapters
 ];
 ```
 
-`apps/registry` uses `provideRegistry(config)` - the seams plus the full service graph as providers:
+`apps/registry` (`provideRegistry(config)`, a fresh injector per request - its bindings are
+request-scoped): the seams plus the registry's own service ports:
 
 ```ts
 runInContext(
@@ -93,31 +130,52 @@ runInContext(
 );
 ```
 
-The framework glue runs every request inside that context: the web's `runHandler` and the registry
-router's `mount({ around })`. A handler just `inject()`s. `provideRegistry` builds the graph once
-from its `config` - shared adapters (the registry's scope-membership / ownership) are locals reused
-across the services - and binds each result under its token (`useValue`). No imperative `buildX()`
-factory and no `useFactory` ceremony: the providers array is the whole composition.
+The framework glue runs every request inside that context: the web's `runHandler` /
+`runInInjectionContext(appInjector, ...)` and the registry router's `mount({ around })` ->
+`runInContext`. A handler just `inject()`s.
 
-## Testing: override one token
+## Testing: a `testBed`, or `makeAdapter` for a D1 adapter
 
-`runInContext` with the real providers plus a later provider for the token you want faked (the
-latest provider for a token wins):
+`testBed(provide(...))` builds an isolated injector, configures a service's ports, and injects it -
+the `@brika/di` analog of Angular's `TestBed`. `.with(...)` layers an extra override without
+mutating a shared base bed.
 
 ```ts
-runInContext(
-  [...provideRegistry({ db, tarballs: fakeR2(), baseUrl }), { provide: ScopeService, useValue: fakeScopes }],
-  () => handler(),
-);
+const bed = testBed(provide(ScopeStore, scopes), provide(ScopeMembers, members));
+const service = bed.inject(ScopeService);
+const capped = bed.with(provide(MaxScopesPerAccount, 2)).inject(ScopeService); // one extra override
 ```
 
-Everything else stays real; you replace exactly one seam.
+A D1 adapter (which field-injects `Db`) is built with `makeAdapter` - the test analog of the
+composition root:
+
+```ts
+const store = makeAdapter(db, D1ScopeStore); // testBed(provide(Db, db)).inject(D1ScopeStore)
+```
+
+To fake one seam inside a request handler test, append a later provider (the latest wins):
+
+```ts
+runInContext([...provideRegistry({ db, tarballs: fakeR2(), baseUrl }), provide(PublishConfig, { maxTarballBytes: 1 })], handler);
+```
+
+## The pure core depends on `@brika/di` (and only that, plus zod)
+
+`@brika/registry-core` is field-injected: its services `inject()` their ports, so it imports
+`@brika/di` - the runtime-agnostic, zero-infrastructure DI seam, allowlisted by
+`biome-plugins/boundaries-pure.grit` on par with `zod`. The core still imports **no** Cloudflare, DB
+driver, ORM, or HTTP framework: ports stay interfaces, adapters live in `@brika/store-db` and the
+apps. `@brika/di` is not a "container" - it is a small typed primitive (functional `inject()`,
+hierarchical lazy-memoized injectors, no decorators / `reflect-metadata` / string registry).
 
 ## What NOT to do
 
-- No `@Injectable` markers (auto-build needs none), no decorators, no `reflect-metadata`.
+- No constructors on injectables (services, stores, adapters) - field injection only.
+- No `new SomeService(...)` / `new D1X(...)` / `new R2X(...)` outside a composition root or a test
+  helper (`testBed` / `makeAdapter`).
+- No `inject(X, { optional: true }) ?? d` - use `injectOr(X, d)`.
+- No unnamed `token<T>()` - always `token<T>("Name")`.
+- No `@Injectable` markers, decorators, or `reflect-metadata`.
 - No `createInjector` / `runInInjectionContext` in application code - the framework glue does it.
 - No reading `cloudflare:workers` `env` outside the composition root.
-- No threading a `ctx` / `services` object through handlers, and no imperative `buildX()` factory:
-  the providers array IS the composition.
-```
+- No threading a `ctx` / `services` object through handlers: the providers array IS the composition.

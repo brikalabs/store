@@ -1,20 +1,18 @@
 import { inject } from "@brika/di";
 import { Comment } from "@brika/registry-contract";
 import { and, eq, sql } from "drizzle-orm";
-import { avatarUrlOf } from "@/lib/avatar";
-import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
 import { comments, commentVotes, users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
+import { authorColumns, toAuthor } from "@/server/stores/author";
 import { votedIds } from "@/server/stores/voted-ids";
 
 /**
- * Repository for `comments` (+ the `comment_votes` upvote tally). Reads project a comment into
- * the {@link Comment} contract, joining `users` for the author's display name and avatar; a
- * deleted comment keeps its row (for thread structure) but its body reads as `[deleted]`.
+ * Repository for `comments` (+ the `comment_votes` upvote tally), projecting into the {@link Comment}
+ * contract. A deleted comment keeps its row (for thread structure) but its body reads as `[deleted]`.
  */
 export class CommentStore {
-  readonly #db = inject(Database).orm;
+  readonly #db = inject(Database);
   readonly #blob = inject(BlobStore);
 
   /** Every comment of a plugin, oldest first, with upvote totals + the viewer's vote state. */
@@ -27,11 +25,7 @@ export class CommentStore {
         createdAt: comments.createdAt,
         edited: comments.edited,
         deleted: comments.deleted,
-        userId: users.id,
-        name: users.name,
-        profileDisplayName: users.displayName,
-        image: users.image,
-        avatarVersion: users.avatarVersion,
+        ...authorColumns,
       })
       .from(comments)
       .innerJoin(users, eq(comments.userId, users.id))
@@ -57,12 +51,8 @@ export class CommentStore {
         pluginName,
         parentId: row.parentId,
         author: row.deleted
-          ? { id: row.userId, displayName: "[deleted]", avatarUrl: undefined }
-          : {
-              id: row.userId,
-              displayName: displayNameOf(row.profileDisplayName, row.name),
-              avatarUrl: avatarUrlOf(this.#blob, row.avatarVersion, row.userId, row.image),
-            },
+          ? { id: row.authorId, displayName: "[deleted]", avatarUrl: undefined }
+          : toAuthor(this.#blob, row),
         body: row.deleted ? "[deleted]" : row.body,
         upvotes: row.deleted ? 0 : (upvotes.get(row.id) ?? 0),
         viewerUpvoted: row.deleted ? false : voted.has(row.id),
@@ -75,9 +65,7 @@ export class CommentStore {
 
   /**
    * Post a comment (or a reply when `parentId` is set). A reply must target an existing comment on
-   * the SAME plugin (`parent_id` has no FK), so a client cannot thread under a missing or
-   * cross-plugin parent: returns false when the parent does not qualify (the route maps that to a
-   * 400), true once inserted.
+   * the SAME plugin (`parent_id` has no FK), so false guards against a missing/cross-plugin parent.
    */
   async add(
     pluginName: string,

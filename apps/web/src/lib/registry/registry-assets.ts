@@ -4,12 +4,9 @@ import { contentTypeFor, REGISTRY_ORIGIN } from "@/lib/registry/registry-source"
 import type { BlobStore } from "@/server/ports/blob-store";
 
 /**
- * Serve a file bundled inside a registry tarball (icon, screenshots, readme,
- * localized `store.json`). The npm path gets these from jsDelivr; our registry
- * has no CDN, so the store extracts them from the tarball and caches the result
- * in its own R2 (`ASSETS`) keyed by `reg/<name>@<version>/<path>`. Versions are
- * immutable, so a cache hit is always valid and the tarball is fetched at most
- * once per asset.
+ * Serve a file bundled inside a registry tarball (icon, screenshots, readme, `store.json`). Our
+ * registry has no CDN, so the store extracts files from the tarball and caches them in R2 keyed by
+ * `reg/<name>@<version>/<path>`. Versions are immutable, so a cache hit is always valid.
  */
 
 export interface ExtractedAsset {
@@ -28,11 +25,7 @@ export interface PluginFileEntry {
   readonly linesCount: number;
 }
 
-/**
- * The published tarball's file index, mirroring npm's
- * `/package/<name>/v/<version>/index`: a map keyed by leading-slash path plus
- * tarball-level aggregates.
- */
+/** The published tarball's file index (npm-style): a path-keyed map plus tarball-level aggregates. */
 export interface PluginFileIndex {
   readonly files: Record<string, PluginFileEntry>;
   readonly totalSize: number;
@@ -68,22 +61,17 @@ function countLines(bytes: Uint8Array): number {
   return bytes.at(-1) === 0x0a ? newlines : newlines + 1;
 }
 
-/**
- * The file's content type: the precise type for the known asset/image kinds we
- * serve, otherwise derived from the bytes (text vs binary). Keeps the index
- * useful without a per-language MIME list to maintain.
- */
+// Precise type for known asset/image kinds, else derived from the bytes (text vs binary).
 function fileContentType(path: string, isBinary: boolean): string {
   const known = contentTypeFor(path);
   if (known !== "application/octet-stream") return known;
   return isBinary ? "application/octet-stream" : "text/plain; charset=utf-8";
 }
 
-/** Describe one tarball entry the way npm's file index does. */
 async function describeFile(path: string, bytes: Uint8Array): Promise<PluginFileEntry> {
   const binary = isBinaryContent(bytes);
-  // Copy into a fresh ArrayBuffer-backed view so the digest input type is
-  // concrete (the tar reader yields `Uint8Array<ArrayBufferLike>`).
+  // Copy into a fresh ArrayBuffer-backed view so the digest input type is concrete
+  // (the tar reader yields `Uint8Array<ArrayBufferLike>`).
   const digest = await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes));
   return {
     path: `/${path}`,
@@ -96,7 +84,6 @@ async function describeFile(path: string, bytes: Uint8Array): Promise<PluginFile
   };
 }
 
-/** Fetch the tarball from the registry and pull a single file out of it. */
 async function extractFromTarball(
   name: string,
   version: string,
@@ -109,13 +96,8 @@ async function extractFromTarball(
   return entry?.data ?? null;
 }
 
-/**
- * The published tarball's file index, npm-style (a path-keyed map of rich file
- * metadata plus tarball-level aggregates). The file browser fetches this lazily,
- * only when the Supply chain tab opens, so the detail page never ships it. The
- * tarball is unpacked, hashed, and measured exactly once: the result is cached
- * in R2 as JSON (versions are immutable), so it is never recomputed per request.
- */
+/** The published tarball's file index, fetched lazily so the detail page never ships it. The tarball
+ * is unpacked, hashed, and measured once: the result is cached in R2 (versions are immutable). */
 export function getRegistryFileList(
   assets: BlobStore,
   name: string,
@@ -153,19 +135,15 @@ export function getRegistryFileList(
   });
 }
 
-/**
- * Return a bundled asset, serving from R2 when cached and otherwise extracting
- * it from the tarball and caching it. Returns null when the asset is absent.
- */
+/** Return a bundled asset, serving from R2 when cached, else extracting from the tarball and caching it; null when absent. */
 export async function getRegistryAsset(
   assets: BlobStore,
   name: string,
   version: string,
   path: string,
 ): Promise<ExtractedAsset | null> {
-  // Derive the content type from the bytes (same rule as the file index), so a
-  // served file always agrees with its index entry and text files render inline
-  // instead of downloading. Done on every path, ignoring any stale cached type.
+  // Derive the content type from the bytes (same rule as the file index), so a served file always
+  // agrees with its index entry. Done on every path, ignoring any stale cached type.
   const key = cacheKey(name, version, path);
   const cached = await assets.get(key);
   if (cached !== null) {

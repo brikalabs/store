@@ -14,14 +14,14 @@ the `context` factory in `index.ts`.
 
 ## Recommended order
 
-1. **Rate limits** — highest-leverage abuse defense, fully self-contained, no new
+1. **Rate limits** - highest-leverage abuse defense, fully self-contained, no new
    identity concepts. (small–medium)
-2. **Malware-scan hook** — another small port slotted into the existing publish
+2. **Malware-scan hook** - another small port slotted into the existing publish
    pipeline; lands the extension point even if the scanner is a no-op for now.
    (small)
-3. **Abuse/takedown surfacing** — needs a new operator-admin identity, so it
+3. **Abuse/takedown surfacing** - needs a new operator-admin identity, so it
    builds on the auth work and is best done once the cheaper wins are in. (medium)
-4. **R2 + D1 backups** — operational, cron-driven, hardest to unit-test; last.
+4. **R2 + D1 backups** - operational, cron-driven, hardest to unit-test; last.
    (medium)
 
 Each item is independently shippable as its own PR behind the existing CI gates
@@ -36,12 +36,12 @@ cannot flood publish or the device flow. Target routes:
 
 - `POST /-/publish`
 - `POST /-/device/code`
-- ~~`POST /-/device/token`~~ — **deliberately not limited.** The CLI polls this
+- ~~`POST /-/device/token`~~ - **deliberately not limited.** The CLI polls this
   every few seconds during a login (RFC 8628), so an IP rate limit would break
   legitimate device flows. Grant *creation* (`/code`) is the abuse-prone step and
   is limited; token polling is bounded by the flow's own `interval`.
 
-The read surface (packuments, tarballs, catalog) stays open — it is the npm
+The read surface (packuments, tarballs, catalog) stays open - it is the npm
 protocol and is cache-frontable; rate limiting reads would break `bun add`.
 
 **Shipped as a generic system in `@brika/router`** (design vetted by a Cloudflare
@@ -51,7 +51,7 @@ and a `rateLimit(...)` middleware (built on the router's typed `Middleware<Ctx>`
 which runs after the per-request `ctx` is built). It takes the policy inline:
 
 ```ts
-// device.ts — in-memory default + opt-in Cloudflare binding
+// device.ts - in-memory default + opt-in Cloudflare binding
 rateLimit({ max: 10,  window: "1m", key: clientKey, store: cf("DEVICE_LIMITER") })
 // publish.ts
 rateLimit({ max: 100, window: "1m", key: principal, store: cf("PUBLISH_LIMITER") })
@@ -68,7 +68,7 @@ opt-in** (`store: cf(...)`): the native binding is best-effort/per-colo and the
 in-memory fallback is per-isolate, so both are abuse-blunting behind the edge WAF,
 not exact counters; `cf()` resolves the `*_LIMITER` binding per call, else falls
 back. Publish is keyed by the **authenticated principal** (repo/owner; `requireWrite`
-is memoized per request so the key derivation and the handler share one auth) — CI
+is memoized per request so the key derivation and the handler share one auth) - CI
 shares GitHub Actions egress IPs, so a per-IP cap would throttle unrelated repos.
 Device-code is keyed by the **unspoofable `CF-Connecting-IP`** (never the
 client-supplied `X-Forwarded-For`), with IPv6 collapsed to its /64. Tested in
@@ -165,7 +165,7 @@ behavior is unchanged until a scanner exists.
 **Shipped as:** a `TarballScanner` port in `@brika/registry-core/src/publish.ts`
 (`scan(tarball) -> { ok } | { ok:false, message }`), injected via `PublishOptions.scanner`
 and defaulting to an inline allow-all so the existing `new PublishService(...)` call
-sites keep compiling. Slotted as **step 4.5** — after immutability (so an existing
+sites keep compiling. Slotted as **step 4.5** - after immutability (so an existing
 version is rejected before we bother scanning), before integrity/write (so refused
 bytes never reach storage). A refusal returns the new `"rejected"` `PublishErrorCode`,
 mapped to **422** in `controllers/publish.ts` (distinct from `invalid`/400 for a
@@ -188,8 +188,8 @@ export interface TarballScanner {
 }
 ```
 
-Slot it into `PublishService.publish` as **step 3.5** — after the manifest gate
-(step 3) and immutability check (step 4), before integrity/write (steps 5–6) —
+Slot it into `PublishService.publish` as **step 3.5** - after the manifest gate
+(step 3) and immutability check (step 4), before integrity/write (steps 5–6) -
 so we never store bytes we would reject, and the existing "rejected publish
 never touches storage" invariant holds. A failed scan returns
 `{ ok: false, code: "invalid", message }` (or a new `"rejected"` code if we want
@@ -204,7 +204,7 @@ Adapters in `apps/registry/src/adapters`:
 - **`NoopTarballScanner`** (default; allow-all).
 - Later: a `ClamAv`/external-service adapter, or a heuristic scanner over
   `readTarGzEntries` (suspicious paths, embedded binaries, install-script
-  red flags). Out of scope for the hook PR — the point is the seam.
+  red flags). Out of scope for the hook PR - the point is the seam.
 
 ### Tests
 
@@ -314,7 +314,7 @@ Mirror `manage.ts`'s `runManaged` shape but call `requireAdmin` instead of
 
 **Goal:** scheduled, restorable snapshots of registry state. R2 tarball bytes are
 already immutable, but D1 metadata (packages, versions, dist-tags, scopes,
-tokens, audit) is the irreplaceable part — losing it orphans every tarball.
+tokens, audit) is the irreplaceable part - losing it orphans every tarball.
 
 ### Design (cron-triggered export)
 
@@ -357,5 +357,5 @@ trigger and real R2/D1 I/O are verified manually on a deploy.
 - **Audit:** every new mutating/abuse action writes a `reg_audit` row, matching
   publish/deprecate/yank.
 - **Operator tasks (🔑):** create the rate-limit namespaces, the
-  `brika-registry-backups` bucket, set `REGISTRY_ADMINS`, and the cron trigger —
+  `brika-registry-backups` bucket, set `REGISTRY_ADMINS`, and the cron trigger -
   add these to the operator checklist in `ROADMAP.md` / `DEPLOYMENT.md`.

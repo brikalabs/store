@@ -1,9 +1,6 @@
 /**
- * Request logging for the router. Because `mount` wraps every handler, it logs
- * what Hono's generic logger middleware cannot: the matched route *pattern* and
- * the controller + handler that served it. Pass a {@link RouterLogger} to `mount`'s
- * options; use {@link consoleLogger} for a one-line dev log, {@link jsonLogger} for
- * structured records, or implement the one-function interface yourself.
+ * Request logging for the router. Because `mount` wraps every handler, it logs what Hono's generic
+ * logger cannot: the matched route *pattern* and the controller + handler that served it.
  */
 
 /** One logged request: its route, the code that served it, the client, and the outcome. */
@@ -74,12 +71,7 @@ export interface JsonLogRecord {
   readonly error?: string;
 }
 
-/**
- * Stringify a thrown value for the log record. An `Error` becomes its stack
- * (falling back to its message); anything else is JSON-serialized, with a final
- * `String()` fallback so circular or non-serializable values still log something
- * instead of "[object Object]".
- */
+/** Stringify a thrown value: an `Error` becomes its stack, else JSON, with a `String()` fallback. */
 function stringifyError(error: unknown): string {
   if (error instanceof Error) return error.stack ?? error.message;
   try {
@@ -111,14 +103,7 @@ export function toJsonRecord(entry: RouteLogEntry, message: string): JsonLogReco
   };
 }
 
-/**
- * A {@link RouterLogger} that emits one structured JSON line per request (timestamp,
- * level, http, code_context, network), written at a console level by outcome.
- *
- *   {"timestamp":"...","level":"info","message":"request",
- *    "http":{"method":"POST","url":"/-/publish","status_code":201,"duration_ms":42.1},
- *    "code_context":{"controller":"publish","handler":"publish"},"network":{"client_ip":"203.0.113.45"}}
- */
+/** A {@link RouterLogger} that emits one structured JSON line per request, at a console level by outcome. */
 export function jsonLogger(message = "request"): RouterLogger {
   return (entry) => {
     const record = toJsonRecord(entry, message);

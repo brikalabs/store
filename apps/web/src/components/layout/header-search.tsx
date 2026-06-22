@@ -15,12 +15,8 @@ import { useSearch } from "@/components/layout/search-context";
 import { usePluginSearch } from "@/hooks/use-plugin-search";
 
 /**
- * The header search: a live text field (type and press Enter to search) with a
- * keyboard-navigable results dropdown built on Clay's Command (cmdk). ⌘K focuses
- * it; ↑/↓ move through results, Enter opens the highlighted one, Esc closes.
- * The first row ("Search for …") is highlighted by default, so a plain Enter
- * still takes you to the full results page. It mirrors the active query when
- * you're on the search page.
+ * Header search: a live text field with a keyboard-navigable results dropdown (Clay's cmdk).
+ * ⌘K focuses it; the first row is highlighted so a plain Enter goes to the full results page.
  */
 export function HeaderSearch() {
   const { inputRef } = useSearch();
@@ -29,8 +25,7 @@ export function HeaderSearch() {
   const [open, setOpen] = useState(false);
   const { plugins, scopes } = usePluginSearch(value);
 
-  // ⌘ on macOS, Ctrl elsewhere. Starts false so SSR and the first client render
-  // agree (no hydration mismatch), then flips after mount on Macs.
+  // Starts false so SSR and the first client render agree (no hydration mismatch).
   const [isMac, setIsMac] = useState(false);
   useEffect(() => {
     setIsMac(/Mac/i.test(navigator.userAgent));
@@ -61,9 +56,7 @@ export function HeaderSearch() {
   const showResults = open && value.trim().length > 0;
 
   return (
-    // cmdk owns ↑/↓/Enter via the root's keydown; shouldFilter is off because
-    // usePluginSearch already filtered server-side. Styling overrides Clay's
-    // command-surface defaults back into the header's pill look.
+    // shouldFilter is off because usePluginSearch already filtered server-side.
     <Command
       label="Search plugins and scopes"
       shouldFilter={false}
@@ -85,9 +78,8 @@ export function HeaderSearch() {
             inputRef.current?.blur();
             return;
           }
-          // If nothing is highlighted yet (e.g. Enter pressed in the same frame
-          // as typing, before cmdk selects a row), fall back to the search page.
-          // Otherwise cmdk handles Enter and opens the highlighted result.
+          // Enter pressed before cmdk has selected a row (same frame as typing):
+          // fall back to the search page; otherwise cmdk opens the highlighted result.
           if (event.key === "Enter") {
             const root = event.currentTarget.closest("[data-slot=command]");
             if (!root?.querySelector('[aria-selected="true"]')) goSearch();

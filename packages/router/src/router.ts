@@ -7,25 +7,15 @@ import { noContent, reply } from "./response";
 import type { PathParams } from "./url";
 
 /**
- * The runtime half of the router: a builder that produces typed routes, a
- * `controller` that groups them (optionally under a shared prefix + middleware),
- * and `mount` that wires them onto a vanilla Hono app. Nothing here subclasses
- * Hono; the app stays `new Hono<E>()` and these are plain functions over it.
- *
- * `createRouter<Ctx, E>()` binds the per-request context type `Ctx` (e.g. a
- * service graph) and the Hono environment `E` once, so every handler it produces
- * receives a typed `ctx`. The actual context value is supplied at `mount` time.
- * Optional path segments (`:p?`) in a pattern are expanded here generically, so
- * patterns like an npm `:scope?/:pkg` need no special routing config.
+ * The runtime half of the router: a typed route builder, a `controller` that
+ * groups routes, and `mount` that wires them onto a vanilla Hono app. Nothing
+ * subclasses Hono; these are plain functions over `new Hono<E>()`.
  */
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 type Method = (typeof METHODS)[number];
 
-/**
- * A JSON-serializable value a handler may return instead of a `Response`: the
- * router serializes it (200, `cache-control: no-store`). `undefined` becomes 204.
- */
+/** A JSON-serializable value a handler may return: serialized as 200 (`undefined` becomes 204). */
 export type RouteValue =
   | null
   | boolean
@@ -57,11 +47,7 @@ export type RouteHandler<P extends string, Body, Query, Ctx> = (
   input: RouteInput<P, Body, Query, Ctx>,
 ) => RouteResult | Promise<RouteResult>;
 
-/**
- * Inputs handed to a {@link Middleware}: the raw (untyped) params/query/body plus
- * the per-request `ctx` and request. Middleware is route-shape-agnostic, so unlike
- * a handler it does not get the params/body narrowed to a route's schemas.
- */
+/** Inputs handed to a {@link Middleware}: raw (untyped) params/query/body plus `ctx` and request. */
 export interface MiddlewareInput<Ctx> {
   readonly params: Record<string, string>;
   readonly query: unknown;
@@ -72,9 +58,8 @@ export interface MiddlewareInput<Ctx> {
 }
 
 /**
- * A typed pre-handler middleware for a route. Unlike a Hono `MiddlewareHandler` it
- * runs AFTER the per-request context is built, so it can read the typed `ctx`; it
- * runs side effects and throws an {@link HttpError} to abort (e.g. a rate limiter).
+ * A typed pre-handler middleware for a route. Runs AFTER the per-request context is built
+ * (so it can read the typed `ctx`) and throws an {@link HttpError} to abort.
  */
 export type Middleware<Ctx> = (input: MiddlewareInput<Ctx>) => void | Promise<void>;
 
@@ -108,9 +93,8 @@ export interface ControllerConfig<Ctx, E extends Env> {
   /** Prepended to every route's pattern, e.g. `"/-/package"`. Keep it param-free. */
   readonly prefix?: string;
   /**
-   * Hono middleware applied to this controller's routes (scoped by `prefix`). Runs
-   * BEFORE the per-request context is built, so it sees `c.env` but not `ctx`; use
-   * it for env-level concerns like CORS. For `ctx`-aware logic, use a route `middleware`.
+   * Hono middleware for this controller's routes (scoped by `prefix`). Runs BEFORE the
+   * per-request context is built, so it sees `c.env` but not `ctx`; use it for CORS etc.
    */
   readonly use?: readonly MiddlewareHandler<E>[];
   readonly routes: readonly RouteDef<Ctx>[];
@@ -119,16 +103,13 @@ export interface ControllerConfig<Ctx, E extends Env> {
 /** How `mount` turns a Hono request into the per-request inputs. */
 export interface MountOptions<Ctx, E extends Env> {
   /**
-   * Build the per-request context (e.g. a service graph) from Hono's Context. Optional: omit it
-   * when handlers resolve their dependencies another way (e.g. `inject()` inside an injection
-   * context established by {@link around}), in which case `ctx` is `undefined`.
+   * Build the per-request context from Hono's Context. Optional: omit it when handlers resolve
+   * dependencies another way (e.g. `inject()` inside {@link around}), in which case `ctx` is `undefined`.
    */
   readonly context?: (c: Context<E>) => Ctx | Promise<Ctx>;
   /**
-   * Wrap handler (and route-middleware) execution. The seam for running each request inside a
-   * surrounding scope, e.g. a `@brika/di` injection context:
-   * `around: (c, run) => runInContext(providersFor(c), run)`. Keeps the router itself free of any
-   * DI dependency; the app supplies the wrapper.
+   * Wrap handler (and route-middleware) execution: the seam for running each request inside a
+   * surrounding scope, e.g. a `@brika/di` injection context. Keeps the router free of any DI dependency.
    */
   readonly around?: (c: Context<E>, run: () => Promise<Response>) => Promise<Response>;
   /** Optional: called once per request with its route, status, and timing. */
@@ -145,12 +126,7 @@ export interface RouteInfo {
 /** This module's own file (captured from a load-time stack), so we can skip its frames. */
 const ROUTER_FILE = moduleFile(new Error("router module location probe").stack);
 
-/**
- * Best-effort `file:line:col` of the first caller outside this module, captured at
- * definition time (cheap: once per route/controller, never per request). Relies on
- * `Error.stack`, so it shows source paths in dev/tests and in source-mapped builds,
- * and is simply omitted when unavailable.
- */
+/** Best-effort `file:line:col` of the first caller outside this module, captured at definition time. */
 function callerSource(): string | undefined {
   return callerFrame(new Error("router caller probe").stack, ROUTER_FILE);
 }
@@ -159,10 +135,8 @@ function callerSource(): string | undefined {
 type SchemaOutput<S> = S extends z.ZodType ? z.output<S> : undefined;
 
 /**
- * A route definition as one object: the `path` (params inferred from it), optional
- * `body`/`query` zod schemas (their `z.output` flows into the handler), and the
- * `handler`. `NoInfer<P>` keeps the path literal inferred from `path` alone, never
- * from the handler.
+ * A route definition as one object: `path` (params inferred from it), optional `body`/`query` zod
+ * schemas (their `z.output` flows into the handler), and `handler`. `NoInfer<P>` pins the path literal.
  */
 export interface RouteConfig<
   P extends string,
@@ -193,11 +167,9 @@ function defineRoute<
     middleware: config.middleware,
     handlerName: handler.name === "" ? undefined : handler.name,
     source: callerSource(),
-    // The single typed boundary of the router: `params` is built from the matched
-    // route (its keys proven present, which a dynamic record type cannot express)
-    // and `body`/`query` were validated to exactly their schema output just before
-    // this runs. The narrowings are sound here and confined to this one closure;
-    // every handler stays fully typed and cast-free.
+    // The single typed boundary of the router: the narrowings are sound (`params` keys are
+    // proven present by the match; `body`/`query` were just validated to their schema output)
+    // and confined to this closure, so every handler stays fully typed and cast-free.
     run: (raw) =>
       handler({
         params: raw.params as PathParams<P>,
@@ -232,15 +204,10 @@ function parseQuery(c: Context, schema: z.ZodType | undefined): unknown {
 }
 
 /**
- * Expand a pattern's optional params (`:p?`) into the concrete patterns to
- * register: one with each optional present (its `?` dropped) and one without.
- * `n` optional segments yield `2^n` patterns; a pattern with none passes through.
- * This is what lets a leading or middle optional segment work even though the
- * underlying Hono matcher has no native optional-segment support.
- *
- * An expansion that collapses to the empty string (a sole/terminal optional with no
- * prefix, e.g. `:x?`) is dropped: registering `""` would bind the handler to `/`, the
- * root - never the intent. Such a route should be written with its own concrete prefix.
+ * Expand a pattern's optional params (`:p?`) into the `2^n` concrete patterns to register
+ * (each optional present and absent), so leading/middle optionals work despite Hono having no
+ * native optional-segment support. An expansion that collapses to `""` is dropped: it would
+ * otherwise bind the handler to the root `/`, never the intent.
  */
 function expandOptional(pattern: string): string[] {
   let variants: string[][] = [[]];
@@ -270,10 +237,7 @@ function toResponse(result: RouteResult): Response {
   return reply(result, 200);
 }
 
-/**
- * Resolve a matched request: run the route's typed middleware in order (any throw
- * aborts, handled by the caller's catch), then run the handler.
- */
+/** Run the route's typed middleware in order (a throw aborts via the caller's catch), then the handler. */
 async function dispatch<Ctx>(
   middleware: readonly Middleware<Ctx>[],
   run: (input: MiddlewareInput<Ctx>) => RouteResult | Promise<RouteResult>,
@@ -284,11 +248,9 @@ async function dispatch<Ctx>(
 }
 
 /**
- * Run one matched request: build the per-request context, validate body/query, run
- * the route middleware + handler, translate an {@link HttpError} into a response, and
- * log the outcome (status + timing) exactly once in the `finally`. Any other throw
- * propagates to Hono. Extracted from `mount`'s loop so its branches are scored at base
- * nesting, not the loop's. `ctrl`/`pattern` ride along on the route def for the log.
+ * Run one matched request: build the context, validate body/query, run the middleware + handler,
+ * translate an {@link HttpError} into a response (any other throw propagates to Hono), and log the
+ * outcome exactly once in the `finally`.
  */
 async function handleRequest<Ctx, E extends Env>(
   c: Context<E>,
@@ -309,8 +271,7 @@ async function handleRequest<Ctx, E extends Env>(
     const ctx = options.context ? await options.context(c) : (undefined as Ctx);
     const body = await parseBody(c, def.bodySchema);
     const query = parseQuery(c, def.querySchema);
-    // Route middleware runs first (a throw aborts via the catch below), then the handler. When an
-    // `around` wrapper is set, both run inside it (e.g. a per-request injection context).
+    // When an `around` wrapper is set, middleware + handler run inside it (e.g. an injection context).
     const exec = (): Promise<Response> =>
       dispatch(middleware, def.run, {
         params: c.req.param(),
@@ -348,15 +309,11 @@ async function handleRequest<Ctx, E extends Env>(
 
 /** Strip `{regex}` constraints from a pattern for display: `:pkg{[^-]+}?` -> `:pkg?`. */
 export function simplifyPattern(pattern: string): string {
-  return pattern.replace(/\{[^}]*\}/g, "");
+  return pattern.replace(/\{[^{}]*\}/g, "");
 }
 
 export interface FormatRoutesOptions {
-  /**
-   * `"simple"` (default): each route's `{regex}` constraints are stripped for a
-   * clean read (`:scope/:pkg`). `"verbose"`: the raw matcher patterns as Hono
-   * holds them (`:pkg{[^-][^\x2f]*}`).
-   */
+  /** `"simple"` (default) strips `{regex}` constraints; `"verbose"` shows Hono's raw matcher patterns. */
   readonly mode?: "simple" | "verbose";
 }
 
@@ -451,11 +408,9 @@ export function createRouter<Ctx, E extends Env = Env>() {
   }
 
   /**
-   * The routes actually registered on a Hono app (read from `app.routes`), for
-   * debugging: the real source of truth, so it includes routes added directly
-   * (e.g. `app.get("/")`) and the concrete patterns each `mount` produced.
-   * Middleware (`app.use`, method `ALL`) is omitted; duplicates are collapsed.
-   * Call after mounting.
+   * The routes actually registered on a Hono app (read from `app.routes`), for debugging:
+   * includes directly-added routes and the concrete patterns each `mount` produced. Middleware
+   * and method `ALL` are omitted; duplicates collapsed. Call after mounting.
    */
   function routes(app: Hono<E>): RouteInfo[] {
     const seen = new Set<string>();
@@ -470,12 +425,7 @@ export function createRouter<Ctx, E extends Env = Env>() {
     return infos;
   }
 
-  /**
-   * Log a Hono app's registered routes as an aligned table. A one-call debugging
-   * aid: `logRoutes(app)` prints the simple form; pass `{ mode: "verbose" }` for
-   * the raw matcher patterns, or `{ log }` to send the table elsewhere than
-   * `console.log`. Call after mounting.
-   */
+  /** Log a Hono app's registered routes as an aligned table (debugging aid). Call after mounting. */
   function logRoutes(
     app: Hono<E>,
     options: FormatRoutesOptions & { log?: (table: string) => void } = {},

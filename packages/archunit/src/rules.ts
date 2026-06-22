@@ -113,8 +113,8 @@ export class ArchRules {
   rule(description: string): RuleBuilder {
     const spec: RuleSpec = { description, include: [], exclude: [...this.#ignore], checks: [] };
     this.#rules.push(spec);
-    // A closure (not Object.create) so the terminal methods reach this instance's
-    // private #rules - private fields do not traverse a prototype chain.
+    // A closure (not Object.create) so terminal methods reach this instance's #rules: private fields
+    // do not traverse a prototype chain.
     const builder: RuleBuilder = {
       filesMatching: (...globs) => {
         spec.include.push(...globs.map(toFileGlob));
@@ -189,14 +189,7 @@ export class ArchRules {
     return this.checkEach().flatMap((r) => r.violations.map((v) => `[${r.description}]\n  ${v}`));
   }
 
-  /**
-   * Throw if any rule is violated (listing the offending file). Call it inside a `test()`
-   * so the rule becomes an architecture test - works with any runner:
-   *
-   *   test("the domain core has no database", () => {
-   *     rule().filesMatching("packages/*-core/src").mayNotImport(ORM).assert();
-   *   });
-   */
+  /** Throw if any rule is violated (listing the offending file). Call inside a `test()` for an arch test. */
   assert(): void {
     const violations = this.check();
     if (violations.length > 0) {

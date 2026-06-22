@@ -13,9 +13,7 @@ import { GithubIcon } from "@/components/clay/icons";
 import type { CurrentUser } from "@/hooks/use-current-user";
 import { CODE_LENGTH, normalizeCode } from "@/lib/device-code";
 
-// Each slot sits in its own single-slot group so it renders as a fully rounded,
-// fully bordered box (the design's segmented look) instead of Clay's connected
-// default, with the active box picking up the brand ring.
+// Each slot is its own single-slot group: a fully rounded box, not Clay's connected default.
 const SLOT_CLASS =
   "h-14 w-[42px] rounded-xl font-medium font-mono text-2xl text-foreground data-[active=true]:border-brand data-[active=true]:ring-brand/25";
 

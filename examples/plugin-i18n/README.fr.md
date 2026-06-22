@@ -8,12 +8,12 @@ d'API.
 
 ## Outils
 
-- **translate** — traduire une phrase d'une langue vers une autre.
-- **detect-language** — deviner la langue d'un texte.
+- **translate** - traduire une phrase d'une langue vers une autre.
+- **detect-language** - deviner la langue d'un texte.
 
 ## Blocs
 
-- **Localize message** — un bloc de transformation qui resout une cle de message
+- **Localize message** - un bloc de transformation qui resout une cle de message
   pour la locale active, avec repli sur votre langue par defaut.
 
 ## Confidentialite

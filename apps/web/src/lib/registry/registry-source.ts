@@ -20,41 +20,30 @@ import {
   repoUrl,
 } from "@/lib/registry/manifest-mapping";
 
-// Localized-doc helpers are shared mapping; re-exported so the registry facade
-// (and its tests) keep a single import path.
 export { docLocales, pickDocPath } from "@/lib/registry/manifest-mapping";
 
 /**
- * The `@brika/*` plugins are hosted on our own registry (registry.brika.dev),
- * not npm. This module reads them through the registry's npm-compatible HTTP
- * surface (packument + tarball) plus a small `/-/v1/packages` catalog endpoint,
- * and maps each manifest into the same `/v1` contract shapes the npm path
- * produces. Assets bundled in the tarball (icon, screenshots, readme, localized
- * `store.json`) are served back through the store's own `/v1/plugins/:name/asset`
- * endpoint, which extracts them from the tarball.
- *
- * It is import-safe on the client: the registry origin is a build-time constant
- * (Vite inlines `import.meta.env.VITE_REGISTRY_URL`), so the same code runs in
- * the SSR worker and during client navigation, exactly like the npm path.
+ * Reads `@brika/*` plugins from our own registry (registry.brika.dev) through its npm-compatible
+ * HTTP surface (packument + tarball + `/-/v1/packages` catalog), mapping each manifest into the
+ * same `/v1` contract shapes the npm path produces. Import-safe on the client: the registry origin
+ * is a build-time constant, so the same code runs in the SSR worker and during client navigation.
  */
 
 /** Scope hosted on our registry; everything else federates from npm. */
 export const REGISTRY_SCOPE = "@brika/";
 
 /** Public origin of the registry. Overridable for local dev via Vite env. */
-export const REGISTRY_ORIGIN: string = (
-  (import.meta.env?.VITE_REGISTRY_URL as string | undefined) ?? "https://registry.brika.dev"
-).replace(/\/+$/, "");
+export const REGISTRY_ORIGIN: string = new URL(
+  (import.meta.env?.VITE_REGISTRY_URL as string | undefined) ?? "https://registry.brika.dev",
+).origin;
 
 /** True for names hosted on our registry (the `@brika` scope). */
 export function isRegistryName(name: string): boolean {
   return name.startsWith(REGISTRY_SCOPE);
 }
 
-// The asset types we actually serve from tarballs: icons, screenshots, readme
-// images, and store.json. Images need an exact type so browsers render them.
-// This is a small, stable set (manifest asset kinds); arbitrary published files
-// derive their type from their bytes instead, so there is no per-language list.
+// Manifest asset kinds served from tarballs; images need an exact type so browsers render them.
+// Arbitrary published files derive their type from their bytes instead.
 const CONTENT_TYPES: Record<string, string> = {
   svg: "image/svg+xml",
   png: "image/png",
@@ -79,10 +68,6 @@ export function isSafeAssetPath(path: string): boolean {
   if (path.length === 0 || path.startsWith("/")) return false;
   return !path.split(/[/\\]/).includes("..");
 }
-
-// ---------------------------------------------------------------------------
-// Wire formats (npm-compatible packument subset + the catalog endpoint).
-// ---------------------------------------------------------------------------
 
 export const Manifest = z
   .object({
@@ -154,15 +139,7 @@ const Packument = z.object({
 });
 export type Packument = z.infer<typeof Packument>;
 
-// ---------------------------------------------------------------------------
-// Pure mapping (manifest -> contract). Unit-tested without any network.
-// ---------------------------------------------------------------------------
-
-/**
- * URL the store serves a tarball-bundled file from (extracted on demand). Path-
- * based and version-pinned, npm style: `/v1/plugins/<name>/v/<version>/files/<path>`.
- * The file *list* for a version lives at `/v1/plugins/<name>/v/<version>/index`.
- */
+/** URL the store serves a tarball-bundled file from: version-pinned `/v1/plugins/<name>/v/<version>/files/<path>`. */
 export function assetUrl(name: string, version: string, path: string): string {
   const clean = path.replace(/^\.?\//, "");
   const encodedPath = clean.split("/").map(encodeURIComponent).join("/");
@@ -184,18 +161,11 @@ export interface MapOptions {
   /** SRI of the latest tarball (`sha512-...`). */
   readonly integrity?: string;
   readonly shasum?: string;
-  /**
-   * The registry's verified publisher (scope owner + display name). When present it
-   * is the trusted "published by", overriding the free-text manifest `author`.
-   */
+  /** The registry's verified publisher: the trusted "published by", overriding the manifest `author`. */
   readonly publisher?: { readonly id: string; readonly name: string; readonly verified: boolean };
 }
 
-/**
- * Map a registry manifest to a `PluginDetail`. Returns null when it is not a
- * Brika plugin (no `engines.brika`), mirroring the npm path so non-plugins are
- * skipped rather than rendered half-formed.
- */
+/** Map a registry manifest to a `PluginDetail`; null when it is not a Brika plugin (no `engines.brika`). */
 export function manifestToDetail(
   manifest: Manifest,
   options: MapOptions = {},
@@ -209,8 +179,7 @@ export function manifestToDetail(
     displayName: manifest.displayName,
     description: manifest.description,
     version,
-    // Prefer the registry's verified publisher (the scope owner's chosen name) over
-    // the free-text manifest `author`; fall back to the manifest when unscoped.
+    // Prefer the registry's verified publisher over the manifest `author`; fall back when unscoped.
     author:
       options.publisher ??
       (authorName === undefined
@@ -262,11 +231,8 @@ function parseSemver(version: string): { nums: number[]; pre: string } {
   return { nums: core.split(".").map((n) => Number.parseInt(n, 10) || 0), pre };
 }
 
-/**
- * Newest-first semver comparator: 2.0.0 > 1.9.0 > 1.0.0 > 1.0.0-rc.1. Used to
- * order the release timeline by version rather than publish time, since versions
- * published in the same second tie on the timestamp.
- */
+/** Newest-first semver comparator (2.0.0 > 1.0.0 > 1.0.0-rc.1): orders by version, not publish
+ * time, since versions published in the same second tie on the timestamp. */
 export function compareVersionsDesc(a: string, b: string): number {
   const pa = parseSemver(a);
   const pb = parseSemver(b);
@@ -299,10 +265,6 @@ export function versionsFromPackument(pkg: Packument): PluginVersion[] {
   );
   return list;
 }
-
-// ---------------------------------------------------------------------------
-// Network (registry HTTP surface).
-// ---------------------------------------------------------------------------
 
 export async function getRegistryPackument(name: string): Promise<Packument | null> {
   const res = await fetch(`${REGISTRY_ORIGIN}${npmLink("/:name", { name })}`, {
@@ -350,7 +312,6 @@ export async function fetchRegistryTarball(
   return new Uint8Array(await res.arrayBuffer());
 }
 
-/** A bundled file's text, located in a set of tar entries by its package path. */
 function entryText(
   entries: Awaited<ReturnType<typeof readTarGzEntries>>,
   path: string,
@@ -398,14 +359,8 @@ export interface RegistryPluginPage {
   readonly downloadsSeries: number[];
 }
 
-/**
- * Build the full plugin-detail page for an `@brika/*` plugin from the registry:
- * the mapped detail (with localized title/description from the bundled
- * `store.json`), the localized readme/changelog, the declared readme locales,
- * and the release list. Returns null when the plugin is unknown or not a Brika
- * plugin. Fully isomorphic: the tarball is fetched over HTTP and unpacked with
- * Web Streams, so it runs in the SSR worker and during client navigation alike.
- */
+/** Build the full plugin-detail page for an `@brika/*` plugin (detail + localized readme/changelog
+ * + release list); null when unknown or not a Brika plugin. Isomorphic (tarball over HTTP + Web Streams). */
 export async function getRegistryPluginPage(
   name: string,
   locale?: string,
@@ -435,10 +390,8 @@ export async function getRegistryPluginPage(
   const changelog = changelogPath === undefined ? null : entryText(entries, changelogPath);
   const localized = applyStoreLocale(detail, resolveStoreLocale(entries, locale));
 
-  // The unpacked size/count come from the tarball we just unpacked (for the
-  // Digest row and the sidebar). The full file *list* is not shipped here - the
-  // file browser fetches it lazily from `/v1/plugins/:name/files/:version` when
-  // the Supply chain tab opens, so a large package keeps the detail payload lean.
+  // Unpacked size/count come from the tarball we just unpacked. The full file list is not shipped
+  // here; the file browser fetches it lazily, so a large package keeps the detail payload lean.
   const withMeta: PluginDetail =
     entries.length > 0
       ? {
@@ -479,11 +432,8 @@ export interface RegistryScope {
   readonly verifiedDomains: string[];
 }
 
-/**
- * Fetch a public scope's info from the registry (`GET /-/scope/:scope`), or null when it
- * does not exist (or has been taken down). The scope is URL-encoded as a single segment
- * (`@brika` -> `%40brika`), matching the registry's public scope endpoint.
- */
+/** Fetch a public scope's info (`GET /-/scope/:scope`), or null when it does not exist or is taken down.
+ * The scope is URL-encoded as a single segment (`@brika` -> `%40brika`). */
 export async function getRegistryScope(scope: string): Promise<RegistryScope | null> {
   const res = await fetch(`${REGISTRY_ORIGIN}/-/scope/${encodeURIComponent(scope)}`, {
     headers: { accept: "application/json" },

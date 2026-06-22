@@ -1,53 +1,45 @@
 import { env } from "cloudflare:workers";
+import { inject, token } from "@brika/di";
 import { defineEnv } from "@brika/env";
 import { parseOperatorAdmins } from "@brika/registry-core";
 import { z } from "zod";
 
-/**
- * The store's environment, in one place.
- *
- * - Bindings (DB, CACHE, ASSETS) are runtime objects from wrangler.jsonc; their
- *   types augment `Cloudflare.Env` at the bottom of this file.
- * - String config (secrets + vars) is validated and defaulted by the schema
- *   below; read it through `vars()`.
- */
-export const vars = defineEnv(
+/** The store's environment: string config validated by the schema below, read through {@link config}. */
+const readEnv = defineEnv(
   {
     // Secrets: required, no default (set with `wrangler secret put` / .dev.vars).
     SESSION_SECRET: z.string().min(1),
     GITHUB_CLIENT_ID: z.string().min(1),
     GITHUB_CLIENT_SECRET: z.string().min(1),
-    // Non-secret: defaults to the production callback. Override in .dev.vars for
-    // local dev (http://localhost:3000/auth/github/callback).
     GITHUB_REDIRECT_URI: z.url().min(1).default("https://store.brika.dev/auth/github/callback"),
-    // BetterAuth base URL / trusted origin (AUTH-013): the console's public origin. Used for
-    // CSRF protection and to build the provider callback (`<baseURL>/api/auth/callback/github`).
-    // Defaults to production; override in .dev.vars for local dev (http://localhost:3000).
+    // BetterAuth base URL / trusted origin (AUTH-013): the console's public origin, used for CSRF
+    // protection and to build the provider callback (`<baseURL>/api/auth/callback/github`).
     BETTER_AUTH_URL: z.url().min(1).default("https://store.brika.dev"),
-    // Stateless org domain-verification secret (ORG-010): HMAC(secret, org:domain). MUST
-    // match the registry worker's DOMAIN_VERIFY_SECRET and stay stable. Security comes from
-    // DNS control, not secrecy, so a dev default is fine; set a shared value in production.
-    DOMAIN_VERIFY_SECRET: z.string().min(1).default("brika-dev-domain-verify-secret"),
-    // Comma-separated operator allowlist gating the /operator console (Brika account ids,
-    // `users.id`). MUST match the registry worker's REGISTRY_ADMINS so the console and the
-    // takedown endpoints agree on who is an operator. Empty -> no operators, so the console is
-    // unreachable until set.
+    // Stateless scope domain-verification secret (ORG-010): HMAC(secret, scope:domain). REQUIRED,
+    // set per deployment, and MUST match the registry worker's DOMAIN_VERIFY_SECRET (security is DNS
+    // control, not the secret's secrecy).
+    DOMAIN_VERIFY_SECRET: z.string().min(1),
+    // Operator allowlist gating /operator (Brika account ids). MUST match the registry worker's
+    // REGISTRY_ADMINS so the console and the takedown endpoints agree on who is an operator.
     REGISTRY_ADMINS: z.string().default(""),
-    // Public base URL of the ASSETS R2 bucket, used to build public object URLs for directly-served
-    // assets like uploaded user avatars. Set it to the bucket's managed r2.dev URL (enable public
-    // access on the bucket -> `https://pub-<hash>.r2.dev`) or a custom domain. No default: it is
-    // deployment-specific, and a wrong value would silently produce dead URLs. Unset -> avatar
-    // upload fails loudly (the rest of the app is unaffected).
+    // Public base URL of the ASSETS R2 bucket, used to build public object URLs (e.g. uploaded
+    // avatars). No default: deployment-specific, and a wrong value would silently produce dead URLs.
     ASSETS_PUBLIC_URL: z.url().optional(),
   },
   () => env,
 );
 
-export type Vars = ReturnType<typeof vars>;
+export type Vars = ReturnType<typeof readEnv>;
+
+/** The validated config as an isolate-singleton injectable. Private: read it through {@link config}. */
+const Env = token<Vars>("Env", readEnv);
+
+/** The validated config ({@link Vars}) for the current request. THE way to read config on the server. */
+export const config = (): Vars => inject(Env);
 
 /** The operator allowlist (Brika account ids), derived from `REGISTRY_ADMINS`. */
 export function operatorAdmins(): ReadonlySet<string> {
-  return parseOperatorAdmins(vars().REGISTRY_ADMINS);
+  return parseOperatorAdmins(config().REGISTRY_ADMINS);
 }
 
 // Binding types for `env` from "cloudflare:workers" (sourced from wrangler.jsonc).

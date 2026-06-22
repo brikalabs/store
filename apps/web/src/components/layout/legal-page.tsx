@@ -5,11 +5,8 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 /**
- * Long-form legal/policy page, matching the Claude Design "Legal" layout: a
- * LEGAL eyebrow, big heading, document tabs, and a two-column body with a sticky
- * table of contents on the left. Content is the policy markdown (single source
- * in `src/content/legal`); the title, last-updated line, and draft disclaimer are
- * parsed out of it so the page chrome and the prose never drift.
+ * Long-form legal/policy page with a sticky table of contents. Title, last-updated line, and
+ * draft disclaimer are parsed out of the policy markdown so chrome and prose never drift.
  */
 
 export type LegalSlug = "terms" | "privacy" | "licenses" | "cookies" | "acceptable-use";

@@ -1,17 +1,9 @@
 /**
- * Brika prompts: a thin pass-through over @clack/prompts plus a handful of
- * brika-specific helpers that capture patterns every CLI in the monorepo
- * already repeats by hand.
+ * Brika prompts: a thin pass-through over @clack/prompts plus brika-specific helpers. Keep it thin:
+ * re-export verbatim, and add a helper only when it captures behaviour every caller should share.
  *
- * Keep this file *thin*. Re-export verbatim. Add helpers only when they capture
- * brika-specific behaviour every caller should share.
- *
- * Usage mirrors clack:
  *   import * as p from "@brika/cli-kit/prompts";
  *   await p.confirmOrAbort({ message: "Continue?" });
- *   if (p.isCI) {
- *     // skip the prompts, go straight to defaults
- *   }
  */
 
 import { cancel, confirm, isCancel } from "@clack/prompts";
@@ -50,11 +42,7 @@ export interface ConfirmOrAbortOptions {
   initialValue?: boolean;
   /** Banner printed when the user cancels or declines. Defaults to "Aborted." */
   abortMessage?: string;
-  /**
-   * Exit code on abort. Defaults to `0`; interactive cancellation isn't treated
-   * as an error. For CI/headless callers, prefer a `--yes` flag so the prompt is
-   * never reached, or pass `exitCode: 1` when a silent skip would mask a failure.
-   */
+  /** Exit code on abort. Defaults to `0` (interactive cancellation isn't an error); pass `1` to fail. */
   exitCode?: number;
 }
 

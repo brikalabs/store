@@ -48,8 +48,7 @@ export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
       </p>
       <div className="flex items-center gap-4">
         <GradientAvatar
-          // The cache-buster reloads the image after upload/clear; with no logo (404) the clay
-          // Avatar shows the generated gradient avatar - the same fallback the public page uses.
+          // Cache-buster reloads the image after upload/clear; a 404 (no logo) shows the gradient avatar.
           seed={scope}
           label={scope}
           imageUrl={`${scopePath(scope, "/icon")}?v=${bust}`}

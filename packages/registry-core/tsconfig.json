@@ -1,7 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2023", "DOM"]
+    "lib": ["ES2023", "DOM"],
+    // `@brika/di` uses `node:async_hooks` (via the `bun` types superset).
+    "types": ["bun"]
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]

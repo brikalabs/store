@@ -2,7 +2,9 @@
 
 The Brika registry's domain core. **No Cloudflare imports**: storage is behind
 ports, so the same code runs under Bun (tests) and workerd (production), and the
-security-critical logic is unit-testable in isolation.
+security-critical logic is unit-testable in isolation. The services are
+**field-injected** (`@brika/di`): each `inject()`s its ports, so the core stays
+infrastructure-free while an app gets `inject(ResolveService)` DX.
 
 ## Modules
 
@@ -33,12 +35,18 @@ security-critical logic is unit-testable in isolation.
 
 ## Example
 
-```ts
-import { ResolveService } from "@brika/registry-core";
+`ResolveService` field-injects its ports; bind them (in an app's composition root, or a `testBed`)
+and inject it. See [`docs/di.md`](../../docs/di.md) for the wiring rules.
 
-const service = new ResolveService(metadataReader, tarballReader, {
-  baseUrl: new URL(request.url).origin,
-});
+```ts
+import { testBed, provide } from "@brika/di";
+import { MetadataReader, TarballReader, RegistryBaseUrl, ResolveService } from "@brika/registry-core";
+
+const service = testBed(
+  provide(MetadataReader, metadataReader),
+  provide(TarballReader, tarballReader),
+  provide(RegistryBaseUrl, new URL(request.url).origin),
+).inject(ResolveService);
 const packument = await service.packument("@brika/plugin-weather");
 ```
 

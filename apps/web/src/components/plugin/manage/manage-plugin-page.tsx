@@ -8,10 +8,8 @@ import { VersionsCard } from "./versions-card";
 export interface ManageData {
   readonly name: string;
   /**
-   * The public detail, or null when the package currently has no installable (non-yanked)
-   * version. The owner must still reach this page to un-yank, so we never 404 a hosted
-   * package here - the detail just becomes unavailable and the versions panel (which reads
-   * every version directly) carries the management.
+   * The public detail, or null when no installable (non-yanked) version exists. We never 404 a
+   * hosted package here so the owner can still reach this page to un-yank.
    */
   readonly detail: PluginDetail | null;
 }

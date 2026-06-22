@@ -30,10 +30,10 @@ const fakeBlobStore: BlobStore = {
 
 function build() {
   const db = makeStoreDb();
-  // Override the auto-building Database with a fake exposing `.orm` over the in-memory db, so the
-  // stores resolve their `inject(Database).orm` to it without touching `Bindings`/the runtime.
+  // Override the auto-building Database with the in-memory drizzle client, so the stores resolve
+  // their `inject(Database)` to it without touching `Bindings`/the runtime.
   const injector = createInjector([
-    { provide: Database, useValue: { orm: db } },
+    { provide: Database, useValue: db },
     { provide: BlobStore, useValue: fakeBlobStore },
   ]);
   return {

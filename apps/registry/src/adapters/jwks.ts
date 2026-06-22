@@ -5,11 +5,7 @@ const Jwks = z.object({
   keys: z.array(z.object({ kid: z.string(), kty: z.string(), n: z.string(), e: z.string() })),
 });
 
-/**
- * Fetches and caches a provider's OIDC signing keys from its JWKS endpoint. One implementation
- * for every issuer (GitHub, GitLab, ...) - the only difference is the URL, so the caller
- * constructs one per provider rather than duplicating the fetch + cache per issuer.
- */
+/** Fetches and caches a provider's OIDC signing keys from its JWKS endpoint (one per issuer URL). */
 export class CachingJwksProvider implements JwksProvider {
   #cache: Jwk[] | null = null;
   #fetchedAt = 0;

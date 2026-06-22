@@ -22,7 +22,7 @@ class SystemClock implements Clock {
 
 describe("interface tokens via token()", () => {
   test("inject(X) resolves by interface to the bound implementation", () => {
-    const injector = createInjector([{ provide: Clock, useClass: SystemClock }]);
+    const injector = createInjector([{ provide: Clock, useFactory: () => new SystemClock() }]);
     expect(injector.get(Clock).now()).toBe(1000);
   });
 
@@ -38,7 +38,9 @@ describe("interface tokens via token()", () => {
         return `now=${this.clock.now()}`;
       }
     }
-    const result = createInjector([{ provide: Clock, useClass: SystemClock }]).get(Greeter);
+    const result = createInjector([{ provide: Clock, useFactory: () => new SystemClock() }]).get(
+      Greeter,
+    );
     expect(result.greet()).toBe("now=1000");
   });
 });

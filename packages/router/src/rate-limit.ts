@@ -3,11 +3,8 @@ import { tooManyRequests } from "./errors";
 import type { Middleware, MiddlewareInput } from "./router";
 
 /**
- * Generic, transport-agnostic rate limiting for the router: a {@link RateLimiter}
- * port, a pure in-memory default ({@link FixedWindowRateLimiter}), and the
- * {@link rateLimit} middleware that enforces a limiter on a route. Concrete
- * limiters (a distributed store, a platform binding) implement the port; an app
- * wires one per route with its own key strategy. Nothing here is app-specific.
+ * Generic, transport-agnostic rate limiting: a {@link RateLimiter} port, a pure in-memory default
+ * ({@link FixedWindowRateLimiter}), and the {@link rateLimit} middleware that enforces it on a route.
  */
 
 /** The outcome of a rate-limit check for one key. */
@@ -38,16 +35,12 @@ interface WindowState {
 }
 
 /**
- * A pure, in-memory fixed-window rate limiter. Holds per-key counters keyed to a
- * window that resets once `windowSeconds` elapse. The clock is injected so tests
- * are deterministic; it defaults to wall-clock time. In-process state means it
- * limits per isolate, not globally, which is right for tests and local dev; a
- * distributed deployment supplies its own {@link RateLimiter} behind the same port.
+ * A pure, in-memory fixed-window rate limiter (injected clock for deterministic tests). In-process
+ * state limits per isolate, not globally; a distributed deployment supplies its own {@link RateLimiter}.
  *
- * A key's counter is reset lazily on its next request, so entries for keys that are
- * never seen again persist for the isolate's lifetime. That is fine for the intended
- * use (bounded key spaces: a /64 IP prefix, a principal) but means this is not a
- * fit for an adversarial unbounded-key workload as a standalone production limiter.
+ * Counters are reset lazily on the next request, so entries for keys never seen again persist for the
+ * isolate's lifetime: fine for bounded key spaces (a /64 prefix, a principal), but not a fit for an
+ * adversarial unbounded-key workload as a standalone production limiter.
  */
 export class FixedWindowRateLimiter implements RateLimiter {
   readonly #limit: number;
@@ -88,11 +81,7 @@ const UNIT_SECONDS = { s: 1, m: 60, h: 3600 } as const;
 /** Cap windows at a day: anything larger is a typo, and guards against overflow. */
 const MAX_WINDOW_SECONDS = 86_400;
 
-/**
- * Zod schema for a {@link Duration}: validates the `<int><unit>` shape and converts
- * to seconds, rejecting non-positive or absurdly large windows. Used by
- * {@link parseDuration}; consistent with the rest of the codebase's zod validation.
- */
+/** Zod schema for a {@link Duration}: validates `<int><unit>` and converts to seconds. */
 const durationSchema = z.string().transform((value, ctx) => {
   const match = /^(\d+)([smh])$/.exec(value);
   const seconds = match
@@ -121,21 +110,15 @@ export interface RateLimitConfig<Ctx> {
   readonly window: Duration;
   /** Derive the rate-limit key from the request (an IP, a principal, …). */
   readonly key: RateLimitKey<Ctx>;
-  /**
-   * Optional backend, built from the window. Defaults to a per-isolate
-   * {@link FixedWindowRateLimiter}; pass e.g. a Cloudflare-binding factory for a
-   * distributed limiter, or `() => yourLimiter` to supply your own.
-   */
+  /** Optional backend built from the window. Defaults to a per-isolate {@link FixedWindowRateLimiter}. */
   readonly store?: (window: RateLimitWindow) => RateLimiter;
   /** Optional 429 message (defaults to "Too many requests"). */
   readonly message?: string;
 }
 
 /**
- * Middleware that rate-limits a route, throwing `429` (with `Retry-After`) when the
- * key's window is exhausted: `rateLimit({ max: 10, window: "1m", key: clientKey })`.
- * The limiter is built ONCE here (route-definition time), so its window persists
- * across requests.
+ * Middleware that rate-limits a route, throwing `429` (with `Retry-After`) when the key's window is
+ * exhausted. The limiter is built ONCE here (route-definition time), so its window persists across requests.
  */
 export function rateLimit<Ctx>(config: RateLimitConfig<Ctx>): Middleware<Ctx> {
   const window = { limit: config.max, windowSeconds: parseDuration(config.window) };

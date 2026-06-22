@@ -1,6 +1,7 @@
+import { inject } from "@brika/di";
 import type { ScopeProfileInput, ScopeRecord, ScopeStore } from "@brika/registry-core";
 import { desc, eq } from "drizzle-orm";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regScopes } from "../schema";
 
 type ScopeRow = typeof regScopes.$inferSelect;
@@ -18,11 +19,7 @@ function toRecord(row: ScopeRow): ScopeRecord {
 
 /** Cloudflare D1 implementation of the {@link ScopeStore} port (the `reg_scopes` table). */
 export class D1ScopeStore implements ScopeStore {
-  readonly #db: Db;
-
-  constructor(db: Db) {
-    this.#db = db;
-  }
+  readonly #db = inject(Db);
 
   async get(scope: string): Promise<ScopeRecord | null> {
     const rows = await this.#db.select().from(regScopes).where(eq(regScopes.scope, scope)).limit(1);
@@ -36,10 +33,8 @@ export class D1ScopeStore implements ScopeStore {
   }
 
   /**
-   * Race-safe claim: insert only if the scope is unclaimed and report whether THIS call
-   * created the row. `onConflictDoNothing().returning()` returns the inserted row on a win
-   * and nothing on a conflict (the insert is the serialization point under D1/SQLite's
-   * single writer), so concurrent claims of a new scope serialize and exactly one is told
+   * Race-safe claim, reporting whether THIS call created the row. `onConflictDoNothing().returning()`
+   * is the serialization point under SQLite's single writer, so exactly one concurrent claim is told
    * `created: true` - that caller becomes the first admin.
    */
   async claim(scope: string): Promise<{ record: ScopeRecord; created: boolean }> {

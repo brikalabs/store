@@ -3,14 +3,8 @@ import { ChevronRight, File as FileIcon, Folder } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
 
 /**
- * A small file-tree primitive built in-repo so we can match the store's design
- * exactly: bold folders with a brand folder glyph, a brand left-bar + tint on
- * the selected row, and faint guide lines for nesting. Composition is slot-based
- * (Radix-style): a `TreeItem` wraps a `TreeItemRow` (the clickable line, whose
- * children are the label and any trailing slots like a badge) and, for folders,
- * a `TreeItemContent` holding the nested items. The controlled expanded/selected
- * API mirrors a generic tree so this can move into `@brika/clay` later without
- * changing call sites.
+ * A slot-based file-tree primitive (Radix-style): a `TreeItem` wraps a `TreeItemRow` and,
+ * for folders, a `TreeItemContent` of nested items. Controlled expanded/selected.
  */
 
 interface TreeContextValue {
@@ -105,16 +99,12 @@ export function TreeItem({
   return <ItemContext.Provider value={value}>{children}</ItemContext.Provider>;
 }
 
-// One indent step. The chevron column and each guide column share this width so
-// a child's guide line lands exactly under its ancestor folder's chevron.
+// One indent step; the chevron and guide columns share this width so a child's
+// guide line lands exactly under its ancestor folder's chevron.
 const INDENT = 18;
 
-/**
- * The indent rail: one full-height column per ancestor level, each carrying a
- * centered vertical guide line. Drawn as a single repeating gradient (a 1px line
- * at 8px within every INDENT-wide band) so it stays aligned with the chevron
- * column that follows, without an array of positional spans.
- */
+// Indent rail: a single repeating gradient (1px line per INDENT-wide band) so the
+// guides stay aligned with the chevron column without an array of positional spans.
 function GuideLines({ depth }: Readonly<{ depth: number }>) {
   if (depth === 0) return null;
   return (

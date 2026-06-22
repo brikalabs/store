@@ -1,11 +1,6 @@
 import * as z from "zod";
 
-/**
- * BRIKA Plugin Package Schema (Zod)
- *
- * Extends standard package.json with BRIKA-specific fields.
- * JSON Schema is generated from this file.
- */
+/** BRIKA plugin package schema (Zod): standard package.json plus BRIKA fields. JSON Schema is generated from it. */
 
 // ============================================================================
 // Base Package.json Schema
@@ -116,17 +111,15 @@ const BasePackageJson = z.looseObject({
 // ============================================================================
 
 const semverPattern = /^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$/;
-// Simplified: allows ^1.0.0, ~1.0.0, >=1.0.0, 1.0.0, etc.
-// Split into a per-token pattern to keep regex cognitive complexity low.
+// Per-token pattern (split keeps regex cognitive complexity low): allows ^1.0.0, ~1.0.0, >=1.0.0, etc.
 const semverRangeToken = /^[~^><=]*\d+\.\d+\.\d+(-[\w.-]+)?$/;
 function isValidSemverRange(s: string): boolean {
   return s.split(/\s+/).every((t) => semverRangeToken.test(t));
 }
 
 /**
- * A plugin-local identifier (block/brick/page/spark/tool id). These ids are
- * interpolated into served file paths (e.g. `bricks/<id>.tsx`), so they must
- * never contain path separators or dots that could escape the plugin root.
+ * A plugin-local identifier (block/brick/page/spark/tool id). Interpolated into served file paths
+ * (e.g. `bricks/<id>.tsx`), so it must never contain path separators or dots that escape the plugin root.
  */
 const localId = z
   .string()
@@ -294,13 +287,8 @@ const PageSchema = z.object({
 // ============================================================================
 
 /**
- * Unit multipliers for the byte-string parser.
- *
- * Disk and memory limits in dev tooling almost universally use base
- * 1024 (so "1 GB" of RAM is about 1 GiB), and that's what operators expect
- * here too, so we treat `kb` and `kib` as synonyms (both = 1024) and
- * `mb`/`mib`, `gb`/`gib`, `tb`/`tib` likewise. Strict SI fans can
- * still write raw integers if they care about exact base-10 values.
+ * Unit multipliers for the byte-string parser. Dev tooling almost universally uses base 1024, so
+ * `kb`/`kib`, `mb`/`mib`, etc. are synonyms; strict SI users can write raw integers for base-10.
  */
 const BYTE_UNIT_MULTIPLIERS: Record<string, number> = {
   "": 1,
@@ -319,30 +307,18 @@ const BYTE_UNIT_MULTIPLIERS: Record<string, number> = {
   tib: 1024 ** 4,
 };
 
-/**
- * Hard ceiling on the byte-string length we'll attempt to parse:
- * the longest legitimate value (`"1234567890.123456 tib"`-ish) is
- * well under 32 chars. Anything larger is a typo or a fuzzer.
- */
+/** Hard ceiling on byte-string length to parse: any legitimate value is under 32 chars; larger is a typo/fuzzer. */
 const BYTE_STRING_MAX_LENGTH = 32;
 
 /**
- * Pattern: digits + optional `.fraction` + optional single space +
- * unit letters, anchored. Trimmed input only: leading / trailing
- * whitespace is stripped by the caller, which avoids the multiple
- * `\s*` quantifiers Sonar treats as a ReDoS hotspot. The remaining
- * character classes (`\d`, `[a-z]`) don't overlap, so the regex is
- * strictly linear.
+ * digits + optional `.fraction` + optional single space + unit letters, anchored. Operates on trimmed
+ * input only, avoiding the multiple `\s*` quantifiers Sonar flags as a ReDoS hotspot; the rest is linear.
  */
 const BYTE_STRING_PATTERN = /^(\d+(?:\.\d+)?) ?([a-z]*)$/i;
 
 /**
- * Parse a human-readable byte count like `"500mb"` / `"2 gb"` /
- * `"256 mib"` / `"1024"` into a non-negative integer.
- *
- * Returns `null` for malformed input, NaN/Infinity, negative results,
- * unknown unit suffixes, or strings exceeding `BYTE_STRING_MAX_LENGTH`.
- * The caller turns that into a zod issue.
+ * Parse a human-readable byte count (`"500mb"`, `"2 gb"`, `"1024"`) into a positive integer, or `null`
+ * for malformed/non-finite/unknown-unit/over-length input (the caller turns `null` into a zod issue).
  */
 function parseByteString(raw: string): number | null {
   if (raw.length > BYTE_STRING_MAX_LENGTH) {
@@ -364,14 +340,7 @@ function parseByteString(raw: string): number | null {
   return Math.floor(bytes);
 }
 
-/**
- * Positive byte count. Accepts either:
- *   - a raw positive integer (`2147483648`)
- *   - a human-readable string (`"2gb"`, `"500 mb"`, `"256mib"`).
- *
- * The schema normalises both to a plain positive integer so consumers
- * only ever see numbers in the typed output.
- */
+/** Positive byte count: a raw integer or a human-readable string (`"2gb"`), normalized to an integer. */
 const BytesSchema = z
   .union([
     z.number().int().positive(),
@@ -393,19 +362,9 @@ const BytesSchema = z
 
 const FsResourcesSchema = z
   .object({
-    /**
-     * Per-call cap on the bytes a single `readFile` / `writeFile`
-     * action can move. Mirrors the hub-level `DEFAULT_MAX_FILE_BYTES`
-     * default; useful when a plugin legitimately needs to handle
-     * larger payloads (e.g. media tooling) or wants to declare a
-     * tighter cap for defence in depth.
-     */
+    /** Per-call cap on bytes a single `readFile`/`writeFile` can move (mirrors hub `DEFAULT_MAX_FILE_BYTES`). */
     maxFileBytes: z.optional(BytesSchema),
-    /**
-     * Per-root disk quotas. Each value caps the total bytes the
-     * plugin can hold across the named virtual root. Omitted roots
-     * fall back to the hub default.
-     */
+    /** Per-root disk quotas; omitted roots fall back to the hub default. */
     quotas: z.optional(
       z
         .object({
@@ -430,16 +389,12 @@ const ResourcesSchema = z
 // Final Plugin Package Schema
 // ============================================================================
 
-// A canonical scoped package name: `@scope/name`, both segments lowercase
-// `a-z0-9-` and not starting with a hyphen; the scope is 2-20 chars. This MIRRORS
-// `registry-core/names.ts` CANONICAL_NAME (the single source of truth for the
-// publish gate) so the build/publish-time manifest schema and the registry never
-// disagree on what a valid name is. Keep the two in sync. npm caps the full
-// name at 214 chars.
+// A canonical scoped package name. MIRRORS `registry-core/names.ts` CANONICAL_NAME (the publish-gate
+// source of truth) so the manifest schema and the registry never disagree; keep the two in sync.
 const CANONICAL_NAME = /^@[a-z0-9][a-z0-9-]{1,19}\/[a-z0-9][a-z0-9-]*$/;
 
 export const PluginPackageSchema = BasePackageJson.extend({
-  // Override: Brika is scope-only - every plugin must be published under a scope.
+  // Brika is scope-only: every plugin must be published under a scope.
   name: z
     .string()
     .max(214, "Package name must be at most 214 characters")
@@ -448,17 +403,15 @@ export const PluginPackageSchema = BasePackageJson.extend({
       "Plugin package name (used as plugin ID). Must be a canonical scoped name (e.g., @myorg/plugin-name); unscoped names are rejected.",
     ),
 
-  // Override: strict semver for plugins
   version: z.string().regex(semverPattern).describe("Plugin version (semver)"),
 
-  // Override: plugin runtime entrypoint is required by hub resolver
+  // Required: the hub resolver needs a runtime entrypoint.
   main: z
     .string()
     .trim()
     .min(1, "main must not be empty")
     .describe('Plugin entrypoint file, e.g. "./src/index.ts"'),
 
-  // Override: require engines with brika field
   engines: z
     .looseObject({
       brika: z
@@ -493,7 +446,5 @@ export const PluginPackageSchema = BasePackageJson.extend({
   resources: z.optional(ResourcesSchema),
 });
 
-/**
- * TypeScript type for BRIKA plugin package.json
- */
+/** TypeScript type for a BRIKA plugin package.json. */
 export type PluginPackageSchema = z.infer<typeof PluginPackageSchema>;

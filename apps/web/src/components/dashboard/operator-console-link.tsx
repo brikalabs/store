@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import { fetchIsOperator } from "@/server/require-operator";
 
 /**
- * A link into the operator console, rendered only for registry operators. Operator status
- * comes from a server function (the allowlist is server-only), so this resolves it after
- * mount and renders nothing for everyone else - the console's existence stays hidden.
+ * A link into the operator console, resolved server-side (the allowlist is server-only) and
+ * rendered only for operators, so the console's existence stays hidden from everyone else.
  */
 export function OperatorConsoleLink() {
   const [operator, setOperator] = useState(false);

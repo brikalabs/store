@@ -1,37 +1,25 @@
+import { token } from "@brika/di";
 import type { ScopeLink, ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 
-/**
- * The ports (and the records they exchange) the {@link import("./scope").ScopeService}
- * depends on - persistence for scopes/domains plus the injected DNS + challenge + claim
- * seams. Kept separate from the service so the dependency surface reads in one place and
- * adapters implement against types, not the service file.
- */
+/** The ports (and records they exchange) that {@link import("./scope").ScopeService} depends on. */
 
-/**
- * A scope record: the scope (`@brika`), its verified-publisher display name, and editable
- * profile (description, links, uploaded icon key). The icon is stored elsewhere (R2); the
- * record only holds the key the storefront serves it by.
- */
+/** A scope record: the scope (`@brika`), its verified-publisher display name, and editable profile. */
 export interface ScopeRecord {
   readonly scope: string;
   readonly displayName: string | null;
   readonly description: string | null;
   readonly links: readonly ScopeLink[];
   readonly iconKey: string | null;
-  /**
-   * Operator takedown reason, or null when active (ORG-007). A taken-down scope is withdrawn
-   * from public listings ({@link import("./scope").ScopeService.getPublic} returns null) but
-   * the record and its members are retained so an admin can restore it.
-   */
+  /** Operator takedown reason, or null when active (ORG-007). A taken-down scope is withdrawn from
+   *  public listings, but the record and members are retained so an admin can restore it. */
   readonly takedown: string | null;
 }
 
 /**
- * Persistence port for scopes (the `reg_scopes` table). The race-safe claim lives here
- * because it is a storage concern: {@link ScopeStore.claim} inserts only if absent and
- * reports whether THIS call created the row, so concurrent claims of a new scope serialize
- * and exactly one caller is told it created the scope (and becomes its first admin).
+ * Persistence port for scopes. {@link ScopeStore.claim} is race-safe: it inserts only if absent and
+ * reports whether THIS call created the row, so concurrent claims serialize and exactly one caller
+ * is told it created the scope (and becomes its first admin).
  */
 export interface ScopeStore {
   get(scope: string): Promise<ScopeRecord | null>;
@@ -47,6 +35,8 @@ export interface ScopeStore {
   /** Set the operator takedown reason (null restores the scope); ORG-007. */
   setTakedown(scope: string, reason: string | null): Promise<void>;
 }
+/** DI token for the {@link ScopeStore} port. */
+export const ScopeStore = token<ScopeStore>("ScopeStore");
 
 /** A domain a scope has claimed and (once its challenge TXT is found) verified. */
 export interface ScopeDomainRecord {
@@ -61,10 +51,9 @@ export interface ScopeScopedDomain {
 }
 
 /**
- * Persistence port for a scope's claimed domains (`reg_scope_domains`). A domain is claimed,
- * then verified once its (stateless, derived) challenge TXT is found in DNS. Verified
- * domains are a public trust badge (ORG-010). No challenge is stored - it is recomputed
- * from a server secret via {@link DomainChallenge}.
+ * Persistence port for a scope's claimed domains. A domain is claimed, then verified once its
+ * derived challenge TXT is found in DNS; verified domains are a public trust badge (ORG-010). No
+ * challenge is stored - it is recomputed from a server secret via {@link DomainChallenge}.
  */
 export interface ScopeDomains {
   /** Every domain claimed by the scope (verified and pending). */
@@ -78,40 +67,41 @@ export interface ScopeDomains {
   /** Every currently-verified domain across all scopes, for the re-verification cron. */
   listAllVerified(): Promise<ScopeScopedDomain[]>;
 }
+/** DI token for the {@link ScopeDomains} port. */
+export const ScopeDomains = token<ScopeDomains>("ScopeDomains");
 
 /**
- * DNS TXT lookup, injected so domain verification (ORG-010) does not bake in a transport.
- * The Cloudflare adapter resolves over DNS-over-HTTPS (Workers cannot do raw DNS). It
- * returns `[]` when the lookup SUCCEEDED with no matching record, and THROWS on a transport
- * failure - so the cron can tell "TXT removed" (revoke) from "DNS hiccup" (skip) apart.
+ * DNS TXT lookup for domain verification (ORG-010). Returns `[]` when the lookup SUCCEEDED with no
+ * matching record, and THROWS on a transport failure - so the cron can tell "TXT removed" (revoke)
+ * from "DNS hiccup" (skip) apart.
  */
 export interface DnsResolver {
   txt(hostname: string): Promise<string[]>;
 }
+/** DI token for the {@link DnsResolver} port. */
+export const DnsResolver = token<DnsResolver>("DnsResolver");
 
 /**
- * Computes the stateless domain-verification challenge: a deterministic token derived from
- * a server secret + the scope + the domain (HMAC), so nothing is stored and no per-domain
- * secret can leak from the database. The scope publishes this token in a TXT record at
- * `_brika-challenge.<domain>`; verification recomputes and compares it. Injected so the
- * crypto + secret live in the composition root, not the domain.
+ * Computes the stateless domain-verification challenge: an HMAC of (server secret, scope, domain),
+ * so nothing per-domain is stored and no secret can leak from the database. The scope publishes the
+ * token in a TXT at `_brika-challenge.<domain>`; verification recomputes and compares.
  */
 export interface DomainChallenge {
   token(scope: string, domain: string): Promise<string>;
 }
+/** DI token for the {@link DomainChallenge} port. */
+export const DomainChallenge = token<DomainChallenge>("DomainChallenge");
 
-/**
- * Anti-squat seam (ORG-006): may this identity claim this scope (`@name`)? Injected so a
- * provider-agnostic verification system (proving the caller controls the name on GitHub,
- * GitLab, a domain, ...) drops in without touching the claim orchestration. Defaults to
- * allow-all, so behaviour is unchanged until one is wired in.
- */
+/** Anti-squat seam (ORG-006): may this identity claim this scope? Defaults to allow-all until a
+ *  verification system is wired in. */
 export interface ClaimVerifier {
   verify(
     identity: PublishIdentity,
     name: string,
   ): Promise<{ ok: true } | { ok: false; message: string }>;
 }
+/** DI token for the {@link ClaimVerifier} port (optional; defaults to allow-all in {@link import("./scope").ScopeService}). */
+export const ClaimVerifier = token<ClaimVerifier>("ClaimVerifier");
 
 /** The public view of a scope (what the unauthenticated `/@:scope` page renders). */
 export interface ScopePublic {

@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { Db } from "../client";
 import { regScopes } from "../schema";
-import { makeDb } from "../test-harness";
+import { makeAdapter, makeDb } from "../test-harness";
 import { D1TrustedPublishers } from "./d1-trusted-publishers";
 
 let db: Db;
 let store: D1TrustedPublishers;
 beforeEach(async () => {
   db = makeDb();
-  store = new D1TrustedPublishers(db);
+  store = makeAdapter(db, D1TrustedPublishers);
   // A binding's scope FK must exist (reg_trusted_publishers -> reg_scopes).
   await db.insert(regScopes).values({ scope: "@brika" });
 });

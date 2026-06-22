@@ -50,14 +50,14 @@ Concretely:
 - **Every port ships a platform-free default** used by unit tests and local dev
   (an in-memory metadata fake, the router's pure `FixedWindowRateLimiter`, …).
   So the **domain core** is provably runnable with *zero* Cloudflare adapters
-  present — which is exactly the property that lets us move.
-- **Data-plane bindings are read in one place**: D1 and R2 flow through the
-  `buildServices` composition root, fed by the single `context` factory in each
-  app's `index.ts`. No controller, no domain service, ever touches them via the
-  ambient `env`. Edge-config bindings that are not part of the domain graph (the
+  present - which is exactly the property that lets us move.
+- **Data-plane bindings are read in one place**: D1 and R2 flow through each app's
+  composition root (`webProviders` in the web, `provideRegistry(config)` in the
+  registry), entered once per request via `runInContext`. No controller, no domain
+  service, ever touches them via the ambient `env`. Edge-config bindings that are not part of the domain graph (the
   typed env vars, and the rate-limit binding) are read through the typed
   `cloudflare:workers` `env` module instead, next to the edge code that uses them
-  (e.g. the rate-limit binding in `adapters/cf-rate-limiter.ts`) — a deliberate
+  (e.g. the rate-limit binding in `adapters/cf-rate-limiter.ts`) - a deliberate
   exception so a cross-cutting concern stays self-contained rather than threading
   through every service. Both kinds of binding are Cloudflare-typed and both are
   what a platform move rewrites.
@@ -65,16 +65,16 @@ Concretely:
 **What moving off Cloudflare would (and would not) take.** It would take:
 reimplementing the handful of adapters against the new platform (e.g. Postgres
 for D1, S3 for R2, a Redis token-bucket for `RateLimiter`), and rewriting each
-app's thin entrypoint — `index.ts`, `wrangler.jsonc`, the `buildServices`
-signature, the `Env` types, and the wiring tests that construct the service
+app's thin entrypoint - `index.ts`, `wrangler.jsonc`, the composition root
+(`provideRegistry` / `webProviders`), the `Env` types, and the wiring tests that construct the service
 graph. It would **not** touch the domain core, the services, the gates, the
-integrity/packument logic, the controllers, or the core's unit tests — those
+integrity/packument logic, the controllers, or the core's unit tests - those
 depend on ports, not on Cloudflare. The blast radius is, by construction, the
 `adapters/` directories and the per-app composition root, not the business logic.
 
 ## Architecture rules (enforced)
 
-The layering above is not a convention you have to remember — the key parts are
+The layering above is not a convention you have to remember - the key parts are
 enforced (ArchUnit-style) by the **`@brika/archunit`** package and written as ordinary
 tests under `architecture/` (split by concern: `packages`, `apps`, `naming`). Each rule is
 one `bun test` case: declare what a layer may not import, then assert it, e.g.
@@ -93,11 +93,11 @@ and a violation fails the test naming the offending file + import. The rules:
   (`drizzle-orm`, `@brika/store-db`), or an HTTP framework (`hono`, `@brika/router`). It
   speaks only ports, so it stays runnable with zero adapters.
 - **B. The router (`@brika/router`) is platform-free.** No Cloudflare, no database/ORM.
-  (Hono is allowed — the router is a thin typed layer over it.)
+  (Hono is allowed - the router is a thin typed layer over it.)
 - **C. The database is reached only through adapters and the composition root.** Inside
   `apps/registry/src`, only `adapters/**` and the composition root (`services.ts`,
   `index.ts`) may import `drizzle-orm`/`@brika/store-db`. Controllers, auth, and the rest
-  go through a port on `ctx` — they cannot touch `db`. (Tests are exempt; they seed the
+  go through a port on `ctx` - they cannot touch `db`. (Tests are exempt; they seed the
   in-memory database directly.)
 
 Every adapter under `apps/registry/src/adapters` implements a `registry-core` port
@@ -109,12 +109,12 @@ Beyond layering, the same engine enforces naming so the layers stay legible
 (`architecture/naming.test.ts`). Filenames are checked with `mustBeNamed`, class names with
 the `classesMust{Be,NotBe}Named` / `classesMustBe{Prefixed,Suffixed}` family:
 
-- **D. Source files are kebab-case** — the domain core, the registry controllers, and the
+- **D. Source files are kebab-case** - the domain core, the registry controllers, and the
   registry adapters all use `name-like-this.ts`, so a file name reads as one thing.
-- **E. Domain services are suffixed `Service`** and **carry no infra prefix** — every class
+- **E. Domain services are suffixed `Service`** and **carry no infra prefix** - every class
   in `registry-core` ends in `Service` (`PublishService`, `ScopeService`, …) and none is named
   `D1*`/`R2*`/`Cf*`, so an adapter type can never quietly leak into the domain core.
-- **F. A vendor-backed adapter's class carries the vendor prefix** — adapter classes are
+- **F. A vendor-backed adapter's class carries the vendor prefix** - adapter classes are
   PascalCase, and `d1-*.ts` declares `D1*` classes while `r2-*.ts` declares `R2*` classes, so
   the file name and the class agree on which infra they bind to.
 

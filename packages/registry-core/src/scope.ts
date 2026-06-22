@@ -1,32 +1,34 @@
+import { inject, injectOr, token } from "@brika/di";
 import { HttpStatus } from "./http-status";
 import { REGISTRY_LIMITS } from "./limits";
-import type { ScopeMember, ScopeMembers, ScopeRole } from "./membership";
+import { type ScopeMember, ScopeMembers, type ScopeRole } from "./membership";
 import type { ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
-import type {
+import {
   ClaimVerifier,
   DnsResolver,
   DomainChallenge,
-  ScopeDomainRecord,
+  type ScopeDomainRecord,
   ScopeDomains,
-  ScopePublic,
-  ScopeRecord,
-  ScopeScopedDomain,
+  type ScopePublic,
+  type ScopeRecord,
+  type ScopeScopedDomain,
   ScopeStore,
 } from "./scope-ports";
-import type { TrustedPublisher, TrustedPublishers } from "./trusted-publishers";
+import { type TrustedPublisher, TrustedPublishers } from "./trusted-publishers";
 
-// Re-export the ports so `@brika/registry-core`'s index (and any consumer) can keep
-// importing them from "./scope" - the split is internal to this module.
-export type {
+/** Max scopes one account may administer (anti-squat cap, ORG-005); optional, defaults to limits. */
+export const MaxScopesPerAccount = token<number>("MaxScopesPerAccount");
+
+export {
   ClaimVerifier,
   DnsResolver,
   DomainChallenge,
-  ScopeDomainRecord,
+  type ScopeDomainRecord,
   ScopeDomains,
-  ScopePublic,
-  ScopeRecord,
-  ScopeScopedDomain,
+  type ScopePublic,
+  type ScopeRecord,
+  type ScopeScopedDomain,
   ScopeStore,
 } from "./scope-ports";
 
@@ -54,14 +56,11 @@ const allowAllClaimVerifier: ClaimVerifier = { verify: () => Promise.resolve({ o
 /** No-op resolver: returns no TXT records, so a domain stays unverified until a real one is wired. */
 const nullDnsResolver: DnsResolver = { txt: () => Promise.resolve([]) };
 
-/**
- * Unconfigured challenge: returns a value that DNS can never hold, so a service with no
- * secret wired never verifies a domain (fail-closed). The real {@link DomainChallenge} is
- * injected by the composition root with the server secret.
- */
+/** Unconfigured challenge: returns a value DNS can never hold, so a service with no secret wired
+ *  never verifies a domain (fail-closed). */
 const nullDomainChallenge: DomainChallenge = { token: () => Promise.resolve(" unconfigured") };
 
-/** No-op trusted-publisher store: no bindings, management no-ops. Real one injected by the root. */
+/** No-op trusted-publisher store: no bindings, management no-ops. */
 const nullTrustedPublishers: TrustedPublishers = {
   listForScope: () => Promise.resolve([]),
   add: (binding) => Promise.resolve(binding),
@@ -78,39 +77,23 @@ function refuse(status: number, message: string): { ok: false; status: number; m
 }
 
 /**
- * Scope use cases (npm/JSR-style, the scope IS the ownership entity): claim a scope (creator
- * becomes first admin), manage its members + display name + profile + domains, and the
- * trusted-publisher bindings that authorize tokenless OIDC publishes. Owns the authorization
- * rules (scope membership gates the operations; `admin` manages) and the invariants, over the
- * {@link ScopeStore}, {@link ScopeMembers} and {@link ScopeDomains} ports - so the HTTP
- * controller only resolves the caller's identity and serializes the result. The "at least one
- * admin" invariant is enforced atomically by the members port.
+ * Scope use cases (the scope IS the ownership entity): claim a scope (creator becomes first admin),
+ * manage its members/display name/profile/domains, and the trusted-publisher bindings that authorize
+ * tokenless OIDC publishes. Owns the authorization rules (membership gates operations; `admin`
+ * manages); the "at least one admin" invariant is enforced atomically by the members port.
  */
 export class ScopeService {
-  readonly #scopes: ScopeStore;
-  readonly #members: ScopeMembers;
-  readonly #domains: ScopeDomains;
-  readonly #maxScopesPerAccount: number;
-  readonly #verifier: ClaimVerifier;
-  readonly #dns: DnsResolver;
-  readonly #challenge: DomainChallenge;
-  readonly #trusted: TrustedPublishers;
-
-  constructor(
-    scopes: ScopeStore,
-    members: ScopeMembers,
-    domains: ScopeDomains,
-    options: ScopeServiceOptions = {},
-  ) {
-    this.#scopes = scopes;
-    this.#members = members;
-    this.#domains = domains;
-    this.#maxScopesPerAccount = options.maxScopesPerAccount ?? REGISTRY_LIMITS.maxScopesPerAccount;
-    this.#verifier = options.claimVerifier ?? allowAllClaimVerifier;
-    this.#dns = options.dnsResolver ?? nullDnsResolver;
-    this.#challenge = options.domainChallenge ?? nullDomainChallenge;
-    this.#trusted = options.trustedPublishers ?? nullTrustedPublishers;
-  }
+  readonly #scopes = inject(ScopeStore);
+  readonly #members = inject(ScopeMembers);
+  readonly #domains = inject(ScopeDomains);
+  readonly #maxScopesPerAccount = injectOr(
+    MaxScopesPerAccount,
+    REGISTRY_LIMITS.maxScopesPerAccount,
+  );
+  readonly #verifier = injectOr(ClaimVerifier, allowAllClaimVerifier);
+  readonly #dns = injectOr(DnsResolver, nullDnsResolver);
+  readonly #challenge = injectOr(DomainChallenge, nullDomainChallenge);
+  readonly #trusted = injectOr(TrustedPublishers, nullTrustedPublishers);
 
   /** The challenge TXT value a scope must publish at {@link domainChallengeHost} (ORG-010). */
   domainChallenge(scope: string, domain: string): Promise<string> {
@@ -134,15 +117,15 @@ export class ScopeService {
     const me = identity.userId;
     if (me === null) return refuse(HttpStatus.FORBIDDEN, "a CI credential cannot claim a scope");
 
-    // Identity-tied claim gate (ORG-006 seam). Allow-all by default.
+    // Identity-tied claim gate (ORG-006).
     const verified = await this.#verifier.verify(identity, scope);
     if (!verified.ok) return refuse(HttpStatus.FORBIDDEN, verified.message);
 
     const existing = await this.#scopes.get(scope);
     if (existing !== null) return this.#reclaim(scope, me);
 
-    // Anti-squatting cap (ORG-005): refuse a NEW claim once at the limit. Re-claiming a
-    // scope you already administer (above) is exempt, so it stays idempotent.
+    // Anti-squatting cap (ORG-005): refuse a NEW claim once at the limit. Re-claiming a scope you
+    // already administer (handled above) is exempt, so it stays idempotent.
     const owned = await this.#members.countScopesAdminedBy(me);
     if (owned >= this.#maxScopesPerAccount) {
       return refuse(
@@ -152,8 +135,8 @@ export class ScopeService {
     }
 
     const { created } = await this.#scopes.claim(scope);
-    // Lost a race to a concurrent claimer of the same new scope: fall back to re-claim
-    // semantics (idempotent if we are somehow a member, else a conflict).
+    // Lost a race to a concurrent claimer: fall back to re-claim semantics (idempotent if we are
+    // somehow a member, else a conflict).
     if (!created) return this.#reclaim(scope, me);
     await this.#members.upsert(scope, me, "admin");
     return { ok: true, created: true, scope };
@@ -273,10 +256,9 @@ export class ScopeService {
   }
 
   /**
-   * Check `_brika-challenge.<domain>` for the derived challenge TXT and mark it verified if
-   * present (admin only). `verified` reflects whether the record was found; a missing record
-   * or a DNS hiccup is not an error (the admin just has not published it yet) - only
-   * auth/unknown-domain fail.
+   * Check `_brika-challenge.<domain>` for the derived challenge TXT and mark it verified if present
+   * (admin only). A missing record or DNS hiccup is not an error (the admin just has not published
+   * it yet) - only auth/unknown-domain fail.
    */
   async verifyDomain(
     identity: PublishIdentity,
@@ -297,10 +279,9 @@ export class ScopeService {
   }
 
   /**
-   * Re-verify every currently-verified domain (the scheduled sweep, ORG-010-AC3): re-derive
-   * each challenge and look it up; REVOKE (set unverified) only when the lookup definitively
-   * returns no matching record. A transport failure throws from the resolver and is caught
-   * here as a SKIP, so a DNS outage never mass-revokes badges. Returns the revoked domains.
+   * Re-verify every currently-verified domain (the scheduled sweep, ORG-010-AC3): REVOKE only when
+   * the lookup definitively returns no matching record. A transport failure is caught as a SKIP, so
+   * a DNS outage never mass-revokes badges.
    */
   async reverifyDomains(): Promise<ScopeScopedDomain[]> {
     const revoked: ScopeScopedDomain[] = [];
@@ -340,16 +321,15 @@ export class ScopeService {
   }
 
   /**
-   * Public read (no auth): a scope's name, display name, profile (description, links, whether
-   * it has an icon), and its VERIFIED domains, or null when the scope is unknown. Backs the
-   * public scope page (ORG-003/009/010); never exposes membership or pending domains (only
-   * verified ones are a public trust signal).
+   * Public read (no auth): a scope's name, display name, profile, and VERIFIED domains, or null when
+   * unknown. Never exposes membership or pending domains (only verified ones are a public trust
+   * signal). ORG-003/009/010.
    */
   async getPublic(scope: string): Promise<ScopePublic | null> {
     const record = await this.#scopes.get(scope);
     if (record === null) return null;
-    // Operator-taken-down scopes are "withdrawn from public listings" (ORG-007): the public
-    // page 404s like an unknown scope, and the takedown reason is never leaked publicly.
+    // Taken-down scopes are withdrawn from public listings (ORG-007): 404 like an unknown scope, and
+    // the takedown reason is never leaked publicly.
     if (record.takedown !== null) return null;
     const domains = await this.#domains.list(scope);
     return {
@@ -373,10 +353,8 @@ export class ScopeService {
   }
 
   /**
-   * Authorize a provider's repo + workflow to publish to this scope (admin only; PUB-016).
-   * Idempotent. `provider` is the OIDC provider (`github`, `gitlab`); `repository` is the
-   * project (`owner/repo` / `group/project`); `workflow` is the workflow/config filename.
-   * This is what lets a tokenless OIDC CI publish under the scope.
+   * Authorize a provider's repo + workflow to publish to this scope, letting a tokenless OIDC CI
+   * publish under it (admin only; PUB-016). Idempotent.
    */
   async addTrustedPublisher(
     identity: PublishIdentity,
@@ -408,10 +386,9 @@ export class ScopeService {
   }
 
   /**
-   * Operator takedown of a squatted/abusive scope (ORG-007): withdraw it from public listings
-   * by recording `reason`. Authorization is NOT a membership check - the controller gates
-   * this on the registry-operator allowlist - so this only guards that the scope exists; a
-   * squatter must not be able to dodge a takedown by leaving the scope member-less.
+   * Operator takedown of a squatted/abusive scope (ORG-007). NOT a membership check (the controller
+   * gates on the operator allowlist) - this only guards that the scope exists, so a squatter cannot
+   * dodge a takedown by leaving the scope member-less.
    */
   async takedown(scope: string, reason: string): Promise<ScopeResult<{ scope: string }>> {
     return this.#setTakedown(scope, reason);
@@ -423,9 +400,9 @@ export class ScopeService {
   }
 
   /**
-   * Every scope with its takedown state, for the operator console directory (ORG-007). No
-   * membership gate - the controller restricts this to operators; the console needs to see
-   * scopes it is not a member of (that is the whole point of a moderation directory).
+   * Every scope with its takedown state, for the operator console directory (ORG-007). No membership
+   * gate (the controller restricts this to operators) - a moderation directory must show scopes the
+   * operator is not a member of.
    */
   listForOperator(): Promise<ScopeRecord[]> {
     return this.#scopes.listAll();

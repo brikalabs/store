@@ -1,3 +1,4 @@
+import { inject, token } from "@brika/di";
 import {
   type AbbreviatedPackument,
   buildAbbreviatedPackument,
@@ -5,12 +6,10 @@ import {
   type Packument,
   tarballPath,
 } from "./packument";
-import type { MetadataReader, TarballReader } from "./ports";
+import { MetadataReader, TarballReader } from "./ports";
 
-export interface ResolveOptions {
-  /** Public base URL of the registry, e.g. `https://registry.brika.dev`. */
-  readonly baseUrl: string;
-}
+/** Public base URL of the registry, e.g. `https://registry.brika.dev` - injected by the app. */
+export const RegistryBaseUrl = token<string>("RegistryBaseUrl");
 
 export interface PackumentOptions {
   /** Return the abbreviated install metadata instead of the full document. */
@@ -18,19 +17,13 @@ export interface PackumentOptions {
 }
 
 /**
- * The npm-compatible resolution surface: packument lookup and tarball streaming.
- * This is all the hub's `bun add` needs; publishing is a separate service.
+ * The npm-compatible resolution surface: packument lookup and tarball streaming. All `bun add`
+ * needs; publishing is a separate service.
  */
 export class ResolveService {
-  readonly #meta: MetadataReader;
-  readonly #tarballs: TarballReader;
-  readonly #baseUrl: string;
-
-  constructor(meta: MetadataReader, tarballs: TarballReader, options: ResolveOptions) {
-    this.#meta = meta;
-    this.#tarballs = tarballs;
-    this.#baseUrl = options.baseUrl;
-  }
+  readonly #meta = inject(MetadataReader);
+  readonly #tarballs = inject(TarballReader);
+  readonly #baseUrl = inject(RegistryBaseUrl);
 
   /** Build the npm packument for a package, or null when it is unknown. */
   async packument(

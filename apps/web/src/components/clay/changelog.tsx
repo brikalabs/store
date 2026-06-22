@@ -11,12 +11,7 @@ function bulletsFrom(changelog: string | undefined): string[] {
     .slice(0, 4);
 }
 
-/**
- * Vertical version timeline. Each row is a flex pair of a dot/line rail and the
- * release content; the line grows to fill the row so consecutive dots connect
- * with no gaps, regardless of how tall a release's notes are. The first entry
- * is highlighted as the latest.
- */
+/** Vertical version timeline; the connecting line grows to fill each row so dots never gap. */
 export function Changelog({
   versions,
   className,

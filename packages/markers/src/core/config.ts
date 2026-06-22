@@ -3,10 +3,8 @@ import { KINDS } from "./kinds";
 import type { MarkerKindSpec } from "./types";
 
 /**
- * Configurable kinds. The engine ships sensible defaults ({@link KINDS}); a repo
- * may drop a `markers.config.json` at its root to edit them or add its own. The
- * file's kinds overlay the defaults by name (override an existing kind, or append
- * a new one), so the core system stays the same and only the taxonomy is data.
+ * Configurable kinds: a repo may drop a `markers.config.json` whose kinds overlay the defaults
+ * ({@link KINDS}) by name (override an existing kind, or append a new one).
  */
 
 /** Filename the CLI and the editor look for at the workspace root. */
@@ -29,11 +27,7 @@ function titleCase(name: string): string {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
-/**
- * Resolve the active kinds from optional config JSON. With no config, the
- * built-in defaults are returned unchanged; with config, each entry overlays the
- * default of the same name (or is appended), preserving order.
- */
+/** Resolve the active kinds from optional config JSON (each entry overlays the default of its name). */
 export function resolveKinds(configJson?: string | null): MarkerKindSpec[] {
   if (configJson === undefined || configJson === null || configJson.trim() === "") {
     return [...KINDS];

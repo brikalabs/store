@@ -31,12 +31,8 @@ function GradientFallback({
 }
 
 /**
- * Screenshot gallery: a large featured image with prev/next navigation and a
- * counter, plus a clickable thumbnail strip (lazy-loaded, with gradient
- * fallbacks for a broken image URL). Renders only the real `images` declared in
- * the manifest; renders nothing when there are none. The strip shows the first
- * {@link MAX_THUMBS}; any beyond collapse into a "+N" tile, and every image stays
- * reachable through the arrows.
+ * Screenshot gallery: a featured image with prev/next navigation plus a thumbnail strip.
+ * The strip shows the first {@link MAX_THUMBS}; any beyond collapse into a "+N" tile.
  */
 export function ScreenshotPanels({
   images,

@@ -6,18 +6,16 @@ import { z } from "zod";
 import { recordAudit, runAuthed } from "@/server/http";
 import { SocialService } from "@/server/services/social-service";
 
-// A member is invited by the email on their Brika account (the account id is opaque and not
-// typeable); it is resolved to a `users.id` before any membership row is written.
+// Invited by account email (the account id is opaque), resolved to a `users.id` before the write.
 const PutBody = z.object({
   email: z.email(),
   role: z.enum(["admin", "member"]),
 });
 
 /**
- * `GET  /api/scopes/:scope/members` - list members (any member of the scope), each enriched with
- * the account's display name + avatar for the console (membership stores only the account id).
- * `PUT  /api/scopes/:scope/members` - invite a member by email or change their role (admin only);
- * the domain refuses demoting the last admin (surfaces as 409).
+ * `GET` lists members (any member), each enriched with the account's display name + avatar.
+ * `PUT` invites a member by email or changes their role (admin only); the domain refuses demoting
+ * the last admin (409).
  */
 export const Route = createFileRoute("/api/scopes/$scope/members")({
   server: {

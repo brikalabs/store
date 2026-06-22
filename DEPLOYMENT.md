@@ -7,15 +7,15 @@ account and a GitHub OAuth app, so they are done by the operator, not in CI.
 ## Continuous deployment (Cloudflare Workers Builds)
 
 Cloudflare auto-deploys each worker when `main` changes. Two settings make migrations run
-automatically as part of that deploy (without them, code can ship ahead of its schema — the
+automatically as part of that deploy (without them, code can ship ahead of its schema - the
 drift that caused the earlier outage):
 
-1. **Deploy command = `bun run deploy`** (per worker, in its Workers Builds settings) — NOT a
+1. **Deploy command = `bun run deploy`** (per worker, in its Workers Builds settings) - NOT a
    bare `wrangler deploy`. The `deploy` script runs `db:migrate` (tracked `wrangler d1
    migrations apply --remote`, idempotent) and only then `wrangler deploy`. So a pending
    migration is applied before the new code goes live; if it fails, the deploy aborts and the
    old code keeps serving (a loud failure, never silent drift).
-2. **`CLOUDFLARE_API_TOKEN` build secret with D1:Edit** (+ Workers Scripts:Edit) — the
+2. **`CLOUDFLARE_API_TOKEN` build secret with D1:Edit** (+ Workers Scripts:Edit) - the
    auto-generated Workers Builds token has Workers/KV/R2/Routes but **not** D1, so the migrate
    step would fail auth without a custom token set as a build variable.
 
@@ -63,15 +63,27 @@ Copy the Client ID and generate a Client secret.
 
 ## 4. Set secrets
 
+Store worker:
+
 ```sh
 cd apps/web
 wrangler secret put SESSION_SECRET        # a long random string
 wrangler secret put GITHUB_CLIENT_ID
 wrangler secret put GITHUB_CLIENT_SECRET
 wrangler secret put GITHUB_REDIRECT_URI   # https://store.brika.dev/auth/github/callback
+wrangler secret put DOMAIN_VERIFY_SECRET  # a long random string; MUST match the registry worker
 ```
 
-For local development these live in `apps/web/.dev.vars` (gitignored).
+Registry worker:
+
+```sh
+cd apps/registry
+wrangler secret put DOMAIN_VERIFY_SECRET  # the SAME value as the store worker (or domain verification breaks)
+```
+
+`DOMAIN_VERIFY_SECRET` has no schema default, so a worker missing it fails to boot rather than
+running on a shared placeholder. For local development these live in `apps/{web,registry}/.dev.vars`
+(gitignored; copy `.dev.vars.example`).
 
 ## 5. Deploy
 

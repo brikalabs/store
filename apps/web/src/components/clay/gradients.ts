@@ -1,15 +1,10 @@
-/**
- * Deterministic "app store" gradients for plugin/author tiles. A stable hash of
- * the seed (plugin name, author id) picks a hue, and the gradient is generated
- * from it on the fly - so the same entity always renders the same colorful icon
- * without storing anything or drawing from a fixed palette.
- */
+/** A deterministic two-stop "app store" gradient for a plugin/author tile. */
 export type Gradient = readonly [string, string];
 
+/** Stable, deterministic non-negative hash of a seed string. */
 export function hashString(input: string): number {
-  // Polynomial rolling hash reduced modulo the Mersenne prime 2^31 - 1, which
-  // keeps every intermediate an exact integer (so no `| 0` truncation) while
-  // staying deterministic and non-negative.
+  // Reduced modulo the Mersenne prime 2^31 - 1 so every intermediate stays an
+  // exact integer (no `| 0` truncation) while staying deterministic.
   let hash = 0;
   for (let index = 0; index < input.length; index += 1) {
     hash = (hash * 31 + (input.codePointAt(index) ?? 0)) % 2_147_483_647;
@@ -30,15 +25,13 @@ function hslToHex(hue: number, saturation: number, lightness: number): string {
   return `#${channel(0)}${channel(8)}${channel(4)}`;
 }
 
-/**
- * Build the deterministic two-stop gradient for a seed: a vivid start hue paired
- * with an analogous, deeper end hue, so tiles stay colorful and varied.
- */
+/** The deterministic gradient for a seed: a vivid start hue and an analogous, deeper end hue. */
 export function gradientFor(seed: string): Gradient {
   const hue = hashString(seed) % 360;
   return [hslToHex(hue, 0.78, 0.62), hslToHex((hue + 28) % 360, 0.72, 0.46)];
 }
 
+/** A `Gradient` as a CSS `linear-gradient(...)` string. */
 export function gradientCss(gradient: Gradient, angle = 140): string {
   return `linear-gradient(${angle}deg, ${gradient[0]}, ${gradient[1]})`;
 }

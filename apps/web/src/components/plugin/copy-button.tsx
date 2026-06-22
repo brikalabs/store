@@ -1,11 +1,7 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 
-/**
- * Copy a value to the clipboard with brief "Copied" feedback. Client-only: the
- * click handler runs after hydration (`navigator.clipboard` is unavailable
- * during SSR), while the button still renders server-side.
- */
+/** Copy a value to the clipboard with brief "Copied" feedback. */
 export function CopyButton({
   value,
   label = "Copy",

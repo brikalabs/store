@@ -10,10 +10,8 @@ import { BlobStore } from "@/server/ports/blob-store";
 import { streamScopeIcon } from "@/server/scope-icon";
 
 /**
- * Scope logo (ORG-009):
- *   GET    /api/scopes/:scope/icon  public - stream the uploaded logo (404 when none)
- *   POST   /api/scopes/:scope/icon  admin  - upload a raster logo (<=512 KiB) to R2
- *   DELETE /api/scopes/:scope/icon  admin  - clear the logo (falls back to the generated avatar)
+ * Scope logo (ORG-009): GET streams the uploaded logo (public, 404 when none), POST uploads a raster
+ * logo (<=512 KiB) to R2 (admin), DELETE clears it (admin, falls back to the generated avatar).
  */
 export const Route = createFileRoute("/api/scopes/$scope/icon")({
   server: {
@@ -31,10 +29,8 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
           if (sniffImageMime(bytes) !== type)
             throw badRequest("Logo content does not match its type");
 
-          // Stage the blob then commit the D1 pointer atomically: if the ownership-gated
-          // setIcon fails (e.g. not a scope member), the transaction rolls back and the
-          // onRollback compensation deletes the just-staged blob, so a rejected upload never
-          // leaves an orphaned object in R2.
+          // Stage the blob then commit the D1 pointer atomically: if the ownership-gated setIcon
+          // fails, the rollback compensation deletes the staged blob, so no orphan is left in R2.
           const key = `scope-icons/${params.scope}.${ext}`;
           const assets = inject(BlobStore);
           await transaction(async () => {

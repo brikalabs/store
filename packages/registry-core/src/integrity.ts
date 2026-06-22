@@ -1,11 +1,7 @@
 /**
- * Tarball integrity helpers. Both digests are computed once at publish time and
- * returned in the packument so bun verifies every download and pins the value
- * in the lockfile. This is what preserves the guarantee that the registry
- * operator cannot silently change installed bytes after the fact.
- *
- * Implemented with Web Crypto (`crypto.subtle`), available in both Workers and
- * Bun, so the core stays runtime-agnostic.
+ * Tarball integrity helpers. Digests are computed at publish time and pinned in the lockfile, so the
+ * registry operator cannot silently change installed bytes after the fact. Web Crypto, so the core
+ * stays runtime-agnostic.
  */
 
 function toBase64(buffer: ArrayBuffer): string {
@@ -22,11 +18,8 @@ function toHex(buffer: ArrayBuffer): string {
   return hex;
 }
 
-/**
- * Hash `data` into a digest. Copies into a fresh `ArrayBuffer`-backed view so
- * the Web Crypto signature is satisfied regardless of the caller's buffer type;
- * the copy is negligible for plugin tarballs.
- */
+// Copies into a fresh ArrayBuffer-backed view so the Web Crypto signature is satisfied regardless
+// of the caller's buffer type; the copy is negligible for plugin tarballs.
 async function digest(algorithm: "SHA-512" | "SHA-1", data: Uint8Array): Promise<ArrayBuffer> {
   const view = new Uint8Array(data.byteLength);
   view.set(data);

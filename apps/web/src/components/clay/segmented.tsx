@@ -19,10 +19,7 @@ export function Segmented({
   );
 }
 
-/**
- * className for one segment. Works on a <button> or a router <Link>, so the
- * control can either toggle local state or drive a search param.
- */
+/** className for one segment; works on a `<button>` or a router `<Link>`. */
 export function segmentClassName(active: boolean, size: "sm" | "md" = "md"): string {
   const base =
     size === "sm"

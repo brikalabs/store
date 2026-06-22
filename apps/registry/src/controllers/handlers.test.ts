@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { inject, type Provider, runInContext } from "@brika/di";
-import { PublishService, ResolveService } from "@brika/registry-core";
+import { inject, type Provider, provide, runInContext, testBed } from "@brika/di";
+import { PublishConfig, PublishService, ResolveService } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
 import {
   type Db,
@@ -10,16 +10,11 @@ import {
   regScopes,
   regVersions,
 } from "@brika/store-db";
-import {
-  D1MetadataWriter,
-  D1OwnershipPolicy,
-  D1ScopeMembers,
-  D1TrustedPublishers,
-  issueToken,
-} from "@brika/store-db/adapters";
+import { D1MetadataWriter, issueToken } from "@brika/store-db/adapters";
+import { makeAdapter } from "@brika/store-db/test-harness";
 import { transaction } from "@brika/tx";
 import { eq } from "drizzle-orm";
-import { SchemaManifestValidator } from "../adapters/manifest-validator";
+import { TarballBucket } from "../adapters/r2-tarball";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
 import { provideRegistry } from "../services";
 import { fakeR2, makeDb, seedExamplePackage } from "../test-harness";
@@ -177,18 +172,12 @@ describe("publish (auth + invariant + ownership gates)", () => {
     // The publisher must be a member of the scope to reach the size check.
     await seedBrikaScope(db, "octocat");
     const token = await issueToken(db, "octocat");
-    // A 1-byte cap rejects even the tiny 3-byte "AAAA" tarball.
-    const publishService = new PublishService(
-      new D1MetadataWriter(db),
-      new R2TarballWriter(fakeR2()),
-      new SchemaManifestValidator(),
-      new D1OwnershipPolicy(new D1ScopeMembers(db), new D1TrustedPublishers(db)),
-      { maxTarballBytes: 1 },
-    );
+    // A 1-byte cap rejects even the tiny 3-byte "AAAA" tarball. PublishService is field-injected,
+    // so just override its config token; the container builds it off the registry's wired ports.
     expect(
       await statusOf(
         run(services(db), () => publish({ body: validPublish, req: post(validPublish, token) }), [
-          { provide: PublishService, useValue: publishService },
+          { provide: PublishConfig, useValue: { maxTarballBytes: 1 } },
         ]),
       ),
     ).toBe(413);
@@ -709,7 +698,7 @@ describe("publish atomicity (commitVersion + transaction)", () => {
     });
 
   test("commitVersion writes the package, version, and dist-tag together", async () => {
-    await commit(new D1MetadataWriter(db));
+    await commit(makeAdapter(db, D1MetadataWriter));
 
     expect((await db.select().from(regPackages)).map((r) => r.name)).toContain("@brika/y");
     const versions = await db.select().from(regVersions);
@@ -719,7 +708,7 @@ describe("publish atomicity (commitVersion + transaction)", () => {
   });
 
   test("commitVersion defers its write to the commit point, and a later failure rolls it back", async () => {
-    const meta = new D1MetadataWriter(db);
+    const meta = makeAdapter(db, D1MetadataWriter);
     let writtenMidBody = -1;
     await expect(
       transaction(async () => {
@@ -736,7 +725,7 @@ describe("publish atomicity (commitVersion + transaction)", () => {
   });
 
   test("commitVersion inside a successful transaction writes at the commit point", async () => {
-    const meta = new D1MetadataWriter(db);
+    const meta = makeAdapter(db, D1MetadataWriter);
     await transaction(() => commit(meta));
     expect((await db.select().from(regVersions)).map((r) => r.name)).toContain("@brika/y");
   });
@@ -758,7 +747,7 @@ describe("publish atomicity (commitVersion + transaction)", () => {
 
   test("a tarball put is rolled back (deleted) when the surrounding transaction fails", async () => {
     const { r2, store } = trackingR2();
-    const tarballs = new R2TarballWriter(r2);
+    const tarballs = testBed(provide(TarballBucket, r2)).inject(R2TarballWriter);
 
     await expect(
       transaction(async () => {
@@ -773,7 +762,9 @@ describe("publish atomicity (commitVersion + transaction)", () => {
 
   test("a tarball put outside a transaction is a plain write (no rollback)", async () => {
     const { r2, store } = trackingR2();
-    await new R2TarballWriter(r2).put("k", new Uint8Array([1]));
+    await testBed(provide(TarballBucket, r2))
+      .inject(R2TarballWriter)
+      .put("k", new Uint8Array([1]));
     expect(store.size).toBe(1);
   });
 });

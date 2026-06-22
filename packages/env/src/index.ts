@@ -1,19 +1,10 @@
 import { z } from "zod";
 
 /**
- * Build a typed, validated, cached accessor for a Worker's string env (secrets
- * and plain vars). Bindings (D1/R2/KV) are runtime objects typed via each app's
- * `worker-env.d.ts`; this owns the string config and is the single place its
- * shape, defaults, and validation live.
- *
- * Pass the field schemas directly (they are wrapped in `z.object` for you) and a
- * `read` getter, usually `() => env` from "cloudflare:workers" so the binding is
- * touched lazily (in request scope, not at module load). The returned function
- * parses + caches on first call, and on failure throws one {@link EnvError}
- * listing every missing/invalid variable and where to set it.
- *
- * This module imports nothing from "cloudflare:workers" so it stays
- * unit-testable: the caller injects the source via `read`.
+ * Build a typed, validated, cached accessor for a Worker's string env. Pass the field schemas and a
+ * `read` getter (usually `() => env`, so the binding is touched lazily in request scope, not at module
+ * load); the result parses + caches on first call, throwing one {@link EnvError} on failure. Imports
+ * nothing from "cloudflare:workers", so it stays unit-testable: the caller injects the source via `read`.
  *
  * @example
  * import { env } from "cloudflare:workers";

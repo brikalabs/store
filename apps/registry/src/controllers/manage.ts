@@ -8,35 +8,26 @@ import { controller, route } from "../http/router";
 import { Audit } from "../services";
 
 /**
- * Post-publish management endpoints. The `PKG` pattern matches scoped and unscoped
- * names, so each route is declared once; {@link packageName} joins the matched
- * params into the full name. All mutate only the version's flags; the immutable
+ * Post-publish management endpoints. All mutate only the version's flags; the immutable
  * tarball bytes never change.
  *
- * Owner-gated (OIDC or a registry token, gated by scope ownership):
- *   POST /-/package/:name/:version/deprecate   body `{ message: string | null }`
- *   POST /-/package/:name/:version/yank        body `{ yanked: boolean }`
- *
- * Operator-admin-gated (`REGISTRY_ADMINS`, NOT scope ownership):
- *   POST /-/package/:name/:version/takedown    body `{ reason: string }`
- *   POST /-/package/:name/:version/restore
+ * Owner-gated (scope ownership):  deprecate, yank
+ * Operator-admin-gated (`REGISTRY_ADMINS`, NOT scope ownership):  takedown, restore
  */
 
 const DeprecateBody = z.object({ message: z.string().max(1024).nullable() });
 const YankBody = z.object({ yanked: z.boolean() });
 const TakedownBody = z.object({ reason: z.string().min(1).max(1024) });
 
-/** What both management handlers need: typed params + the request. Services are injected. */
+/** Typed params + the request, shared by the management handlers. */
 interface ManageContext {
   readonly params: PackageParams & { readonly version: string };
   readonly req: Request;
 }
 
 /**
- * Audit the outcome and turn it into the HTTP response, shared by the owner- and
- * admin-gated runners: a rejection is audited as `${action}_rejected` and thrown as its
- * mapped status; success is audited and returned. The auth + which service call to run
- * is all that differs between the two runners.
+ * Audit the outcome and turn it into the HTTP response: a rejection is audited as
+ * `${action}_rejected` and thrown as its mapped status; success is audited and returned.
  */
 async function auditAndRespond(
   action: string,
@@ -94,11 +85,7 @@ export function yank(
   );
 }
 
-/**
- * Like {@link runManaged}, but for operator actions: authenticate an ADMIN (not the
- * scope owner) and run an identity-free mutation. Admin failures surface as 403 from
- * `requireAdmin` before this runs; the only domain failure here is `not_found`.
- */
+/** Like {@link runManaged}, but authenticates an ADMIN (not the scope owner) for an identity-free mutation. */
 async function runAdmin(
   { params, req }: ManageContext,
   action: string,

@@ -15,10 +15,8 @@ const PROVIDERS = [
 ] as const;
 
 /**
- * Trusted publishers (PUB-016): the GitHub/GitLab repos + workflows authorized to publish to
- * this scope via tokenless OIDC, the secure path for CI publishing to Brika. Lists the
- * bindings and, for an admin, adds/removes them. A scope IS the account, so this binds the
- * scope directly.
+ * Trusted publishers (PUB-016): the repos + workflows authorized to publish to this scope via
+ * tokenless OIDC. Lists the bindings and, for an admin, adds/removes them.
  */
 export function TrustedPublishersCard({
   scope,

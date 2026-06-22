@@ -1,9 +1,8 @@
 import type { BlameInfo, Marker } from "./types";
 
 /**
- * Pure `git blame` helpers: turn porcelain output into per-line {@link BlameInfo}
- * and attach it to markers. No git here (that is an adapter in `../scan.ts` for
- * the CLI and in the extension); this only parses, so it is unit-testable.
+ * Pure `git blame` helpers: parse porcelain output into per-line {@link BlameInfo} and attach it to
+ * markers. No git here (that is an adapter in `../scan.ts` and the extension), so it is unit-testable.
  */
 
 const UNCOMMITTED = "0".repeat(40);

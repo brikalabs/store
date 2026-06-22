@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { provide } from "@brika/di";
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../client";
 import { regDownloads, regPackages, regScopes } from "../schema";
-import { makeDb } from "../test-harness";
-import { D1DownloadStore } from "./d1-downloads";
+import { makeAdapter, makeDb } from "../test-harness";
+import { D1DownloadStore, DownloadsClock } from "./d1-downloads";
 
 /**
  * Unit tests for the D1-backed install-count store. A fixed clock makes the
@@ -33,7 +34,7 @@ async function seedDownload(name: string, day: number, count: number): Promise<v
 
 describe("D1DownloadStore.record", () => {
   test("inserts today's row with count 1 on first download", async () => {
-    const store = new D1DownloadStore(db, fixedNow);
+    const store = makeAdapter(db, D1DownloadStore, provide(DownloadsClock, fixedNow));
     await store.record("@brika/a");
 
     const rows = await db
@@ -44,7 +45,7 @@ describe("D1DownloadStore.record", () => {
   });
 
   test("upserts (increments) today's row on a repeat download", async () => {
-    const store = new D1DownloadStore(db, fixedNow);
+    const store = makeAdapter(db, D1DownloadStore, provide(DownloadsClock, fixedNow));
     await store.record("@brika/a");
     await store.record("@brika/a");
     await store.record("@brika/a");
@@ -60,7 +61,7 @@ describe("D1DownloadStore.record", () => {
 
 describe("D1DownloadStore.stats", () => {
   test("zeroed stats for a package with no downloads", async () => {
-    const store = new D1DownloadStore(db, fixedNow);
+    const store = makeAdapter(db, D1DownloadStore, provide(DownloadsClock, fixedNow));
     expect(await store.stats("@brika/a")).toEqual({ total: 0, weekly: 0 });
   });
 
@@ -68,7 +69,7 @@ describe("D1DownloadStore.stats", () => {
     await seedDownload("@brika/a", TODAY, 5); // in window
     await seedDownload("@brika/a", TODAY - 3, 2); // in window
     await seedDownload("@brika/a", TODAY - 30, 7); // out of window
-    const store = new D1DownloadStore(db, fixedNow);
+    const store = makeAdapter(db, D1DownloadStore, provide(DownloadsClock, fixedNow));
 
     expect(await store.stats("@brika/a")).toEqual({ total: 14, weekly: 7 });
   });
@@ -78,7 +79,7 @@ describe("D1DownloadStore.statsWithSeries", () => {
   test("returns stats plus a zero-filled, oldest-first day series", async () => {
     await seedDownload("@brika/a", TODAY, 4);
     await seedDownload("@brika/a", TODAY - 2, 1);
-    const store = new D1DownloadStore(db, fixedNow);
+    const store = makeAdapter(db, D1DownloadStore, provide(DownloadsClock, fixedNow));
 
     const result = await store.statsWithSeries("@brika/a", 3);
     expect(result.total).toBe(5);
@@ -90,14 +91,14 @@ describe("D1DownloadStore.statsWithSeries", () => {
 
 describe("D1DownloadStore.statsFor", () => {
   test("returns an empty map for no names without touching the db", async () => {
-    const store = new D1DownloadStore(db, fixedNow);
+    const store = makeAdapter(db, D1DownloadStore, provide(DownloadsClock, fixedNow));
     expect(await store.statsFor([])).toEqual(new Map());
   });
 
   test("keys stats by name, zero-filling packages with no rows", async () => {
     await seedDownload("@brika/a", TODAY, 3);
     await seedDownload("@brika/a", TODAY - 10, 9);
-    const store = new D1DownloadStore(db, fixedNow);
+    const store = makeAdapter(db, D1DownloadStore, provide(DownloadsClock, fixedNow));
 
     const result = await store.statsFor(["@brika/a", "@brika/b"]);
     expect(result.get("@brika/a")).toEqual({ total: 12, weekly: 3 });

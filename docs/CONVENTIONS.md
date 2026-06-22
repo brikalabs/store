@@ -34,10 +34,11 @@ followed by review otherwise. Run `bun run lint`, `bun run typecheck`, and
 - **Boundaries are enforced.** The pure packages (`registry-core`, `contract`,
   `schema`, `env`) are guarded by one Biome plugin, `biome-plugins/boundaries-pure.grit`,
   scoped to them in `biome.json` via `plugins[].includes`. It is an **allowlist**:
-  a pure package may import only relative paths, `node:`/`bun:` builtins, and
-  `zod`. Anything else (Cloudflare, a DB driver, an ORM, an HTTP framework, an
-  app, or another `@brika` package) fails `biome check` and shows inline in the
-  editor, with no denylist to maintain. To allow a new dependency, add it to the
+  a pure package may import only relative paths, `node:`/`bun:` builtins, `zod`,
+  and `@brika/di` (the runtime-agnostic field-injection seam, on par with zod).
+  Anything else (Cloudflare, a DB driver, an ORM, an HTTP framework, an app, or
+  another `@brika` package) fails `biome check` and shows inline in the editor,
+  with no denylist to maintain. To allow a new dependency, add it to the
   `or { ... }` allowlist in the plugin and to the package's `package.json`.
 - **Thin HTTP layer.** Routes parse, build the identity, call a service, and
   serialize. No business logic in handlers.
@@ -90,24 +91,29 @@ silently rotting.
 ## Composition root (wiring)
 
 Both apps use one DI primitive, `@brika/di`. The full rules - how to use a dependency
-(`inject(Token)`), the decision for how to create one (auto-build class / `token<T>()` interface /
-provide a value), the composition root as a `providers` array, and testing - live in **[the DI
-guide](di.md)**. Treat it as the single source of truth; follow it, do not invent variants.
+(`inject(Token)` / `injectOr`), the decision for how to create one (auto-build class /
+`token<T>("Name")` interface / a `useClass` adapter / a provided value), the composition root as a
+`providers` array, and testing - live in **[the DI guide](di.md)**. Treat it as the single source of
+truth; follow it, do not invent variants.
 
-In short: `inject(Token)` everywhere; an app class that only depends on injectables auto-builds with
-no registration; a value, a function, or a pure/external class (a `@brika/registry-core` service, a
-`@brika/store-db` adapter) is bound in the per-request composition root - `webProviders` in the web,
-`provideRegistry(config)` in the registry - which is the one place `cloudflare:workers` `env` is
-read. The framework glue (`runHandler`, the registry router's `mount({ around })`) runs every
-request inside `runInContext(providers, ...)`, so application code never calls `createInjector`.
+In short: `inject(Token)` everywhere; **every injectable is a constructor-less class that field-injects
+its deps** (`readonly #x = inject(Token)`), so an app class auto-builds with no registration. The
+runtime seams (Cloudflare bindings, a config string) and each port's concrete adapter are bound in
+the composition root - `webProviders` in the web, `provideRegistry(config)` in the registry, both
+spreading the shared `registryBindings` from `@brika/registry-runtime` - which is the one place
+`cloudflare:workers` `env` is read. A port maps to its field-injected adapter with
+`{ provide: Port, useClass: Adapter }`; a value with `useValue`. The framework glue (`runHandler`,
+the registry router's `mount({ around })`) runs every request inside `runInContext(providers, ...)`,
+so application code never calls `createInjector`.
 
-- **The pure core is never `inject()`ed.** `@brika/registry-core` may import only `zod` / `node:` /
-  relative paths (enforced). Its services stay constructor-injected and are bound into the app's
-  providers, so the app gets `inject()` DX with no framework dependency in the hexagon center.
-- **`@brika/di` is not a "DI container."** It is a small typed primitive: functional `inject()`,
-  hierarchical injectors, lazy memoized singletons. No decorators, no `reflect-metadata`, no
-  string-keyed registry. The heavy containers stay rejected (tsyringe's reflect-metadata cold-start,
-  Awilix's runtime resolution + ~37 transitive deps).
+- **The pure core field-injects, but stays infrastructure-free.** `@brika/registry-core` may import
+  only `zod` / `@brika/di` / `node:` / relative paths (enforced). Its services `inject()` their ports,
+  so there is no `new Service(...)` wiring anywhere; the ports stay interfaces and the Cloudflare
+  adapters live outside the hexagon (`@brika/store-db`, the apps).
+- **`@brika/di` is not a "DI container."** It is a small typed primitive: functional `inject()` /
+  `injectOr`, named `token<T>("X")`, hierarchical injectors, lazy memoized singletons. No decorators,
+  no `reflect-metadata`, no string-keyed registry. The heavy containers stay rejected (tsyringe's
+  reflect-metadata cold-start, Awilix's runtime resolution + ~37 transitive deps).
 
 ## Style
 
@@ -115,7 +121,7 @@ Enforced by biome: 2-space indent, LF, 100-col, double quotes, organized imports
 `node:` import protocol, template literals over concatenation, no useless `else`,
 collapsed `else if`, no parameter reassignment, no unused imports or variables.
 
-- **No em dash (`—`)** anywhere, prose, comments, or strings. Use commas, colons,
+- **No em dash (`U+2014`)** anywhere, prose, comments, or strings. Use commas, colons,
   or parentheses.
 - **Comments** explain the *why*, not the *what*. Match the surrounding density.
 

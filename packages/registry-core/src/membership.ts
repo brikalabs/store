@@ -1,8 +1,9 @@
+import { token } from "@brika/di";
+
 /**
- * Scope membership port. The domain defines WHO belongs to a scope and with what role; a
- * concrete adapter (Cloudflare D1 today) implements it in the registry app. Publishing under
- * a scope is gated on scope membership, and managing a scope requires the `admin` role, so
- * the authorization core depends on this interface rather than on any database.
+ * Scope membership port: WHO belongs to a scope and with what role. Publishing is gated on
+ * membership and managing a scope requires `admin`, so the authorization core depends on this
+ * interface rather than on any database.
  */
 
 /** A scope role: `admin` manages the scope + its members; `member` may publish. */
@@ -15,11 +16,9 @@ export interface ScopeMember {
 }
 
 /**
- * Read + write access to scope membership. The "a scope always keeps at least one admin"
- * invariant is the implementation's responsibility: {@link demoteFromAdmin} and
- * {@link remove} must refuse to act on the last admin, atomically (so concurrent calls
- * cannot both pass), and report whether they applied. Callers treat `false` as "refused
- * to preserve the invariant".
+ * Read + write access to scope membership. INVARIANT: a scope always keeps at least one admin -
+ * {@link demoteFromAdmin} and {@link remove} must refuse to act on the last admin atomically (so
+ * concurrent calls cannot both pass) and return `false` when they refuse.
  */
 export interface ScopeMembers {
   /** This account's role in the scope, or null when it is not a member. */
@@ -35,3 +34,5 @@ export interface ScopeMembers {
   /** How many scopes this account administers, for the per-account scope cap (ORG-005). */
   countScopesAdminedBy(userId: string): Promise<number>;
 }
+/** DI token for the {@link ScopeMembers} port. */
+export const ScopeMembers = token<ScopeMembers>("ScopeMembers");

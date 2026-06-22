@@ -6,19 +6,13 @@ import { controller, route } from "../http/router";
 import { parseTarballVersion } from "../npm-url";
 import { Downloads } from "../services";
 
-/**
- * The npm read protocol: packuments and tarballs. Both use the npm `PKG` pattern,
- * so the scoped and unscoped name forms are handled by one route each. These are
- * the cacheable reads, so unlike the mutating endpoints they return a `Response`
- * with their own long/edge cache headers rather than `no-store`.
- */
+/** The npm read protocol: packuments and tarballs, the cacheable reads (own cache headers, not no-store). */
 
 const ABBREVIATED_ACCEPT = "application/vnd.npm.install-v1+json";
 
 /**
- * `GET /:name`. bun/npm request the abbreviated install metadata via `Accept`; it
- * is much smaller (no readme/scripts) for packages with many versions, and the
- * response varies by `Accept`, so caches must key on it.
+ * `GET /:name`. bun/npm request smaller abbreviated install metadata via `Accept`; the response
+ * varies by `Accept`, so caches must key on it (`Vary`).
  */
 async function packument({
   params,
@@ -41,11 +35,9 @@ async function packument({
 }
 
 /**
- * `GET /:name/-/:file` (`/-/` separates the package name from the filename). A
- * served tarball is an install signal: it is counted off the response path via
- * `waitUntil`, so the download never waits on (or fails from) the counter.
- * Edge-cached repeat installs skip the Worker, so counts are a lower bound, like
- * npm's own. Tarballs are immutable, so they can be cached forever.
+ * `GET /:name/-/:file`. The install count is recorded off the response path via `waitUntil`, so the
+ * download never waits on (or fails from) the counter. Edge-cached repeats skip the Worker, so counts
+ * are a lower bound. Tarballs are immutable, so cached forever.
  */
 async function tarball({
   params,

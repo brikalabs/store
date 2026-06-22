@@ -1,26 +1,18 @@
+import { inject } from "@brika/di";
 import type { CommitVersionInput, MetadataWriter, VersionManager } from "@brika/registry-core";
-import { type TransactionalDb, transactionalDb } from "@brika/tx";
+import { transactionalDb } from "@brika/tx";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
-import type { Db } from "../client";
+import { Db } from "../client";
 import { regDistTags, regPackages, regVersions } from "../schema";
 
 /**
- * Persists a published version to D1 and mutates its management flags. Covers
- * both the publish writer (`MetadataWriter`) and the post-publish manager
- * (`VersionManager`) since they share the same `reg_versions` table.
- *
- * The client is overlaid with `@brika/tx`'s `transactionalDb`, so the writer is
- * transaction-aware for free: `commitVersion` just hands its statements to
- * `deferBatch` and the unit of work decides when they land (at the tx commit point
- * when one is open, immediately otherwise) - no batch/timing logic here.
+ * Persists published versions to D1 and mutates their management flags ({@link MetadataWriter} +
+ * {@link VersionManager}, sharing the `reg_versions` table).
  */
 export class D1MetadataWriter implements MetadataWriter, VersionManager {
-  readonly #db: Db & TransactionalDb<BatchItem<"sqlite">>;
-
-  constructor(db: Db) {
-    this.#db = transactionalDb<Db, BatchItem<"sqlite">>(db);
-  }
+  // Overlaid with `@brika/tx` so `deferBatch` statements land at the tx commit point when one is open, immediately otherwise.
+  readonly #db = transactionalDb<Db, BatchItem<"sqlite">>(inject(Db));
 
   async versionExists(name: string, version: string): Promise<boolean> {
     const rows = await this.#db
@@ -55,10 +47,8 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
         }),
     ];
 
-    // One transaction-aware unit: lands atomically at the publish's commit point (so a
-    // later failure still rolls the staged tarball back), or immediately when there is
-    // no open transaction. A duplicate version trips the unique constraint and fails the
-    // whole unit, so a TOCTOU race past `versionExists` cannot corrupt an existing one.
+    // Atomic unit: a duplicate version trips the unique constraint and fails the whole batch,
+    // so a TOCTOU race past `versionExists` cannot corrupt an existing version.
     await this.#db.deferBatch(statements);
   }
 
@@ -86,21 +76,14 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
   }
 
   /**
-   * Keep the `latest` dist-tag pointing at the newest *installable* version (not yanked, not
-   * taken down). Yank/takedown omit a version from the packument; if `latest` still pointed at
-   * it, `bun add` would resolve a version that isn't there and the storefront catalog (which
-   * joins `latest` then drops yanked rows) would hide the whole package even when older versions
-   * still install. When every version is hidden the tag is removed, so the package is unlisted
-   * publicly but its row survives for its owner to un-yank.
+   * Point `latest` at the newest *installable* version (not yanked, not taken down); remove the tag
+   * when every version is hidden. Otherwise `latest` could resolve to a version `bun add` cannot fetch,
+   * and the storefront catalog (joins `latest`, drops yanked) would hide the whole package.
    *
-   * The "newest installable" pick is resolved IN SQL, ordered by publish time then version, so it
-   * is deterministic: `publishedAt` is stored truncated to whole seconds, so a bulk/CI publish can
-   * tie, and a JS `reduce` with no tie-break would let the engine's row order decide `latest` (and
-   * possibly pick a lower version). `version DESC` breaks the tie stably.
-   *
-   * Caveat: the read-then-write is two statements, so a publish landing between them can still race
-   * (the same single-writer assumption the publish path's unconditional `latest` upsert already
-   * makes); D1 has no interactive transaction to close that window, and a yank is rare next to it.
+   * The pick is resolved IN SQL ordered by publish time then `version DESC`: `publishedAt` is truncated
+   * to whole seconds, so a bulk publish can tie, and a JS `reduce` with no tie-break would let row order
+   * pick a lower version. The read-then-write is two statements, so a publish between them can still race
+   * (the same single-writer assumption the publish path's `latest` upsert makes); a yank is rare next to it.
    */
   async #refreshLatestTag(name: string): Promise<void> {
     const newest = await this.#db

@@ -15,11 +15,8 @@ import { controller, route } from "../http/router";
 import { Audit } from "../services";
 
 /**
- * `POST /-/publish`. Authenticated by EITHER a GitHub Actions OIDC token (CI,
- * audience `brika-registry`) OR a registry publish token (local `brika publish`).
- * Body: `{ name, version, manifest, tarball }` (tarball base64), validated by the
- * route's `body` schema before the handler runs. All publish logic + invariants
- * live in `PublishService`; this is the wiring.
+ * `POST /-/publish`. Authenticated by EITHER a CI OIDC token OR a registry publish token.
+ * All publish logic + invariants live in `PublishService`; this is the wiring.
  */
 
 const PublishBody = z.object({
@@ -32,10 +29,9 @@ const PublishBody = z.object({
 });
 
 /**
- * Attach the client-provided transparency entry to the (OIDC-derived) provenance,
- * but only when it can be trusted: the publish is OIDC-authenticated (so it has a
- * forge-proof identity) AND the attested integrity matches the bytes we received.
- * Otherwise the attestation is dropped, never blocking the publish.
+ * Attach the client-provided transparency entry to provenance only when trustworthy: the publish is
+ * OIDC-authenticated AND the attested integrity matches the received bytes. Otherwise dropped,
+ * never blocking the publish.
  */
 async function withAttestation(
   identity: PublishIdentity,
@@ -55,7 +51,6 @@ function base64ToBytes(value: string): Uint8Array {
   return bytes;
 }
 
-/** Map a publish rejection code to its HTTP status. */
 function statusForPublishError(code: PublishErrorCode): number {
   switch (code) {
     case "forbidden":
@@ -87,9 +82,7 @@ export async function publish({
   const tarballBytes = base64ToBytes(tarball);
   const publisher = await withAttestation(identity, tarballBytes, transparencyLog);
 
-  // The publish stages the tarball then commits the metadata atomically; running it
-  // in a transaction means a failed metadata commit rolls the staged tarball back,
-  // so a publish is all-or-nothing across R2 + D1.
+  // In a transaction so a failed metadata commit rolls the staged tarball back: all-or-nothing across R2 + D1.
   const result = await transaction(() =>
     publishService.publish({
       name,
@@ -115,8 +108,7 @@ export async function publish({
 export const publishController = controller({
   name: "publish",
   routes: [
-    // Keyed by authenticated principal (not IP): CI shares GitHub Actions egress
-    // IPs, so a per-IP cap would throttle unrelated repos on the same runner.
+    // Keyed by principal, not IP (see `principal`): CI shares runner egress IPs.
     route.post({
       path: "/-/publish",
       body: PublishBody,

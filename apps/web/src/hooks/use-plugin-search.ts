@@ -1,6 +1,7 @@
 import { type PluginSummary, SearchResponse } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { useEffect, useState } from "react";
+import { fetchJson } from "@/lib/fetch-json";
 
 export interface ScopeHit {
   scope: string;
@@ -33,19 +34,13 @@ function collectScopes(plugins: PluginSummary[], needle: string): ScopeHit[] {
 
 /** Hit the search endpoint and shape the result; any failure yields an empty state. */
 async function runSearch(q: string): Promise<SearchState> {
-  try {
-    const res = await fetch(`/v1/search?q=${encodeURIComponent(q)}&limit=8`);
-    const json: unknown = await res.json();
-    const parsed = SearchResponse.safeParse(json);
-    if (!parsed.success) return EMPTY;
-    return {
-      plugins: parsed.data.plugins,
-      scopes: collectScopes(parsed.data.plugins, q.toLowerCase()),
-      loading: false,
-    };
-  } catch {
-    return EMPTY;
-  }
+  const data = await fetchJson(`/v1/search?q=${encodeURIComponent(q)}&limit=8`, SearchResponse);
+  if (data === null) return EMPTY;
+  return {
+    plugins: data.plugins,
+    scopes: collectScopes(data.plugins, q.toLowerCase()),
+    loading: false,
+  };
 }
 
 /** Debounced unified search: returns matching plugins and the scopes behind them. */

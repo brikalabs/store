@@ -1,19 +1,7 @@
 /**
- * Registry quotas and limits: the single source of truth shared by the publish
- * enforcement (`PublishService`) and the documentation (`docs/quotas-and-limits.md`).
- *
- * Values are deliberately conservative, adapted to our hybrid model
- * (only the `@brika` scope is hosted today; community scopes open later) and to
- * Cloudflare's request/object realities. Quotas are not meant as hard ceilings:
- * a publisher who needs more can ask for an increase (see the docs).
- *
- * Enforcement status (kept honest on purpose):
- *   - ENFORCED: `maxTarballBytes` (`PublishService`), `maxFileBytes` +
- *     `maxUnpackedBytes` (the manifest gate, off the unpacked tarball),
- *     `maxScopesPerAccount` (`ScopeService.claim`, via `ScopeMembers.countScopesAdminedBy`).
- *   - NOT YET ENFORCED: the remaining count-based quotas below. They need a
- *     usage-counting port on the metadata store (versions/packages) or a
- *     rolling-window count (the weekly limits); until then, treat them as docs.
+ * Registry quotas and limits, the single source of truth shared by publish enforcement and
+ * `docs/quotas-and-limits.md`. Per-field enforcement status is marked inline below: the count-based
+ * quotas are not yet enforced (they need a usage-counting port), so treat those as docs for now.
  */
 
 const MiB = 1024 * 1024;

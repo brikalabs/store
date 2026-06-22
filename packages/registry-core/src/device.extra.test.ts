@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { type DeviceGrant, DeviceService, type DeviceStore } from "./device";
+import { provide, testBed } from "@brika/di";
+import { type DeviceGrant, DeviceService, DeviceStore } from "./device";
+
+/** A DeviceService over the given store with NO config token, so the real defaults apply. */
+const deviceService = (store: DeviceStore) =>
+  testBed(provide(DeviceStore, store)).inject(DeviceService);
 
 /**
  * Covers the default code generators (random UUID device code, two no-vowel
@@ -28,7 +33,7 @@ const VOWELS_AND_AMBIGUOUS = /[AEIOU01]/;
 describe("DeviceService default generators", () => {
   test("requestCode mints a UUID device code and a readable user code", async () => {
     const store = fakeStore();
-    const code = await new DeviceService(store).requestCode();
+    const code = await deviceService(store).requestCode();
 
     // Device code defaults to a random UUID.
     expect(code.deviceCode).toMatch(
@@ -46,7 +51,7 @@ describe("DeviceService default generators", () => {
   test("requestCode applies the default TTL and poll interval", async () => {
     const before = Math.floor(Date.now() / 1000);
     const store = fakeStore();
-    const code = await new DeviceService(store).requestCode();
+    const code = await deviceService(store).requestCode();
 
     expect(code.expiresInSeconds).toBe(15 * 60);
     expect(code.intervalSeconds).toBe(5);
@@ -57,7 +62,7 @@ describe("DeviceService default generators", () => {
 
   test("successive default user codes differ (randomized)", async () => {
     const store = fakeStore();
-    const service = new DeviceService(store);
+    const service = deviceService(store);
     const a = await service.requestCode();
     const b = await service.requestCode();
     expect(a.deviceCode).not.toBe(b.deviceCode);
@@ -65,7 +70,7 @@ describe("DeviceService default generators", () => {
 
   test("redeem with the default clock treats a future grant as still pending", async () => {
     const store = fakeStore();
-    const service = new DeviceService(store);
+    const service = deviceService(store);
     const issued = await service.requestCode();
     const result = await service.redeem(issued.deviceCode);
     expect(result).toEqual({ ok: false, error: "authorization_pending" });

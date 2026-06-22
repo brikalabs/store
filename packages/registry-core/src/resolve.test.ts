@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
-import type { MetadataReader, TarballReader } from "./ports";
-import { ResolveService } from "./resolve";
+import { provide, testBed } from "@brika/di";
+import { MetadataReader, TarballReader } from "./ports";
+import { RegistryBaseUrl, ResolveService } from "./resolve";
 import type { PackageRecord } from "./types";
 
 const record: PackageRecord = {
@@ -32,7 +33,11 @@ const tarballs: TarballReader = {
     ),
 };
 
-const service = new ResolveService(meta, tarballs, { baseUrl: "https://registry.brika.dev" });
+const service = testBed(
+  provide(MetadataReader, meta),
+  provide(TarballReader, tarballs),
+  provide(RegistryBaseUrl, "https://registry.brika.dev"),
+).inject(ResolveService);
 
 test("resolves a known packument and null for unknown", async () => {
   expect((await service.packument("@brika/plugin-x"))?.name).toBe("@brika/plugin-x");

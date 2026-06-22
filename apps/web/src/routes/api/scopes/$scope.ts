@@ -5,10 +5,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { recordAudit, runAuthed } from "@/server/http";
 
 /**
- * `GET /api/scopes/:scope` - the scope's editable profile (display name, description, links,
- * icon presence), for hydrating the console editor. `PUT` claims the scope (`@name`), making
- * the caller its first admin. The `:scope` param is the URL-encoded scope (`@brika` ->
- * `%40brika`).
+ * `GET /api/scopes/:scope` - the scope's editable profile, for hydrating the console editor. `PUT`
+ * claims the scope (`@name`), making the caller its first admin. `:scope` is URL-encoded (`%40brika`).
  */
 export const Route = createFileRoute("/api/scopes/$scope")({
   server: {

@@ -5,13 +5,8 @@ import { BlobStore } from "@/server/ports/blob-store";
 const CACHE_CONTROL = "public, max-age=300";
 
 /**
- * Stream a public object from the blob store by key, with ETag revalidation: returns `304 Not
- * Modified` (no body) when the client's `If-None-Match` matches R2's ETag, otherwise pipes R2's body
- * straight to the `Response` (no buffering). Throws `notFound()` when the object is absent.
- *
- * Shared by the scope-icon endpoint and the `/assets/<key>` route. The `/assets` route is what a
- * fully-LOCAL dev points `ASSETS_PUBLIC_URL` at, so uploaded avatars resolve through the worker off
- * the local bucket; in prod `ASSETS_PUBLIC_URL` is the bucket's r2.dev URL and this is bypassed.
+ * Stream a public object from the blob store by key, with ETag revalidation: `304` when the client's
+ * `If-None-Match` matches, otherwise pipes the body unbuffered. Throws `notFound()` when absent.
  */
 export async function streamBlob(key: string, ifNoneMatch: string | null): Promise<Response> {
   const stored = await inject(BlobStore).get(key);

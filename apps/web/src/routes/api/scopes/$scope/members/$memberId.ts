@@ -8,10 +8,8 @@ import { recordAudit, runAuthed } from "@/server/http";
 const RoleBody = z.object({ role: z.enum(["admin", "member"]) });
 
 /**
- * `PUT    /api/scopes/:scope/members/:memberId` - change an existing member's role by account id
- * (admin only); the domain refuses demoting the last admin (409).
- * `DELETE /api/scopes/:scope/members/:memberId` - remove a member by account id (admin only). The
- * domain refuses removing the scope's last admin (409) and 404s a non-member.
+ * `PUT` changes a member's role, `DELETE` removes a member (both by account id, admin only). The
+ * domain refuses demoting/removing the scope's last admin (409) and 404s a non-member.
  */
 export const Route = createFileRoute("/api/scopes/$scope/members/$memberId")({
   server: {

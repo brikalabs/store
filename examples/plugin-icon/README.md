@@ -6,19 +6,19 @@ right inside your Brika hub. Powered by
 
 ## Tools
 
-- **generate-icon** — render a square SVG icon from a glyph, gradient, and
+- **generate-icon** - render a square SVG icon from a glyph, gradient, and
   optional monogram.
-- **search-glyphs** — search 200k+ glyphs from Lucide, Simple Icons, and
+- **search-glyphs** - search 200k+ glyphs from Lucide, Simple Icons, and
   Iconify.
 
 ## Blocks
 
-- **Icon from text** — a transform block that turns a name or short prompt into
+- **Icon from text** - a transform block that turns a name or short prompt into
   an icon.
 
 ## Bricks
 
-- **Icon preview** — a board brick that previews a generated icon.
+- **Icon preview** - a board brick that previews a generated icon.
 
 ## Permissions
 

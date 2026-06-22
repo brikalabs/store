@@ -1,8 +1,8 @@
 import { inject } from "@brika/di";
+import { Audit } from "@brika/registry-runtime";
 import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runOperator } from "@/server/http";
-import { Audit } from "@/server/registry-services";
 
 /** How many audit rows the console requests at once (also the server-side hard cap). */
 const DEFAULT_LIMIT = 100;

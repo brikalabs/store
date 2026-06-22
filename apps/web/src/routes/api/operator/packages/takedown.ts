@@ -12,9 +12,8 @@ const Body = z.object({
 });
 
 /**
- * `POST /api/operator/packages/takedown` - operator takedown of a package version (hides it
- * from new installs, keeps the bytes for pinned lockfiles, surfaces the reason). The
- * ManagementService is operator-gated here (not scope ownership); the reason is audited.
+ * `POST /api/operator/packages/takedown` - operator takedown of a package version: hides it from new
+ * installs but keeps the bytes for pinned lockfiles, surfaces the reason. Operator-gated; audited.
  */
 export const Route = createFileRoute("/api/operator/packages/takedown")({
   server: {

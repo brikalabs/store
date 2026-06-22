@@ -2,7 +2,9 @@ language js
 
 // Boundary guard for the runtime-agnostic packages. Rather than enumerate every
 // forbidden dependency, this is an ALLOWLIST: a pure package may import only
-// relative paths, node:/bun: builtins, and zod (its one runtime dependency).
+// relative paths, node:/bun: builtins, zod (its one runtime dependency), and
+// @brika/di (the runtime-agnostic, zero-infrastructure DI primitive these packages
+// declare their services with - the field-injection seam, on par with zod).
 // Everything else, a Cloudflare or DB or framework import, an app, or another
 // @brika package, is flagged automatically, so the rule never needs touching
 // when new infrastructure appears. Scoped in biome.json (plugins[].includes) to
@@ -35,10 +37,11 @@ import_source($source) where {
     r".node:.*",
     r".bun:.*",
     r".zod.",
-    r".zod/.*"
+    r".zod/.*",
+    r".@brika/di."
   },
   register_diagnostic(
     span = $source,
-    message = "Import boundary: a runtime-agnostic package may import only relative paths, node:/bun: builtins, and zod. No infrastructure, app, or cross-package dependency is allowed."
+    message = "Import boundary: a runtime-agnostic package may import only relative paths, node:/bun: builtins, zod, and @brika/di. No infrastructure, app, or cross-package dependency is allowed."
   )
 }

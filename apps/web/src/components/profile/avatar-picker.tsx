@@ -4,9 +4,8 @@ import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { toResizedWebp } from "@/lib/icon-resize";
 
 /**
- * Upload / clear the signed-in account's avatar. The image is resized + WebP-encoded in the browser
- * (so any source size is fine), stored in R2, and served from its public URL. Removing it falls back
- * to the provider (GitHub) avatar. `onChange` reports the new resolved avatar URL.
+ * Upload / clear the signed-in account's avatar (resized + WebP-encoded in the browser, stored
+ * in R2). Clearing falls back to the provider avatar; `onChange` reports the new resolved URL.
  */
 export function AvatarPicker({
   id,

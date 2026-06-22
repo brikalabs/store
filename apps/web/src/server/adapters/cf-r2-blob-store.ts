@@ -1,19 +1,16 @@
+import { inject, token } from "@brika/di";
 import { joinUrl } from "@/lib/url";
 import type { BlobObject, BlobStore } from "@/server/ports/blob-store";
 
-/**
- * Cloudflare R2 adapter for the {@link BlobStore} port (the integration layer). The composition
- * root passes the request's bucket (`env.ASSETS`) and the bucket's public base URL (its CDN custom
- * domain, `ASSETS_PUBLIC_URL`); nothing else in the app touches R2 directly.
- */
-export class CfR2BlobStore implements BlobStore {
-  readonly #bucket: R2Bucket;
-  readonly #publicBaseUrl: string | undefined;
+/** The R2 bucket holding the web's mirrored assets + icons (`env.ASSETS`). */
+export const AssetsBucket = token<R2Bucket>("AssetsBucket");
+/** The assets bucket's public CDN base URL (`ASSETS_PUBLIC_URL`), or undefined when unconfigured. */
+export const AssetsPublicUrl = token<string | undefined>("AssetsPublicUrl");
 
-  constructor(bucket: R2Bucket, publicBaseUrl: string | undefined) {
-    this.#bucket = bucket;
-    this.#publicBaseUrl = publicBaseUrl;
-  }
+/** Cloudflare R2 adapter for the {@link BlobStore} port. */
+export class CfR2BlobStore implements BlobStore {
+  readonly #bucket = inject(AssetsBucket);
+  readonly #publicBaseUrl = inject(AssetsPublicUrl);
 
   url(key: string): string | undefined {
     return this.#publicBaseUrl === undefined ? undefined : joinUrl(this.#publicBaseUrl, key);
@@ -22,8 +19,6 @@ export class CfR2BlobStore implements BlobStore {
   async get(key: string): Promise<BlobObject | null> {
     const object = await this.#bucket.get(key);
     if (object === null) return null;
-    // R2's object already has size + body + httpMetadata; expose them as the port shape, with
-    // `bytes()` buffering the same body for callers that parse rather than stream.
     return {
       size: object.size,
       contentType: object.httpMetadata?.contentType,

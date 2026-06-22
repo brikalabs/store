@@ -2,12 +2,9 @@ import { z } from "zod";
 import { hasUnsafeLabelChars } from "./labels";
 
 /**
- * Scope profile: a free-text description plus an arbitrary set of labelled links
- * (X, LinkedIn, npm, Facebook, a docs site, ...). Links are deliberately open-ended - a
- * `{ label, url }` pair, not a fixed enum - so a scope can add whatever it wants. The same
- * anti-spoofing rules as the display name apply to the free-text label, and URLs are
- * constrained to http(s) so a stored profile can never carry a `javascript:` or `data:`
- * link. Validation lives here so the registry endpoint and the store console share it.
+ * Scope profile: a free-text description plus open-ended labelled links. The same anti-spoofing
+ * rules as the display name apply to labels, and URLs are constrained to http(s) so a stored profile
+ * can never carry a `javascript:` or `data:` link.
  */
 
 /** True when `value` is a syntactically valid http(s) URL. */
@@ -49,16 +46,13 @@ export interface ScopeProfileInput {
   readonly links: readonly ScopeLink[];
 }
 
-/** The scope profile request body: a nullable description plus the labelled links. Shared so the
- *  registry endpoint and the store console validate the profile edit identically. */
+/** The scope profile request body: a nullable description plus the labelled links. */
 export const scopeProfileSchema = z.object({
   description: scopeDescriptionSchema.nullable(),
   links: scopeLinksSchema,
 });
 
-// A registrable hostname a scope can claim and verify (e.g. `brika.dev`, `docs.brika.dev`):
-// lowercase labels of a-z/0-9/hyphen (no leading/trailing hyphen), at least two, a 2+ letter
-// TLD, <=253 chars. No scheme, port, or path - this is a bare domain, not a URL.
+// A registrable hostname a scope can claim and verify. No scheme, port, or path - a bare domain.
 const DOMAIN = /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
 
 /** A bare hostname a scope can claim for DNS verification (lowercased first). */

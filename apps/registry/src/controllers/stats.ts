@@ -7,11 +7,8 @@ import { Downloads } from "../services";
 const SERIES_DAYS = 30;
 
 /**
- * `GET /-/v1/downloads/:name` - install counts for a single package:
- * `{ name, total, weekly, series }`, where `series` is the trailing 30-day
- * per-day install counts (oldest first) for the detail-page sparkline. The
- * catalog carries total/weekly for listings; this adds the series for one
- * package.
+ * `GET /-/v1/downloads/:name` - install counts for one package: `{ name, total, weekly, series }`,
+ * where `series` is the trailing 30-day per-day counts (oldest first) for the detail-page sparkline.
  */
 export async function handleDownloads(name: string): Promise<Response> {
   const stats = await inject(Downloads).statsWithSeries(name, SERIES_DAYS);

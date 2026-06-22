@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { type Provider, runInContext } from "@brika/di";
-import { type DnsResolver, type DomainChallenge, ScopeService } from "@brika/registry-core";
+import { DnsResolver, DomainChallenge } from "@brika/registry-core";
 import { HttpError } from "@brika/router";
 import type { Db } from "@brika/store-db";
-import { D1ScopeDomains, D1ScopeMembers, D1ScopeStore, issueToken } from "@brika/store-db/adapters";
+import { issueToken } from "@brika/store-db/adapters";
 import { provideRegistry } from "../services";
 import { fakeR2, makeDb } from "../test-harness";
 
@@ -142,17 +142,14 @@ describe("domains (ORG-010)", () => {
   });
 
   test("verify flips to verified when the challenge TXT resolves; delete removes (then 404)", async () => {
-    // A custom service with deterministic challenge + a resolver that returns it.
+    // Deterministic challenge + a resolver that returns it. Override just these two ports; the
+    // field-injected `ScopeService` resolves them from the (otherwise real) graph.
     const challenge: DomainChallenge = { token: () => Promise.resolve("TOK") };
     const dns: DnsResolver = { txt: () => Promise.resolve(["TOK"]) };
-    const scopes = new ScopeService(
-      new D1ScopeStore(db),
-      new D1ScopeMembers(db),
-      new D1ScopeDomains(db),
-      { domainChallenge: challenge, dnsResolver: dns },
-    );
-    // Override just the ScopeService with the deterministic one; the rest of the graph is real.
-    const overrides: Provider[] = [{ provide: ScopeService, useValue: scopes }];
+    const overrides: Provider[] = [
+      { provide: DomainChallenge, useValue: challenge },
+      { provide: DnsResolver, useValue: dns },
+    ];
     const graph = services(db);
     const token = await issueToken(db, "alice");
     await run(

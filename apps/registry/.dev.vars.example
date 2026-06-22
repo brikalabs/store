@@ -1,0 +1,15 @@
+# Local dev vars for the registry worker (apps/registry). Copy to `.dev.vars` and fill in.
+# The Cloudflare vite plugin reads this into the worker's `env` (see src/env.ts); `.dev.vars`
+# is gitignored. Required vars have no schema default and the worker won't boot without them.
+
+# Where the store/console lives, for the device-login approval URL. Defaults to the prod URL.
+STORE_URL=http://localhost:3000
+REGISTRY_URL=http://localhost:8787
+
+# Operator allowlist (comma-separated Brika account ids) for takedown/restore. Must match the store
+# worker's REGISTRY_ADMINS. Empty -> no operators.
+REGISTRY_ADMINS=u-operator
+
+# Shared HMAC secret for stateless scope domain-verification (ORG-010). Required (no schema default);
+# MUST match the store worker's DOMAIN_VERIFY_SECRET. Any non-empty value locally.
+DOMAIN_VERIFY_SECRET=brika-dev-domain-verify-secret

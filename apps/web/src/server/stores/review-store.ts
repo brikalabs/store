@@ -1,11 +1,10 @@
 import { inject } from "@brika/di";
 import { Review } from "@brika/registry-contract";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { avatarUrlOf } from "@/lib/avatar";
-import { displayNameOf } from "@/lib/display-name";
 import { Database } from "@/server/db/client";
 import { reviews, reviewVotes, users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
+import { authorColumns, toAuthor } from "@/server/stores/author";
 import { votedIds } from "@/server/stores/voted-ids";
 
 /** A new or edited review's content (the rating + text the author submits). */
@@ -17,13 +16,11 @@ export interface ReviewInput {
 }
 
 /**
- * Repository for `reviews` (+ the `review_votes` helpful tally). Read methods project a review
- * into the {@link Review} contract, joining `users` to resolve the author's one display name and
- * avatar. The rating denormalization on the `plugins` row is a separate concern, recomputed by
- * {@link PluginStore} after a write (orchestrated by the service).
+ * Repository for `reviews` (+ the `review_votes` helpful tally), projecting into the {@link Review}
+ * contract. The rating denormalization on the `plugins` row is recomputed by {@link PluginStore}.
  */
 export class ReviewStore {
-  readonly #db = inject(Database).orm;
+  readonly #db = inject(Database);
   readonly #blob = inject(BlobStore);
 
   /** Every review of a plugin, newest first, with the viewer's helpful-vote state. */
@@ -38,11 +35,7 @@ export class ReviewStore {
         helpfulCount: reviews.helpfulCount,
         createdAt: reviews.createdAt,
         edited: reviews.edited,
-        userId: users.id,
-        name: users.name,
-        profileDisplayName: users.displayName,
-        image: users.image,
-        avatarVersion: users.avatarVersion,
+        ...authorColumns,
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.userId, users.id))
@@ -61,11 +54,7 @@ export class ReviewStore {
       Review.parse({
         id: row.id,
         pluginName,
-        author: {
-          id: row.userId,
-          displayName: displayNameOf(row.profileDisplayName, row.name),
-          avatarUrl: avatarUrlOf(this.#blob, row.avatarVersion, row.userId, row.image),
-        },
+        author: toAuthor(this.#blob, row),
         rating: row.rating,
         title: row.title ?? undefined,
         body: row.body,
@@ -91,11 +80,7 @@ export class ReviewStore {
         helpfulCount: reviews.helpfulCount,
         createdAt: reviews.createdAt,
         edited: reviews.edited,
-        authorId: users.id,
-        name: users.name,
-        profileDisplayName: users.displayName,
-        image: users.image,
-        avatarVersion: users.avatarVersion,
+        ...authorColumns,
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.userId, users.id))
@@ -106,11 +91,7 @@ export class ReviewStore {
       Review.parse({
         id: row.id,
         pluginName: row.pluginName,
-        author: {
-          id: row.authorId,
-          displayName: displayNameOf(row.profileDisplayName, row.name),
-          avatarUrl: avatarUrlOf(this.#blob, row.avatarVersion, row.authorId, row.image),
-        },
+        author: toAuthor(this.#blob, row),
         rating: row.rating,
         title: row.title ?? undefined,
         body: row.body,

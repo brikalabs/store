@@ -1,0 +1,34 @@
+{
+  "name": "@brika/registry-runtime",
+  "version": "0.1.0",
+  "description": "DI-wired registry domain services: inject ScopeService/ManagementService/Audit/... composed from @brika/registry-core + @brika/store-db, against a RegistryDb the app provides",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brikalabs/store.git",
+    "directory": "packages/registry-runtime"
+  },
+  "license": "MIT",
+  "author": "Brika Labs",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@brika/di": "workspace:*",
+    "@brika/registry-core": "workspace:*",
+    "@brika/store-db": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260613.1",
+    "@types/bun": "^1.3.5"
+  }
+}

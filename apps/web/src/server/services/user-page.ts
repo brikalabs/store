@@ -10,13 +10,9 @@ import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 const CATALOG_SCAN = 200;
 
 /**
- * Resolve the public account profile page data (USER-002) by the opaque account id (`users.id`).
- * Returns null for an unknown id so the route 404s. Server-side composition over the social service
- * + the scope-membership store, which is why it lives in `server/` (not the pure `lib/` read models).
- *
- * The published plugins are derived by OWNERSHIP, never npm: the account id -> its scope
- * memberships -> the catalog plugins under those scopes (the same ownership filter `getScopePage`
- * applies). Reviews are the social reviews the account authored.
+ * Resolve the public account profile page data (USER-002) by account id (`users.id`), or null when
+ * unknown (route 404s). Published plugins are derived by OWNERSHIP (account -> scope memberships ->
+ * catalog plugins under those scopes), never npm; reviews are the social reviews the account authored.
  */
 export async function resolveUserPage(id: string): Promise<UserPage | null> {
   const social = inject(SocialService);

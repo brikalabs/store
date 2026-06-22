@@ -10,11 +10,7 @@ type Action = {
   onClick?: () => void;
 };
 
-/**
- * Full-page error state with the "bricks in a wall" motif: on-brand, a little
- * funny, and consistent across 404 / 500 / 403 / 503. The global site header
- * stays above it.
- */
+/** Full-page error state shared across 404 / 500 / 403 / 503, below the global site header. */
 export function ErrorState({
   codeLabel,
   title,

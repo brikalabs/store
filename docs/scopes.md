@@ -69,7 +69,7 @@ A scope is governed by its **members** (provider-qualified identities; today tha
 GitHub user or org, via OIDC trusted publishing or a device-flow token). Publishing is
 gated on membership:
 
-- Publishing to a scope that does not exist is rejected — **create it first**.
+- Publishing to a scope that does not exist is rejected - **create it first**.
 - Publishing to a scope you are not a member of is rejected (`403`).
 
 So there is no way to publish under a scope you are not a member of, and no
@@ -79,8 +79,8 @@ first-publish race to claim one.
 
 A scope has members with one of two roles:
 
-- **member** — may publish versions under the scope.
-- **admin** — everything a member can, plus manage members and set the display name.
+- **member** - may publish versions under the scope.
+- **admin** - everything a member can, plus manage members and set the display name.
 
 The creator is the scope's first **admin**. A scope always keeps **at least one admin**:
 demoting or removing the last admin is rejected (`409`). All member management is

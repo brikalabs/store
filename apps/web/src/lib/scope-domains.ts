@@ -8,10 +8,7 @@ import { z } from "zod";
 
 export const DomainBody = z.object({ domain: scopeDomainSchema });
 
-/**
- * A claimed domain plus the (derived) TXT host + value it must publish to verify (ORG-010).
- * Resolved per domain so the route's GET handler stays a thin list+serialize.
- */
+/** Claimed domains plus the derived TXT host + value each must publish to verify (ORG-010). */
 export function shapeDomains(
   scopes: ScopeService,
   scope: string,

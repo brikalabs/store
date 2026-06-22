@@ -1,11 +1,9 @@
 import { z } from "zod";
 
 /**
- * OIDC verification for tokenless ("trusted") publishing. The signature + time +
- * issuer + audience checks are provider-neutral ({@link verifyOidc}); each provider
- * (GitHub today, GitLab/Google later) only differs in its claim shape and how those
- * map to a publish identity. {@link verifyGithubOidc} is the GitHub-configured
- * wrapper. Pure Web Crypto, JWKS injected for testing.
+ * OIDC verification for tokenless ("trusted") publishing. The signature/time/issuer/audience checks
+ * are provider-neutral ({@link verifyOidc}); each provider differs only in its claim shape and how
+ * those map to a publish identity. Pure Web Crypto, JWKS injected for testing.
  */
 
 export const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
@@ -45,9 +43,8 @@ export const OidcClaims = z.object({
 export type OidcClaims = z.infer<typeof OidcClaims>;
 
 /**
- * GitLab CI ID-token claims (gitlab.com). `project_path` is `group/project` (the GitHub
- * `repository` analog); `ci_config_ref_uri` points at the pipeline's config file (the
- * `workflow_ref` analog, e.g. `gitlab.com/group/project//.gitlab-ci.yml@refs/heads/main`).
+ * GitLab CI ID-token claims (gitlab.com). `project_path` is the GitHub `repository` analog;
+ * `ci_config_ref_uri` is the `workflow_ref` analog.
  */
 export const GitlabClaims = z.object({
   iss: z.string(),
@@ -65,11 +62,7 @@ export const GitlabClaims = z.object({
 });
 export type GitlabClaims = z.infer<typeof GitlabClaims>;
 
-/**
- * A CI publish identity normalized across OIDC providers, so the registry's authorization +
- * trusted-publisher matching are provider-neutral. `repository` + `workflowRef` are what a
- * trusted-publisher binding matches; `provider` qualifies the binding.
- */
+/** A CI publish identity normalized across OIDC providers, so authorization is provider-neutral. */
 export interface OidcIdentity {
   readonly provider: string;
   /** Owner/namespace (GitHub `repository_owner`, GitLab `namespace_path`). */
@@ -173,10 +166,8 @@ function parseJson<T>(schema: z.ZodType<T>, raw: string): T | null {
 }
 
 /**
- * Provider-neutral OIDC verification: checks the RS256 signature against the JWKS,
- * then the issuer, audience and time window. Returns the raw claims bag (a provider
- * then narrows it to its own schema), or null on any failure. The trust anchor that
- * every provider's verifier builds on.
+ * Provider-neutral OIDC verification: checks the RS256 signature against the JWKS, then the issuer,
+ * audience and time window. Returns the raw claims bag, or null on any failure (fail-closed).
  */
 export async function verifyOidc(
   token: string,
@@ -219,11 +210,7 @@ export async function verifyOidc(
   return claims;
 }
 
-/**
- * Verify a GitHub Actions OIDC token: the generic {@link verifyOidc} checks, then
- * the GitHub claim shape (`repository` / `repository_owner`). Returns the GitHub
- * claims when everything checks out; otherwise null.
- */
+/** Verify a GitHub Actions OIDC token: {@link verifyOidc} plus the GitHub claim shape; null on failure. */
 export async function verifyGithubOidc(
   token: string,
   jwks: JwksProvider,
@@ -239,10 +226,7 @@ export async function verifyGithubOidc(
   return github.success ? github.data : null;
 }
 
-/**
- * Verify a GitLab CI OIDC ID token (gitlab.com): the generic {@link verifyOidc} checks, then
- * the GitLab claim shape (`project_path`). Returns the GitLab claims, else null.
- */
+/** Verify a GitLab CI OIDC ID token: {@link verifyOidc} plus the GitLab claim shape; null on failure. */
 export async function verifyGitlabOidc(
   token: string,
   jwks: JwksProvider,

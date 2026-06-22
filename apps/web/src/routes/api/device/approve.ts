@@ -7,11 +7,8 @@ import { publicJson, runHandler } from "@/server/http";
 import { DeviceApprovalStore } from "@/server/stores/device-approval-store";
 
 /**
- * `POST /api/device/approve`: approve a pending registry device-authorization
- * (RFC 8628) so `brika auth login` can mint a publish token. The user must be
- * signed in; their Brika account id is bound to the device. The approval write goes
- * through the registry's typed schema (`@brika/store-db`) into the shared
- * `reg_device_auth` table.
+ * `POST /api/device/approve`: approve a pending registry device-authorization (RFC 8628) so
+ * `brika auth login` can mint a token. The signed-in user's Brika account id is bound to the device.
  */
 const ApproveInput = z.object({ user_code: z.string() });
 

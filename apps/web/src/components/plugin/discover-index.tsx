@@ -51,11 +51,7 @@ function topScopes(plugins: PluginSummary[], limit: number): Scope[] {
   return [...byScope.values()].sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
-/**
- * The dense discovery index: a left filter rail (capability / trust), the
- * plugin grid, and a right rail (Trending + Top authors). Shared by the home
- * "Console" direction and the Browse page.
- */
+/** The dense discovery index: filter rail, plugin grid, and a Trending + Top authors rail. */
 export function DiscoverIndex({
   plugins,
   total,

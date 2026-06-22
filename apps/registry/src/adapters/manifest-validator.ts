@@ -5,10 +5,8 @@ type TarEntry = Awaited<ReturnType<typeof readTarGzEntries>>[number];
 
 /**
  * If the tarball ships its own package.json, its name/version must match the published
- * manifest. The registry indexes the request manifest, so a divergent embedded manifest
- * cannot change ownership, but it would let a consumer who reads the unpacked
- * package.json see a different identity than the registry's record. Reject that spoof.
- * Absent is allowed (only a present, divergent one fails).
+ * manifest: a divergent embedded one would let a consumer who reads the unpacked file see
+ * a different identity than the registry's record. Absent is allowed.
  */
 function checkEmbeddedManifest(
   entries: readonly TarEntry[],
@@ -34,13 +32,9 @@ function checkEmbeddedManifest(
 }
 
 /**
- * Publish-time data gate. A package is publishable only when its manifest is a
- * valid Brika plugin manifest carrying the store metadata the registry needs to
- * list it (icon, title, description), no bundled file or unpacked total exceeds
- * the registry's size limits, AND every bundled `locales/<lang>/store.json` file
- * matches `StoreLocaleSchema`. `@brika/schema` is the single source of truth for
- * the manifest/locale shapes; this adapter surfaces the first issue as a
- * human-readable message for the publish response.
+ * Publish-time data gate: a valid Brika plugin manifest with store metadata, within the
+ * size limits, with every bundled `locales/<lang>/store.json` matching `StoreLocaleSchema`.
+ * `@brika/schema` is the single source of truth for the shapes.
  */
 export class SchemaManifestValidator implements ManifestValidator {
   readonly #maxFileBytes: number;
@@ -69,8 +63,7 @@ export class SchemaManifestValidator implements ManifestValidator {
       return { ok: false, message: "tarball is not a readable gzip archive" };
     }
 
-    // Size limits, off the already-unpacked bytes: reject an oversized file or a
-    // package whose unpacked total is too large (a gzipped tarball can be small).
+    // Limits checked off unpacked bytes: a gzipped tarball can be small while its contents are not.
     let unpacked = 0;
     for (const entry of entries) {
       if (entry.data.length > this.#maxFileBytes) {

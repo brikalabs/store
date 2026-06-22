@@ -5,11 +5,7 @@ const MAX_EDGE = 512;
 /** WebP quality for the re-encoded logo (0..1). 0.85 is visually lossless for a small icon. */
 const WEBP_QUALITY = 0.85;
 
-/**
- * Downscale an image File to fit {@link MAX_EDGE} and re-encode it as WebP, in the browser, before
- * upload - so a user can pick a large photo and we still send (and store) a small logo. A thin
- * domain wrapper over the {@link image} pipeline; the server validates the result as the backstop.
- */
+/** Downscale a File to fit {@link MAX_EDGE} and re-encode as WebP in the browser before upload. */
 export function toResizedWebp(file: File): Promise<Blob> {
   return image(file)
     .resize({ width: MAX_EDGE, height: MAX_EDGE, fit: "inside" })

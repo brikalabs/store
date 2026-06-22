@@ -1,12 +1,10 @@
+import { token } from "@brika/di";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";
 
 /**
- * The single place the Cloudflare D1 Drizzle driver is imported. Both the
- * registry and the store build their client through here, each passing its own
- * schema, so the returned client is typed to that app's own tables. Centralising
- * the driver means moving off D1 (e.g. to Postgres via `drizzle-orm/node-postgres`)
- * is a one-file change rather than a repo-wide sweep.
+ * Build a Drizzle client typed to `appSchema`'s tables. The single place the D1 driver is imported,
+ * so moving off D1 (e.g. to Postgres) is a one-file change rather than a repo-wide sweep.
  */
 export function createClient<TSchema extends Record<string, unknown>>(
   binding: D1Database,
@@ -21,3 +19,6 @@ export function getDb(d1: D1Database) {
 }
 
 export type Db = ReturnType<typeof getDb>;
+
+/** DI token for the reg_* drizzle client - the one dependency every D1 adapter field-injects. */
+export const Db = token<Db>("Db");

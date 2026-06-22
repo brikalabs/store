@@ -11,14 +11,14 @@ export function ProfileEditor({
   profile: UserProfile;
   onSaved: (next: UserProfile) => void;
 }>) {
-  // Seed from the profile's RESOLVED avatar (uploaded ?? provider), not the session image - so a
-  // reload reflects an uploaded avatar instead of reverting to the GitHub one.
+  // Seed from the RESOLVED avatar (uploaded ?? provider), not the session image, so a reload
+  // reflects an uploaded avatar instead of reverting to the provider one.
   const [avatar, setAvatar] = useState(profile.avatarUrl);
   const [displayName, setDisplayName] = useState(profile.displayName ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [website, setWebsite] = useState(profile.website ?? "");
-  // Rows carry a stable client id so React keys (and edits) are identity-based,
-  // not positional. The id is transient - it is stripped before the row is saved.
+  // Rows carry a stable client id so React keys are identity-based, not positional;
+  // the id is stripped before save.
   const [links, setLinks] = useState<{ id: string; label: string; url: string }[]>(() =>
     profile.links.map((link) => ({ ...link, id: crypto.randomUUID() })),
   );

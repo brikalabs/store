@@ -8,15 +8,12 @@ import { users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 
 /**
- * Repository for the user-authored public profile (USER-002/003/005), now columns on the
- * `users` row itself (no separate `user_profiles` table). The editable fields
- * (displayName/bio/website/links/avatar) live alongside the provider-synced `name`/`image`:
- * the avatar resolves to the account's uploaded image when set (`avatar_version`) and otherwise
- * the provider `image`, and the display name falls back to the provider `name` (never
- * npm-derived).
+ * Repository for the user-authored public profile (USER-002/003/005), columns on the `users` row.
+ * The avatar resolves to the uploaded image when set (`avatar_version`), else the provider `image`;
+ * the display name falls back to the provider `name` (never npm-derived).
  */
 export class UserProfileStore {
-  readonly #db = inject(Database).orm;
+  readonly #db = inject(Database);
   readonly #blob = inject(BlobStore);
 
   /** The account's public profile by opaque account id, or null when the account is unknown. */
@@ -48,9 +45,8 @@ export class UserProfileStore {
   }
 
   /**
-   * Update the account's own profile fields (USER-003). The caller passes the session
-   * `users.id` (the row always exists - BetterAuth created it at sign-up), so a user only ever
-   * writes their own row; unset fields are stored as-is (empty, never back-filled, USER-005).
+   * Update the account's own profile fields (USER-003). The row always exists (BetterAuth created it
+   * at sign-up); unset fields are stored as-is, never back-filled (USER-005).
    */
   async upsert(
     id: string,
@@ -73,9 +69,8 @@ export class UserProfileStore {
   }
 
   /**
-   * Set (or clear, with null) the account's uploaded-avatar content version, leaving the other
-   * profile fields untouched. The caller passes the session `users.id`, so a user only writes its
-   * own row. The public URL is derived from this at read time, never stored.
+   * Set (or clear, with null) the account's uploaded-avatar content version. The public URL is
+   * derived from this at read time, never stored.
    */
   async setAvatarVersion(id: string, avatarVersion: string | null): Promise<void> {
     await this.#db.update(users).set({ avatarVersion }).where(eq(users.id, id));

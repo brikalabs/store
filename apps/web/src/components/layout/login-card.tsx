@@ -4,11 +4,7 @@ import { ChevronLeft, ShieldCheck } from "lucide-react";
 import type { ComponentType } from "react";
 import { GithubIcon } from "@/components/clay/icons";
 
-/**
- * The identity providers offered on the sign-in screen, in order. Each maps to a `/auth/<id>` route
- * that starts BetterAuth's social sign-in for that provider. Add a provider here (plus its `/auth/<id>`
- * start route + a BetterAuth `socialProviders` entry) to surface it - the card renders the list.
- */
+/** The sign-in providers, in order; each maps to a `/auth/<id>` social sign-in route. */
 const PROVIDERS: ReadonlyArray<{
   id: string;
   label: string;
@@ -18,9 +14,8 @@ const PROVIDERS: ReadonlyArray<{
 const route = getRouteApi("/login");
 
 /**
- * Developer sign-in screen: a centered card on the warm ember wash, listing the configured identity
- * providers. The `return` search param (set by `requireUser`) is carried through to the chosen
- * provider so the user lands back where they were after sign-in.
+ * Developer sign-in screen listing the configured providers. The `return` search param (set by
+ * `requireUser`) is carried through so the user lands back where they were after sign-in.
  */
 export function LoginCard() {
   const { return: returnTo } = route.useSearch();

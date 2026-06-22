@@ -14,7 +14,7 @@ import * as schema from "./db/schema";
  * removes the guesswork from the e2e/operator fixtures: if `getSession` resolves
  * the forged cookie to the seeded user, the e2e cookies authenticate for real.
  *
- * We build a BetterAuth instance with the SAME config shape as `getAuth()` (the
+ * We build a BetterAuth instance with the SAME config shape as `buildAuth()` (the
  * Drizzle adapter over our schema, `secret` = SESSION_SECRET) but over an
  * in-memory SQLite built from the shipped migrations (mirroring social-data.test.ts).
  */
@@ -38,7 +38,7 @@ function makeDb() {
   return { sqlite, db: drizzle(sqlite, { schema }) };
 }
 
-/** Mirror getAuth()'s config shape over the in-memory db (no real GitHub creds needed). */
+/** Mirror buildAuth()'s config shape over the in-memory db (no real GitHub creds needed). */
 function makeAuth(db: ReturnType<typeof drizzle>) {
   return betterAuth({
     database: drizzleAdapter(db, { provider: "sqlite", schema }),

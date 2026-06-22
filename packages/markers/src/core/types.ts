@@ -1,9 +1,6 @@
 /**
- * Marker model. A *marker* is a `// @kind: reason` comment recording a spot in
- * the code that is intentionally incomplete: a limit declared before it is
- * enforced, mock data shown until the real source lands, a planned feature. Every
- * marker carries a required reason so it explains itself in place rather than
- * rotting silently.
+ * Marker model. A *marker* is a `// @kind: reason` comment recording an intentionally incomplete spot
+ * (a rule declared before it is enforced, mock data, planned work). Every marker carries a reason.
  */
 
 /** How loud a marker is. Maps to an editor diagnostic severity. */
@@ -19,11 +16,7 @@ export interface BlameInfo {
   readonly commit: string;
 }
 
-/**
- * A kind of marker (e.g. `mock`, `unenforced`). Kinds are data, not code: adding
- * one is a single entry in the registry, which the parser, CLI, and editor all
- * read.
- */
+/** A kind of marker (e.g. `mock`, `unenforced`). Kinds are data: adding one is a single registry entry. */
 export interface MarkerKindSpec {
   /** Lowercase identifier used in the tag, e.g. `mock` or `unenforced`. */
   readonly name: string;

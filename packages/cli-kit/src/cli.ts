@@ -137,12 +137,7 @@ function toCamelCase(key: string): string {
   return key.replace(/-(\w)/g, (_, char: string) => char.toUpperCase());
 }
 
-/**
- * Re-key a parsed values object so hyphenated flags read as camelCase
- * properties in handlers (`values.noBoot` rather than `values['no-boot']`),
- * matching the camelCased type from `InferValues`. Single-word keys are
- * unchanged.
- */
+/** Re-key parsed values so hyphenated flags read as camelCase (`values.noBoot`), matching `InferValues`. */
 function camelCaseKeys<T>(values: Record<string, T>): Record<string, T> {
   const out: Record<string, T> = {};
   for (const [key, value] of Object.entries(values)) {
@@ -225,10 +220,8 @@ export function createCli<const Names extends string = string>(config?: CliConfi
         for (const command of group) cli.addCommand(command);
         return cli;
       }
-      // A NamespaceSpec: build a self-contained sub-CLI (its own help + parsing)
-      // that inherits this CLI's prefix, so `brika registry --help` reads
-      // correctly. Mounting it as one command means only the namespace name can
-      // collide, not its children.
+      // A self-contained sub-CLI (its own help + parsing) inheriting this prefix. Mounting it as one
+      // command means only the namespace name can collide, not its children.
       const sub = createCli({ name: prefix, commands: group.commands });
       const command = sub.toCommand(group.name, group.description);
       command.aliases = group.aliases;
@@ -314,9 +307,7 @@ export function createCli<const Names extends string = string>(config?: CliConfi
   if (config?.commands) {
     cli.addCommands(config.commands);
   }
-  // Help is built-in: every CLI gets a `help` command (and `-h`/`--help`), so
-  // `defaultCommand: "help"` always resolves and callers never need a separate
-  // registration step. A user-defined `help` command takes priority.
+  // Help is built-in: every CLI gets `help` (and `-h`/`--help`); a user-defined `help` takes priority.
   cli.addHelp();
 
   return cli;

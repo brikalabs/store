@@ -52,10 +52,8 @@ export function PluginIcon({
 }>) {
   const radius = Math.round(size * 0.26);
   const Glyph = glyphFor(capabilities);
-  // Clay's Avatar (Radix) shows the icon only once it LOADS, so a missing/404/broken icon never
-  // shows the browser's broken-image glyph - it falls back to the gradient + capability tile.
-  // Each child carries the squircle radius (no Root overflow-hidden) so the tile's drop shadow
-  // is not clipped.
+  // Clay's Avatar (Radix) shows the icon only once it LOADS, so a missing/404/broken icon
+  // falls back to the gradient + capability tile instead of the broken-image glyph.
   return (
     <Avatar
       data-slot="plugin-icon"
@@ -85,9 +83,8 @@ export function PluginIcon({
 }
 
 /**
- * Gradient initials tile, used for user/author/scope avatars. When `imageUrl` is given (a GitHub
- * avatar from `users.image`, a scope icon, ...) it shows once loaded; a missing or failed-to-load
- * image degrades to the gradient + initials with no broken-image glyph (clay's Avatar handles it).
+ * Gradient initials tile for user/author/scope avatars. When `imageUrl` is given it shows once
+ * loaded; a missing or failed image degrades to the gradient + initials (no broken-image glyph).
  */
 export function GradientAvatar({
   seed,
@@ -107,11 +104,8 @@ export function GradientAvatar({
       .replace(/[^a-zA-Z0-9]/g, "")
       .slice(0, 2)
       .toUpperCase() || "?";
-  // Clay's Avatar (Radix) renders the image only once it LOADS; a missing/404/broken image never
-  // shows the browser's broken-image glyph - it stays on the fallback (the brand gradient tile +
-  // initials). A proportional squircle (radius = 26% of size) carried on each child - not the Root
-  // - so every avatar reads the same shape at any size (matching the plugin-icon tiles), clay's
-  // near-circular `rounded-avatar` is overridden, and the tile's drop shadow is not clipped.
+  // Clay's Avatar (Radix) renders the image only once it LOADS, so a missing/404/broken image
+  // stays on the gradient + initials fallback instead of the broken-image glyph.
   const radius = Math.round(size * 0.26);
   return (
     <Avatar

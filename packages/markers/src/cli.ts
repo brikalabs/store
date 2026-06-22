@@ -12,8 +12,7 @@
  *   markers --sort date          sort by date (implies --blame); also: file | kind
  *   markers --format json        machine output (json | github | human)
  *
- * Kinds come from `markers.config.json` at the repo root (overlaying the
- * built-in defaults) if present. `--format github` emits PR annotations.
+ * Kinds come from `markers.config.json` at the repo root (overlaying the built-in defaults) if present.
  */
 import { CONFIG_FILE, resolveKinds } from "./core/config";
 import type { Marker } from "./core/types";

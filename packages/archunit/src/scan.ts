@@ -4,9 +4,8 @@ import { readFileSync } from "node:fs";
 import { Glob } from "bun";
 import { classNames, specifiers, stripComments } from "./source";
 
-// Process-level memoization. Rules overlap (e.g. `packages/*/src` and `packages/*-core/src`
-// both cover registry-core), so without this the same files would be globbed, read, and
-// parsed several times. Source is stable for a run, so caching by pattern/path is safe.
+// Process-level memoization: rules overlap (e.g. `packages/*/src` and `packages/*-core/src` both
+// cover registry-core), so without this the same files would be globbed/read/parsed several times.
 const globCache = new Map<string, Glob>();
 const scanCache = new Map<string, string[]>();
 const sourceCache = new Map<string, string>();
@@ -64,10 +63,8 @@ export function classesOf(absolutePath: string): string[] {
 }
 
 /**
- * Expand a directory/package-shaped pattern to all the TS sources under it, so rules can
- * be written by folder: `filesMatching("packages/*-core/src")` instead of
- * `"packages/*-core/src/**\/*.ts"`. A pattern that already targets files (ends in
- * `.ts`/`.tsx`, or contains an explicit `*.ext` / brace glob) is left as-is.
+ * Expand a directory/package-shaped pattern to the TS sources under it, so rules can be written by
+ * folder. A pattern that already targets files (ends in `.ts`/`.tsx`, or has an explicit glob) is left as-is.
  */
 export function toFileGlob(pattern: string): string {
   if (/\.(ts|tsx)$/.test(pattern) || /\*\.[a-z{]/.test(pattern)) return pattern;

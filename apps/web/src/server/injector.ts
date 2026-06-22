@@ -1,22 +1,30 @@
 import { env } from "cloudflare:workers";
-import type { Provider } from "@brika/di";
-import { CfR2BlobStore } from "@/server/adapters/cf-r2-blob-store";
+import { createInjector, type Provider, runInInjectionContext } from "@brika/di";
+import { DomainSecret, RegistryDb, registryBindings } from "@brika/registry-runtime";
+import { getDb as getRegistryDb } from "@brika/store-db";
+import { AssetsBucket, AssetsPublicUrl, CfR2BlobStore } from "@/server/adapters/cf-r2-blob-store";
 import { Database, getDb } from "@/server/db/client";
-import { vars } from "@/server/env";
+import { config } from "@/server/env";
 import { BlobStore } from "@/server/ports/blob-store";
-import { RegistryDatabase, registryDb, registryProviders } from "@/server/registry-services";
+
+/** The web app's composition root: the runtime values its DI graph needs. */
+const webProviders: readonly Provider[] = [
+  { provide: Database, useFactory: () => getDb(env.DB) },
+  { provide: AssetsBucket, useFactory: () => env.ASSETS },
+  { provide: AssetsPublicUrl, useFactory: () => config().ASSETS_PUBLIC_URL },
+  { provide: BlobStore, useClass: CfR2BlobStore },
+  { provide: RegistryDb, useFactory: () => getRegistryDb(env.DB) },
+  { provide: DomainSecret, useFactory: () => config().DOMAIN_VERIFY_SECRET },
+  ...registryBindings,
+];
 
 /**
- * The web app's per-request DI seam, as plain data: the few values that come from the runtime,
- * each provided on its own (no grouping). This is the ONLY place `cloudflare:workers` `env` is
- * read; the store/db/blob classes stay binding-free and test-safe. Everything else self-builds:
- * stores + `SocialService` are concrete classes that `inject(...)` these and so auto-resolve, and
- * the reg_* services come from {@link registryProviders}. Code never builds an injector by hand -
- * `runHandler` and the server-function loaders pass this to `runInContext(webProviders, ...)`.
+ * The web app's injector, one per isolate. Providers are singletons - correct because the
+ * bindings/config are isolate-stable, nothing here is per-request.
  */
-export const webProviders: readonly Provider[] = [
-  { provide: Database, useFactory: () => new Database(getDb(env.DB)) },
-  { provide: RegistryDatabase, useFactory: () => new RegistryDatabase(registryDb()) },
-  { provide: BlobStore, useFactory: () => new CfR2BlobStore(env.ASSETS, vars().ASSETS_PUBLIC_URL) },
-  ...registryProviders,
-];
+const appInjector = createInjector(webProviders);
+
+/** Run `fn` in the app's injection context, so handler bodies just `inject(...)`. */
+export function runWeb<R>(fn: () => R): R {
+  return runInInjectionContext(appInjector, fn);
+}

@@ -1,16 +1,14 @@
 import { inject } from "@brika/di";
+import { RegistryDb } from "@brika/registry-runtime";
 import { regDeviceAuth } from "@brika/store-db";
 import { and, eq, gt } from "drizzle-orm";
-import { RegistryDatabase } from "@/server/registry-services";
 
 /**
  * The store's one write into the registry's shared `reg_device_auth` table: approve a pending
- * device-authorization (RFC 8628), binding the Brika account id so `brika auth login` can mint a
- * publish token. Goes through the registry's typed schema (`@brika/store-db`), keeping the ORM in
- * the repository layer rather than a `lib/` helper.
+ * device-authorization (RFC 8628), binding the Brika account id so `brika auth login` can mint a token.
  */
 export class DeviceApprovalStore {
-  readonly #db = inject(RegistryDatabase).orm;
+  readonly #db = inject(RegistryDb);
 
   /**
    * Approve a pending device code for `userId`. A single conditional UPDATE read back via

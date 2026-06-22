@@ -1,10 +1,7 @@
 /**
- * Minimal gzip + USTAR tar reader. The publish gate needs to look inside an
- * uploaded tarball (e.g. for bundled `locales/<lang>/store.json` files) without
- * pulling in a tar dependency. It is the read counterpart to the CLI's in-process
- * packer: same `package/` prefix, same 512-byte USTAR header blocks. Pure bytes
- * only (Web Crypto / Streams, no Node imports) so it stays in the unit-tested
- * domain core, available in both Workers and Bun.
+ * Minimal gzip + USTAR tar reader, so the publish gate can look inside an uploaded tarball without a
+ * tar dependency. The read counterpart to the CLI's packer (same `package/` prefix, 512-byte USTAR
+ * blocks). Pure bytes (Streams, no Node imports) so it stays in the runtime-agnostic core.
  */
 
 const BLOCK = 512;
@@ -49,11 +46,8 @@ interface TarHeader {
   readonly size: number;
 }
 
-/**
- * Parse a single 512-byte USTAR header block. Returns null for a zero/terminator
- * block or an unreadable size field, which both end the archive. The size field
- * is octal.
- */
+// Returns null for a zero/terminator block or an unreadable size field, which both end the archive.
+// The size field is octal.
 function parseHeader(block: Uint8Array, decoder: TextDecoder): TarHeader | null {
   const name = readField(block, NAME_OFFSET, NAME_LEN, decoder);
   if (name === "") return null; // a zero block terminates the archive
@@ -74,9 +68,8 @@ function stripPackagePrefix(fullName: string): string {
 }
 
 /**
- * Decompress a gzipped tarball and return its regular-file entries. Throws if the
- * bytes are not a readable gzip stream; non-file entries (directories, symlinks)
- * are skipped. The USTAR size field is octal.
+ * Decompress a gzipped tarball and return its regular-file entries. Throws if the bytes are not a
+ * readable gzip stream; non-file entries (directories, symlinks) are skipped.
  */
 export async function readTarGzEntries(gzipped: Uint8Array): Promise<TarEntry[]> {
   const tar = await gunzip(gzipped);

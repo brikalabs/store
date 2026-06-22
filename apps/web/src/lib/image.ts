@@ -1,26 +1,20 @@
 /**
- * A tiny browser image pipeline, a little like sharp: decode -> resize -> re-encode, on a Canvas.
- * Lazy and immutable - each step returns a new {@link Image} and nothing runs until `toBlob()`:
- *
- *   const webp = await image(file).resize({ width: 512, height: 512 }).webp({ quality: 0.85 }).toBlob();
- *
- * Browser-only (uses `createImageBitmap` + `OffscreenCanvas`); the resize MATH is a pure, tested
- * function so the geometry is verifiable without a canvas.
+ * A tiny browser image pipeline (decode -> resize -> re-encode on a Canvas). Lazy and immutable:
+ * each step returns a new {@link Image} and nothing runs until `toBlob()`. Browser-only
+ * (`createImageBitmap` + `OffscreenCanvas`); the resize math is factored out as a pure, tested function.
  */
 
-export type Fit = "inside" | "cover";
+type Fit = "inside" | "cover";
 
-export interface ResizeOptions {
+interface ResizeOptions {
   readonly width?: number;
   readonly height?: number;
-  /**
-   * "inside" (default): scale to fit WITHIN `width` x `height`, keeping aspect ratio, never
-   * upscaling. "cover": fill `width` x `height` exactly, center-cropping the overflow.
-   */
+  /** "inside" (default): fit within `width` x `height`, keep aspect, never upscale.
+   * "cover": fill `width` x `height` exactly, center-cropping the overflow. */
   readonly fit?: Fit;
 }
 
-export interface EncodeOptions {
+interface EncodeOptions {
   /** Encoder quality, 0..1 (WebP and JPEG only; ignored for PNG). */
   readonly quality?: number;
 }
@@ -36,11 +30,8 @@ interface Pipeline {
   readonly quality?: number;
 }
 
-/**
- * The output canvas size for a `source` given the resize options - the pure, testable core of the
- * pipeline. "inside" scales to fit within the box (never up), "cover" returns the exact box (the
- * crop happens at draw time), and no options passes the source size through.
- */
+/** Output canvas size for a `source` given the resize options (the pure core of the pipeline;
+ * "cover" returns the exact box and the crop happens at draw time). */
 export function targetSize(source: Size, resize: ResizeOptions | undefined): Size {
   if (resize === undefined) return { width: source.width, height: source.height };
   const { width, height, fit = "inside" } = resize;

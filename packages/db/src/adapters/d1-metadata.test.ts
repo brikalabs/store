@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { Db } from "../client";
 import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
-import { makeDb } from "../test-harness";
+import { makeAdapter, makeDb } from "../test-harness";
 import { D1MetadataReader } from "./d1-metadata";
 
 /**
@@ -18,7 +18,7 @@ beforeEach(async () => {
 
 describe("D1MetadataReader.getPackage", () => {
   test("returns null for an unknown package", async () => {
-    expect(await new D1MetadataReader(db).getPackage("@brika/missing")).toBeNull();
+    expect(await makeAdapter(db, D1MetadataReader).getPackage("@brika/missing")).toBeNull();
   });
 
   test("assembles versions, dist-tags, and ISO timestamps", async () => {
@@ -56,7 +56,7 @@ describe("D1MetadataReader.getPackage", () => {
       { name: "@brika/x", tag: "next", version: "1.0.0" },
     ]);
 
-    const record = await new D1MetadataReader(db).getPackage("@brika/x");
+    const record = await makeAdapter(db, D1MetadataReader).getPackage("@brika/x");
     expect(record).not.toBeNull();
     expect(record?.name).toBe("@brika/x");
     expect(record?.createdAt).toBe(new Date(1_700_000 * 1000).toISOString());
@@ -88,7 +88,7 @@ describe("D1MetadataReader.getPackage", () => {
       provenance: { sha: "no-repo" },
     });
 
-    const record = await new D1MetadataReader(db).getPackage("@brika/y");
+    const record = await makeAdapter(db, D1MetadataReader).getPackage("@brika/y");
     expect(record?.versions[0]?.provenance).toBeNull();
   });
 });

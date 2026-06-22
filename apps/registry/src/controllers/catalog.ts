@@ -4,11 +4,8 @@ import { controller, route } from "../http/router";
 import { Catalog, Downloads } from "../services";
 
 /**
- * `GET /-/v1/packages` - a small catalog of every published package's latest
- * (non-yanked) version, so the storefront can enumerate `@brika/*` plugins. The
- * npm protocol has no list endpoint; this is our minimal addition. The catalog read
- * is the `CatalogReader` port (`inject(Catalog)`); this handler filters,
- * paginates, and attaches install stats for just the page.
+ * `GET /-/v1/packages` - a small catalog of every published package's latest (non-yanked)
+ * version, so the storefront can enumerate `@brika/*` plugins. The npm protocol has no list endpoint.
  */
 
 const DEFAULT_LIMIT = 50;
@@ -41,7 +38,7 @@ export async function handleCatalog(request: Request): Promise<Response> {
   const filtered = text ? all.filter((entry) => matchesQuery(entry, text)) : all;
   const page = filtered.slice(offset, offset + limit);
 
-  // Attach install stats for just this page's packages (not the whole catalog).
+  // Stats for just this page, not the whole catalog.
   const stats = await inject(Downloads).statsFor(page.map((entry) => entry.name));
   const packages = page.map((entry) => ({ ...entry, downloads: stats.get(entry.name) }));
 

@@ -1,10 +1,9 @@
+import { inject, injectOr, token } from "@brika/di";
+
 /**
- * OAuth 2.0 Device Authorization Grant (RFC 8628) state machine for
- * `brika auth login`: the CLI requests a code, the user approves it in the store,
- * and the CLI polls until a token is issued. Persistence is a `DeviceStore` port
- * (the registry app backs it with D1); randomness and the clock are injected so
- * the flow is deterministic under test. Token issuance stays in the app layer:
- * `redeem` returns the approved account id and the handler mints the token.
+ * OAuth 2.0 Device Authorization Grant (RFC 8628) state machine for `brika auth login`: the CLI
+ * requests a code, the user approves it, and the CLI polls until a token is issued. Token issuance
+ * stays in the app layer - `redeem` returns the approved account id and the handler mints the token.
  */
 
 /** A stored device-authorization grant. */
@@ -24,6 +23,8 @@ export interface DeviceStore {
   find(deviceCode: string): Promise<DeviceGrant | null>;
   remove(deviceCode: string): Promise<void>;
 }
+/** DI token for the {@link DeviceStore} port (an app binds the concrete D1 adapter). */
+export const DeviceStore = token<DeviceStore>("DeviceStore");
 
 /** A freshly issued device code, returned to the polling CLI. */
 export interface IssuedDeviceCode {
@@ -51,6 +52,8 @@ export interface DeviceServiceOptions {
   /** User-code generator (defaults to two 4-char no-vowel groups). */
   readonly userCode?: () => string;
 }
+/** Optional DI token for {@link DeviceServiceOptions}; defaults applied in-class. */
+export const DeviceConfig = token<DeviceServiceOptions>("DeviceConfig");
 
 const DEFAULT_TTL_SECONDS = 15 * 60;
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
@@ -64,22 +67,15 @@ function randomGroup(length: number): string {
   return code;
 }
 
+/** Device-grant flow (RFC 8628): create a pending grant, then redeem it once approved. */
 export class DeviceService {
-  readonly #store: DeviceStore;
-  readonly #ttl: number;
-  readonly #interval: number;
-  readonly #now: () => number;
-  readonly #deviceCode: () => string;
-  readonly #userCode: () => string;
-
-  constructor(store: DeviceStore, options: DeviceServiceOptions = {}) {
-    this.#store = store;
-    this.#ttl = options.ttlSeconds ?? DEFAULT_TTL_SECONDS;
-    this.#interval = options.pollIntervalSeconds ?? DEFAULT_POLL_INTERVAL_SECONDS;
-    this.#now = options.now ?? (() => Math.floor(Date.now() / 1000));
-    this.#deviceCode = options.deviceCode ?? (() => crypto.randomUUID());
-    this.#userCode = options.userCode ?? (() => `${randomGroup(4)}-${randomGroup(4)}`);
-  }
+  readonly #store = inject(DeviceStore);
+  readonly #options = injectOr(DeviceConfig, {});
+  readonly #ttl = this.#options.ttlSeconds ?? DEFAULT_TTL_SECONDS;
+  readonly #interval = this.#options.pollIntervalSeconds ?? DEFAULT_POLL_INTERVAL_SECONDS;
+  readonly #now = this.#options.now ?? (() => Math.floor(Date.now() / 1000));
+  readonly #deviceCode = this.#options.deviceCode ?? (() => crypto.randomUUID());
+  readonly #userCode = this.#options.userCode ?? (() => `${randomGroup(4)}-${randomGroup(4)}`);
 
   /** Create a pending grant and return the codes for the CLI + approval page. */
   async requestCode(): Promise<IssuedDeviceCode> {

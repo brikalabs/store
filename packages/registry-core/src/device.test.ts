@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { type DeviceGrant, DeviceService, type DeviceStore } from "./device";
+import { provide, testBed } from "@brika/di";
+import {
+  DeviceConfig,
+  type DeviceGrant,
+  DeviceService,
+  type DeviceServiceOptions,
+  DeviceStore,
+} from "./device";
 
 /** In-memory DeviceStore for deterministic tests (no D1, no network). */
 function fakeStore(seed: DeviceGrant[] = []): DeviceStore & { grants: Map<string, DeviceGrant> } {
@@ -19,7 +26,7 @@ function fakeStore(seed: DeviceGrant[] = []): DeviceStore & { grants: Map<string
 }
 
 const FIXED_NOW = 1_000_000;
-const options = {
+const options: DeviceServiceOptions = {
   now: () => FIXED_NOW,
   deviceCode: () => "device-1",
   userCode: () => "BCDF-GHJK",
@@ -27,10 +34,14 @@ const options = {
   pollIntervalSeconds: 5,
 };
 
+/** A DeviceService over the given store with the deterministic test seams. */
+const deviceService = (store: DeviceStore) =>
+  testBed(provide(DeviceStore, store), provide(DeviceConfig, options)).inject(DeviceService);
+
 describe("DeviceService.requestCode", () => {
   test("stores a pending grant with the injected codes and TTL", async () => {
     const store = fakeStore();
-    const code = await new DeviceService(store, options).requestCode();
+    const code = await deviceService(store).requestCode();
     expect(code).toEqual({
       deviceCode: "device-1",
       userCode: "BCDF-GHJK",
@@ -45,7 +56,7 @@ describe("DeviceService.requestCode", () => {
 
 describe("DeviceService.redeem", () => {
   test("invalid_grant for an unknown device code", async () => {
-    const result = await new DeviceService(fakeStore(), options).redeem("nope");
+    const result = await deviceService(fakeStore()).redeem("nope");
     expect(result).toEqual({ ok: false, error: "invalid_grant" });
   });
 
@@ -59,7 +70,7 @@ describe("DeviceService.redeem", () => {
         expiresAt: FIXED_NOW + 60,
       },
     ]);
-    const result = await new DeviceService(store, options).redeem("d");
+    const result = await deviceService(store).redeem("d");
     expect(result).toEqual({ ok: false, error: "authorization_pending" });
     // The grant is kept so the CLI can keep polling.
     expect(store.grants.has("d")).toBe(true);
@@ -75,7 +86,7 @@ describe("DeviceService.redeem", () => {
         expiresAt: FIXED_NOW - 1,
       },
     ]);
-    const result = await new DeviceService(store, options).redeem("d");
+    const result = await deviceService(store).redeem("d");
     expect(result).toEqual({ ok: false, error: "expired_token" });
     expect(store.grants.has("d")).toBe(false);
   });
@@ -90,7 +101,7 @@ describe("DeviceService.redeem", () => {
         expiresAt: FIXED_NOW + 60,
       },
     ]);
-    const result = await new DeviceService(store, options).redeem("d");
+    const result = await deviceService(store).redeem("d");
     expect(result).toEqual({ ok: true, userId: "octocat" });
     expect(store.grants.has("d")).toBe(false);
   });

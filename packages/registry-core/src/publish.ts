@@ -1,3 +1,4 @@
+import { inject, injectOr, token } from "@brika/di";
 import { sha1Hex, sha512Integrity } from "./integrity";
 import { REGISTRY_LIMITS } from "./limits";
 import { isCanonicalName, scopeOf } from "./names";
@@ -5,10 +6,8 @@ import { tarballPath } from "./packument";
 import type { PackageVersion, Provenance } from "./types";
 
 /**
- * Who is publishing, derived from a verified OIDC token or a session token. A publish is
- * EITHER a human (a Brika `userId`, from a CLI/console token) OR CI (an OIDC `provider` +
- * `repository`); exactly one of `userId` / `repository` is set. There is no GitHub-login
- * owner: a human is identified by the provider-agnostic Brika account id.
+ * Who is publishing. INVARIANT: a publish is EITHER a human (Brika `userId`) OR CI (OIDC `provider` +
+ * `repository`); exactly one of `userId` / `repository` is set.
  */
 export interface PublishIdentity {
   /** Brika account id for a human token publish; null for a CI/OIDC publish. */
@@ -42,10 +41,8 @@ export type PublishResult =
 export type PublishErrorCode = "forbidden" | "invalid" | "exists" | "too_large" | "rejected";
 
 /**
- * Manifest/data gate. Validates the published manifest AND any localized store
- * files bundled in the tarball (`locales/<lang>/store.json`). Injected so
- * `@brika/schema` remains the single source of truth and the domain core stays
- * free of schema imports.
+ * Manifest/data gate. Validates the published manifest AND any bundled localized store files. A port
+ * so `@brika/schema` stays the single source of truth and the core stays free of schema imports.
  */
 export interface ManifestValidator {
   validate(
@@ -53,17 +50,17 @@ export interface ManifestValidator {
     tarball: Uint8Array,
   ): Promise<{ ok: true } | { ok: false; message: string }>;
 }
+/** DI token for the {@link ManifestValidator} port (an app binds the `@brika/schema` adapter). */
+export const ManifestValidator = token<ManifestValidator>("ManifestValidator");
 
-/**
- * Malware/abuse gate over the raw tarball bytes, run before any bytes are stored.
- * Injected as a seam so a real scanner (ClamAV, an external service, or a heuristic
- * pass over `readTarGzEntries`) can be dropped in without touching the publish
- * orchestration. Defaults to allow-all, so behavior is unchanged until one exists.
- */
+/** Malware/abuse gate over the raw tarball bytes, run before any bytes are stored. Defaults to
+ *  allow-all until a real scanner is wired in. */
 export interface TarballScanner {
   /** Inspect raw tarball bytes; reject (`ok: false`) to block the publish. */
   scan(tarball: Uint8Array): Promise<{ ok: true } | { ok: false; message: string }>;
 }
+/** Optional DI token for the {@link TarballScanner} port; defaults to allow-all in {@link PublishService}. */
+export const TarballScanner = token<TarballScanner>("TarballScanner");
 
 /** Ownership gate: may this identity publish this package? */
 export interface OwnershipPolicy {
@@ -72,6 +69,8 @@ export interface OwnershipPolicy {
     name: string,
   ): Promise<{ ok: true } | { ok: false; message: string }>;
 }
+/** DI token for the {@link OwnershipPolicy} port (an app binds the concrete D1 adapter). */
+export const OwnershipPolicy = token<OwnershipPolicy>("OwnershipPolicy");
 
 /** The package + version + tag a publish writes as one atomic unit. */
 export interface CommitVersionInput {
@@ -83,13 +82,12 @@ export interface CommitVersionInput {
 /** Write side of the metadata store (publish only). */
 export interface MetadataWriter {
   versionExists(name: string, version: string): Promise<boolean>;
-  /**
-   * Atomically create the package (if new), insert the version, and move the tag.
-   * All-or-nothing: a partial failure must leave the metadata untouched, so a
-   * version row never exists without its `latest` tag (or vice versa).
-   */
+  /** Atomically create the package (if new), insert the version, and move the tag. All-or-nothing:
+   *  a version row must never exist without its `latest` tag (or vice versa). */
   commitVersion(input: CommitVersionInput): Promise<void>;
 }
+/** DI token for the {@link MetadataWriter} port (an app binds the concrete D1 adapter). */
+export const MetadataWriter = token<MetadataWriter>("MetadataWriter");
 
 /** Write side of tarball storage. */
 export interface TarballWriter {
@@ -97,52 +95,37 @@ export interface TarballWriter {
   /** Remove an object, e.g. to compensate a publish whose metadata write failed. */
   delete(key: string): Promise<void>;
 }
+/** DI token for the {@link TarballWriter} port (an app binds the concrete R2 adapter). */
+export const TarballWriter = token<TarballWriter>("TarballWriter");
 
 export interface PublishOptions {
   /** Returns the publish timestamp; injected for deterministic tests. */
   readonly clock?: () => string;
   /** Max accepted tarball size in bytes (defaults to `REGISTRY_LIMITS.maxTarballBytes`). */
   readonly maxTarballBytes?: number;
-  /** Malware/abuse gate over the tarball bytes (defaults to allow-all). */
-  readonly scanner?: TarballScanner;
 }
+/** Optional DI token for the {@link PublishOptions} (clock + size cap); defaults applied in-class. */
+export const PublishConfig = token<PublishOptions>("PublishConfig");
 
 /** Allow-all scanner: the default until a real {@link TarballScanner} is wired in. */
 const allowAllScanner: TarballScanner = { scan: () => Promise.resolve({ ok: true }) };
 
 /**
- * Orchestrates a publish through name validation, the two gates, and the immutability +
- * integrity invariants. The name is checked first, then ownership, then validation, and
- * immutability BEFORE any write, so a rejected publish never touches storage.
+ * Orchestrates a publish through name validation, the two gates, and the immutability + integrity
+ * invariants. Every gate runs BEFORE any write, so a rejected publish never touches storage.
  */
 export class PublishService {
-  readonly #meta: MetadataWriter;
-  readonly #tarballs: TarballWriter;
-  readonly #validator: ManifestValidator;
-  readonly #ownership: OwnershipPolicy;
-  readonly #scanner: TarballScanner;
-  readonly #clock: () => string;
-  readonly #maxTarballBytes: number;
-
-  constructor(
-    meta: MetadataWriter,
-    tarballs: TarballWriter,
-    validator: ManifestValidator,
-    ownership: OwnershipPolicy,
-    options: PublishOptions = {},
-  ) {
-    this.#meta = meta;
-    this.#tarballs = tarballs;
-    this.#validator = validator;
-    this.#ownership = ownership;
-    this.#scanner = options.scanner ?? allowAllScanner;
-    this.#clock = options.clock ?? (() => new Date().toISOString());
-    this.#maxTarballBytes = options.maxTarballBytes ?? REGISTRY_LIMITS.maxTarballBytes;
-  }
+  readonly #meta = inject(MetadataWriter);
+  readonly #tarballs = inject(TarballWriter);
+  readonly #validator = inject(ManifestValidator);
+  readonly #ownership = inject(OwnershipPolicy);
+  readonly #scanner = injectOr(TarballScanner, allowAllScanner);
+  readonly #options = injectOr(PublishConfig, {});
+  readonly #clock = this.#options.clock ?? (() => new Date().toISOString());
+  readonly #maxTarballBytes = this.#options.maxTarballBytes ?? REGISTRY_LIMITS.maxTarballBytes;
 
   async publish(input: PublishInput): Promise<PublishResult> {
-    // 0. Name: a canonical scoped name, and a manifest that matches the published
-    //    name/version. Rejecting here means a bad name never reaches the ownership gate.
+    // 0. Name: a canonical scoped name, and a manifest matching the published name/version.
     if (!isCanonicalName(input.name)) {
       return {
         ok: false,
@@ -185,10 +168,8 @@ export class PublishService {
       };
     }
 
-    // 4.5. Malware/abuse scan of the bytes. Last gate before storage, and after
-    //      immutability so we never scan a version that already exists. A rejection
-    //      means the tarball was well-formed but unacceptable (distinct from an
-    //      `invalid` manifest), so it surfaces as a `rejected` code.
+    // 4.5. Malware/abuse scan. Last gate before storage; after immutability so we never scan a
+    //      version that already exists. A well-formed but unacceptable tarball surfaces as `rejected`.
     const scanned = await this.#scanner.scan(input.tarball);
     if (!scanned.ok) return { ok: false, code: "rejected", message: scanned.message };
 
@@ -197,10 +178,8 @@ export class PublishService {
     const shasum = await sha1Hex(input.tarball);
     const size = input.tarball.byteLength;
 
-    // 6. Write the tarball first (a `delete`-able object the caller can compensate
-    //    if the next step fails), then commit the metadata atomically. Running this
-    //    inside a transaction at the edge means a failed `commitVersion` rolls the
-    //    tarball back, so a publish is all-or-nothing across both stores.
+    // 6. Write the tarball first (a `delete`-able object the caller can compensate if the commit
+    //    fails), then commit metadata atomically, so a publish is all-or-nothing across both stores.
     await this.#tarballs.put(tarballPath(input.name, input.version), input.tarball);
     await this.#meta.commitVersion({
       scope: scopeOf(input.name),

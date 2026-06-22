@@ -16,10 +16,8 @@ const ProfileInput = z.object({
 });
 
 /**
- * `GET|PUT /api/account/profile`: the signed-in account's own user-authored
- * profile (USER-003/CONSOLE-012). Keyed by the account id (`users.id`), the
- * first-class identity (USER-001) - a user only ever reads/writes their own row.
- * Never derived from npm (USER-005). Not part of the public `/v1` contract.
+ * `GET|PUT /api/account/profile`: the signed-in account's own user-authored profile
+ * (USER-003/CONSOLE-012). Keyed by the session `users.id`, so a user only reads/writes their own row.
  */
 export const Route = createFileRoute("/api/account/profile")({
   server: {
