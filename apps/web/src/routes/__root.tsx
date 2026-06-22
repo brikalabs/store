@@ -45,7 +45,9 @@ function RootDocument() {
   const showFooter = !pathname.startsWith("/dashboard");
 
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the theme boot script sets `data-mode` on <html> before hydration,
+    // so this element's attributes intentionally differ from the server markup.
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Apply the persisted theme before paint to avoid a flash. */}
         <script
