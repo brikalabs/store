@@ -35,11 +35,27 @@ function domTheme(): Theme {
   return document.documentElement.dataset.mode === "dark" ? "dark" : "light";
 }
 
+/**
+ * Run `apply` with all CSS transitions disabled, so a theme flip is instant instead of a staggered
+ * color fade across every `transition-colors` element. The override is removed on the next frame
+ * (after a reflow flushes the change), so hover/focus transitions resume immediately.
+ */
+function withoutTransitions(apply: () => void): void {
+  const style = document.createElement("style");
+  style.textContent = "*,*::before,*::after{transition:none !important}";
+  document.head.appendChild(style);
+  apply();
+  void document.documentElement.offsetHeight;
+  requestAnimationFrame(() => style.remove());
+}
+
 function applyMode(mode: ThemeMode): void {
   const theme = mode === "system" ? systemTheme() : mode;
-  const el = document.documentElement;
-  el.dataset.mode = theme;
-  el.classList.toggle("dark", theme === "dark");
+  withoutTransitions(() => {
+    const el = document.documentElement;
+    el.dataset.mode = theme;
+    el.classList.toggle("dark", theme === "dark");
+  });
   // biome-ignore lint/suspicious/noDocumentCookie: a sync write is needed (the boot script reads it on the next load); the Cookie Store API is async and not universally supported.
   document.cookie = `${COOKIE}=${mode}; path=/; max-age=${ONE_YEAR_SECONDS}; samesite=lax`;
 }
