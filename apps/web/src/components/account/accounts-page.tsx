@@ -6,14 +6,7 @@ import { GithubIcon } from "@/components/clay/icons";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { linkSocial, listAccounts, unlinkAccount } from "@/lib/auth/client";
 
-/**
- * Provider registry for the connected-accounts surface (USER-004). Each entry is a
- * social provider BetterAuth is (or will be) configured with. Adding a second
- * provider is a one-line addition here plus its `socialProviders` config in
- * `server/auth.ts` - the link/unlink plumbing below is provider-agnostic. The
- * `providerId` matches what `listAccounts()` returns and what `linkSocial`/
- * `unlinkAccount` expect.
- */
+/** A social provider on the connected-accounts surface (USER-004); `id` matches `listAccounts()`. */
 type Provider = {
   id: "github";
   label: string;
@@ -61,9 +54,8 @@ export function AccountsPage() {
     void load();
   }, [load]);
 
-  // Linked count of the providers we surface; gates the last-provider unlink guard
-  // (USER-004-AC4). BetterAuth also refuses unlinking the last account server-side,
-  // so this is defense in depth + a clear disabled affordance, not the only check.
+  // Gates the last-provider unlink guard (USER-004-AC4); BetterAuth also refuses
+  // server-side, so this is defense in depth + a clear disabled affordance.
   const linkedCount = accounts?.filter((a) => a.providerId !== "credential").length ?? 0;
 
   async function link(provider: Provider["id"]) {
@@ -141,8 +133,7 @@ export function AccountsPage() {
   );
 }
 
-/** One provider row: its connected state and the link/unlink action. Extracted so the list callback
- *  stays trivial and this stays well under the cognitive-complexity budget. */
+/** One provider row: its connected state and the link/unlink action. */
 function AccountRow({
   provider,
   connected,

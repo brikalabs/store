@@ -16,10 +16,8 @@ export interface ReviewInput {
 }
 
 /**
- * Repository for `reviews` (+ the `review_votes` helpful tally). Read methods project a review
- * into the {@link Review} contract, joining `users` to resolve the author's one display name and
- * avatar. The rating denormalization on the `plugins` row is a separate concern, recomputed by
- * {@link PluginStore} after a write (orchestrated by the service).
+ * Repository for `reviews` (+ the `review_votes` helpful tally), projecting into the {@link Review}
+ * contract. The rating denormalization on the `plugins` row is recomputed by {@link PluginStore}.
  */
 export class ReviewStore {
   readonly #db = inject(Database);

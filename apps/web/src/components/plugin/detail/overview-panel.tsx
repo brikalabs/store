@@ -5,11 +5,7 @@ import { ScreenshotPanels } from "@/components/clay/screenshot-panels";
 import { Markdown } from "@/components/plugin/markdown";
 import { LocalizationSection } from "./localization-section";
 
-/**
- * The Overview tab's main column: the readable intro only, so it is no longer a
- * giant scroll. Screenshots, Capabilities, Languages, and About. The heavier
- * reference sections live in the Permissions and Supply chain tabs.
- */
+/** The Overview tab's main column: screenshots, capabilities, languages, and about. */
 export function OverviewPanel({
   detail,
   readme,

@@ -4,8 +4,7 @@ import { listSubjectTokens, revokeTokenByHash, type SubjectToken } from "@brika/
 
 /**
  * The web account UI's reads + revocation over the registry's `reg_tokens` table, always scoped to
- * one account `userId` so a user only ever sees or revokes their OWN publish tokens. A route asks
- * `inject(PublishTokenStore).listSubjectTokens(...)` rather than threading the drizzle client.
+ * one account `userId` so a user only ever sees or revokes their OWN publish tokens.
  */
 export class PublishTokenStore {
   readonly #db = inject(RegistryDb);

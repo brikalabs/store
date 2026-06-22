@@ -7,11 +7,8 @@ import { Db } from "./client";
 import { regDistTags, regPackages, regScopeMembers, regScopes, regVersions, schema } from "./index";
 
 /**
- * Shared in-memory test harness for the `reg_*` schema. Builds a real bun:sqlite
- * database by applying the same drizzle migrations the package ships, wrapped as a
- * drizzle `Db`, plus a canonical package seed. The D1 adapter tests here and the
- * registry's controller tests both import these, so the real code paths run end to
- * end without the Cloudflare runtime and share one definition (no per-file copy).
+ * Shared in-memory test harness for the `reg_*` schema: a real bun:sqlite database with the
+ * package's shipped migrations applied, so the real code paths run without the Cloudflare runtime.
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, "../drizzle");
@@ -32,20 +29,16 @@ export function makeDb(): Db {
 }
 
 /**
- * Build a field-injected D1 adapter over `db` for a test - the test analog of the app's
- * composition root: `makeAdapter(db, D1ScopeStore)`. The adapters resolve `Db` (and any sibling
- * port) from the injector. Pass `extra` providers for an adapter that injects more (e.g. the
- * ownership policy's member/trusted ports).
+ * Build a field-injected D1 adapter over `db` for a test, e.g. `makeAdapter(db, D1ScopeStore)`. Pass
+ * `extra` providers for an adapter that injects sibling ports (e.g. the ownership policy's deps).
  */
 export function makeAdapter<T>(db: Db, adapter: ProviderToken<T>, ...extra: Provider[]): T {
   return testBed(provide(Db, db), ...extra).inject(adapter);
 }
 
 /**
- * Seed the canonical example package used across the registry tests: `@brika/x@1.0.0`
- * plus the `@brika` scope (whose admin is the account `owner`, so membership-based publish
- * authorization passes) and the `latest` dist-tag. Token issuance is left to the caller,
- * since only the auth-facing tests need one.
+ * Seed the canonical example package across registry tests: `@brika/x@1.0.0`, the `@brika` scope
+ * (with `owner` as admin so membership-based publish authorization passes), and the `latest` tag.
  */
 export async function seedExamplePackage(db: Db, owner: string): Promise<void> {
   await db.insert(regScopes).values({ scope: "@brika" });

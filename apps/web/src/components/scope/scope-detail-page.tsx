@@ -13,10 +13,8 @@ import { readError, scopePath } from "@/lib/scope-api";
 const route = getRouteApi("/dashboard/scopes_/$scope");
 
 /**
- * Scope management shell. A scope IS the account, so it owns the one member fetch (whose
- * result decides whether the signed-in user is an admin, which gates the editor cards) and
- * delegates each concern to a card in `components/scope/*`. Cards report failures through
- * `onError` to the banner here.
+ * Scope management shell. Owns the one member fetch, whose result decides whether the user is
+ * an admin (gating the editor cards), and delegates each concern to a card in `components/scope/*`.
  */
 export function ScopeDetailPage() {
   const { user } = route.useRouteContext();

@@ -2,20 +2,13 @@ import * as z from "zod";
 import { PluginPackageSchema } from "./plugin";
 
 /**
- * Store / registry metadata that sits on top of the plugin manifest.
- *
- * Following the Apple App Store / Google Play model, listable assets (icon,
- * screenshots) are referenced from `package.json` by relative path, while the
- * localized marketing copy lives in `locales/<lang>/store.json` files inside the
- * tarball. The registry treats `@brika/schema` as the single source of truth for
- * both shapes so the publish CLI, the registry worker, and the storefront all
- * validate against the same definitions.
+ * Store / registry metadata on top of the plugin manifest: listable assets are referenced from
+ * `package.json` by relative path, localized copy lives in `locales/<lang>/store.json` in the tarball.
  */
 
 /**
- * A relative path to an asset bundled inside the published tarball. Absolute
- * paths and parent-directory traversal are rejected so a manifest can never
- * point the storefront at bytes outside the package root.
+ * A relative path to an asset bundled in the tarball. Absolute paths and `..` traversal are rejected
+ * so a manifest can never point the storefront at bytes outside the package root.
  */
 const assetPath = z
   .string()
@@ -30,15 +23,9 @@ const assetPath = z
 const MAX_SCREENSHOTS = 10;
 
 /**
- * One locale file: `locales/<lang>/store.json`. The directory name is the BCP-47
- * tag (e.g. `en`, `fr`, `pt-BR`); the default locale's title/description fall
- * back to the manifest `displayName`/`description` when a translation is absent.
- * Serve-time resolution is requested locale -> `en` -> first declared, the same
- * rule the localized readme/changelog docs use.
- *
- * `screenshotCaptions` localizes the captions for the manifest `screenshots`,
- * aligned by index; a missing or shorter entry falls back to each screenshot's
- * default `caption`.
+ * One locale file `locales/<lang>/store.json` (directory name is the BCP-47 tag). Serve-time
+ * resolution is requested locale -> `en` -> first declared. `screenshotCaptions` localizes the
+ * manifest `screenshots` by index, falling back to each screenshot's default `caption`.
  */
 export const StoreLocaleSchema = z.object({
   title: z.string().min(1).max(80).describe("Localized plugin title"),
@@ -63,11 +50,7 @@ const LOCALE_TAG = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
 /** Matches a localized store-metadata file path and captures its locale tag. */
 const STORE_LOCALE_FILE = /^locales\/([^/]+)\/store\.json$/;
 
-/**
- * The locale tag of a `locales/<lang>/store.json` path, or `null` when the path
- * is not a store-locale file (other files under `locales/`, e.g. preference
- * translations, are ignored here).
- */
+/** The locale tag of a `locales/<lang>/store.json` path, or `null` for any other path. */
 export function storeLocaleOf(path: string): string | null {
   return STORE_LOCALE_FILE.exec(path)?.[1] ?? null;
 }
@@ -117,11 +100,8 @@ function localeFileIssues(
 }
 
 /**
- * Validate every bundled `locales/<lang>/store.json` file against
- * `StoreLocaleSchema`. Non-locale files are ignored, so the whole packed file
- * list can be passed in. Pass `screenshotCount` (from the manifest) to also
- * reject a locale that declares more screenshot captions than there are
- * screenshots. Returns every issue found (empty when all files are valid).
+ * Validate every bundled `locales/<lang>/store.json` against `StoreLocaleSchema` (non-locale files
+ * ignored). Pass `screenshotCount` to also reject a locale with more captions than screenshots.
  */
 export function validateStoreLocales(
   files: ReadonlyArray<{ path: string; text: string }>,
@@ -136,11 +116,7 @@ export function validateStoreLocales(
   return issues;
 }
 
-/**
- * One screenshot/preview entry in the manifest. `caption`/`alt` are the
- * default-locale text; localized captions live in `locales/<lang>/store.json`
- * under `screenshotCaptions` (aligned by index to this ordered list).
- */
+/** One screenshot/preview entry in the manifest. `caption`/`alt` are the default-locale text. */
 const ScreenshotSchema = z.object({
   src: assetPath.describe("Path to the screenshot image (relative to the package root)"),
   caption: z.optional(
@@ -152,11 +128,9 @@ const ScreenshotSchema = z.object({
 export type StoreScreenshot = z.infer<typeof ScreenshotSchema>;
 
 /**
- * The publish-time contract the registry enforces on top of a valid plugin
- * manifest. A listable plugin MUST carry an icon, a human title (`displayName`),
- * and a description; screenshots are optional. This is intentionally stricter
- * than `PluginPackageSchema`, where those fields are optional because the hub
- * does not need them to run a plugin, only the storefront does to list it.
+ * The publish-time contract on top of a valid plugin manifest: a listable plugin MUST carry an icon,
+ * `displayName`, and description. Intentionally stricter than `PluginPackageSchema` (the hub does not
+ * need those to run a plugin, only the storefront does to list it).
  */
 export const RegistryPublishSchema = PluginPackageSchema.extend({
   icon: assetPath.describe("Path to the plugin icon (PNG/SVG); required to publish"),

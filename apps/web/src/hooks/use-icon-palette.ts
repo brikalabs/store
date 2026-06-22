@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { type Gradient, gradientFor } from "@/components/clay/gradients";
 
 /**
- * Derive a plugin's accent gradient from its actual icon. The icon is fetched,
- * rasterized on a canvas (the browser decodes png/jpeg/webp/svg alike) and its
- * dominant color sampled, then turned into a light->dark gradient. Falls back to
- * the deterministic hash gradient when there's no icon or it can't be read.
+ * Derive a plugin's accent gradient by sampling its icon's dominant color on a canvas.
+ * Falls back to the deterministic hash gradient when there's no icon or it can't be read.
  */
 export function useIconPalette(iconUrl: string | undefined, seed: string): Gradient {
   const [gradient, setGradient] = useState<Gradient>(() => gradientFor(seed));
@@ -40,14 +38,12 @@ async function iconColor(iconUrl: string): Promise<Rgb | null> {
   try {
     const response = await fetch(iconUrl);
     if (!response.ok) return null;
-    // Don't trust the server's content-type: an `<img>` only decodes with a real
-    // image MIME, so sniff it from the bytes (a mislabeled .svg would otherwise
-    // fail to decode and fall back to the hash gradient).
+    // Sniff the MIME from the bytes: an `<img>` only decodes with a real image MIME,
+    // so a mislabeled content-type would otherwise fail to decode.
     const bytes = new Uint8Array(await response.arrayBuffer());
     const type = imageMimeType(bytes) ?? response.headers.get("content-type") ?? "";
-    // An SVG `<foreignObject>` can embed arbitrary HTML, so the browser taints the
-    // canvas and getImageData throws; strip it (it's a decorative blur) so the
-    // icon stays readable.
+    // Strip the SVG `<foreignObject>` (a decorative blur): it can embed arbitrary HTML,
+    // which taints the canvas so getImageData throws.
     const source = type.includes("svg")
       ? new Blob([stripCanvasTaint(new TextDecoder().decode(bytes))], { type })
       : new Blob([bytes], { type });
@@ -64,13 +60,7 @@ async function iconColor(iconUrl: string): Promise<Rgb | null> {
 
 const FOREIGN_OBJECT = /<foreignObject[\s\S]*?<\/foreignObject>/gi;
 
-/**
- * Remove `<foreignObject>` from SVG markup so the icon can be drawn to a canvas
- * and read back. It can embed arbitrary (even cross-origin) HTML, so browsers
- * taint the canvas when such an SVG is drawn and `getImageData` throws. The
- * element is decorative (a backdrop blur on these icons), so dropping it keeps
- * the colors intact.
- */
+/** Remove `<foreignObject>` from SVG markup, whose embedded HTML would taint the canvas. */
 export function stripCanvasTaint(svg: string): string {
   return svg.replace(FOREIGN_OBJECT, "");
 }
@@ -145,12 +135,9 @@ function meaningfulPixel(data: Uint8ClampedArray, i: number): Pixel | null {
 }
 
 /**
- * The dominant color of RGBA pixels, by area rather than by peak saturation.
- * Meaningful pixels are binned into a coarse RGB histogram (4 bits/channel, so
- * shades merge); the heaviest bin wins, each pixel weighted gently by its
- * saturation so a large flat background beats a small bright accent (the blue
- * field of a weather icon over its yellow sun) while a near-grey field still
- * reads. Returns the winning bin's mean color, or null when nothing remains.
+ * The dominant color of RGBA pixels, by area rather than peak saturation: pixels are binned into
+ * a coarse RGB histogram, each weighted gently by saturation so a flat background beats a small
+ * bright accent while a near-grey field still reads. Returns the heaviest bin's mean, or null.
  */
 export function dominantColor(data: Uint8ClampedArray): Rgb | null {
   const bins = new Map<number, ColorBin>();

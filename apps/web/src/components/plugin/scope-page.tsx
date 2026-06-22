@@ -7,12 +7,8 @@ import { formatCount } from "@/lib/format";
 import type { ScopePage } from "@/lib/registry/registry";
 
 /**
- * The public scope page (`/@scope`): the scope IS the account, so this is its rich public
- * profile - its verified display name, description, external links, logo (or a generated
- * avatar), and verified domains - above the grid of every plugin published under it. The
- * scope is the package namespace and the prefix of every `@scope/name` it owns, so the page
- * reads as the scope's catalogue. Rendered when the scope exists or has at least one listed
- * plugin (the route 404s otherwise).
+ * The public scope page (`/@scope`): the scope IS the account, so this is its public profile
+ * (display name, links, logo, verified domains) above the grid of every plugin it publishes.
  */
 export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
   const { scope, displayName, verified, description, links, hasIcon, verifiedDomains, plugins } =

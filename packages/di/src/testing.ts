@@ -8,22 +8,12 @@ import {
 
 /**
  * The `@brika/di` analog of Angular's `TestBed`: configure a service's ports/config once, then
- * `inject()` the service - field injection wires the rest. It removes the bespoke `makeScope`-style
- * helper each test file used to hand-roll (build an injector, list the always-present fakes, merge
- * per-test overrides, `.get()` the service).
+ * `inject()` the service - field injection wires the rest. Unlike Angular it is not a global
+ * singleton (each {@link testBed} is isolated), and {@link TestBed.with} returns a NEW bed layered
+ * on this one, so a shared base bed built in `beforeEach` is never mutated by one test's override.
  *
- * Two deliberate differences from Angular, both for safety:
- *  - It is NOT a global singleton, so there is no cross-test reset to forget: each {@link testBed}
- *    is its own isolated container.
- *  - {@link TestBed.with} returns a NEW bed layered on this one (later providers win), so a shared
- *    base bed built in `beforeEach` is never mutated by a single test's override.
- *
- *   let bed: TestBed;
- *   beforeEach(() => {
- *     bed = testBed(provide(ScopeStore, scopes), provide(ScopeMembers, members));
- *     service = bed.inject(ScopeService);
- *   });
- *   // a test that needs one extra binding, without touching the shared bed:
+ *   bed = testBed(provide(ScopeStore, scopes), provide(ScopeMembers, members));
+ *   service = bed.inject(ScopeService);
  *   const capped = bed.with(provide(MaxScopesPerAccount, 2)).inject(ScopeService);
  */
 export class TestBed {

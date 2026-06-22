@@ -1,10 +1,8 @@
 import type { PublishIdentity } from "./publish";
 
 /**
- * The acting principal, snapshotted into an audit row at write time so the log is
- * self-contained: it survives a later rename, avatar change, or account deletion without a
- * join. A human carries their account `id` + display snapshot; a CI/OIDC publish has no
- * account (`id` null) and uses its `owner/repo` as the display name.
+ * The acting principal, snapshotted into an audit row at write time so the log is self-contained:
+ * it survives a later rename, avatar change, or account deletion without a join.
  */
 export interface Actor {
   /** Brika account id, or null for a CI/automated actor. */
@@ -25,12 +23,8 @@ export interface AuditEntry {
   readonly detail?: Record<string, unknown> | null;
 }
 
-/**
- * Build an {@link AuditEntry} from the caller's identity plus the varying fields, defaulting the
- * version and detail to null. Every audit call site shares the same actor + null-defaulting, so
- * this is the one place that shape is assembled (the registry's `auditScope` and the console's
- * `recordAudit` both delegate here).
- */
+/** Build an {@link AuditEntry} from the caller's identity plus the varying fields, defaulting
+ *  version and detail to null. */
 export function auditEntry(
   actor: PublishIdentity,
   entry: {
@@ -50,9 +44,9 @@ export function auditEntry(
 }
 
 /**
- * Append-only audit log port. `record` is best-effort by contract: it is called AFTER
- * the action it records has already committed, so a failed audit write must be
- * swallowed (logged, never thrown) rather than turning a successful action into a 500.
+ * Append-only audit log port. `record` is best-effort by contract: it is called AFTER the action
+ * has committed, so a failed audit write must be swallowed (logged, never thrown), not turned into
+ * a 500.
  */
 export interface AuditLog {
   record(entry: AuditEntry): Promise<void>;
@@ -72,11 +66,8 @@ export interface AuditRecord {
   readonly at: string;
 }
 
-/**
- * Read side of the audit log, for the operator console. Separate from {@link AuditLog} so
- * write-only call sites (publish, manage) do not gain a read method they never use; one
- * adapter may implement both.
- */
+/** Read side of the audit log, for the operator console. Separate from {@link AuditLog} so
+ *  write-only call sites do not gain a read method they never use; one adapter may implement both. */
 export interface AuditReader {
   /** The most recent entries, newest first, capped at `limit`. */
   recent(limit: number): Promise<AuditRecord[]>;

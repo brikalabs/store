@@ -5,9 +5,8 @@ import { Db } from "../client";
 import { regScopeDomains } from "../schema";
 
 /**
- * Cloudflare D1 implementation of the {@link ScopeDomains} port (the `reg_scope_domains`
- * table): claim a domain, then flip `verified` once its derived challenge TXT is found in
- * DNS (ORG-010). No challenge is stored - it is recomputed statelessly from a secret.
+ * D1 {@link ScopeDomains} (`reg_scope_domains`): claim a domain, then flip `verified` once its
+ * derived challenge TXT is found in DNS (ORG-010). No challenge is stored - it is recomputed statelessly.
  */
 export class D1ScopeDomains implements ScopeDomains {
   readonly #db = inject(Db);

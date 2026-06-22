@@ -1,12 +1,9 @@
 import { inject, injectOr, token } from "@brika/di";
 
 /**
- * OAuth 2.0 Device Authorization Grant (RFC 8628) state machine for
- * `brika auth login`: the CLI requests a code, the user approves it in the store,
- * and the CLI polls until a token is issued. Persistence is a `DeviceStore` port
- * (the registry app backs it with D1); randomness and the clock are injected so
- * the flow is deterministic under test. Token issuance stays in the app layer:
- * `redeem` returns the approved account id and the handler mints the token.
+ * OAuth 2.0 Device Authorization Grant (RFC 8628) state machine for `brika auth login`: the CLI
+ * requests a code, the user approves it, and the CLI polls until a token is issued. Token issuance
+ * stays in the app layer - `redeem` returns the approved account id and the handler mints the token.
  */
 
 /** A stored device-authorization grant. */
@@ -55,7 +52,7 @@ export interface DeviceServiceOptions {
   /** User-code generator (defaults to two 4-char no-vowel groups). */
   readonly userCode?: () => string;
 }
-/** Optional DI token for the {@link DeviceServiceOptions} (the test seams); defaults applied in-class. */
+/** Optional DI token for {@link DeviceServiceOptions}; defaults applied in-class. */
 export const DeviceConfig = token<DeviceServiceOptions>("DeviceConfig");
 
 const DEFAULT_TTL_SECONDS = 15 * 60;
@@ -70,11 +67,7 @@ function randomGroup(length: number): string {
   return code;
 }
 
-/**
- * Injectable (`@brika/di`): field injection, no constructor. The app binds the {@link DeviceStore}
- * port; the test seams ({@link DeviceConfig}) are optional and default in-class, so production wires
- * only the store. A test runs it in an injection context that provides both.
- */
+/** Device-grant flow (RFC 8628): create a pending grant, then redeem it once approved. */
 export class DeviceService {
   readonly #store = inject(DeviceStore);
   readonly #options = injectOr(DeviceConfig, {});

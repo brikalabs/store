@@ -1,18 +1,13 @@
 import { useSyncExternalStore } from "react";
 
-/**
- * Light/dark theme, persisted to localStorage and applied as `data-mode` on
- * <html> so Clay's token palette and `dark:` utilities both respond. The
- * initial value is set pre-paint by {@link themeBootScript} to avoid a flash.
- */
+/** Light/dark theme, persisted to localStorage and applied as `data-mode` on `<html>`. */
 export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "brika-theme";
 
 /**
- * Inline <head> script: apply the theme before first paint. An explicit stored
- * choice wins; otherwise we follow the OS `prefers-color-scheme`. Sets both
- * `data-mode` and the `dark` class so every Clay selector variant matches.
+ * Inline `<head>` script that applies the theme before first paint (to avoid a flash). An explicit
+ * stored choice wins; otherwise it follows the OS `prefers-color-scheme`.
  */
 export const themeBootScript = `(function(){try{var m=localStorage.getItem(${JSON.stringify(
   STORAGE_KEY,

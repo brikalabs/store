@@ -1,12 +1,9 @@
 import { z } from "zod";
 
 /**
- * Shared manifest mapping. Both source paths read the same npm `package.json`
- * fields and map them into the `/v1` contract shapes: the npm mirror (`npm.ts`)
- * and the registry reader (`registry-source.ts`). The wire primitives and the
- * field-level helpers live here once so the two cannot drift. The two packument
- * schemas themselves differ (npm vs registry `dist`/provenance) and stay in their
- * own modules, composed from the primitives below.
+ * Shared manifest mapping. The npm mirror and the registry reader read the same `package.json`
+ * fields into the `/v1` contract shapes; the wire primitives and field-level helpers live here once
+ * so the two cannot drift. The packument schemas themselves differ and stay in their own modules.
  */
 
 /** A document declared in the manifest: a single path, or a locale -> path map. */
@@ -35,11 +32,8 @@ export const Screenshot = z.union([
 ]);
 export type Screenshot = z.infer<typeof Screenshot>;
 
-/**
- * The manifest fields both source paths read identically (everything except the
- * differing `name`/`dist`/`provenance`, which each module adds itself). Kept as a
- * raw shape so each schema can spread it into its own `z.object({ ... })`.
- */
+/** The manifest fields both source paths read identically (raw shape so each schema spreads it in;
+ * the differing `name`/`dist`/`provenance` are added per module). */
 export const manifestFields = {
   version: z.string(),
   description: z.string().optional(),
@@ -114,11 +108,7 @@ export function capabilityCounts(manifest: {
   };
 }
 
-/**
- * Map declared screenshots to `{ url, caption?, alt? }`, resolving each path with
- * `urlFor` (jsDelivr for the npm mirror, the store's asset endpoint for the
- * registry). The only difference between the two source paths is that URL builder.
- */
+/** Map declared screenshots to `{ url, caption?, alt? }`, resolving each path with `urlFor`. */
 export function mapScreenshots(
   screenshots: Screenshot[] | undefined,
   urlFor: (path: string) => string,

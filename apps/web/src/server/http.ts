@@ -7,28 +7,20 @@ import { operatorAdmins } from "@/server/env";
 import { sessionIdentity } from "@/server/registry-identity";
 
 /**
- * The TanStack-Start side of the shared HTTP toolkit. The generic primitives - `HttpError`
- * and its helpers, `reply`/`json`/`created`, `okOrThrow`, `readBody` - come straight from
- * `@brika/router`, the SAME toolkit the registry's controllers use. This file is only the
- * thin framework adapter the registry gets from the router's own dispatch loop: a handler
- * runner that turns a thrown `HttpError` into a `Response`, plus the store's session-auth
- * guards. So a web route handler reads exactly like a registry controller (auth -> parse ->
- * service -> serialize, no per-step guard).
+ * The TanStack-Start side of the shared HTTP toolkit: a handler runner that turns a thrown
+ * `HttpError` into a `Response`, plus the store's session-auth guards. Generic primitives
+ * (`HttpError`, `reply`/`json`, `okOrThrow`, `readBody`) come from `@brika/router`.
  */
 
-/** The authenticated context a console route handler runs in. The registry services are not
- *  threaded here: a handler `inject(ScopeService)` / `inject(Audit)` / ... directly. */
+/** The authenticated context a console route handler runs in. */
 export interface ConsoleContext {
   readonly user: SessionUser;
   readonly identity: PublishIdentity;
 }
 
 /**
- * Run a route handler body, turning a thrown {@link HttpError} into its JSON error response
- * (`no-store`). The framework counterpart to the registry router's catch: handler bodies use
- * the throwing helpers ({@link authed}, `okOrThrow`, `readBody`, `notFound`, ...) and read
- * top-to-bottom. Any non-`HttpError` throw is a real bug and surfaces as a 500. The DI context is
- * already active (the global request middleware in `start.ts`), so this only adds the error catch.
+ * Run a route handler body, turning a thrown {@link HttpError} into its JSON error response.
+ * Any non-`HttpError` throw is a real bug and surfaces as a 500.
  */
 export function runHandler(body: () => Promise<Response>): Promise<Response> {
   return Promise.resolve()
@@ -45,10 +37,8 @@ export function publicJson(data: unknown, maxAgeSeconds = 300): Response {
 }
 
 /**
- * Run a `/v1` handler that requires a signed-in user (but not the registry console identity):
- * resolve the session user id or throw 401, then run the body in the DI context. The social
- * mutations (post a review/comment, vote) use this. A read that only PROJECTS the viewer keeps
- * calling `getSessionUserId` directly, since a null viewer is allowed there.
+ * Run a `/v1` handler that requires a signed-in user (not the console identity): resolve the
+ * session user id or throw 401, then run the body. Used by the social mutations.
  */
 export function runUser(
   request: Request,
@@ -61,10 +51,7 @@ export function runUser(
   });
 }
 
-/**
- * Resolve the session + the registry service graph, or throw 401. SERVER-ONLY (touches the
- * D1 binding). Used by every console route; pair with {@link runHandler}.
- */
+/** Resolve the session into a {@link ConsoleContext}, or throw 401. SERVER-ONLY (touches D1). */
 export async function authed(request: Request): Promise<ConsoleContext> {
   const user = await getCurrentUser(request);
   if (user === null) throw unauthorized("Sign in required");
@@ -72,9 +59,8 @@ export async function authed(request: Request): Promise<ConsoleContext> {
 }
 
 /**
- * Like {@link authed}, but also requires the session to be a registry operator (the
- * `REGISTRY_ADMINS` allowlist) - the gate for `api/operator/*`. Throws 401 when signed out,
- * 403 when signed in but not an operator. Mirrors the registry's `requireAdmin`.
+ * Like {@link authed}, but also requires a registry operator (`REGISTRY_ADMINS`) - the gate for
+ * `api/operator/*`. Throws 401 when signed out, 403 when signed in but not an operator.
  */
 export async function operatorAuthed(request: Request): Promise<ConsoleContext> {
   const a = await authed(request);
@@ -82,12 +68,7 @@ export async function operatorAuthed(request: Request): Promise<ConsoleContext> 
   return a;
 }
 
-/**
- * Record a console audit entry. The actor is always the caller; `version` defaults to null (scope
- * actions are not version-scoped) and `detail` to null, so a route writes only what varies:
- * `recordAudit(a, { action: "scope_create", packageName: scope })`. The web counterpart of the
- * registry's `auditScope`.
- */
+/** Record a console audit entry; the actor is always the caller. */
 export function recordAudit(
   ctx: ConsoleContext,
   entry: {
@@ -100,13 +81,7 @@ export function recordAudit(
   return inject(Audit).record(auditEntry(ctx.identity, entry));
 }
 
-/**
- * Run a console handler body: in the per-request DI context AND with the session resolved first
- * (401 if signed out), passing the {@link ConsoleContext}. Folds the `runHandler` +
- * `authed(request)` that every `api/*` handler repeated - `runAuthed(request, async (a) => ...)`
- * instead of `runHandler(async () => { const a = await authed(request); ... })`. The route keeps
- * its own `({ request, params }) =>` destructure, so route params stay typed by TanStack.
- */
+/** Run a console handler body with the session resolved first (401 if signed out), passing the {@link ConsoleContext}. */
 export function runAuthed(
   request: Request,
   body: (ctx: ConsoleContext) => Promise<Response>,

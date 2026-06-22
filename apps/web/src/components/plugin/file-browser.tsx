@@ -21,13 +21,7 @@ import {
 import { formatBytes } from "@/lib/format";
 import { assetUrl, pluginVersionUrl } from "@/lib/registry/registry-source";
 
-/**
- * npm-style file browser for a published tarball: a two-pane tree + source
- * viewer. The file *list* is fetched lazily (when {@link FilesSection} mounts, i.e.
- * when the Supply chain tab opens), and each file's bytes are fetched on click,
- * capped by size. Extracted from the plugin detail route so the subsystem is
- * reusable and the route file stays focused on layout.
- */
+// npm-style file browser for a published tarball: a two-pane tree + source viewer.
 
 interface FileTreeNode {
   name: string;
@@ -78,11 +72,8 @@ function buildTree(files: readonly PluginFile[]): Map<string, FileTreeNode> {
   return root;
 }
 
-/**
- * Flatten npm's path-keyed file index into the array the tree consumes. The
- * wire paths carry a leading slash (`/src/index.ts`); the tree and asset URLs
- * work in slash-free paths, so normalize on the way in.
- */
+// Flatten npm's path-keyed file index; strip the wire paths' leading slash, which the
+// tree and asset URLs don't use.
 function filesFromIndex(json: unknown): PluginFile[] {
   const map = (json as { files?: unknown }).files;
   if (map === null || typeof map !== "object") return [];
@@ -275,12 +266,9 @@ function ViewerLoading() {
   );
 }
 
-// Pinned line-number gutter for the source viewer. `sticky left-0` keeps line
-// numbers visible during horizontal scroll (they still scroll vertically with
-// the code). The background is an opaque rebuild of the same token layers the
-// code-block header paints (white card -> subtle tint -> header tint), so the
-// gutter matches the header bar exactly *and* hides code scrolling underneath
-// it (Clay's own gutter token is semi-transparent, which would let it show).
+// Pinned line-number gutter: `sticky left-0` keeps line numbers visible during horizontal
+// scroll. The background rebuilds the code-block header's token layers opaquely, because
+// Clay's own gutter token is semi-transparent and would let the scrolling code show through.
 const STICKY_GUTTER =
   "[&>*:first-child]:sticky [&>*:first-child]:left-0 [&>*:first-child]:z-10 " +
   "[&>*:first-child]:[background:linear-gradient(var(--code-block-header-bg),var(--code-block-header-bg)),linear-gradient(var(--code-block-subtle-bg),var(--code-block-subtle-bg)),var(--card)]";
@@ -344,16 +332,8 @@ function FileViewer({
     body = <ViewerLoading />;
   } else {
     body = (
-      // Single scroll region for the source. `w-max min-w-full` lets the grid
-      // grow to its content so Clay's inner `overflow-x-auto` never adds a
-      // second scrollbar: short files fill the pane (vertical scroll only),
-      // wide files scroll both axes on this one container. The gutter (first
-      // child) is pinned with `sticky left-0` so line numbers stay visible
-      // during horizontal scroll, while still scrolling vertically with the code.
-      // Clay's gutter token is semi-transparent, so force an opaque `bg-muted`
-      // or the scrolling code would show through the pinned column. `min-h-full`
-      // makes the grid fill the pane for short files (grid stretches the row) so
-      // the gutter band runs full height instead of stopping at the last line.
+      // Single scroll region: `w-max min-w-full` lets the grid grow to its content so
+      // Clay's inner `overflow-x-auto` never adds a second scrollbar.
       <div className="min-h-0 flex-1 overflow-auto">
         <CodeBlockContent
           language={shikiLang(file.path)}
@@ -384,7 +364,6 @@ function FileBrowser({
   const tree = useMemo(() => buildTree(files), [files]);
   // A set of all file paths (non-directory) for O(1) membership checks.
   const filePaths = useMemo(() => new Set(files.map((f) => f.path)), [files]);
-  // All folders start collapsed; the user opens what they want.
   const [expanded, setExpanded] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   // Folders must not enter the selected state - filter them out on every change.
@@ -396,9 +375,8 @@ function FileBrowser({
     selected[0] === undefined ? undefined : files.find((f) => f.path === selected[0]);
 
   return (
-    // Adaptive two-pane browser: the row grows with content between a min and a
-    // max height (grid minmax). Past the max, the tree and the source each scroll
-    // within their own pane; nothing spills into the footer.
+    // Adaptive two-pane browser: the row grows with content (grid minmax); past the
+    // max, the tree and source each scroll within their own pane.
     <div className="grid grid-cols-[190px_1fr] grid-rows-[minmax(300px,620px)] sm:grid-cols-[230px_1fr]">
       <div className="min-h-0 overflow-auto border-border border-r">
         <Tree
@@ -418,10 +396,8 @@ function FileBrowser({
 }
 
 /**
- * npm-style file browser for the published tarball. The file *list* is fetched
- * lazily from `/v1/plugins/:name/files/:version` when this mounts (i.e. when the
- * Supply chain tab opens), so the detail page never ships it. File contents are
- * then fetched per file on click, capped by size.
+ * npm-style file browser for the published tarball. The file list is fetched lazily on mount
+ * (when the Supply chain tab opens), so the detail page never ships it; contents are fetched per file.
  */
 export function FilesSection({
   name,

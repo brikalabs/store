@@ -2,11 +2,7 @@ import { TransactionManager } from "./manager";
 import { type Propagation, required } from "./propagation";
 import type { CommitAction, Compensation, CompletionAction, TxConfig } from "./types";
 
-/**
- * The default transaction manager backing the convenience helpers below (like
- * Spring's single injected manager bean). Adapters and handlers use these helpers;
- * a test can construct its own {@link TransactionManager} for isolation.
- */
+/** The default transaction manager backing the helpers below; a test can construct its own for isolation. */
 export const transactions = new TransactionManager();
 
 /** True when called inside a {@link transaction} scope. */
@@ -29,11 +25,7 @@ export function onCommit(action: CommitAction): void {
   transactions.onCommit(action);
 }
 
-/**
- * Register a step to run at the end of the transaction, after it commits or rolls
- * back, receiving the outcome (no-op outside one). For work that should follow the
- * decision either way: logging, metrics, cleanup.
- */
+/** Register a step to run at the end of the transaction, after commit or rollback (no-op outside one). */
 export function onComplete(action: CompletionAction): void {
   transactions.onComplete(action);
 }
@@ -45,11 +37,7 @@ export function afterCommit(callback: () => Promise<void> | void): void {
   });
 }
 
-/**
- * Everything a unit of work can be configured with, in one object (Spring's
- * `@Transactional(...)` attributes): how it relates to an active transaction
- * (`propagation`), whether it is `readOnly`, and the `rollbackOn` policy.
- */
+/** A unit of work's full config in one object (Spring's `@Transactional(...)`): propagation + {@link TxConfig}. */
 export interface TxOptions extends TxConfig {
   /** How this relates to an already-active transaction (default {@link required}). */
   readonly propagation?: Propagation;
@@ -62,10 +50,8 @@ export function transaction<T>(fn: () => Promise<T>, options: TxOptions = {}): P
 }
 
 /**
- * Run `fn` as a read-only unit of work (Spring's `@Transactional(readOnly = true)`):
- * a convenience for `transaction(fn, { readOnly: true })`. Any attempt to stage a write
- * inside it (`onRollback`/`onCommit`/`deferBatch`) throws, so a read path wrapped this
- * way is proven side-effect-free.
+ * Run `fn` as a read-only unit of work: `transaction(fn, { readOnly: true })`. Any attempt to stage a
+ * write inside it throws, so a read path wrapped this way is proven side-effect-free.
  */
 export function readOnlyTransaction<T>(
   fn: () => Promise<T>,
@@ -74,10 +60,7 @@ export function readOnlyTransaction<T>(
   return transaction(fn, { ...options, readOnly: true });
 }
 
-/**
- * Method decorator: run the method inside a {@link transaction} (Spring's
- * `@Transactional`), configured by a single {@link TxOptions} object.
- */
+/** Method decorator: run the method inside a {@link transaction} (Spring's `@Transactional`). */
 export function transactional(options: TxOptions = {}) {
   const { propagation = required, ...config } = options;
   return <This, Args extends unknown[], Return>(

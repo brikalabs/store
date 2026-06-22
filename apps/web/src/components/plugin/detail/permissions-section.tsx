@@ -154,11 +154,7 @@ function GrantFamilyCard({ family }: Readonly<{ family: GrantFamily }>) {
   );
 }
 
-/**
- * "Permissions requested" section. Grants are grouped by permission family
- * (one family toggle covers all its verbs), with each family's scope made
- * visible and a per-family risk tag. Hidden when the plugin requests nothing.
- */
+/** "Permissions requested" section: grants grouped by family, each with its scope and risk tag. */
 export function PermissionsSection({
   grants,
   grantKeys,

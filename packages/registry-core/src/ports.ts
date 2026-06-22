@@ -2,11 +2,8 @@ import { token } from "@brika/di";
 import type { PackageRecord } from "./types";
 
 /**
- * Storage ports. The domain core depends only on these interfaces; concrete
- * adapters (Cloudflare D1, R2) live in the registry app. This keeps the core
- * runtime-agnostic and unit-testable with in-memory fakes. Each port also gets a
- * same-named DI token so a service field-injects it (`inject(MetadataReader)`) and
- * the app binds the token to its adapter.
+ * Storage ports. The domain core depends only on these interfaces; concrete adapters (D1, R2) live
+ * in the registry app, keeping the core runtime-agnostic and testable with in-memory fakes.
  */
 
 /** Read access to package metadata, used to resolve packuments. */

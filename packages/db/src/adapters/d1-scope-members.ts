@@ -4,17 +4,13 @@ import { and, countDistinct, eq, sql } from "drizzle-orm";
 import { Db } from "../client";
 import { regScopeMembers } from "../schema";
 
-/** Narrow a stored role string to the `ScopeRole` union (the column only ever holds these). */
 function toRole(value: string): ScopeRole {
   return value === "admin" ? "admin" : "member";
 }
 
 /**
- * Cloudflare D1 implementation of the {@link ScopeMembers} domain port (scope
- * membership). Publishing under a scope is gated on being a member; managing the scope
- * (members, display name, profile, domains) requires the `admin` role. The scope creator
- * is seeded as the first admin (see the scope controller). The "at least one admin"
- * invariant is enforced here in SQL (see {@link demoteFromAdmin}/{@link remove}).
+ * D1 {@link ScopeMembers}: scope membership and roles. Publishing is member-gated; managing the
+ * scope requires `admin`. The "at least one admin" invariant is enforced in SQL ({@link demoteFromAdmin}/{@link remove}).
  */
 export class D1ScopeMembers implements ScopeMembers {
   readonly #db = inject(Db);
@@ -54,13 +50,9 @@ export class D1ScopeMembers implements ScopeMembers {
   }
 
   /**
-   * Demote an admin to member, unless they are the scope's last admin. Returns true when the
-   * demotion happened, false when it was refused to keep the invariant.
-   *
-   * The "more than one admin" test is a subquery INSIDE the UPDATE, so the check and the
-   * write are one statement: concurrent demotions of different admins serialize (SQLite
-   * has a single writer), and the second sees the post-first count and is refused - the
-   * read-then-write TOCTOU that a separate count() would have is gone.
+   * Demote an admin to member unless they are the last admin; returns whether it happened. The
+   * "more than one admin" test is a subquery INSIDE the UPDATE, so concurrent demotions serialize
+   * (SQLite single writer) and the read-then-write TOCTOU a separate count() would have is gone.
    */
   async demoteFromAdmin(scope: string, userId: string): Promise<boolean> {
     await this.#db
@@ -77,11 +69,7 @@ export class D1ScopeMembers implements ScopeMembers {
     return (await this.roleOf(scope, userId)) === "member";
   }
 
-  /**
-   * Remove a member, unless they are the scope's last admin. Returns true when the row was
-   * removed, false when it was refused to keep the invariant. Same atomic guard as
-   * {@link demoteFromAdmin}: non-admins are always removable; the last admin is not.
-   */
+  /** Remove a member unless they are the last admin; returns whether it happened. Same atomic guard as {@link demoteFromAdmin}. */
   async remove(scope: string, userId: string): Promise<boolean> {
     await this.#db
       .delete(regScopeMembers)

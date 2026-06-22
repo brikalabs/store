@@ -1,19 +1,9 @@
 import { z } from "zod";
 
 /**
- * Build-attestation abstraction: signing an artifact and recording it in a public
- * transparency log, behind a provider port so the backend (sigstore today) can be
- * swapped without touching the publish/resolve flow.
- *
- * The flow is split by where the trust material lives:
- *   - **attest** runs in CI (the publisher holds the OIDC identity), producing a
- *     provider-agnostic {@link TransparencyEntry} that the CLI sends with the
- *     publish. The registry stores it on the version and surfaces the public log
- *     link. registry-core owns only the shape + the provider registry; the
- *     concrete sigstore adapter (network, OIDC, the `sigstore` package) lives in
- *     the client where it runs.
- *   - **verify** re-checks an entry against an artifact; best-effort, so a
- *     provider that cannot verify returns false rather than throwing.
+ * Build-attestation abstraction: sign an artifact and record it in a public transparency log,
+ * behind a provider port so the backend (sigstore today) can be swapped. `attest` runs in CI where
+ * the OIDC identity lives; `verify` is best-effort and returns false rather than throwing.
  */
 
 /** A transparency-log reference for a published artifact (provider-agnostic). */
@@ -40,11 +30,8 @@ export interface AttestInput {
 export interface AttestationProvider {
   /** Stable id recorded on every entry, e.g. `"sigstore"`. */
   readonly id: string;
-  /**
-   * Create an attestation using the ambient CI identity. Returns null when the
-   * environment cannot attest (e.g. not running in CI / no OIDC), so publishing
-   * degrades gracefully to an unattested release.
-   */
+  /** Create an attestation using the ambient CI identity; null when the environment cannot attest
+   *  (not in CI / no OIDC), so publishing degrades to an unattested release. */
   attest(input: AttestInput): Promise<TransparencyEntry | null>;
   /** Re-verify an entry against the artifact integrity. False-safe on failure. */
   verify(entry: TransparencyEntry): Promise<boolean>;

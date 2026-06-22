@@ -84,9 +84,8 @@ function ProvenanceBlock({ provenance }: Readonly<{ provenance: PluginDetail["pr
 }
 
 /**
- * Main-column "Integrity & provenance" section (npm-style): the tarball's SHA-512
- * Subresource Integrity (with a copy button) plus, for CI-published versions, the
- * build provenance derived from the verified GitHub OIDC token.
+ * "Integrity & provenance" section: the tarball's SHA-512 SRI plus, for CI-published
+ * versions, build provenance derived from the verified GitHub OIDC token.
  */
 export function IntegrityProvenanceSection({
   integrity,

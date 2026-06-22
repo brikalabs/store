@@ -6,14 +6,10 @@ import type { Db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 
 /**
- * A real in-memory SQLite over the store/social schema, built from the same drizzle migrations
- * the app ships, wrapped as the store `Db`. The store's `Db` is a D1 client; bun:sqlite exposes
- * the same query API, so the repository code runs unchanged here. Shared by every store/service
- * test so the schema setup lives in one place.
- *
- * Migrations are discovered from the `drizzle/` dir (the same scan the `@brika/db` harness uses),
- * sorted by their zero-padded numeric prefix = apply order, so a newly generated migration is
- * picked up automatically - no hand-kept list to drift out of sync with what the app ships.
+ * A real in-memory SQLite over the store/social schema, built from the app's drizzle migrations and
+ * wrapped as the store `Db` (bun:sqlite shares D1's query API, so repository code runs unchanged).
+ * Migrations are discovered from `drizzle/` and sorted by their numeric prefix, so a newly generated
+ * one is picked up automatically - no hand-kept list to drift out of sync with what the app ships.
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, "../../../drizzle");

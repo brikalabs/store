@@ -8,12 +8,9 @@ import { UserProfileStore } from "@/server/stores/user-profile-store";
 import { UserStore } from "@/server/stores/user-store";
 
 /**
- * The store's social use cases (reviews, comments, profiles), composed over the repositories.
- * This is the only orchestration layer the route handlers see: it owns the cross-store steps -
- * the cache-aside FETCH from the registry read model before a write, and the rating recompute
- * after one - so the stores stay pure SQL and the routes stay a one-line call. Pure of
- * `cloudflare:workers`, so it is unit-testable with an in-memory db (resolve it from an injector
- * over an in-memory {@link DB}).
+ * The store's social use cases (reviews, comments, profiles), composed over the repositories. Owns
+ * the cross-store steps (cache-aside fetch before a write, rating recompute after) so the stores
+ * stay pure SQL and the routes stay a one-line call.
  */
 export class SocialService {
   readonly #reviews = inject(ReviewStore);
@@ -23,9 +20,8 @@ export class SocialService {
   readonly #users = inject(UserStore);
 
   /**
-   * Ensure a `plugins` cache row exists so reviews/comments can reference it: a row already
-   * there short-circuits; otherwise the registry read model is consulted and the row written.
-   * Returns false when the name is not a Brika plugin (the route maps that to 404).
+   * Ensure a `plugins` cache row exists (cache-aside from the registry read model) so
+   * reviews/comments can reference it. False when the name is not a Brika plugin (route 404s).
    */
   async ensurePluginCached(name: string): Promise<boolean> {
     if (await this.#plugins.exists(name)) return true;

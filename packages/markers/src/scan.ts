@@ -5,17 +5,12 @@ import { parseLine } from "./core/parse";
 import type { BlameInfo, Marker, MarkerKindSpec, ScanResult } from "./core/types";
 
 /**
- * File-system scanner: finds every marker tracked or untracked in the repo. It
- * uses `git grep` as a fast coarse filter (it respects `.gitignore` and includes
- * untracked files), then hands each candidate line to the pure parser, which
- * makes the real decision. The grep step is a port so the scan is unit-testable
- * with a canned set of lines and no git.
+ * File-system scanner: finds every marker in the repo. Uses `git grep` as a fast coarse filter
+ * (respecting `.gitignore`, including untracked files), then hands each candidate to the pure parser.
+ * The grep step is a port so the scan is unit-testable with canned lines and no git.
  */
 
-/**
- * Runs the coarse search. Returns raw `git grep -n` lines (`path:lineno:content`).
- * Injectable so tests can drive the parser without a repository.
- */
+/** The coarse search: raw `git grep -n` lines (`path:lineno:content`). Injectable for tests. */
 export type GrepPort = (
   terms: readonly string[],
   pathspecs: readonly string[],
@@ -39,8 +34,7 @@ function pathspecsFor(kinds: readonly MarkerKindSpec[]): string[] {
     "*.ts",
     "*.tsx",
     ":(exclude)**/node_modules/**",
-    // The engine's own sources hold the kind names and test fixtures, which
-    // would all read as self-matches.
+    // The engine's own sources hold the kind names and fixtures, which would read as self-matches.
     ":(exclude)packages/markers/**",
     ...ignores.map((glob) => `:(exclude)${glob}`),
   ];
@@ -87,10 +81,7 @@ export async function scan(options: ScanOptions = {}): Promise<ScanResult> {
   return { markers, counts: countByKind(markers) };
 }
 
-/**
- * Runs `git blame --line-porcelain` for the given lines of one file. Injectable
- * so the enrichment is unit-testable without a repository.
- */
+/** Runs `git blame --line-porcelain` for given lines of one file. Injectable for tests. */
 export type BlamePort = (file: string, lines: readonly number[]) => Promise<string>;
 
 const gitBlame: BlamePort = async (file, lines) => {

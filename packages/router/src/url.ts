@@ -1,8 +1,6 @@
 /**
- * The typed URL layer: a small but powerful pattern language, expressed entirely
- * as a string, plus a typed URL builder. It has no runtime framework, so it works
- * on a server to type a handler's params and on a client to build a URL to the
- * same route, with params checked against the pattern at the call site.
+ * The typed URL layer: a string-only pattern language plus a typed URL builder, with no runtime
+ * framework, so the same pattern types a handler's params on the server and builds a URL on the client.
  *
  * A pattern segment is one of:
  *   - static            `users`
@@ -10,9 +8,6 @@
  *   - optional param    `:id?`             -> { id?: string }   (the router expands it)
  *   - constrained param `:id{[0-9]+}`      -> { id: string }    (regex passed to the matcher)
  *   - both              `:scope{@[^/]+}?`  -> { scope?: string }
- *
- * There is no central route table; a pattern is a plain string literal written
- * where it is used.
  */
 
 /** Strip a `{regex}` constraint from a param body: `scope{@[^/]+}` -> `scope`. */
@@ -33,13 +28,8 @@ type Params<Path extends string> = Path extends `${infer Head}/${infer Tail}`
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 /**
- * The params a route pattern carries, e.g.
- *   PathParams<"/users/:id/posts/:postId"> -> { id: string; postId: string }
- *   PathParams<"/:scope{@[^/]+}?/:pkg">     -> { scope?: string; pkg: string }
- *   PathParams<"/health">                   -> {}
- *
- * Required params (`:p`) are `string`; optional params (`:p?`) are
- * `string | undefined`; `{regex}` constraints do not affect the type.
+ * The params a route pattern carries: required (`:p`) are `string`, optional (`:p?`) are
+ * `string | undefined`, e.g. `PathParams<"/:scope{@[^/]+}?/:pkg"> -> { scope?: string; pkg: string }`.
  */
 export type PathParams<Path extends string> = Simplify<Params<Path>>;
 
@@ -56,22 +46,17 @@ function paramKey(segment: string): string {
 }
 
 /**
- * Build a concrete path from a route pattern and its params, each value encoded
- * (by default with `encodeURIComponent`; pass a {@link ParamEncoder} to override).
- * An absent optional param drops its segment. The param object is typed from the
- * pattern, so omitting a required param or misspelling a key fails to compile.
- *
- *   link("/users/:id", { id: "42" })       -> "/users/42"
- *   link("/q/:term", { term: "a b" })       -> "/q/a%20b"
+ * Build a concrete path from a route pattern and its params, each value encoded (default
+ * `encodeURIComponent`). The param object is typed from the pattern, so a missing/misspelled key
+ * fails to compile, e.g. `link("/users/:id", { id: "42" }) -> "/users/42"`.
  */
 export function link<P extends string>(
   pattern: P,
   params: PathParams<P>,
   encode: ParamEncoder = defaultEncoder,
 ): string {
-  // PathParams<P> is, by construction, a record of `string | undefined` values;
-  // the dynamic segment lookup below reads it by computed key (the one assertion
-  // in the typed-URL layer, sound because every param value is a string).
+  // PathParams<P> is by construction a record of `string | undefined`; the cast is sound and lets
+  // the loop below read params by computed key.
   const values = params as Record<string, string | undefined>;
   const out: string[] = [];
   for (const segment of pattern.split("/")) {

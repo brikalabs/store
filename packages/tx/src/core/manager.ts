@@ -14,12 +14,9 @@ interface Synchronizations {
 }
 
 /**
- * Owns the transaction context and the begin/commit/rollback logic. Plays both
- * Spring roles: `PlatformTransactionManager` (begin/commit/rollback, here {@link run})
- * and `TransactionSynchronizationManager` (the per-async-context store + the
- * rollback/commit hooks). The context store is private to the instance, so use the
- * default manager via the helpers in `./transaction`, or construct an isolated one
- * (e.g. per test) instead of sharing a global.
+ * Owns the transaction context and begin/commit/rollback logic (Spring's `PlatformTransactionManager`
+ * + `TransactionSynchronizationManager`). The context store is private to the instance, so construct
+ * an isolated one (e.g. per test) instead of sharing a global.
  */
 export class TransactionManager {
   readonly #context = new AsyncLocalStorage<Synchronizations | undefined>();

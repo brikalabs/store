@@ -12,13 +12,7 @@ import { Db } from "../client";
 import { regAudit } from "../schema";
 import { resolveActor } from "./queries";
 
-/**
- * D1 implementation of the {@link AuditLog} (write) and {@link AuditReader} (read) ports:
- * the append-only `reg_audit` table. Centralises the actor-resolution rule (a human publish
- * snapshots the account's display name + avatar; a CI publish is attributed to its repo) and
- * the row shape. The read side backs the operator console's audit view; the write side is the
- * best-effort recorder.
- */
+/** D1 {@link AuditLog} (write) and {@link AuditReader} (read) over the append-only `reg_audit` table. */
 export class D1AuditLog implements AuditLog, AuditReader {
   readonly #db = inject(Db);
 
@@ -41,11 +35,10 @@ export class D1AuditLog implements AuditLog, AuditReader {
   }
 
   /**
-   * Append an entry. Best-effort by contract: it is called *after* the action it
-   * records has already committed (a published tarball, a flipped flag), so a
-   * failed audit write must never throw back and turn a successful action into a
-   * 500 (which the client would read as failure, then fail to retry against the
-   * immutability guard). A write failure is logged and swallowed.
+   * Append an entry. Best-effort by contract: called *after* the recorded action has
+   * committed, so a failed audit write is logged and swallowed rather than turning a
+   * successful action into a 500 (which the client would then fail to retry against the
+   * immutability guard).
    */
   async record(entry: AuditEntry): Promise<void> {
     try {
@@ -65,11 +58,7 @@ export class D1AuditLog implements AuditLog, AuditReader {
     }
   }
 
-  /**
-   * Snapshot the acting principal into a self-contained {@link Actor}. A human publish resolves
-   * the account's current display name + avatar (best-effort; nulls on any miss). A CI/OIDC
-   * publish has no account, so it is attributed to its `owner/repo`.
-   */
+  /** Snapshot the principal: a human resolves account display name + avatar; a CI/OIDC publish (no account) is attributed to its `owner/repo`. */
   async #actorFor(identity: PublishIdentity): Promise<Actor> {
     if (identity.userId !== null) {
       const { displayName, avatarUrl } = await resolveActor(this.#db, identity.userId);

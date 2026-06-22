@@ -1,9 +1,4 @@
-/**
- * Registry test harness. The D1 fixtures (`makeDb`, `seedExamplePackage`) live in
- * `@brika/store-db` next to the adapters they exercise and are re-exported here so the
- * registry's controller/auth tests keep a single import path; `fakeR2` is registry-local
- * because it fakes a Cloudflare R2 bucket the store side never touches.
- */
+/** Registry test harness: shared D1 fixtures re-exported, plus a registry-local R2 fake. */
 export { makeDb, seedExamplePackage } from "@brika/store-db/test-harness";
 
 /** Minimal in-memory R2 bucket: only the get/put/delete the adapters use. */

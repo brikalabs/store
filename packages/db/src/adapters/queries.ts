@@ -10,13 +10,7 @@ import {
   regVersions,
 } from "../schema";
 
-/**
- * Read-model projections over the `reg_*` tables for the console UIs. These are plain
- * reads (not authorization-bearing use cases, so not domain ports): "the scopes I can
- * manage", "my tokens", and an ownership-guarded token revoke. They live next to the
- * adapters because they are the same SQL layer, and let the web app avoid hand-writing
- * drizzle.
- */
+/** Read-model projections over the `reg_*` tables for the console UIs (plain reads, not domain ports). */
 
 /** A scope a member can manage (the scope IS the account), with the member's role. */
 export interface MemberScope {
@@ -26,11 +20,7 @@ export interface MemberScope {
   readonly displayName: string | null;
 }
 
-/**
- * Every scope a `userId` can manage: the scopes they are a member of, sorted by scope. Used by
- * the storefront to decide whether the signed-in account owns a package's scope (publishing is
- * gated on scope membership).
- */
+/** Every scope a `userId` is a member of, sorted by scope; backs the storefront's "do I own this package" check. */
 export async function listScopesForMember(db: Db, userId: string): Promise<MemberScope[]> {
   const rows = await db
     .select({
@@ -50,10 +40,8 @@ export async function listScopesForMember(db: Db, userId: string): Promise<Membe
 }
 
 /**
- * Every package name published under any of `scopes`, regardless of whether it still has an
- * installable (non-yanked) version. Unlike the public catalog this includes fully-yanked
- * packages, so the owner dashboard can list and relist them. Empty `scopes` short-circuits to
- * no rows (a user who owns no scope owns no package).
+ * Every package name published under any of `scopes`. Unlike the public catalog this includes
+ * fully-yanked packages, so the owner dashboard can list and relist them.
  */
 export async function listPackageNamesForScopes(db: Db, scopes: string[]): Promise<string[]> {
   if (scopes.length === 0) return [];
@@ -65,10 +53,8 @@ export async function listPackageNamesForScopes(db: Db, scopes: string[]): Promi
 }
 
 /**
- * A package as listed in the operator console directory: its owning scope, latest version,
- * and how many of its versions are taken down or yanked. Unlike the public catalog this
- * includes packages with no non-hidden version, so an operator can find and restore a
- * fully-taken-down package.
+ * A package in the operator console directory: scope, latest version, and takedown/yank counts.
+ * Includes packages with no visible version (unlike the public catalog) so an operator can restore them.
  */
 export interface OperatorPackage {
   readonly name: string;
@@ -81,11 +67,7 @@ export interface OperatorPackage {
   readonly yankedCount: number;
 }
 
-/**
- * Every package with moderation-relevant counts, newest published first. Reads the bounded
- * `reg_*` tables and aggregates in memory (like the catalog reader) rather than with SQL
- * aggregates: the hosted scope is small and this keeps the query simple and exact.
- */
+/** Every package with moderation counts, newest first. Aggregates in memory (the bounded scope is small). */
 export async function listAllPackages(db: Db): Promise<OperatorPackage[]> {
   const [packages, latest, versions] = await Promise.all([
     db
@@ -139,15 +121,10 @@ export async function listAllPackages(db: Db): Promise<OperatorPackage[]> {
 }
 
 /**
- * Resolve an account's display name + avatar by its Brika `userId`, for the audit-log actor
- * snapshot and the CLI's `whoami` output. The account lives in the store's `users` table, which
- * is NOT part of this package's `reg_*` drizzle schema (it belongs to the store web app) but
- * shares the SAME D1 database the registry binds. Rather than take a cross-app drizzle
- * dependency we read it with a single parameterized raw SQL query over the same client:
- * `display_name -> name`, then the provider `image` for the avatar.
- *
- * Best-effort display enrichment, never an authorization input, so any read error (e.g. the
- * store table not present in a given database) resolves to all-nulls rather than throwing.
+ * Resolve an account's display name + avatar by Brika `userId` for audit/`whoami`. The account lives
+ * in the store's `users` table, not this package's `reg_*` schema but the SAME D1 database, so rather
+ * than a cross-app drizzle dependency we read it with one parameterized raw SQL query over the client.
+ * Best-effort display enrichment, never an authorization input, so any read error resolves to all-nulls.
  *
  * ponytail: avatar is the provider `image`; the uploaded-avatar URL (built from
  * `avatar_version` + the assets base) is web-only, so the audit log shows the provider avatar.
@@ -173,9 +150,8 @@ export async function resolveActor(
 }
 
 /**
- * A publish token's metadata. `reg_tokens` stores only the SHA-256 `tokenHash` (the
- * plaintext is shown once at issue and never persisted), so the UI identifies a token by
- * a short prefix of its hash plus these timestamps (unix epoch seconds). There is no label.
+ * A publish token's metadata. Only the SHA-256 `tokenHash` is stored (plaintext is shown once,
+ * never persisted), so the UI identifies a token by a hash prefix plus these timestamps.
  */
 export interface SubjectToken {
   readonly tokenHash: string;
@@ -199,9 +175,8 @@ export async function listSubjectTokens(db: Db, userId: string): Promise<Subject
 }
 
 /**
- * Revoke a token by its hash, but only when it belongs to `userId` - one account can never
- * revoke another's token. Returns false when no such token is owned by the caller (the route
- * maps that to 404), true when it was removed.
+ * Revoke a token by hash, but only when it belongs to `userId` - one account can never revoke
+ * another's token. Returns false when the caller owns no such token (the route maps that to 404).
  */
 export async function revokeTokenByHash(
   db: Db,

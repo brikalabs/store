@@ -35,8 +35,7 @@ export function PluginDetailPage({ page }: Readonly<{ page: RegistryPluginPage }
 
   const onTab = (next: string) => {
     navigate({
-      // Keep Overview out of the URL for a clean default; replace so tab clicks
-      // don't pile up in history (the back button leaves the page, not steps tabs).
+      // `replace` so tab clicks don't pile up in history (back leaves the page, not steps tabs).
       search: (prev) => ({ ...prev, tab: next === "overview" ? undefined : (next as DetailTab) }),
       replace: true,
     });
@@ -44,8 +43,6 @@ export function PluginDetailPage({ page }: Readonly<{ page: RegistryPluginPage }
 
   const { detail, readme, versions, readmeLocales } = page;
   const activeLocale = lang ?? (readmeLocales.includes("en") ? "en" : (readmeLocales[0] ?? "en"));
-  // Every section renders real data: the plugin's actual locales + screenshots, and
-  // live reviews/comments from D1 (empty states until written).
   const displayLocales = readmeLocales;
   const grantKeys = Object.keys(detail.grants);
   const tabCounts: Partial<Record<DetailTab, number>> = {

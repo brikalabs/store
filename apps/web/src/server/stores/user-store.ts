@@ -4,10 +4,8 @@ import { Database } from "@/server/db/client";
 import { users } from "@/server/db/schema";
 
 /**
- * Repository for the `users` table (the first-class Brika account). Sign-in does NOT go through
- * here - BetterAuth owns the row on sign-in - but seeds, tests, and account-derived reads do.
- * Like every store, it is the only place its table's SQL lives; callers go through
- * {@link SocialService}.
+ * Repository for the `users` table (the first-class Brika account). Sign-in does NOT go through here
+ * - BetterAuth owns the row on sign-in - but seeds, tests, and account-derived reads do.
  */
 export class UserStore {
   readonly #db = inject(Database);

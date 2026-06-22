@@ -3,10 +3,8 @@ import type { Db } from "@/server/db/client";
 import type { commentVotes, reviewVotes } from "@/server/db/schema";
 
 /**
- * The subset of `ids` the viewer has voted on, for the per-row `viewerVoted*` flag. Shared by
- * {@link ReviewStore} and {@link CommentStore} since the two vote tables have the same shape
- * (a `(user_id, <target>_id)` pair). Returns an empty set for an anonymous viewer or no ids,
- * so the caller never special-cases the signed-out path.
+ * The subset of `ids` the viewer has voted on, for the per-row `viewerVoted*` flag. Returns an empty
+ * set for an anonymous viewer or no ids, so the caller never special-cases the signed-out path.
  */
 export async function votedIds(
   db: Db,

@@ -6,11 +6,8 @@ import { DomainBody, shapeDomains } from "@/lib/scope-domains";
 import { recordAudit, runAuthed } from "@/server/http";
 
 /**
- * Scope domain claims (ORG-010), all admin-gated except the member-readable list:
- *   GET    /api/scopes/:scope/domains          list claimed domains (+ the TXT host/value)
- *   PUT    /api/scopes/:scope/domains {domain}  claim a domain; returns the TXT host/value
- *   POST   /api/scopes/:scope/domains {domain}  re-check DNS and verify
- *   DELETE /api/scopes/:scope/domains {domain}  drop a claimed domain
+ * Scope domain claims (ORG-010), all admin-gated except the member-readable list: GET lists claimed
+ * domains, PUT claims one (returns the TXT host/value), POST re-checks DNS to verify, DELETE drops one.
  */
 export const Route = createFileRoute("/api/scopes/$scope/domains")({
   server: {

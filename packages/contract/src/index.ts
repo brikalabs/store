@@ -1,24 +1,15 @@
 import { z } from "zod";
 
 /**
- * The Brika `/v1` registry contract.
- *
- * Any HTTP service that implements the mandatory discovery core below can act
- * as a plugin registry for a Brika hub. Optional social capabilities (profiles,
- * reviews, comments) are advertised through `GET /v1/registry` so a consumer
- * knows what a given registry supports.
- *
- * npm remains the source of truth for code. A registry never serves plugin
- * code, only metadata, so this contract is metadata-only by design.
+ * The Brika `/v1` registry contract. Any HTTP service implementing the discovery core can act as a
+ * registry; optional social capabilities are advertised via `GET /v1/registry`. npm remains the
+ * source of truth for code: a registry only serves metadata, so this contract is metadata-only.
  */
 export const CONTRACT_VERSION = "1.0";
 
 /**
- * A resolved asset URL: either an absolute `http(s)` URL (e.g. a jsDelivr CDN
- * link for an npm-hosted plugin) or a root-relative path served by the same
- * origin (e.g. `/v1/plugins/:name/asset?...` for a registry-hosted plugin whose
- * assets are extracted from the tarball). Both resolve correctly in an
- * `<img src>` or a `fetch`, so the contract accepts either form.
+ * A resolved asset URL: an absolute `http(s)` URL or a root-relative path. Both resolve in an
+ * `<img src>` or `fetch`, so the contract accepts either form.
  */
 export const ResolvedUrl = z.union([z.url(), z.string().regex(/^\/[^/]/, "root-relative path")]);
 export type ResolvedUrl = z.infer<typeof ResolvedUrl>;
@@ -84,12 +75,9 @@ export const RatingSummary = z.object({
 export type RatingSummary = z.infer<typeof RatingSummary>;
 
 /**
- * A package's listing state, derived from its latest installable (non-yanked, non-taken-down)
- * version. Yank and deprecate are per-version flags; this projects them to the package level:
- * - `published`: a current installable version with no deprecation.
- * - `deprecated`: the latest installable version carries a deprecation message (still installs).
- * - `yanked`: every version is yanked, so nothing installs; the owner can un-yank to relist.
- * - `taken_down`: an operator removed it; only an operator can restore it.
+ * A package's listing state, projecting the per-version yank/deprecate flags to the package level:
+ * `published` (installable, no deprecation), `deprecated` (latest carries a message, still installs),
+ * `yanked` (every version yanked, nothing installs; owner can un-yank), `taken_down` (operator-only restore).
  */
 export const PluginListingStatus = z.enum(["published", "deprecated", "yanked", "taken_down"]);
 export type PluginListingStatus = z.infer<typeof PluginListingStatus>;
@@ -113,12 +101,7 @@ export const PluginSummary = z.object({
   brikaEngine: z.string(),
   verified: z.boolean().default(false),
   featured: z.boolean().default(false),
-  /**
-   * The package's listing state, derived from its latest installable version. `published` is
-   * the default the public catalog always carries; the others are surfaced on the owner
-   * dashboard so a maintainer can tell at a glance why a package is flagged and what they can
-   * do about it. See {@link PluginListingStatus}.
-   */
+  /** The package's listing state ({@link PluginListingStatus}); the public catalog always carries `published`. */
   listingStatus: PluginListingStatus.default("published"),
   /** ISO-8601 timestamps */
   publishedAt: z.iso.datetime().optional(),
@@ -126,12 +109,7 @@ export const PluginSummary = z.object({
 });
 export type PluginSummary = z.infer<typeof PluginSummary>;
 
-/**
- * A screenshot on the plugin listing: a resolved image URL plus optional caption
- * and accessibility text. `caption` is resolved for the requested locale (from
- * the plugin's `locales/<lang>/store.json` `screenshotCaptions`, falling back to
- * the manifest screenshot's default `caption`); `alt` is the a11y description.
- */
+/** A screenshot on the listing: a resolved image URL, plus a caption (resolved for the locale) and a11y `alt`. */
 export const Screenshot = z.object({
   url: ResolvedUrl,
   caption: z.string().optional(),
@@ -139,12 +117,7 @@ export const Screenshot = z.object({
 });
 export type Screenshot = z.infer<typeof Screenshot>;
 
-/**
- * One file inside the published tarball, npm-style: a leading-slash path plus
- * the metadata npm exposes on its file index (content type, a per-file SHA-256,
- * a binary flag, and the line count) so consumers can render a browser without
- * fetching every file.
- */
+/** One file in the published tarball (npm-style): path plus metadata so consumers render a file browser. */
 export const PluginFile = z.object({
   path: z.string(),
   type: z.literal("File"),
@@ -156,11 +129,7 @@ export const PluginFile = z.object({
 });
 export type PluginFile = z.infer<typeof PluginFile>;
 
-/**
- * The published tarball's file index, mirroring npm's
- * `/package/<name>/v/<version>/index`: a map keyed by leading-slash path plus
- * tarball-level aggregates (total size, file count, shasum, and SRI integrity).
- */
+/** The tarball's file index (mirrors npm's `/package/<name>/v/<version>/index`): files plus aggregates. */
 export const PluginFileIndex = z.object({
   files: z.record(z.string(), PluginFile),
   totalSize: z.number().int().nonnegative(),
@@ -170,10 +139,6 @@ export const PluginFileIndex = z.object({
 });
 export type PluginFileIndex = z.infer<typeof PluginFileIndex>;
 
-/**
- * Build provenance for a CI-published version, anchored on the verified GitHub
- * OIDC token: where the bytes were built from. Absent for local-token publishes.
- */
 /** A public transparency-log entry for the signed tarball (sigstore today). */
 export const TransparencyEntry = z.object({
   provider: z.string(),
@@ -183,6 +148,7 @@ export const TransparencyEntry = z.object({
 });
 export type TransparencyEntry = z.infer<typeof TransparencyEntry>;
 
+/** CI build provenance for a published version (verified GitHub OIDC); absent for local-token publishes. */
 export const Provenance = z.object({
   repository: z.string(),
   sha: z.string().optional(),
@@ -204,10 +170,7 @@ export const PluginDetail = PluginSummary.extend({
   readmeUrl: ResolvedUrl.optional(),
   /** Ordered screenshots shown on the listing (URLs resolved; captions localized). */
   screenshots: z.array(Screenshot).default([]),
-  /**
-   * Subresource Integrity of the latest version's tarball (`sha512-<base64>`),
-   * the supply-chain anchor bun pins in the lockfile. Shown as a trust signal.
-   */
+  /** SRI of the latest tarball (`sha512-<base64>`), the supply-chain anchor bun pins in the lockfile. */
   integrity: z.string().optional(),
   /** Legacy SHA-1 checksum of the tarball, for parity with npm tooling. */
   shasum: z.string().optional(),
@@ -268,11 +231,8 @@ export const ReadmeResponse = z.object({
 export type ReadmeResponse = z.infer<typeof ReadmeResponse>;
 
 /**
- * `GET /v1/verified`: the signed curation list.
- *
- * Back-compatible with the legacy `registry.brika.dev/verified-plugins.json`.
- * `signature` is an Ed25519 signature over the canonical JSON of `plugins`,
- * verifiable with the `signing.publicKey` from `GET /v1/registry`.
+ * `GET /v1/verified`: the signed curation list. `signature` is an Ed25519 signature over the
+ * canonical JSON of `plugins`, verifiable with `signing.publicKey` from `GET /v1/registry`.
  */
 export const VerifiedEntry = z.object({
   name: z.string(),
@@ -293,10 +253,8 @@ export type VerifiedList = z.infer<typeof VerifiedList>;
  * ------------------------------------------------------------------ */
 
 /**
- * A community member (review/comment author), created only when someone signs in
- * to write. Identity is a single, always-present `displayName` - the account's
- * user-set display name, else its name - NEVER the opaque account id or a GitHub
- * username. The avatar is the account's GitHub image.
+ * A community member (review/comment author). Identity is the always-present `displayName`
+ * (user-set name, else name) - NEVER the opaque account id or a username.
  */
 export const Reviewer = z.object({
   id: z.string(),
@@ -346,12 +304,9 @@ export const ProfileLink = z.object({
 export type ProfileLink = z.infer<typeof ProfileLink>;
 
 /**
- * A Brika account's public profile (`GET /u/:id`). User-authored, NEVER derived
- * from npm (USER-005): every field is the account's own. Keyed by the stable
- * opaque account id (`users.id`), not a claimable handle (USER-002). `avatarUrl`
- * carries the account's GitHub avatar (BetterAuth `users.image`); `displayName` is
- * always present (the user-set name, else the GitHub name) and is the ONLY identity
- * label shown - never the opaque id or a username.
+ * A Brika account's public profile (`GET /u/:id`). User-authored, NEVER derived from npm (USER-005);
+ * keyed by the stable opaque account id, not a claimable handle (USER-002). `displayName` is always
+ * present and is the ONLY identity label shown - never the opaque id or a username.
  */
 export const UserProfile = z.object({
   id: z.string(),

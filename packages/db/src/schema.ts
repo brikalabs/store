@@ -3,9 +3,8 @@ import { sql } from "drizzle-orm";
 import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
- * Registry tables. The store/social tables live in the store app; these are the
- * registry's source of truth for packages, immutable versions, and dist-tags.
- * Tarball bytes live in R2 keyed by the npm tarball path; only metadata is here.
+ * Registry tables: the source of truth for packages, immutable versions, and dist-tags (store/social
+ * tables live in the store app). Tarball bytes live in R2 keyed by the npm tarball path; only metadata is here.
  */
 
 const epoch = sql`(unixepoch())`;
@@ -56,17 +55,14 @@ export const regDistTags = sqliteTable(
 );
 
 /**
- * Scope: the first-class ownership/account entity. A scope is the npm namespace (e.g.
- * `@brika`) AND the group that owns it - there is no separate org layer (the npm/JSR
- * model: the scope *is* the account). Identified by its `scope` string (with the leading
- * `@`). Membership lives on the scope; publishing under it is gated on scope membership.
+ * Scope: the first-class ownership/account entity. The npm namespace (e.g. `@brika`) AND the group
+ * that owns it - there is no separate org layer (the npm/JSR model: the scope *is* the account).
  */
 export const regScopes = sqliteTable("reg_scopes", {
   scope: text("scope").primaryKey(),
   /**
-   * Display name shown as the verified publisher (e.g. "Brika Labs" for `@brika`),
-   * settable only by a scope admin. Null falls back to the scope. This is the trusted
-   * attribution: a manifest's free-text `author` cannot override it.
+   * Verified-publisher display name, settable only by a scope admin (null falls back to the scope).
+   * The trusted attribution: a manifest's free-text `author` cannot override it.
    */
   displayName: text("display_name"),
   /** Free-text description shown on the public scope page. */
@@ -76,19 +72,16 @@ export const regScopes = sqliteTable("reg_scopes", {
   /** Storage key of the uploaded scope logo in the assets bucket; null = generated avatar. */
   iconKey: text("icon_key"),
   /**
-   * Operator takedown reason (abuse/squatting/policy). Null = active; non-null = an admin
-   * withdrew the scope from public listings, with this reason recorded. Set only via the
-   * operator-admin-gated registry endpoint, never by scope members.
+   * Operator takedown reason. Null = active; non-null withdraws the scope from public listings.
+   * Set only via the operator-admin-gated endpoint, never by scope members.
    */
   takedown: text("takedown"),
   createdAt: integer("created_at").notNull().default(epoch),
 });
 
 /**
- * Scope membership and roles. A scope can have several members; each is a Brika account with a
- * role: `admin` (manage members + everything a member can) or `member` (publish under the
- * scope). The scope creator is seeded as the first admin. Publishing is gated on scope
- * membership.
+ * Scope membership and roles: `admin` (manage members + everything a member can) or `member`
+ * (publish under the scope). The creator is seeded as the first admin; publishing is member-gated.
  */
 export const regScopeMembers = sqliteTable(
   "reg_scope_members",
@@ -106,10 +99,9 @@ export const regScopeMembers = sqliteTable(
 );
 
 /**
- * Domains a scope has claimed and (once its challenge TXT is found in DNS) verified, a
- * public trust badge. No challenge is stored: the expected TXT value is derived statelessly
- * from a server secret + scope + domain (HMAC), published at `_brika-challenge.<domain>`;
- * `verified` flips once a DNS lookup confirms it (and back off if a re-check no longer finds it).
+ * Domains a scope has claimed and (once its challenge TXT is found at `_brika-challenge.<domain>`)
+ * verified, a public trust badge. No challenge is stored: the expected TXT is derived statelessly
+ * from a server secret + scope + domain (HMAC). `verified` flips off if a re-check no longer finds it.
  */
 export const regScopeDomains = sqliteTable(
   "reg_scope_domains",
@@ -126,11 +118,9 @@ export const regScopeDomains = sqliteTable(
 );
 
 /**
- * Trusted publishers (PUB-016): bindings that authorize a tokenless GitHub OIDC publish to
- * a scope. A binding says "this GitHub repo + workflow may publish under this scope", and an
- * OIDC publish is allowed only when its verified token claims (`repository` + `workflow_ref`)
- * match a binding (npm trusted-publisher model). Human token publishes stay org-membership-
- * gated; this is purely the CI/OIDC path. Managed by org admins of the scope's owning org.
+ * Trusted publishers (PUB-016): bindings authorizing a tokenless OIDC publish to a scope. An OIDC
+ * publish is allowed only when its verified token claims (`repository` + `workflow_ref`) match a
+ * binding (npm model). Human token publishes stay membership-gated; this is purely the CI/OIDC path.
  */
 export const regTrustedPublishers = sqliteTable(
   "reg_trusted_publishers",
@@ -150,10 +140,8 @@ export const regTrustedPublishers = sqliteTable(
 );
 
 /**
- * Per-day tarball download counts: the install signal. One row per (package,
- * day-bucket), incremented when a tarball is served. Total installs is the sum
- * across days; "weekly" is the trailing-7-day window. Day is the unix epoch day
- * number (`unixepoch() / 86400`), so range queries are plain integer compares.
+ * Per-day tarball download counts (the install signal), one row per (package, day-bucket). Day is
+ * the unix epoch day number (`unixepoch() / 86400`), so range queries are plain integer compares.
  */
 export const regDownloads = sqliteTable(
   "reg_downloads",

@@ -42,9 +42,8 @@ function DepRow({
 }
 
 /**
- * Dependencies grouped by type, faithful to what the manifest actually declares:
- * runtime + peer + dev with their version ranges (no resolved/installed versions,
- * since the store only has package.json). The `brika` engine surfaces as a peer.
+ * Dependencies grouped by type (runtime / peer / dev) with version ranges. No resolved
+ * versions, since the store only has the manifest's package.json.
  */
 export function DependenciesSection({
   dependencies,

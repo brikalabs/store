@@ -10,18 +10,14 @@ const STATUS_RANK: Record<PluginListingStatus, number> = {
   taken_down: 3,
 };
 
-/**
- * Project a package's per-version flags to a package-level status: its latest installable
- * version decides `published` vs `deprecated`; with none installable, an operator takedown
- * reads as `taken_down` (owner can't restore) and otherwise `yanked` (owner can un-yank).
- */
+// Latest installable version decides published vs deprecated; with none installable, an operator
+// takedown reads as taken_down (owner can't restore), otherwise yanked (owner can un-yank).
 function listingStatusOf(versions: readonly PackageVersion[]): PluginListingStatus {
   const latest = newestVersion(versions.filter((v) => !v.yanked && v.takedownReason === null));
   if (latest !== undefined) return latest.deprecated === null ? "published" : "deprecated";
   return versions.some((v) => v.takedownReason !== null) ? "taken_down" : "yanked";
 }
 
-/** The version published most recently, or undefined for an empty list. */
 function newestVersion(versions: readonly PackageVersion[]): PackageVersion | undefined {
   return versions.reduce<PackageVersion | undefined>(
     (a, b) => (a === undefined || b.publishedAt > a.publishedAt ? b : a),
@@ -29,11 +25,8 @@ function newestVersion(versions: readonly PackageVersion[]): PackageVersion | un
   );
 }
 
-/**
- * The summary + status for one owned package. Listed packages reuse the rich catalog summary;
- * hidden ones are rebuilt from their newest version's manifest so they still appear (flagged).
- * Returns null if the package or a usable manifest is gone, so one bad row never drops the list.
- */
+// Listed packages reuse the rich catalog summary; hidden ones are rebuilt from their newest
+// manifest so they still appear. Null on a gone package/manifest, so one bad row never drops the list.
 async function resolveOwnedPlugin(
   metadata: MetadataReader,
   scopeName: Map<string, string>,
@@ -47,7 +40,6 @@ async function resolveOwnedPlugin(
   return base === null ? null : { ...base, listingStatus };
 }
 
-/** Build a minimal summary from the newest installable version, falling back to the newest one. */
 function buildSummary(
   versions: readonly PackageVersion[],
   scopeName: Map<string, string>,
@@ -67,11 +59,7 @@ function buildSummary(
   });
 }
 
-/**
- * Resolve every owned package name into a {@link PluginSummary} tagged with its listing status,
- * sorted live-states-first then by display name. Listed packages reuse the rich catalog summary;
- * hidden ones are rebuilt from their newest version's manifest, and unresolvable rows are dropped.
- */
+/** Resolve owned package names into {@link PluginSummary}s tagged with listing status, sorted live-states-first then by name. */
 export async function resolveOwnedPlugins(
   metadata: MetadataReader,
   ownedNames: readonly string[],

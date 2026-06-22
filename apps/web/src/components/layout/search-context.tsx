@@ -25,10 +25,7 @@ export function useSearch(): SearchApi {
   return useContext(SearchContext);
 }
 
-/**
- * Wires the header search input to a global ⌘K shortcut. The input itself is a
- * normal text field (see HeaderSearch); ⌘K just focuses it.
- */
+/** Wires the header search input to a global ⌘K shortcut (which just focuses it). */
 export function SearchProvider({ children }: { readonly children: ReactNode }) {
   const inputRef = useRef<HTMLInputElement>(null);
 

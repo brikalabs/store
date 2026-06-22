@@ -1,17 +1,13 @@
 /**
- * The HTTP status codes, by name. The one shared source of status numbers for the whole
- * platform: domain results carry a `status` from here directly (so there is no per-domain
- * error-code union and no code→status mapping table to duplicate), and the HTTP edges
- * (`httpError`, `jsonError`) pass it straight through.
+ * HTTP status codes by name, the one shared source for the platform: domain results carry a
+ * `status` from here directly, so there is no per-domain error-code union or code→status table.
  */
 export const HttpStatus = {
-  // 2xx success
   OK: 200,
   CREATED: 201,
   ACCEPTED: 202,
   NO_CONTENT: 204,
 
-  // 3xx redirection
   MOVED_PERMANENTLY: 301,
   FOUND: 302,
   SEE_OTHER: 303,
@@ -19,7 +15,6 @@ export const HttpStatus = {
   TEMPORARY_REDIRECT: 307,
   PERMANENT_REDIRECT: 308,
 
-  // 4xx client error
   BAD_REQUEST: 400,
   UNAUTHORIZED: 401,
   PAYMENT_REQUIRED: 402,
@@ -48,7 +43,6 @@ export const HttpStatus = {
   REQUEST_HEADER_FIELDS_TOO_LARGE: 431,
   UNAVAILABLE_FOR_LEGAL_REASONS: 451,
 
-  // 5xx server error
   INTERNAL_SERVER_ERROR: 500,
   NOT_IMPLEMENTED: 501,
   BAD_GATEWAY: 502,

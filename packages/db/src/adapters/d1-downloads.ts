@@ -13,11 +13,7 @@ import { regDownloads } from "../schema";
 /** Optional clock seam (unix ms) for deterministic tests; defaults to `Date.now`. */
 export const DownloadsClock = token<() => number>("DownloadsClock");
 
-/**
- * D1 implementation of the {@link DownloadStore} port. Each tarball download increments
- * today's `reg_downloads` row for the package; reads aggregate the per-day rows into
- * all-time + trailing-week totals via the domain `summarizeDownloads`.
- */
+/** D1 {@link DownloadStore}: per-day `reg_downloads` counts, aggregated into all-time + trailing-week totals. */
 export class D1DownloadStore implements DownloadStore {
   readonly #db = inject(Db);
   readonly #now = injectOr(DownloadsClock, Date.now);

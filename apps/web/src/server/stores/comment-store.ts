@@ -8,9 +8,8 @@ import { authorColumns, toAuthor } from "@/server/stores/author";
 import { votedIds } from "@/server/stores/voted-ids";
 
 /**
- * Repository for `comments` (+ the `comment_votes` upvote tally). Reads project a comment into
- * the {@link Comment} contract, joining `users` for the author's display name and avatar; a
- * deleted comment keeps its row (for thread structure) but its body reads as `[deleted]`.
+ * Repository for `comments` (+ the `comment_votes` upvote tally), projecting into the {@link Comment}
+ * contract. A deleted comment keeps its row (for thread structure) but its body reads as `[deleted]`.
  */
 export class CommentStore {
   readonly #db = inject(Database);
@@ -66,9 +65,7 @@ export class CommentStore {
 
   /**
    * Post a comment (or a reply when `parentId` is set). A reply must target an existing comment on
-   * the SAME plugin (`parent_id` has no FK), so a client cannot thread under a missing or
-   * cross-plugin parent: returns false when the parent does not qualify (the route maps that to a
-   * 400), true once inserted.
+   * the SAME plugin (`parent_id` has no FK), so false guards against a missing/cross-plugin parent.
    */
   async add(
     pluginName: string,

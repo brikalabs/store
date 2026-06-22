@@ -18,36 +18,12 @@ import { controller, route } from "../http/router";
 import { Audit } from "../services";
 
 /**
- * Scope management HTTP layer. The scope is the first-class ownership entity (npm/JSR model,
- * no org layer); publishing under a scope is gated on its MEMBERS:
- *
- *   PUT    /-/scope/:scope                          claim a scope (caller becomes admin)
- *   GET    /-/scope/:scope                          public scope info (unauthenticated)
- *   GET    /-/scope/:scope/members                  list members (any member)
- *   PUT    /-/scope/:scope/member/:userId           add or re-role a member (admin)
- *   DELETE /-/scope/:scope/member/:userId           remove a member (admin)
- *   POST   /-/scope/:scope/display-name             set the publisher label (admin)
- *   PUT    /-/scope/:scope/profile                  set the description + links (admin)
- *   GET    /-/scope/:scope/domains                  list claimed domains (any member)
- *   PUT    /-/scope/:scope/domain/:domain           claim a domain (admin)
- *   POST   /-/scope/:scope/domain/:domain/verify    verify a domain (admin)
- *   DELETE /-/scope/:scope/domain/:domain           drop a domain (admin)
- *   GET    /-/scope/:scope/trusted-publishers       list trusted-publisher bindings (admin)
- *   PUT    /-/scope/:scope/trusted-publishers        authorize a repo+workflow (admin)
- *   DELETE /-/scope/:scope/trusted-publishers        revoke a binding (admin)
- *
- * Plus two operator-admin-gated routes (the `REGISTRY_ADMINS` allowlist, NOT scope membership):
- *
- *   POST   /-/scope/:scope/takedown                 withdraw a squatted scope from listings (ORG-007)
- *   POST   /-/scope/:scope/restore                  reverse a takedown (ORG-007)
- *
- * These handlers are thin: they validate input, resolve the caller's verified identity,
- * delegate the rules + invariants to `inject(ScopeService)` (the domain service), audit the
- * outcome, and map the result to a status. No database access or business logic here.
+ * Scope management HTTP layer. The scope is the first-class ownership entity (npm/JSR model, no org
+ * layer); member-gated routes delegate to `ScopeService`, plus two operator-admin-gated routes
+ * (`REGISTRY_ADMINS` allowlist, NOT scope membership) for takedown/restore (ORG-007).
  */
 
-/** Record a scope audit entry. Every scope action shares packageName=scope, version=null, and the
- *  caller as actor, varying only by action + detail. */
+/** Record a scope audit entry (packageName=scope, version=null, caller as actor). */
 function auditScope(
   action: string,
   scope: string,
@@ -146,9 +122,8 @@ export async function deleteMember({
   return reply({ ok: true, scope, removed: result.removed }, 200);
 }
 
-// The publisher label is the name users are told to trust over the manifest `author`, so
-// its validation (length + no spoofing/invisible chars + NFC) lives in `@brika/registry-core`
-// `displayNameSchema` and is shared with the store console, defined once.
+// The publisher label users are told to trust over the manifest `author`; its anti-spoofing
+// validation lives in `displayNameSchema` (`@brika/registry-core`), shared with the store console.
 const DisplayNameBody = z.object({ displayName: displayNameSchema.nullable() });
 
 /** `POST /-/scope/:scope/display-name` - set the verified publisher label (admin). */
@@ -371,9 +346,8 @@ export const scopeController = controller({
   name: "scope",
   prefix: "/-/scope",
   routes: [
-    // Claiming a scope is rate-limited by authenticated principal so a script cannot mass-claim
-    // names (ORG-004); the per-account cap in ScopeService is the hard ceiling, this blunts
-    // bursts. The claim shares the `CLAIM_LIMITER` window.
+    // Rate-limited by principal so a script cannot mass-claim names (ORG-004); the per-account cap
+    // in ScopeService is the hard ceiling, this blunts bursts.
     route.put({
       path: "/:scope",
       middleware: [
@@ -381,7 +355,7 @@ export const scopeController = controller({
       ],
       handler: createScope,
     }),
-    // Public, unauthenticated scope info for the storefront's `/scope/:scope` page (ORG-003).
+    // Public, unauthenticated scope info for the storefront (ORG-003).
     route.get({ path: "/:scope", handler: getScope }),
     route.get({ path: "/:scope/members", handler: listMembers }),
     route.put({ path: "/:scope/member/:userId", body: MemberBody, handler: putMember }),
@@ -392,8 +366,6 @@ export const scopeController = controller({
     route.put({ path: "/:scope/domain/:domain", handler: addDomain }),
     route.post({ path: "/:scope/domain/:domain/verify", handler: verifyDomain }),
     route.delete({ path: "/:scope/domain/:domain", handler: deleteDomain }),
-    // Trusted publishers for a scope (PUB-016): the bindings that authorize tokenless OIDC
-    // (CI) publishes. Admin-gated to the scope's members.
     route.get({ path: "/:scope/trusted-publishers", handler: listTrustedPublishers }),
     route.put({
       path: "/:scope/trusted-publishers",
@@ -405,7 +377,7 @@ export const scopeController = controller({
       body: trustedPublisherSchema,
       handler: removeTrustedPublisher,
     }),
-    // Operator-only (REGISTRY_ADMINS), not scope membership: takedown/restore a squatted scope.
+    // Operator-only (REGISTRY_ADMINS), not scope membership.
     route.post({ path: "/:scope/takedown", body: TakedownBody, handler: takedownScope }),
     route.post({ path: "/:scope/restore", handler: restoreScope }),
   ],

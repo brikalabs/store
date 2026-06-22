@@ -19,9 +19,8 @@ export function specifiers(source: string): string[] {
 }
 
 /**
- * Every declared class name in a source file (`class X`, `export [default] [abstract] class X`).
- * Anchored to statement position (a declaration starts its line) so the word "class" inside a
- * string or template - e.g. `` `declares class ${name}` `` - is not mistaken for a declaration.
+ * Every declared class name in a source file. Anchored to statement position so the word "class"
+ * inside a string or template is not mistaken for a declaration.
  */
 export function classNames(source: string): string[] {
   const out: string[] = [];

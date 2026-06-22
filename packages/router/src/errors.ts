@@ -1,11 +1,6 @@
 /**
- * The HTTP layer's error channel. A handler `throw`s an {@link HttpError} (usually
- * via one of the helpers below) to abort a request with a specific status; the
- * router catches it and serializes it, so handlers express failures as guard
- * clauses instead of threading a `Response` back by hand.
- *
- * Anything thrown that is not an `HttpError` is treated as a bug and surfaces as a
- * 500 (the router rethrows it for the platform to log).
+ * The HTTP layer's error channel: a handler `throw`s an {@link HttpError} to abort with a
+ * specific status, which the router serializes. Anything else thrown is treated as a bug (500).
  */
 export class HttpError extends Error {
   constructor(
@@ -32,10 +27,7 @@ export function httpError(status: number, message: string, code?: string): HttpE
   return new HttpError(status, message, code);
 }
 
-/**
- * 429: too many requests. Sets `Retry-After` (seconds) when a reset hint is known,
- * and defaults the machine-readable `code` to `rate_limited`.
- */
+/** 429: too many requests. Sets `Retry-After` when a reset hint is known; `code` defaults to `rate_limited`. */
 export function tooManyRequests(
   message = "Too many requests",
   retryAfterSeconds?: number,

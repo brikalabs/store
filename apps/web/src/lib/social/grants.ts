@@ -1,12 +1,7 @@
 /**
- * Grant-family model for the plugin Permissions section.
- *
- * Brika grants are keyed by reverse-DNS id (e.g. `dev.brika.net.fetch`) and the
- * value is the requested *scope* (e.g. `{ allow: ["*.stripe.com"] }`). The hub
- * groups consent by permission *family* (net, secrets, fs, ...): one family
- * toggle covers all its verbs, so the store mirrors that grouping rather than
- * listing raw grant ids. The family is derived from the grant id here, the same
- * way the hub resolves it from the registered grant spec.
+ * Grant-family model for the plugin Permissions section. Grants are keyed by reverse-DNS id
+ * (`dev.brika.net.fetch`); the store groups them by permission family (net, secrets, fs, ...) to
+ * mirror how the hub renders consent, deriving the family from the grant id.
  */
 
 export type GrantRisk = "sensitive" | "standard";
@@ -17,10 +12,7 @@ export interface GrantHost {
   readonly wildcard: boolean;
 }
 
-/**
- * The visualised scope for a family, shaped per family so the section can show
- * a host allow-list, read/write path patterns, secret operations, or ports.
- */
+/** The visualised scope for a family (host allow-list, paths, secret ops, ports, ...). */
 export type GrantScope =
   | { readonly kind: "hosts"; readonly hosts: readonly GrantHost[] }
   | { readonly kind: "ports"; readonly ports: readonly string[] }
@@ -159,11 +151,7 @@ function buildScope(family: string, entries: readonly Entry[]): GrantScope {
   return (SCOPE_BUILDERS[family] ?? rawScope)(entries);
 }
 
-/**
- * Group a plugin's raw grants (id -> scope) into permission families, ordered
- * with known families first and sensitive ones surfaced. Returns an empty array
- * when the plugin requests nothing.
- */
+/** Group a plugin's raw grants (id -> scope) into permission families, known families first. */
 export function groupGrants(grants: Record<string, unknown>): GrantFamily[] {
   const byFamily = new Map<string, { verb: string; value: unknown; id: string }[]>();
   for (const [id, value] of Object.entries(grants)) {

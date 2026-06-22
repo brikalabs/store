@@ -16,13 +16,6 @@ import { forbidden, type RateLimitKey, unauthorized } from "@brika/router";
 import { CachingJwksProvider } from "./adapters/jwks";
 import { Admins, Tokens } from "./services";
 
-/**
- * Shared write-authentication for the registry's mutating endpoints (publish,
- * deprecate, yank). Accepts EITHER a CI OIDC token (GitHub or GitLab, audience
- * `brika-registry`) OR a registry publish token (local `brika` CLI). Returns the
- * resolved publish identity, or null when neither credential validates.
- */
-
 export const AUDIENCE = "brika-registry";
 
 const githubJwks = new CachingJwksProvider(
@@ -31,9 +24,8 @@ const githubJwks = new CachingJwksProvider(
 const gitlabJwks = new CachingJwksProvider("https://gitlab.com/oauth/discovery/keys");
 
 /**
- * Verify a CI OIDC token against the provider its issuer names (GitHub or GitLab), returning
- * a normalized identity, or null. Dispatching on the (unverified) issuer means we fetch only
- * the right provider's JWKS and never accept a token whose issuer we don't recognize.
+ * Verify a CI OIDC token against the provider its issuer names (GitHub or GitLab), or null.
+ * Dispatching on the issuer fetches only the right JWKS and never accepts an unrecognized issuer.
  */
 async function verifyCiOidc(token: string): Promise<OidcIdentity | null> {
   switch (peekIssuer(token)) {
@@ -50,6 +42,10 @@ async function verifyCiOidc(token: string): Promise<OidcIdentity | null> {
   }
 }
 
+/**
+ * Authenticate a mutating request by EITHER a CI OIDC token (GitHub/GitLab, audience
+ * `brika-registry`) OR a registry publish token. Returns the identity, or null if neither validates.
+ */
 export async function authenticateWrite(
   request: Request,
   tokens: TokenStore,
@@ -84,13 +80,8 @@ export async function authenticateWrite(
 }
 
 /**
- * Like {@link authenticateWrite}, but throws `401 Unauthorized` instead of
- * returning `null`, so a handler reads the identity in one line:
- * `const identity = await requireWrite(req)` (the token store defaults to `inject(Tokens)`).
- *
- * Memoized per request (keyed by the `Request`): the rate-limit middleware and the
- * handler both call it, but the OIDC/JWKS verification runs only once. The cache
- * is a `WeakMap`, so entries are collected with their request.
+ * Like {@link authenticateWrite}, but throws `401` instead of returning null. Memoized per request
+ * (WeakMap by `Request`) so the rate-limit middleware and handler share one OIDC/JWKS verification.
  */
 const identityByRequest = new WeakMap<Request, Promise<PublishIdentity>>();
 
@@ -109,11 +100,8 @@ export function requireWrite(
 }
 
 /**
- * A `rateLimit` key strategy that keys by the authenticated principal: the OIDC
- * repository, else the token owner. For publish-style endpoints, where CI shares
- * GitHub Actions egress IPs so a per-IP key would throttle unrelated repos. Reuses
- * the memoized {@link requireWrite}, so it adds no extra verification. Runs inside the
- * per-request injection context (the `mount({ around })` wrapper), so `inject` is valid.
+ * A `rateLimit` key strategy keyed by authenticated principal (OIDC repository, else token owner):
+ * CI shares GitHub Actions egress IPs, so a per-IP key would throttle unrelated repos.
  */
 export const principal: RateLimitKey<void> = async ({ req }) => {
   const identity = await requireWrite(req);
@@ -121,12 +109,10 @@ export const principal: RateLimitKey<void> = async ({ req }) => {
 };
 
 /**
- * Authenticate an operator admin for takedown/restore: a valid write credential
- * (OIDC or token) whose account id is in the `admins` allowlist (the controller passes it
- * from `REGISTRY_ADMINS`, a list of account ids). Throws `401` when no credential validates,
- * `403` when it validates but is not an admin. A CI/OIDC credential has no account id, so it
- * can never be an operator. Admin is a registry-operator role, deliberately separate from (and
- * overriding) scope ownership. The allowlist is a parameter so this stays free of the env import.
+ * Authenticate an operator admin for takedown/restore: a valid write credential whose account id is
+ * in the `admins` allowlist. Throws `401` if no credential validates, `403` if it is not an admin.
+ * A CI/OIDC credential has no account id, so it can never be an operator. Admin is a registry-operator
+ * role, deliberately separate from scope ownership.
  */
 export async function requireAdmin(
   request: Request,

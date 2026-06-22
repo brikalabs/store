@@ -10,9 +10,8 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 /**
- * The relational mirror of npm plus the social layer. npm stays the source of
- * truth for code; these tables are a cache (plugins, versions) and the data the
- * store owns (users, user profiles, reviews, comments, votes, reports).
+ * The relational mirror of npm plus the social layer. npm stays the source of truth for code; these
+ * tables are a cache (plugins, versions) and the data the store owns (reviews, comments, votes, ...).
  */
 
 const epoch = sql`(unixepoch())`;
@@ -71,21 +70,12 @@ export const pluginVersions = sqliteTable(
 );
 
 /**
- * The first-class Brika account (USER-001). Backs BetterAuth's `user` model via
- * `modelName: "users"`, so the SQL table keeps the name `users` and `users.id`
- * stays the PK that reviews/comments/votes/reports reference. Property keys here
- * are the BetterAuth field names (camelCase); the SQL column names stay snake_case.
- *
- * The account id is the ONLY identity: there is no GitHub-login column - scope
- * ownership, the operator allowlist, tokens and the audit log are all keyed on
- * `users.id`. Provider ids live in the BetterAuth `account` table.
- *
- * The user-authored profile fields (USER-003/005) live here too rather than in a
- * separate 1:1 `user_profiles` table: `displayName` overrides the provider `name`,
- * `links` is a labelled list, and `avatarVersion` is the content tag of an uploaded
- * avatar in R2 (its public URL is BUILT from `ASSETS_PUBLIC_URL` + this, never stored;
- * null falls back to the provider `image`). BetterAuth only syncs `name`/`image` from
- * the provider, so a re-sign-in never clobbers these author-owned fields.
+ * The first-class Brika account (USER-001), backing BetterAuth's `user` model via `modelName: "users"`.
+ * `users.id` is the ONLY identity: scope ownership, operators, tokens and the audit log all key on it;
+ * provider ids live in the BetterAuth `account` table. The author-owned profile fields (USER-003/005)
+ * live here too: `avatarVersion` is the content tag of an R2 avatar (its public URL is BUILT from
+ * `ASSETS_PUBLIC_URL`, never stored; null falls back to provider `image`). BetterAuth only syncs
+ * `name`/`image`, so a re-sign-in never clobbers these author-owned fields.
  */
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),

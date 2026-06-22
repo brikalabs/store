@@ -1,7 +1,6 @@
 /**
- * Download statistics: the install signal. Counts live as one row per
- * (package, day-bucket) in storage; this is the pure aggregation over those
- * rows, kept in the domain core so the registry app only owns the D1 IO.
+ * Download statistics. Counts live as one row per (package, day-bucket) in storage; this is the
+ * pure aggregation over those rows, with the app owning the D1 IO.
  */
 
 export interface DailyDownloads {
@@ -17,11 +16,7 @@ export interface DownloadStats {
   readonly weekly: number;
 }
 
-/**
- * Persistence port for install counts: record a download, and read aggregated stats for
- * one or many packages. The per-day storage + aggregation timing is the implementation's
- * concern; the domain only defines the shape callers depend on.
- */
+/** Persistence port for install counts: record a download and read aggregated stats. */
 export interface DownloadStore {
   /** Increment today's count for a package. */
   record(name: string): Promise<void>;
@@ -56,11 +51,7 @@ export function summarizeDownloads(
   return { total, weekly };
 }
 
-/**
- * The per-day install counts for the trailing `days` window, oldest day first
- * and zero-filled for days with no installs. Drives the sidebar download
- * sparkline. Rows outside the window are ignored.
- */
+/** Per-day install counts for the trailing `days` window, oldest day first and zero-filled. */
 export function downloadSeries(
   rows: ReadonlyArray<DailyDownloads>,
   todayDay: number,

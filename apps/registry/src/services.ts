@@ -24,15 +24,12 @@ import { R2TarballWriter } from "./adapters/r2-tarball-writer";
 
 /** Operator admins (account ids) for takedown/restore. */
 export const Admins = token<ReadonlySet<string>>("Admins");
-/** Display-name resolver for the CLI's login/whoami (reads the web app's `users` table on the same D1). */
+/** Display-name resolver for the CLI's login/whoami. */
 export const ResolveDisplayName =
   token<(userId: string) => Promise<string | null>>("ResolveDisplayName");
 /** Download-counter store (registry-only). */
 export const Downloads = token<DownloadStore>("Downloads");
 
-// The shared registry domain tokens (Audit/Catalog/Tokens) come from the `@brika/registry-runtime`
-// feature library; re-exported so controllers `inject(...)` them by the same names. They self-provide
-// off `RegistryDb` (provided below).
 export { Audit, Catalog, Tokens } from "@brika/registry-runtime";
 
 /** The runtime values the platform hands the registry per request (or a test supplies). */
@@ -45,22 +42,15 @@ export interface RegistryConfig {
 }
 
 /**
- * The registry's composition root as `@brika/di` providers (Angular's `provideX()` shape). The
- * shared `reg_*` domain services come from the `@brika/registry-runtime` library: provide its two
- * inputs (`RegistryDb`, `DomainSecret`) and spread its bindings; `Audit`/`Catalog`/`Tokens`
- * self-provide. This file binds only the registry's OWN service ports - the R2-backed resolve/publish
- * and the device flow - to their D1/R2 adapters. The services themselves (`ResolveService`,
- * `PublishService`, `DeviceService`) are field-injected `@brika/registry-core` classes, so they are
- * never `new`ed here: a controller `inject(ResolveService)` and the container builds it off these
- * ports. A test passes a fake db + bucket and appends a later provider.
- *
- * Rate limiting is intentionally NOT here: it is an inline edge concern on the routes that opt in.
+ * The registry's composition root as `@brika/di` providers. Binds the registry's own ports
+ * (R2-backed resolve/publish, device flow) to their D1/R2 adapters and spreads the shared
+ * `@brika/registry-runtime` bindings. Rate limiting is deliberately NOT here: it is an inline
+ * edge concern on the routes that opt in.
  */
 export function provideRegistry(config: RegistryConfig): Provider[] {
   const { db, tarballs, baseUrl } = config;
 
   return [
-    // Runtime seams the field-injected adapters resolve from the active injector.
     { provide: RegistryDb, useValue: db },
     { provide: TarballBucket, useValue: tarballs },
     { provide: RegistryBaseUrl, useValue: baseUrl },
@@ -70,11 +60,8 @@ export function provideRegistry(config: RegistryConfig): Provider[] {
       provide: ResolveDisplayName,
       useValue: (userId: string) => resolveActor(db, userId).then((a) => a.displayName),
     },
-    // The shared registry domain (Scope/Management ports -> D1 adapters).
     ...registryBindings,
-    // The registry's OWN service ports -> their D1/R2 adapters. The scanner defaults to allow-all
-    // in-core; the registry binds the explicit no-op so the seam is visible at the root. (MetadataReader
-    // comes from registryBindings - the same read port the operator handlers inject.)
+    // The registry's own ports -> their D1/R2 adapters.
     { provide: TarballReader, useClass: R2TarballReader },
     { provide: MetadataWriter, useClass: D1MetadataWriter },
     { provide: TarballWriter, useClass: R2TarballWriter },

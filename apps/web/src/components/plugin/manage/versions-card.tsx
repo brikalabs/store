@@ -21,9 +21,8 @@ const VERSION_ACTION =
   "inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 font-medium text-foreground text-xs transition-colors hover:bg-muted disabled:opacity-50";
 
 /**
- * Real per-version management for registry-hosted (`@brika`) plugins: deprecate/un-deprecate
- * and yank/un-yank, hitting the console API (server-side ownership-gated). For packages not
- * published to the registry the versions endpoint 404s and we show a note instead.
+ * Per-version management for registry-hosted plugins: deprecate and yank (server-side
+ * ownership-gated). For packages not published to the registry the endpoint 404s; we show a note.
  */
 export function VersionsCard({ name }: Readonly<{ name: string }>) {
   const [state, setState] = useState<VersionsState | null>(null);

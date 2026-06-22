@@ -1,10 +1,6 @@
 /**
- * Option descriptor extending Node's parseArgs format with a description for help display.
- *
- * - `type: 'string'`  → parsed as string
- * - `type: 'boolean'` → parsed as boolean flag
- * - `type: 'number'`  → parsed as string by parseArgs, auto-coerced to number by the CLI
- * - `default`         → applied when the option is not provided; makes the value non-optional
+ * Option descriptor (Node's parseArgs format plus a help description). `type: 'number'` is parsed as a
+ * string by parseArgs and auto-coerced by the CLI; a `default` makes the value non-optional.
  */
 export interface CommandOption {
   type: "string" | "boolean" | "number";
@@ -13,26 +9,17 @@ export interface CommandOption {
   default?: string | boolean | number;
 }
 
-/**
- * Positional argument descriptor. Positionals are matched to declared args by
- * order; a `default` makes the value non-optional in the handler.
- */
+/** Positional argument descriptor: matched to declared args by order; a `default` makes it non-optional. */
 export interface CommandArg {
   description?: string;
   default?: string;
 }
 
-/**
- * Command context - passed to handlers
- */
+/** Command context passed to handlers. */
 export interface CommandContext<O extends Record<string, CommandOption> | undefined = undefined>
-  extends HandlerArgs<O> {
-  // Extended in CLI integration
-}
+  extends HandlerArgs<O> {}
 
-/**
- * Middleware type - wraps handlers
- */
+/** Middleware that wraps a command handler. */
 export type Middleware<O extends Record<string, CommandOption> | undefined = undefined> = (
   handler: (args: HandlerArgs<O>) => Promise<void> | void,
 ) => (args: HandlerArgs<O>) => Promise<void> | void;
@@ -51,11 +38,7 @@ type InferValue<T extends CommandOption> = T extends {
   ? BaseValue<T>
   : BaseValue<T> | undefined;
 
-/**
- * Convert a kebab-case option key to camelCase. The flag stays
- * `--no-boot`, but the handler reads `values.noBoot` instead of the
- * bracket-only `values['no-boot']`.
- */
+/** Convert a kebab-case option key to camelCase, so the handler reads `values.noBoot` not `values['no-boot']`. */
 type CamelCase<S extends string> = S extends `${infer Head}-${infer Rest}`
   ? `${Head}${Capitalize<CamelCase<Rest>>}`
   : S;
@@ -88,10 +71,7 @@ export interface HandlerArgs<
   commands: Command[];
 }
 
-/**
- * Declarative command definition.
- * All metadata is inferred from this single object.
- */
+/** A declarative command definition; all metadata is inferred from this single object. */
 export interface Command<Name extends string = string> {
   name: Name;
   description: string;
@@ -101,21 +81,14 @@ export interface Command<Name extends string = string> {
   aliases?: string[];
   examples?: string[];
   subcommands?: Command[];
-  /**
-   * Omit this command from the auto-generated global help listing. The command
-   * is still resolvable by name and executes normally.
-   */
+  /** Omit from the global help listing; the command is still resolvable by name and runs normally. */
   hidden?: boolean;
   handler: (args: HandlerArgs) => Promise<void> | void;
 }
 
 /**
- * Define a command with fully typed option *and* positional-argument values in
- * the handler.
- *
- * Uses `const` type parameters to preserve literal types from the descriptors,
- * giving the handler properly narrowed `values` (from `options`) and `args`
- * (from `args`) based on each descriptor's `type` and `default`.
+ * Define a command with fully typed option AND positional-argument values in the handler. `const` type
+ * parameters preserve the descriptors' literal types, so `values`/`args` narrow by `type` and `default`.
  */
 export function defineCommand<
   const Name extends string,

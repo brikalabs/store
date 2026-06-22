@@ -9,13 +9,9 @@ import { controller, route } from "../http/router";
 import { ResolveDisplayName, Tokens } from "../services";
 
 /**
- * OAuth device authorization flow (RFC 8628) for `brika auth login`, plus token
- * revocation for `brika logout`. The CLI gets a code, the user approves it on
- * store.brika.dev (signed in to their Brika account), and the CLI polls until a
- * publish token is issued. The state machine lives in `DeviceService`
- * (`@brika/registry-core`); these handlers are the thin HTTP layer plus token
- * issuance (an app-side adapter concern). The token endpoint keeps its own body
- * parse so it can return RFC 8628's `invalid_request` error code.
+ * OAuth device authorization flow (RFC 8628) for `brika auth login`, plus token revocation for
+ * `brika logout`. The state machine lives in `DeviceService`; these handlers are the HTTP layer
+ * plus token issuance.
  */
 
 export async function handleDeviceCode(): Promise<Response> {
@@ -45,8 +41,7 @@ export async function handleDeviceToken(req: Request): Promise<Response> {
   if (!result.ok) throw badRequest(result.error);
 
   const token = await inject(Tokens).issue(result.userId);
-  // Resolve a human display name for the CLI's "Logged in as ..." line. Null when the
-  // account has no display name; the CLI then shows the account id.
+  // Null when the account has no display name; the CLI then shows the account id.
   const displayName = await inject(ResolveDisplayName)(result.userId);
   return reply(
     {

@@ -5,10 +5,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { recordAudit, runAuthed } from "@/server/http";
 
 /**
- * Trusted-publisher bindings for a scope (PUB-016), admin-gated by the ScopeService.
- *   GET    /api/scopes/:scope/trusted-publishers   list
- *   PUT    /api/scopes/:scope/trusted-publishers   add    { provider, repository, workflow }
- *   DELETE /api/scopes/:scope/trusted-publishers   remove { provider, repository, workflow }
+ * Trusted-publisher bindings for a scope (PUB-016), admin-gated: GET lists, PUT adds, DELETE removes
+ * a `{ provider, repository, workflow }` binding.
  */
 export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
   server: {

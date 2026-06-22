@@ -1,8 +1,7 @@
 import { inject, token } from "@brika/di";
 import type { TarballReader } from "@brika/registry-core";
 
-/** The R2 bucket holding published tarballs; the registry app provides its binding. Field-injected
- *  by the R2 tarball reader + writer, so neither takes a constructor. */
+/** The R2 bucket holding published tarballs. */
 export const TarballBucket = token<R2Bucket>("TarballBucket");
 
 /** Streams immutable tarball objects from R2. */

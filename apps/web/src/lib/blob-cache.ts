@@ -1,13 +1,8 @@
 import type { BlobStore } from "@/server/ports/blob-store";
 
 /**
- * Cache-aside a JSON value in a {@link BlobStore}: return the cached object when present, otherwise
- * `compute` it, store it as JSON, and return it. The caller writes only the expensive computation,
- * not the get/decode/put plumbing:
- *
- *   return cacheJson(assets, key, async () => buildIndex(name, version));
- *
- * `compute` returning null (a miss the caller cannot satisfy) is NOT cached, so a transient failure
+ * Cache-aside a JSON value in a {@link BlobStore}: return the cached object, else `compute` it,
+ * store it as JSON, and return it. A null `compute` result is NOT cached, so a transient failure
  * does not poison the key.
  */
 export async function cacheJson<T>(

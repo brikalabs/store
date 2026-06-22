@@ -59,11 +59,7 @@ export async function verifyToken(db: Db, token: string): Promise<{ userId: stri
   return { userId: row.userId };
 }
 
-/**
- * D1 implementation of the {@link TokenStore} port over `reg_tokens`. Thin adapter over the
- * issue/verify/revoke functions above (which own the crypto + hashing); auth and the
- * device flow depend on this port, not on the database.
- */
+/** D1 {@link TokenStore} over `reg_tokens`; thin adapter over the issue/verify/revoke functions above. */
 export class D1TokenStore implements TokenStore {
   readonly #db = inject(Db);
 

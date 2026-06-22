@@ -2,9 +2,8 @@ import { TransactionError } from "./errors";
 import type { Scope } from "./scope";
 
 /**
- * How a `transaction` relates to an already-active one (the Spring propagation
- * modes). A strategy value, not a string union: each is a function you pass (and
- * you can write your own), so there is no central `switch` to keep exhaustive.
+ * How a `transaction` relates to an already-active one (the Spring propagation modes). A strategy
+ * value, not a string union: each is a function you pass, so there is no central `switch` to keep exhaustive.
  */
 export type Propagation = <T>(fn: () => Promise<T>, scope: Scope) => Promise<T>;
 

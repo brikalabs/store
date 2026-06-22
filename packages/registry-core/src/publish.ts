@@ -6,10 +6,8 @@ import { tarballPath } from "./packument";
 import type { PackageVersion, Provenance } from "./types";
 
 /**
- * Who is publishing, derived from a verified OIDC token or a session token. A publish is
- * EITHER a human (a Brika `userId`, from a CLI/console token) OR CI (an OIDC `provider` +
- * `repository`); exactly one of `userId` / `repository` is set. There is no GitHub-login
- * owner: a human is identified by the provider-agnostic Brika account id.
+ * Who is publishing. INVARIANT: a publish is EITHER a human (Brika `userId`) OR CI (OIDC `provider` +
+ * `repository`); exactly one of `userId` / `repository` is set.
  */
 export interface PublishIdentity {
   /** Brika account id for a human token publish; null for a CI/OIDC publish. */
@@ -43,10 +41,8 @@ export type PublishResult =
 export type PublishErrorCode = "forbidden" | "invalid" | "exists" | "too_large" | "rejected";
 
 /**
- * Manifest/data gate. Validates the published manifest AND any localized store
- * files bundled in the tarball (`locales/<lang>/store.json`). Injected so
- * `@brika/schema` remains the single source of truth and the domain core stays
- * free of schema imports.
+ * Manifest/data gate. Validates the published manifest AND any bundled localized store files. A port
+ * so `@brika/schema` stays the single source of truth and the core stays free of schema imports.
  */
 export interface ManifestValidator {
   validate(
@@ -57,12 +53,8 @@ export interface ManifestValidator {
 /** DI token for the {@link ManifestValidator} port (an app binds the `@brika/schema` adapter). */
 export const ManifestValidator = token<ManifestValidator>("ManifestValidator");
 
-/**
- * Malware/abuse gate over the raw tarball bytes, run before any bytes are stored.
- * Injected as a seam so a real scanner (ClamAV, an external service, or a heuristic
- * pass over `readTarGzEntries`) can be dropped in without touching the publish
- * orchestration. Defaults to allow-all, so behavior is unchanged until one exists.
- */
+/** Malware/abuse gate over the raw tarball bytes, run before any bytes are stored. Defaults to
+ *  allow-all until a real scanner is wired in. */
 export interface TarballScanner {
   /** Inspect raw tarball bytes; reject (`ok: false`) to block the publish. */
   scan(tarball: Uint8Array): Promise<{ ok: true } | { ok: false; message: string }>;
@@ -90,11 +82,8 @@ export interface CommitVersionInput {
 /** Write side of the metadata store (publish only). */
 export interface MetadataWriter {
   versionExists(name: string, version: string): Promise<boolean>;
-  /**
-   * Atomically create the package (if new), insert the version, and move the tag.
-   * All-or-nothing: a partial failure must leave the metadata untouched, so a
-   * version row never exists without its `latest` tag (or vice versa).
-   */
+  /** Atomically create the package (if new), insert the version, and move the tag. All-or-nothing:
+   *  a version row must never exist without its `latest` tag (or vice versa). */
   commitVersion(input: CommitVersionInput): Promise<void>;
 }
 /** DI token for the {@link MetadataWriter} port (an app binds the concrete D1 adapter). */
@@ -122,14 +111,10 @@ export const PublishConfig = token<PublishOptions>("PublishConfig");
 const allowAllScanner: TarballScanner = { scan: () => Promise.resolve({ ok: true }) };
 
 /**
- * Orchestrates a publish through name validation, the two gates, and the immutability +
- * integrity invariants. The name is checked first, then ownership, then validation, and
- * immutability BEFORE any write, so a rejected publish never touches storage.
+ * Orchestrates a publish through name validation, the two gates, and the immutability + integrity
+ * invariants. Every gate runs BEFORE any write, so a rejected publish never touches storage.
  */
 export class PublishService {
-  // Field injection, no constructor: the app binds the four required ports; the scanner + clock +
-  // size cap are optional seams that default here, so production wires only the ports. A test runs
-  // it in an injection context that provides them.
   readonly #meta = inject(MetadataWriter);
   readonly #tarballs = inject(TarballWriter);
   readonly #validator = inject(ManifestValidator);
@@ -140,8 +125,7 @@ export class PublishService {
   readonly #maxTarballBytes = this.#options.maxTarballBytes ?? REGISTRY_LIMITS.maxTarballBytes;
 
   async publish(input: PublishInput): Promise<PublishResult> {
-    // 0. Name: a canonical scoped name, and a manifest that matches the published
-    //    name/version. Rejecting here means a bad name never reaches the ownership gate.
+    // 0. Name: a canonical scoped name, and a manifest matching the published name/version.
     if (!isCanonicalName(input.name)) {
       return {
         ok: false,
@@ -184,10 +168,8 @@ export class PublishService {
       };
     }
 
-    // 4.5. Malware/abuse scan of the bytes. Last gate before storage, and after
-    //      immutability so we never scan a version that already exists. A rejection
-    //      means the tarball was well-formed but unacceptable (distinct from an
-    //      `invalid` manifest), so it surfaces as a `rejected` code.
+    // 4.5. Malware/abuse scan. Last gate before storage; after immutability so we never scan a
+    //      version that already exists. A well-formed but unacceptable tarball surfaces as `rejected`.
     const scanned = await this.#scanner.scan(input.tarball);
     if (!scanned.ok) return { ok: false, code: "rejected", message: scanned.message };
 
@@ -196,10 +178,8 @@ export class PublishService {
     const shasum = await sha1Hex(input.tarball);
     const size = input.tarball.byteLength;
 
-    // 6. Write the tarball first (a `delete`-able object the caller can compensate
-    //    if the next step fails), then commit the metadata atomically. Running this
-    //    inside a transaction at the edge means a failed `commitVersion` rolls the
-    //    tarball back, so a publish is all-or-nothing across both stores.
+    // 6. Write the tarball first (a `delete`-able object the caller can compensate if the commit
+    //    fails), then commit metadata atomically, so a publish is all-or-nothing across both stores.
     await this.#tarballs.put(tarballPath(input.name, input.version), input.tarball);
     await this.#meta.commitVersion({
       scope: scopeOf(input.name),

@@ -1,11 +1,7 @@
 import { CONTRACT_VERSION, RegistryCapabilities } from "@brika/registry-contract";
 import { createFileRoute } from "@tanstack/react-router";
 
-/**
- * `GET /v1/registry`: the capabilities manifest. A Brika hub (or any other
- * consumer) reads this to learn which parts of the contract this registry
- * supports before calling them.
- */
+/** `GET /v1/registry`: the capabilities manifest consumers read to learn which contract features this registry supports. */
 const CAPABILITIES = RegistryCapabilities.parse({
   name: "Brika Official Store",
   contractVersion: CONTRACT_VERSION,

@@ -5,10 +5,8 @@ import { Db } from "../client";
 import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
 
 /**
- * Cloudflare D1 implementation of the {@link CatalogReader} port: every package's latest
- * non-yanked, non-taken-down version, joined with its owning scope as the verified
- * publisher. The hosted scope is bounded (REGISTRY_LIMITS.maxPackagesPerScope), so reading
- * every latest row and letting the caller filter/paginate in memory is cheap and exact.
+ * D1 {@link CatalogReader}: every package's latest non-yanked, non-taken-down version with its
+ * scope as verified publisher. The hosted scope is bounded, so filtering in memory is cheap and exact.
  */
 export class D1CatalogReader implements CatalogReader {
   readonly #db = inject(Db);

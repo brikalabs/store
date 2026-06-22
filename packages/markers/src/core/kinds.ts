@@ -1,13 +1,8 @@
 import type { MarkerKindSpec, Severity } from "./types";
 
 /**
- * The built-in marker kinds (defaults). A repo can edit or extend them with a
- * `markers.config.json` at its root, which overlays this list by name (see
- * `./config.ts`). The parser, CLI, and editor read the resolved kinds; the
- * package README explains what each kind means.
- *
- * Write markers as `// @kind: reason` comments; for a synthesized value, mark
- * the function that produces it rather than each field it returns.
+ * The built-in marker kinds (defaults); a repo can overlay them by name via `markers.config.json`.
+ * Write markers as `// @kind: reason`; for a synthesized value, mark the function that produces it.
  */
 function kind(
   name: string,

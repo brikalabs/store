@@ -9,8 +9,7 @@ export class R2TarballWriter implements TarballWriter {
 
   async put(key: string, data: Uint8Array): Promise<void> {
     await this.#bucket.put(key, data);
-    // Inside a transaction, a publish whose metadata commit fails rolls the tarball
-    // back; outside one, this is a no-op.
+    // Inside a transaction, a failed metadata commit rolls the tarball back; outside one, a no-op.
     onRollback(() => this.delete(key));
   }
 

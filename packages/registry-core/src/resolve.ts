@@ -17,12 +17,8 @@ export interface PackumentOptions {
 }
 
 /**
- * The npm-compatible resolution surface: packument lookup and tarball streaming.
- * This is all the hub's `bun add` needs; publishing is a separate service.
- *
- * Injectable (`@brika/di`): field injection, no constructor. The app binds the
- * {@link MetadataReader} / {@link TarballReader} ports + the {@link RegistryBaseUrl};
- * a test runs it in an injection context that provides them.
+ * The npm-compatible resolution surface: packument lookup and tarball streaming. All `bun add`
+ * needs; publishing is a separate service.
  */
 export class ResolveService {
   readonly #meta = inject(MetadataReader);

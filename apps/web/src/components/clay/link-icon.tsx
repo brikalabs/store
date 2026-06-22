@@ -4,8 +4,7 @@ import { FacebookIcon, GithubIcon, LinkedInIcon, NpmIcon, XIcon, YouTubeIcon } f
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
-// Hostname suffix -> brand glyph. Matched on the registrable host so `www.` and any
-// subdomain still resolve. Order is irrelevant (suffix match is unambiguous here).
+// Hostname suffix -> brand glyph, matched so `www.` and any subdomain still resolve.
 const BY_HOST: ReadonlyArray<readonly [string, IconComponent]> = [
   ["github.com", GithubIcon],
   ["x.com", XIcon],

@@ -3,13 +3,9 @@ import { z } from "zod";
 import type { PublishIdentity } from "./publish";
 
 /**
- * Trusted publishers (PUB-016): the npm-style binding that authorizes a tokenless GitHub
- * OIDC publish. A binding grants a specific GitHub repo + workflow the right to publish
- * under a scope; an OIDC publish is allowed only when its verified token claims match a
- * binding. This is the CI publish path - human token publishes stay org-membership-gated.
- *
- * The binding + the match live here (shared domain) so the registry and the console agree on
- * what "a matching trusted publisher" means, and the rule is unit-tested in one place.
+ * Trusted publishers (PUB-016): the binding that authorizes a tokenless OIDC publish. A binding
+ * grants a repo + workflow the right to publish under a scope; an OIDC publish is allowed only when
+ * its verified token claims match a binding. Human token publishes stay membership-gated.
  */
 
 /** A binding: scope `@x` may be published from `provider`'s `repository` + `workflow`. */
@@ -24,12 +20,8 @@ export interface TrustedPublisher {
   readonly workflow: string;
 }
 
-/**
- * The shape of a trusted-publisher binding request body: provider + project + the
- * workflow/config filename allowed to publish under the scope via OIDC. Validated so a
- * malformed binding never reaches the store (and so it can actually match a real OIDC ref
- * claim). Shared so the registry endpoint and the store console validate identically.
- */
+/** Request-body schema for a trusted-publisher binding: provider + project + workflow filename,
+ *  validated so it can actually match a real OIDC ref claim. */
 export const trustedPublisherSchema = z.object({
   provider: z.enum(["github", "gitlab"]),
   repository: z.string().regex(/^[^\s/]+(?:\/[^\s/]+)+$/, "repository must be 'owner/repo'"),
@@ -53,7 +45,6 @@ export interface TrustedPublishers {
 /** DI token for the {@link TrustedPublishers} port. */
 export const TrustedPublishers = token<TrustedPublishers>("TrustedPublishers");
 
-/** The workflow filename component of an OIDC `workflow_ref`, or null if unparyable. */
 function workflowFilename(workflowRef: string | undefined): string | null {
   if (workflowRef === undefined || workflowRef.length === 0) return null;
   // workflow_ref is e.g. `owner/repo/.github/workflows/publish.yml@refs/heads/main`.
@@ -64,9 +55,9 @@ function workflowFilename(workflowRef: string | undefined): string | null {
 }
 
 /**
- * Whether `identity` (a verified OIDC publish) matches `binding`: same `owner/repo` AND the
- * token's workflow filename equals the binding's. Token (non-OIDC) identities never match -
- * their `repository` is null - so this only ever authorizes a CI publish.
+ * Whether `identity` (a verified OIDC publish) matches `binding`: same `owner/repo` and workflow
+ * filename. Token (non-OIDC) identities never match - their `repository` is null - so this only ever
+ * authorizes a CI publish.
  */
 export function trustedPublisherMatches(
   binding: TrustedPublisher,

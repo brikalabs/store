@@ -14,9 +14,8 @@ export function trimTrailingSlash(url: string): string {
 }
 
 /**
- * Tarball path relative to the registry root, following npm's convention:
- * `@brika/plugin-x/-/plugin-x-1.2.3.tgz`. Also used as the R2 object key so the
- * resolve and publish paths agree without a separate lookup.
+ * Tarball path (npm convention `@brika/plugin-x/-/plugin-x-1.2.3.tgz`), also used as the R2 object
+ * key so resolve and publish agree without a separate lookup.
  */
 export function tarballPath(name: string, version: string): string {
   return `${name}/-/${unscopedName(name)}-${version}.tgz`;
@@ -41,29 +40,21 @@ export interface Packument {
   readonly "dist-tags": Record<string, string>;
   readonly versions: Record<string, Record<string, unknown>>;
   readonly time: Record<string, string>;
-  /**
-   * Versions removed by an operator takedown, mapped to their public reason. A
-   * non-standard field (npm clients ignore it) the storefront reads to show why a
-   * version is gone; the versions themselves are absent from `versions` above.
-   */
+  /** Versions removed by an operator takedown, mapped to their public reason (non-standard field;
+   *  the versions themselves are absent from `versions`). */
   readonly takedowns?: Record<string, string>;
   /**
-   * The verified publisher (the scope owner + its chosen display name). Non-standard
-   * field the storefront renders as the trusted "published by", overriding the
-   * free-text manifest `author`. Absent for unclaimed/unscoped packages.
-   *
-   * `verified` here means "ownership-proven" (you cannot publish to a scope you do
-   * not own), NOT an editorial/team vetting; a separate team-validation badge is a
-   * later, admin-set concern, distinct from this.
+   * The verified publisher (scope owner + display name), rendered as the trusted "published by"
+   * over the free-text manifest `author`. `verified` means "ownership-proven" (you cannot publish
+   * to a scope you do not own), NOT editorial/team vetting.
    */
   readonly publisher?: { readonly id: string; readonly name: string; readonly verified: true };
 }
 
 /**
- * Build an npm-compatible packument from stored versions. Yanked AND taken-down
- * versions are omitted (hidden from new installs); a taken-down version's reason is
- * surfaced under `takedowns`. Deprecated versions are included with a `deprecated`
- * field so bun surfaces the warning but still installs them.
+ * Build an npm-compatible packument from stored versions. Yanked and taken-down versions are omitted
+ * (a taken-down version's reason is surfaced under `takedowns`); deprecated versions are included
+ * with a `deprecated` field so bun warns but still installs them.
  */
 export function buildPackument(record: PackageRecord, baseUrl: string): Packument {
   const versions: Record<string, Record<string, unknown>> = {};
@@ -143,11 +134,7 @@ function hasInstallScript(manifest: Record<string, unknown>): boolean {
   return ["install", "preinstall", "postinstall"].some((name) => name in scripts);
 }
 
-/**
- * Build the abbreviated install packument: only the fields bun needs to resolve
- * and install, dropping readme, scripts, and other manifest bulk. Much smaller
- * for packages with many versions.
- */
+/** Build the abbreviated install packument: only the fields bun needs, dropping readme/scripts/bulk. */
 export function buildAbbreviatedPackument(
   record: PackageRecord,
   baseUrl: string,

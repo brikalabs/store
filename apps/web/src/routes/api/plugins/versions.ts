@@ -7,10 +7,9 @@ import { runAuthed } from "@/server/http";
 import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
- * `GET /api/plugins/versions?name=<encoded>` - a registry-hosted package's versions with
- * their management flags, plus whether the signed-in user may manage them (is a member of
- * the package's scope). Drives the plugin management page; mutations are still gated by the
- * domain ownership policy server-side.
+ * `GET /api/plugins/versions?name=<encoded>` - a package's versions with their management flags,
+ * plus whether the signed-in user may manage them (scope member). `canManage` is advisory: mutations
+ * are still gated by the ownership policy server-side.
  */
 export const Route = createFileRoute("/api/plugins/versions")({
   server: {

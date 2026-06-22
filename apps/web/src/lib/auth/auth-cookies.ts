@@ -1,12 +1,7 @@
-/**
- * Pure cookie + redirect-path helpers, with no env, DB, or crypto dependency, so
- * they are unit-testable in isolation. The session/identity logic that needs the
- * Cloudflare runtime stays in `auth.ts` (and imports these). Security-critical:
- * `safeReturnPath` is the open-redirect guard for the OAuth `?return=` round-trip.
- */
+/** Pure cookie + redirect-path helpers. Security-critical: `safeReturnPath` is the open-redirect
+ * guard for the OAuth `?return=` round-trip. */
 
-/** Percent-decode, falling back to the raw value when the encoding is malformed.
- *  A garbled `Cookie` header must never throw and 500 the request. */
+/** Percent-decode, falling back to the raw value: a garbled `Cookie` header must never throw and 500. */
 function safeDecode(value: string): string {
   try {
     return decodeURIComponent(value);
@@ -29,11 +24,8 @@ export function parseCookies(header: string | null): Record<string, string> {
   return result;
 }
 
-/**
- * A safe post-login redirect target: a same-site path beginning with a single
- * `/`. Absolute URLs and protocol-relative `//host` paths fall back to `/`, so a
- * crafted `?return=` can never turn sign-in into an open redirect.
- */
+/** A safe post-login redirect target: a same-site path starting with a single `/`. Absolute and
+ * protocol-relative `//host` paths fall back to `/`, so a crafted `?return=` can't open-redirect. */
 export function safeReturnPath(raw: string | null | undefined): string {
   if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//")) return "/";
   return raw;

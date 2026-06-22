@@ -2,9 +2,8 @@ import { z } from "zod";
 import { TransparencyEntry } from "./attestation";
 
 /**
- * Build provenance for a version published from CI: where the bytes came from,
- * derived from the verified GitHub Actions OIDC token (so it cannot be forged).
- * Null for local token publishes, which carry no CI attestation.
+ * Build provenance for a CI-published version, derived from the verified OIDC token (so it cannot be
+ * forged). Null for local token publishes.
  */
 export const Provenance = z.object({
   /** `owner/repo` the publish ran from. */
@@ -22,11 +21,7 @@ export const Provenance = z.object({
 });
 export type Provenance = z.infer<typeof Provenance>;
 
-/**
- * A single published, immutable package version, as held by the metadata store.
- * The `manifest` is the published `package.json` for the version; the integrity
- * fields are computed once at publish time and never change.
- */
+/** A single published, immutable package version, as held by the metadata store. */
 export const PackageVersion = z.object({
   name: z.string(),
   version: z.string(),
@@ -44,10 +39,8 @@ export const PackageVersion = z.object({
   deprecated: z.string().nullable().default(null),
   /** Yanked versions are hidden from new installs but kept for existing locks. */
   yanked: z.boolean().default(false),
-  /**
-   * Operator takedown reason (abuse/policy). Null = active; non-null = removed by an
-   * admin: hidden from new installs like a yank, with this reason surfaced publicly.
-   */
+  /** Operator takedown reason (null = active). Non-null hides the version like a yank, with this
+   *  reason surfaced publicly. */
   takedownReason: z.string().nullable().default(null),
   /** CI build provenance (GitHub OIDC), or null for local token publishes. */
   provenance: Provenance.nullable().default(null),
@@ -55,10 +48,8 @@ export const PackageVersion = z.object({
 export type PackageVersion = z.infer<typeof PackageVersion>;
 
 /**
- * The verified publisher of a scope: the organisation that owns it, plus the display
- * name it chose. Derived from org ownership (not the free-text manifest `author`), so it
- * is trustworthy: only an org admin can set it. An org is provider-neutral - membership
- * is provider-qualified, the org itself is identified by its slug.
+ * The verified publisher of a scope: who owns it plus the display name it chose. Derived from scope
+ * ownership (not the free-text manifest `author`), so it is trustworthy: only an admin can set it.
  */
 export interface ScopePublisher {
   /** Owning org slug (the provable identity, e.g. `brika`). */
@@ -67,10 +58,7 @@ export interface ScopePublisher {
   readonly name: string;
 }
 
-/**
- * A package and all of its versions, as read from the metadata store. The
- * `distTags` map points named tags (e.g. `latest`) at concrete versions.
- */
+/** A package and all of its versions, as read from the metadata store. */
 export interface PackageRecord {
   readonly name: string;
   readonly distTags: Readonly<Record<string, string>>;
