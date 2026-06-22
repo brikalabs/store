@@ -42,6 +42,6 @@ import_source($source) where {
   },
   register_diagnostic(
     span = $source,
-    message = "Import boundary: a runtime-agnostic package may import only relative paths, node:/bun: builtins, and zod. No infrastructure, app, or cross-package dependency is allowed."
+    message = "Import boundary: a runtime-agnostic package may import only relative paths, node:/bun: builtins, zod, and @brika/di. No infrastructure, app, or cross-package dependency is allowed."
   )
 }

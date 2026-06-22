@@ -36,6 +36,12 @@ function creationSite(): string | undefined {
 
 let tokenCounter = 0;
 
+/**
+ * A runtime identity for a dependency that has none on its own (an interface, a config value). Carries
+ * its `T` for inference, a `description` for error messages, and an optional `providedIn:'root'`
+ * default `factory`. Prefer the {@link token} helper - `token<T>("Name")` - over `new InjectionToken`;
+ * this class is the underlying primitive.
+ */
 export class InjectionToken<T> {
   /** Phantom: keeps `T` attached to the token for inference. Never read at runtime. */
   declare readonly _type: T;
@@ -56,10 +62,12 @@ export type Type<T> = (abstract new (...args: never[]) => T) & { readonly name: 
 /** Anything you can `inject()`: a class or an {@link InjectionToken}. */
 export type ProviderToken<T> = Type<T> | InjectionToken<T>;
 
+/** Bind a token to a ready value: `{ provide: BaseUrl, useValue: "https://..." }`. */
 export interface ValueProvider<T> {
   readonly provide: ProviderToken<T>;
   readonly useValue: T;
 }
+/** Bind a token to a lazy factory (which may `inject()` inside it). */
 export interface FactoryProvider<T> {
   readonly provide: ProviderToken<T>;
   readonly useFactory: () => T;
