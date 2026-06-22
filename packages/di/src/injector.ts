@@ -86,7 +86,15 @@ export function provide<T>(token: ProviderToken<T>, value: T): ValueProvider<T> 
   return { provide: token, useValue: value };
 }
 
-const ACTIVE = new AsyncLocalStorage<Injector>();
+// The injection context, created lazily on first use. Importing `@brika/di` (e.g. a client component
+// that imports a token or pure helper from a domain package that field-injects) must NOT touch
+// `node:async_hooks`, which the browser externalizes; only `inject()` / `runInContext` - server-only -
+// materialize the AsyncLocalStorage.
+let activeStore: AsyncLocalStorage<Injector> | undefined;
+function active(): AsyncLocalStorage<Injector> {
+  activeStore ??= new AsyncLocalStorage<Injector>();
+  return activeStore;
+}
 
 /**
  * The ergonomic way to declare a token. Declare an interface and a same-named token so the one
@@ -103,7 +111,7 @@ export function token<T>(description?: string, factory?: () => T): InjectionToke
 
 /** True when called inside an injection context (a provider build, or {@link runInInjectionContext}). */
 export function isInInjectionContext(): boolean {
-  return ACTIVE.getStore() !== undefined;
+  return active().getStore() !== undefined;
 }
 
 /** Options for {@link inject} / {@link Injector.get}. */
@@ -120,7 +128,7 @@ export interface InjectOptions {
 export function inject<T>(token: ProviderToken<T>): T;
 export function inject<T>(token: ProviderToken<T>, options: { optional: true }): T | undefined;
 export function inject<T>(token: ProviderToken<T>, options?: InjectOptions): T | undefined {
-  const injector = ACTIVE.getStore();
+  const injector = active().getStore();
   if (injector === undefined) {
     if (options?.optional === true) return undefined;
     throw new Error(`inject(${tokenName(token)}) called outside an injection context`);
@@ -138,7 +146,7 @@ export function injectOr<T>(token: ProviderToken<T>, fallback: T): T {
 
 /** Run `fn` with `injector` active, so `inject()` inside it (and its awaits) resolves against it. */
 export function runInInjectionContext<R>(injector: Injector, fn: () => R): R {
-  return ACTIVE.run(injector, fn);
+  return active().run(injector, fn);
 }
 
 function tokenName(token: ProviderToken<unknown>): string {
@@ -223,7 +231,7 @@ export class Injector {
     }
     this.#resolving.add(token);
     try {
-      const value = ACTIVE.run(this, build);
+      const value = active().run(this, build);
       this.#instances.set(token, value);
       return value;
     } finally {
