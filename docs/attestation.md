@@ -7,7 +7,7 @@ identity and recorded in the public Rekor log. The store surfaces a
 anyone can independently confirm the published bytes were signed by the repo that
 claims them.
 
-The signing/log backend is **pluggable** — sigstore is one provider behind the
+The signing/log backend is **pluggable** - sigstore is one provider behind the
 `AttestationProvider` port in `@brika/registry-core`.
 
 ## How it flows
@@ -30,7 +30,7 @@ publish({ ..., transparencyLog }) ───────► withAttestation():
 Trust model: the registry only attaches an attestation to a version when the
 publish is **OIDC-authenticated** (a forge-proof identity) **and** the attested
 integrity matches the bytes it received. The ultimate anchor is the **public**
-Rekor entry the link points to — verifiable by anyone, independent of us.
+Rekor entry the link points to - verifiable by anyone, independent of us.
 Attestation is **best-effort**: a publish never fails because signing failed; it
 just ships unattested.
 

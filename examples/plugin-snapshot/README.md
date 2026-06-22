@@ -21,12 +21,12 @@ const restored = await restoreSnapshot(snap);
 
 ## Tools
 
-- **take-snapshot** — capture the current hub state as a compressed snapshot.
-- **restore-snapshot** — restore hub state from a snapshot.
+- **take-snapshot** - capture the current hub state as a compressed snapshot.
+- **restore-snapshot** - restore hub state from a snapshot.
 
 ## Bricks
 
-- **Snapshot status** — a board brick showing the latest snapshot's size, age,
+- **Snapshot status** - a board brick showing the latest snapshot's size, age,
   and (optionally) its compression ratio.
 
 ## Preferences

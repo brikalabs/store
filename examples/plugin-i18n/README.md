@@ -7,12 +7,12 @@ an API key.
 
 ## Tools
 
-- **translate** — translate a phrase from one language to another.
-- **detect-language** — guess the language of a piece of text.
+- **translate** - translate a phrase from one language to another.
+- **detect-language** - guess the language of a piece of text.
 
 ## Blocks
 
-- **Localize message** — a transform block that resolves a message key for the
+- **Localize message** - a transform block that resolves a message key for the
   active locale, with graceful fallback to your default language.
 
 ## Preferences

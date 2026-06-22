@@ -29,7 +29,7 @@ The code-health axis, complementary to the product milestones in
   `index.ts`), which is what made this testable.
 - 🟡 **E2. Enforce `REGISTRY_LIMITS`.** Done: `maxFileBytes` + `maxUnpackedBytes`
   enforced in the manifest gate (off the unpacked tarball), tested. Remaining: the
-  count-based quotas (versions / packages / scopes / weekly) still `@unenforced` —
+  count-based quotas (versions / packages / scopes / weekly) still `@unenforced` -
   each needs a usage-counting or rolling-window port on the metadata store.
 
 ## Tier 2: structure and DX for growth
