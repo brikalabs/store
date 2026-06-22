@@ -1,15 +1,15 @@
 import { createRootRoute } from "@tanstack/react-router";
 import { NotFoundPage, ServerErrorPage } from "@/components/feedback/error-pages";
 import { RootDocument } from "@/components/layout/root-document";
-import { fetchTheme } from "@/server/theme";
+import { fetchThemeMode } from "@/server/theme";
 import appCss from "@/styles.css?url";
 
 const FONTS_HREF =
   "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap";
 
 export const Route = createRootRoute({
-  // Read the theme cookie at SSR so the document root renders the matching data-mode (no mismatch).
-  loader: () => fetchTheme(),
+  // Read the theme-mode cookie at SSR so the document root renders the matching data-mode (no mismatch).
+  loader: () => fetchThemeMode(),
   head: () => ({
     meta: [
       { charSet: "utf-8" },

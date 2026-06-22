@@ -1,12 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { readThemeCookie, type Theme } from "@/hooks/use-theme";
+import { readThemeMode, type ThemeMode } from "@/hooks/use-theme";
 
 /**
- * The saved theme choice from the request cookie, or null to let the client resolve it from the OS
- * preference. Read at SSR so the document root renders the matching `data-mode` and hydration does
- * not mismatch (the no-cookie case is the only one the server cannot know).
+ * The saved theme mode from the request cookie, or null when none is set. Read at SSR so the document
+ * root renders the matching `data-mode` for an explicit `light`/`dark`; `system` and null are the
+ * only cases the server cannot resolve (the OS preference is client-only).
  */
-export const fetchTheme = createServerFn().handler((): Theme | null =>
-  readThemeCookie(getRequest().headers.get("cookie")),
+export const fetchThemeMode = createServerFn().handler((): ThemeMode | null =>
+  readThemeMode(getRequest().headers.get("cookie")),
 );

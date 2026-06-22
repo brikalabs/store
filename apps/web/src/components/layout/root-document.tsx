@@ -7,9 +7,9 @@ import { ThemeContext, themeBootScript, useThemeController } from "@/hooks/use-t
 const rootApi = getRouteApi("__root__");
 
 /**
- * The HTML document shell. The cookie theme (null on a first visit) seeds SSR so `data-mode` matches
- * the client; suppressHydrationWarning is scoped to the one case the server cannot know - a no-cookie
- * first visit, whose OS preference the boot script resolves client-side.
+ * The HTML document shell. The cookie mode seeds SSR so `data-mode` matches the client for an explicit
+ * light/dark choice; suppressHydrationWarning is scoped to the cases the server cannot resolve -
+ * `system` mode and a first visit with no cookie, where the OS preference is client-only.
  */
 export function RootDocument() {
   // The footer belongs on the public browsing pages, not the admin/login app.
@@ -23,7 +23,7 @@ export function RootDocument() {
       lang="en"
       data-mode={theme}
       className={theme === "dark" ? "dark" : undefined}
-      suppressHydrationWarning={initial === null}
+      suppressHydrationWarning={initial === "system" || initial === null}
     >
       <head>
         <script
