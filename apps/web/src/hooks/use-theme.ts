@@ -45,7 +45,7 @@ function withoutTransitions(apply: () => void): void {
   style.textContent = "*,*::before,*::after{transition:none !important}";
   document.head.appendChild(style);
   apply();
-  void document.documentElement.offsetHeight;
+  document.documentElement.getBoundingClientRect(); // force a reflow to flush the change
   requestAnimationFrame(() => style.remove());
 }
 
@@ -78,17 +78,17 @@ export const ThemeContext = createContext<ThemeApi | null>(null);
  * {@link ThemeApi} to provide via {@link ThemeContext}.
  */
 export function useThemeController(initial: ThemeMode | null): { theme: Theme; api: ThemeApi } {
-  const [mode, setModeState] = useState<ThemeMode>(initial ?? "system");
-  const [theme, setThemeState] = useState<Theme>(
+  const [mode, setMode] = useState<ThemeMode>(initial ?? "system");
+  const [theme, setTheme] = useState<Theme>(
     initial === "light" || initial === "dark" ? initial : "light",
   );
 
   useEffect(() => {
     // Adopt whatever the boot script resolved (the system / no-cookie case), then follow OS changes.
-    setThemeState(domTheme());
+    setTheme(domTheme());
     if (mode !== "system") return;
     const media = matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setThemeState(applyMode("system"));
+    const onChange = () => setTheme(applyMode("system"));
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
   }, [mode]);
@@ -97,8 +97,8 @@ export function useThemeController(initial: ThemeMode | null): { theme: Theme; a
     () => ({
       mode,
       setMode: (next) => {
-        setThemeState(applyMode(next));
-        setModeState(next);
+        setTheme(applyMode(next));
+        setMode(next);
       },
     }),
     [mode],

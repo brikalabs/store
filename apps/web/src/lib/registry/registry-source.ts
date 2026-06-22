@@ -33,9 +33,9 @@ export { docLocales, pickDocPath } from "@/lib/registry/manifest-mapping";
 export const REGISTRY_SCOPE = "@brika/";
 
 /** Public origin of the registry. Overridable for local dev via Vite env. */
-export const REGISTRY_ORIGIN: string = (
-  (import.meta.env?.VITE_REGISTRY_URL as string | undefined) ?? "https://registry.brika.dev"
-).replace(/\/+$/, "");
+export const REGISTRY_ORIGIN: string = new URL(
+  (import.meta.env?.VITE_REGISTRY_URL as string | undefined) ?? "https://registry.brika.dev",
+).origin;
 
 /** True for names hosted on our registry (the `@brika` scope). */
 export function isRegistryName(name: string): boolean {

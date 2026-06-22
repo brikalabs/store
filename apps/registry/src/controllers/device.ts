@@ -16,7 +16,7 @@ import { ResolveDisplayName, Tokens } from "../services";
 
 export async function handleDeviceCode(): Promise<Response> {
   const code = await inject(DeviceService).requestCode();
-  const verificationUri = `${vars().STORE_URL.replace(/\/+$/, "")}/device`;
+  const verificationUri = new URL("/device", vars().STORE_URL).href;
   return reply(
     {
       device_code: code.deviceCode,

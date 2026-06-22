@@ -309,7 +309,7 @@ async function handleRequest<Ctx, E extends Env>(
 
 /** Strip `{regex}` constraints from a pattern for display: `:pkg{[^-]+}?` -> `:pkg?`. */
 export function simplifyPattern(pattern: string): string {
-  return pattern.replace(/\{[^}]*\}/g, "");
+  return pattern.replace(/\{[^{}]*\}/g, "");
 }
 
 export interface FormatRoutesOptions {

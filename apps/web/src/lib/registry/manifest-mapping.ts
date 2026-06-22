@@ -71,10 +71,9 @@ export interface MappedScreenshot {
 export function personName(person: Person | undefined): string | undefined {
   if (person === undefined) return undefined;
   if (typeof person === "string") {
-    const stripped = person
-      .replace(/\s*<[^>]*>/, "")
-      .replace(/\s*\([^)]*\)/, "")
-      .trim();
+    // The name is whatever precedes the npm-author `<email>` / `(url)`; splitting on a char class is
+    // linear (the `\s*<...>` strip backtracks super-linearly on a long string).
+    const stripped = (person.split(/[<(]/)[0] ?? "").trim();
     return stripped.length > 0 ? stripped : undefined;
   }
   return person.name;
