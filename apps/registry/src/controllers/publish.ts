@@ -55,7 +55,6 @@ function base64ToBytes(value: string): Uint8Array {
   return bytes;
 }
 
-/** Map a publish rejection code to its HTTP status. */
 function statusForPublishError(code: PublishErrorCode): number {
   switch (code) {
     case "forbidden":
