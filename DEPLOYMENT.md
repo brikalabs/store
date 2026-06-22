@@ -63,15 +63,27 @@ Copy the Client ID and generate a Client secret.
 
 ## 4. Set secrets
 
+Store worker:
+
 ```sh
 cd apps/web
 wrangler secret put SESSION_SECRET        # a long random string
 wrangler secret put GITHUB_CLIENT_ID
 wrangler secret put GITHUB_CLIENT_SECRET
 wrangler secret put GITHUB_REDIRECT_URI   # https://store.brika.dev/auth/github/callback
+wrangler secret put DOMAIN_VERIFY_SECRET  # a long random string; MUST match the registry worker
 ```
 
-For local development these live in `apps/web/.dev.vars` (gitignored).
+Registry worker:
+
+```sh
+cd apps/registry
+wrangler secret put DOMAIN_VERIFY_SECRET  # the SAME value as the store worker (or domain verification breaks)
+```
+
+`DOMAIN_VERIFY_SECRET` has no schema default, so a worker missing it fails to boot rather than
+running on a shared placeholder. For local development these live in `apps/{web,registry}/.dev.vars`
+(gitignored; copy `.dev.vars.example`).
 
 ## 5. Deploy
 

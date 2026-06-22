@@ -15,9 +15,10 @@ const readEnv = defineEnv(
     // BetterAuth base URL / trusted origin (AUTH-013): the console's public origin, used for CSRF
     // protection and to build the provider callback (`<baseURL>/api/auth/callback/github`).
     BETTER_AUTH_URL: z.url().min(1).default("https://store.brika.dev"),
-    // Stateless org domain-verification secret (ORG-010): HMAC(secret, org:domain). MUST match the
-    // registry worker's DOMAIN_VERIFY_SECRET. Security comes from DNS control, not secrecy.
-    DOMAIN_VERIFY_SECRET: z.string().min(1).default("brika-dev-domain-verify-secret"),
+    // Stateless scope domain-verification secret (ORG-010): HMAC(secret, scope:domain). REQUIRED,
+    // set per deployment, and MUST match the registry worker's DOMAIN_VERIFY_SECRET (security is DNS
+    // control, not the secret's secrecy).
+    DOMAIN_VERIFY_SECRET: z.string().min(1),
     // Operator allowlist gating /operator (Brika account ids). MUST match the registry worker's
     // REGISTRY_ADMINS so the console and the takedown endpoints agree on who is an operator.
     REGISTRY_ADMINS: z.string().default(""),

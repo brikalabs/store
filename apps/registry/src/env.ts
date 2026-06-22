@@ -17,9 +17,9 @@ export const vars = defineEnv(
     // Empty -> no admins, so the takedown endpoints reject everyone until set.
     REGISTRY_ADMINS: z.string().default(""),
     // Secret deriving stateless scope domain-verification TXT challenges, HMAC(secret, scope:domain)
-    // (ORG-010). MUST match the store worker's value and stay STABLE (rotating invalidates every
-    // published TXT). Security comes from DNS control, not secrecy, so a dev default is acceptable.
-    DOMAIN_VERIFY_SECRET: z.string().min(1).default("brika-dev-domain-verify-secret"),
+    // (ORG-010). REQUIRED (set per deployment): MUST match the store worker's value and stay STABLE
+    // (rotating invalidates every published TXT). Security is DNS control, not the secret's secrecy.
+    DOMAIN_VERIFY_SECRET: z.string().min(1),
   },
   () => env,
 );

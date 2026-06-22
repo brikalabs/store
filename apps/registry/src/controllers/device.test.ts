@@ -23,6 +23,7 @@ mock.module("cloudflare:workers", () => {
   return {
     env: {
       STORE_URL: "http://localhost:3000/",
+      DOMAIN_VERIFY_SECRET: "test-domain-secret",
       DEVICE_LIMITER: {
         limit: async ({ key }: { key: string }) => {
           const next = (counts.get(key) ?? 0) + 1;

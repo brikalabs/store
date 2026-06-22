@@ -22,6 +22,6 @@ BETTER_AUTH_URL=http://localhost:3000
 # The operator e2e (e2e/operator.spec.ts) requires this exact value:
 REGISTRY_ADMINS=u-operator
 
-# Shared HMAC secret for stateless org domain-verification (ORG-010). Must match the registry
-# worker's DOMAIN_VERIFY_SECRET. Has a dev default, so optional locally.
-# DOMAIN_VERIFY_SECRET=brika-dev-domain-verify-secret
+# Shared HMAC secret for stateless scope domain-verification (ORG-010). Required (no schema
+# default); MUST match the registry worker's DOMAIN_VERIFY_SECRET. Any non-empty value locally.
+DOMAIN_VERIFY_SECRET=brika-dev-domain-verify-secret
