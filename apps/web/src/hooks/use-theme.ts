@@ -49,7 +49,8 @@ function withoutTransitions(apply: () => void): void {
   requestAnimationFrame(() => style.remove());
 }
 
-function applyMode(mode: ThemeMode): void {
+/** Apply `mode` to the document (data-mode + class + cookie) and return the resolved theme. */
+function applyMode(mode: ThemeMode): Theme {
   const theme = mode === "system" ? systemTheme() : mode;
   withoutTransitions(() => {
     const el = document.documentElement;
@@ -58,13 +59,12 @@ function applyMode(mode: ThemeMode): void {
   });
   // biome-ignore lint/suspicious/noDocumentCookie: a sync write is needed (the boot script reads it on the next load); the Cookie Store API is async and not universally supported.
   document.cookie = `${COOKIE}=${mode}; path=/; max-age=${ONE_YEAR_SECONDS}; samesite=lax`;
+  return theme;
 }
 
 export interface ThemeApi {
   /** The user's choice (drives the switcher's active state). */
   readonly mode: ThemeMode;
-  /** The resolved appearance. */
-  readonly theme: Theme;
   readonly setMode: (mode: ThemeMode) => void;
 }
 
@@ -84,13 +84,11 @@ export function useThemeController(initial: ThemeMode | null): { theme: Theme; a
   );
 
   useEffect(() => {
+    // Adopt whatever the boot script resolved (the system / no-cookie case), then follow OS changes.
     setThemeState(domTheme());
     if (mode !== "system") return;
     const media = matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      applyMode("system");
-      setThemeState(domTheme());
-    };
+    const onChange = () => setThemeState(applyMode("system"));
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
   }, [mode]);
@@ -98,19 +96,17 @@ export function useThemeController(initial: ThemeMode | null): { theme: Theme; a
   const api = useMemo<ThemeApi>(
     () => ({
       mode,
-      theme,
       setMode: (next) => {
-        applyMode(next);
+        setThemeState(applyMode(next));
         setModeState(next);
-        setThemeState(domTheme());
       },
     }),
-    [mode, theme],
+    [mode],
   );
   return { theme, api };
 }
 
-/** The current mode + resolved theme + setter, from the provider rendered by the document root. */
+/** The current mode + setter, from the provider rendered by the document root. */
 export function useTheme(): ThemeApi {
-  return useContext(ThemeContext) ?? { mode: "system", theme: "light", setMode: () => {} };
+  return useContext(ThemeContext) ?? { mode: "system", setMode: () => {} };
 }
