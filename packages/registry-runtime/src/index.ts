@@ -15,6 +15,7 @@ import {
   CloudflareDohResolver,
   D1AuditLog,
   D1CatalogReader,
+  D1DownloadStore,
   D1MetadataReader,
   D1MetadataWriter,
   D1OwnershipPolicy,
@@ -54,6 +55,8 @@ export const registryBindings: Provider[] = [
 export const Audit = token("Audit", () => new D1AuditLog());
 export const Tokens = token("Tokens", () => new D1TokenStore());
 export const Catalog = token("Catalog", () => new D1CatalogReader());
+/** Install counts (all-time + trailing week), keyed by package name. */
+export const Downloads = token("Downloads", () => new D1DownloadStore());
 
 /** Operator package directory: every package with moderation counts (incl. hidden versions). */
 export const Packages = token("Packages", () => {

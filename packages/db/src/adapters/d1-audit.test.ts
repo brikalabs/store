@@ -52,6 +52,26 @@ describe("D1AuditLog.recent (operator audit view)", () => {
     }
     expect(await log.recent(3)).toHaveLength(3);
   });
+
+  test("recentPage paginates, totals, and filters by action type", async () => {
+    const db = makeDb();
+    const log = makeAdapter(db, D1AuditLog);
+    const actor = { userId: "op", provider: null, repository: null };
+    for (let i = 0; i < 3; i++) {
+      await log.record({ action: "publish", packageName: `@brika/p${i}`, version: "1.0.0", actor });
+    }
+    await log.record({ action: "takedown", packageName: "@brika/x", version: "1.0.0", actor });
+
+    const all = await log.recentPage(2, 0);
+    expect(all.total).toBe(4);
+    expect(all.items).toHaveLength(2);
+
+    const takedowns = await log.recentPage(10, 0, "takedown");
+    expect(takedowns.total).toBe(1);
+    expect(takedowns.items[0]?.target).toBe("@brika/x");
+
+    expect(await log.distinctActions()).toEqual(["publish", "takedown"]);
+  });
 });
 
 describe("D1AuditLog.recentForScopes (developer activity feed)", () => {

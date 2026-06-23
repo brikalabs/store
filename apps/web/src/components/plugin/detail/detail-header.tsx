@@ -15,6 +15,7 @@ import { useState } from "react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
 import { Segmented, segmentClassName } from "@/components/clay/segmented";
 import { Stars } from "@/components/clay/stars";
+import { ReportPluginButton } from "@/components/plugin/detail/report-dialog";
 import { formatCount } from "@/lib/format";
 
 /** Breadcrumb plus the locale switcher (only shown when there's more than one locale). */
@@ -165,6 +166,7 @@ export function DetailHeader({
       <div className="flex flex-col items-end gap-2">
         <AddToHubButton command={`brika install ${detail.name}`} />
         <HeaderInstalls detail={detail} />
+        <ReportPluginButton name={detail.name} version={detail.version} />
       </div>
     </div>
   );

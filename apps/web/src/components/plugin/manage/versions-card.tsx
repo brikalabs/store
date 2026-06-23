@@ -70,7 +70,7 @@ export function VersionsCard({ name }: Readonly<{ name: string }>) {
       ? versions
       : versions.filter((v) => v.version.toLowerCase().includes(needle));
   }, [versions, query]);
-  const { pageItems, ...pager } = usePagedList(filtered, PAGE_SIZE);
+  const { pageItems, pagination, setPage } = usePagedList(filtered, PAGE_SIZE);
 
   if (notRegistry) {
     return (
@@ -127,7 +127,7 @@ export function VersionsCard({ name }: Readonly<{ name: string }>) {
         </div>
       )}
 
-      <Pager {...pager} noun="versions" onChange={pager.setPage} />
+      <Pager pagination={pagination} onPageChange={setPage} />
 
       {state !== null && !state.canManage ? (
         <p className="text-muted-foreground text-xs">

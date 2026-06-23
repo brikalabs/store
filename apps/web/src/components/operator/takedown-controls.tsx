@@ -1,9 +1,11 @@
 import { Button, Input } from "@brika/clay";
+import { Ban, Undo2 } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 
 /**
- * The takedown/restore control for the operator views. "Take down" reveals an inline reason form:
- * a deliberate two-step, so a destructive moderation action is never one click.
+ * The takedown/restore control for the operator views (versions, packages, scopes). "Take down"
+ * reveals an inline reason form: a deliberate two-step, so a destructive moderation action is never
+ * one click. Outline buttons keep the always-visible row action quiet until the operator commits.
  */
 export function TakedownControls({
   takenDown,
@@ -21,7 +23,14 @@ export function TakedownControls({
 
   if (takenDown) {
     return (
-      <Button variant="secondary" disabled={busy} onClick={onRestore}>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={busy}
+        onClick={onRestore}
+        className="shrink-0 gap-1.5 text-emerald-700 hover:text-emerald-700 dark:text-emerald-400"
+      >
+        <Undo2 className="size-4" />
         Restore
       </Button>
     );
@@ -29,7 +38,14 @@ export function TakedownControls({
 
   if (!prompting) {
     return (
-      <Button variant="destructive" disabled={busy} onClick={() => setPrompting(true)}>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={busy}
+        onClick={() => setPrompting(true)}
+        className="shrink-0 gap-1.5"
+      >
+        <Ban className="size-4" />
         Take down
       </Button>
     );
@@ -43,20 +59,26 @@ export function TakedownControls({
   }
 
   return (
-    <form className="flex items-center gap-2" onSubmit={submit}>
+    <form className="flex shrink-0 items-center gap-2" onSubmit={submit}>
       <Input
         autoFocus
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         placeholder="Reason (recorded in the audit log)"
-        className="w-64"
+        className="h-9 w-56"
       />
-      <Button type="submit" variant="destructive" disabled={busy || reason.trim().length === 0}>
+      <Button
+        type="submit"
+        variant="destructive"
+        size="sm"
+        disabled={busy || reason.trim().length === 0}
+      >
         Confirm
       </Button>
       <Button
         type="button"
         variant="ghost"
+        size="sm"
         disabled={busy}
         onClick={() => {
           setPrompting(false);

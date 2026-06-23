@@ -1,26 +1,34 @@
 import { inject } from "@brika/di";
+import { PageQuery } from "@brika/registry-contract";
 import { Audit } from "@brika/registry-runtime";
 import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
+import { paginated } from "@/lib/pagination";
 import { runOperator } from "@/server/http";
 
-/** How many audit rows the console requests at once (also the server-side hard cap). */
-const DEFAULT_LIMIT = 100;
-const MAX_LIMIT = 200;
-
 /**
- * `GET /api/operator/audit?limit=N` - the most recent audit entries, newest first.
- * Operator-gated. `limit` is clamped to [1, 200].
+ * `GET /api/operator/audit?limit=&offset=&action=` - a page of audit entries, newest first,
+ * optionally narrowed to one action type. Operator-gated. `limit` is clamped to [1, 100] by
+ * `PageQuery`. The body is the standard envelope plus the distinct `actions` list (for the type
+ * filter): `{ items, pagination, actions }`.
  */
 export const Route = createFileRoute("/api/operator/audit")({
   server: {
     handlers: {
       GET: ({ request }) =>
         runOperator(request, async () => {
-          const raw = Number(new URL(request.url).searchParams.get("limit"));
-          const limit =
-            Number.isFinite(raw) && raw > 0 ? Math.min(Math.floor(raw), MAX_LIMIT) : DEFAULT_LIMIT;
-          return reply({ entries: await inject(Audit).recent(limit) });
+          const url = new URL(request.url);
+          const { limit, offset } = PageQuery.parse({
+            limit: url.searchParams.get("limit") ?? undefined,
+            offset: url.searchParams.get("offset") ?? undefined,
+          });
+          const action = url.searchParams.get("action")?.trim() || undefined;
+          const audit = inject(Audit);
+          const [page, actions] = await Promise.all([
+            audit.recentPage(limit, offset, action),
+            audit.distinctActions(),
+          ]);
+          return reply({ ...paginated(page.items, page.total, { limit, offset }), actions });
         }),
     },
   },
