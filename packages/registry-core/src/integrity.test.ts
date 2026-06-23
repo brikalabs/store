@@ -10,7 +10,7 @@ test("sha1Hex matches the known vector for 'abc'", async () => {
 test("sha512Integrity is an SRI string over a 64-byte digest", async () => {
   const sri = await sha512Integrity(abc);
   expect(sri.startsWith("sha512-")).toBe(true);
-  expect(atob(sri.slice("sha512-".length)).length).toBe(64);
+  expect(atob(sri.slice("sha512-".length))).toHaveLength(64);
 });
 
 test("digests are stable for the same input", async () => {
