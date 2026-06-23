@@ -3,6 +3,7 @@ import { inject, token } from "@brika/di";
 import { defineEnv } from "@brika/env";
 import { parseOperatorAdmins } from "@brika/registry-core";
 import { z } from "zod";
+import type { RateLimitBinding } from "@/server/rate-limit";
 
 /** The store's environment: string config validated by the schema below, read through {@link config}. */
 const readEnv = defineEnv(
@@ -50,6 +51,9 @@ declare global {
       // @unenforced: provisioned for npm-metadata cache-aside, not wired yet
       CACHE: KVNamespace;
       ASSETS: R2Bucket;
+      // Rate-limit bindings (see server/rate-limit.ts). Unbound in dev -> in-memory fallback.
+      WRITE_LIMITER: RateLimitBinding;
+      AUTH_LIMITER: RateLimitBinding;
     }
   }
 }

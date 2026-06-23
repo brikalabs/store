@@ -3,6 +3,7 @@ import { Tokens } from "@brika/registry-runtime";
 import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runAuthed } from "@/server/http";
+import { enforceLimit, WRITE_WINDOW } from "@/server/rate-limit";
 import { PublishTokenStore } from "@/server/stores/publish-token-store";
 
 /**
@@ -19,6 +20,8 @@ export const Route = createFileRoute("/api/account/tokens")({
         }),
       POST: ({ request }) =>
         runAuthed(request, async (a) => {
+          // Cap token minting per user: an authenticated loop could otherwise bloat reg_tokens.
+          await enforceLimit("WRITE_LIMITER", `tokens:${a.user.id}`, WRITE_WINDOW);
           const token = await inject(Tokens).issue(a.user.id);
           return reply({ token }, 201);
         }),

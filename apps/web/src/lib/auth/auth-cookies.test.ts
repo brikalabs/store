@@ -19,6 +19,12 @@ describe("safeReturnPath (open-redirect guard)", () => {
     expect(safeReturnPath("//evil.example/login")).toBe("/");
   });
 
+  test("rejects backslash forms (browsers normalize `\\` to `/`, so `/\\host` -> `//host`)", () => {
+    expect(safeReturnPath("/\\evil.example")).toBe("/");
+    expect(safeReturnPath("/\\/evil.example/phish")).toBe("/");
+    expect(safeReturnPath("\\\\evil.example")).toBe("/");
+  });
+
   test("rejects non-path, scheme, and empty/missing input", () => {
     expect(safeReturnPath("dashboard")).toBe("/");
     expect(safeReturnPath("javascript:alert(1)")).toBe("/");

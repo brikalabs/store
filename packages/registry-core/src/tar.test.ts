@@ -61,3 +61,9 @@ test("returns no entries for an empty archive", async () => {
 test("throws on bytes that are not a gzip stream", async () => {
   await expect(readTarGzEntries(new TextEncoder().encode("not gzip"))).rejects.toThrow();
 });
+
+test("aborts a decompression bomb past the cap instead of buffering it", async () => {
+  // 4 MiB of zeros gzips to a few KiB but decompresses past a 1 MiB cap: must throw, not OOM.
+  const bomb = new Uint8Array(gzipSync(new Uint8Array(4 * 1024 * 1024)));
+  await expect(readTarGzEntries(bomb, 1024 * 1024)).rejects.toThrow(/decompressed size exceeds/);
+});

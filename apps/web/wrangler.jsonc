@@ -50,6 +50,26 @@
   // off R2's CDN. Non-secret; re-fetch with `wrangler r2 bucket dev-url get brika-store-assets`.
   "vars": {
     "ASSETS_PUBLIC_URL": "https://pub-fd529148655f473aabce44ccd37362ad.r2.dev"
+  },
+  // Rate-limit bindings for mutation abuse (server/rate-limit.ts). WRITE_LIMITER caps per-user
+  // mutations (token mint, report, avatar, device-approve; keyed `route:userId`); AUTH_LIMITER caps
+  // the BetterAuth POST surface per IP. `period` must be 10 or 60; limit/period here must be kept in
+  // sync BY HAND with WRITE_WINDOW / AUTH_WINDOW. Absent -> the per-isolate in-memory fallback.
+  "unsafe": {
+    "bindings": [
+      {
+        "name": "WRITE_LIMITER",
+        "type": "ratelimit",
+        "namespace_id": "2001",
+        "simple": { "limit": 20, "period": 60 }
+      },
+      {
+        "name": "AUTH_LIMITER",
+        "type": "ratelimit",
+        "namespace_id": "2002",
+        "simple": { "limit": 30, "period": 60 }
+      }
+    ]
   }
   // No cron yet: the npm cache fills lazily (cache-aside) on read. Add a
   // "triggers".crons schedule here once a scheduled() prewarm handler exists

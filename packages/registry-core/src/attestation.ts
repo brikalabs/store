@@ -19,6 +19,23 @@ export const TransparencyEntry = z.object({
 });
 export type TransparencyEntry = z.infer<typeof TransparencyEntry>;
 
+// Trust anchors per provider: the host a transparency `logUrl` must live on. The URL is shown to
+// users as a "verified ledger" link, and the registry cannot re-verify the entry against the log in
+// the publish hot path, so we at least pin the host an attacker-supplied entry may point at.
+const TRUSTED_LOG_ORIGINS: Record<string, string> = {
+  sigstore: "https://search.sigstore.dev/",
+};
+
+/**
+ * Whether a transparency entry names a known provider with a `logUrl` on that provider's real log
+ * host. A publish must drop entries that fail this, so a forged entry cannot dress an arbitrary URL
+ * up as a verified ledger link.
+ */
+export function isTrustedLogEntry(entry: TransparencyEntry): boolean {
+  const origin = TRUSTED_LOG_ORIGINS[entry.provider];
+  return origin !== undefined && entry.logUrl.startsWith(origin);
+}
+
 export interface AttestInput {
   /** Subresource Integrity of the tarball being attested (`sha512-...`). */
   readonly integrity: string;

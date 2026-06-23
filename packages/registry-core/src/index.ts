@@ -4,6 +4,7 @@ export {
   attestationProviderIds,
   clearAttestationProviders,
   getAttestationProvider,
+  isTrustedLogEntry,
   nullAttestationProvider,
   registerAttestationProvider,
   TransparencyEntry,
