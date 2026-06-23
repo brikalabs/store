@@ -104,7 +104,9 @@ export function OperatorAuditPage() {
     if (search.action) set.add(search.action);
     return [
       { value: "all", label: "All types" },
-      ...[...set].sort().map((action) => ({ value: action, label: action })),
+      ...[...set]
+        .sort((a, b) => a.localeCompare(b))
+        .map((action) => ({ value: action, label: action })),
     ];
   }, [data?.actions, search.action]);
 

@@ -129,6 +129,12 @@ export function OperatorPackagesPage() {
     [selectedNames, list.reload],
   );
 
+  function shownLabel(): string {
+    if (list.loading) return "Loading…";
+    if (list.capped) return `Showing ${visible.length} of ${list.total}`;
+    return `Showing ${visible.length}`;
+  }
+
   function renderList() {
     if (list.loading) return <p className="px-1 text-muted-foreground text-sm">Loading…</p>;
     if (visible.length === 0) {
@@ -189,11 +195,7 @@ export function OperatorPackagesPage() {
           aria-label="Select all packages on this page"
           className="size-4 cursor-pointer accent-brand"
         />
-        <span className="text-muted-foreground text-xs">
-          {list.loading
-            ? "Loading…"
-            : `Showing ${visible.length}${list.capped ? ` of ${list.total}` : ""}`}
-        </span>
+        <span className="text-muted-foreground text-xs">{shownLabel()}</span>
       </div>
 
       {error !== null && <p className="text-destructive text-sm">{error}</p>}

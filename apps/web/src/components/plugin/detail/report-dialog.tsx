@@ -94,11 +94,12 @@ function ReportDialog({
               <AlertDialogTitle>Report submitted</AlertDialogTitle>
               <AlertDialogDescription>
                 Thanks. A registry moderator will review{" "}
-                <span className="font-mono text-foreground">{name}</span> for{" "}
+                <span className="font-mono text-foreground">{name}</span>
+                {" for "}
                 <span className="text-foreground">
                   {REPORT_REASONS[reason ?? "other"].label.toLowerCase()}
                 </span>
-                . It's now in the moderation queue.
+                {". It's now in the moderation queue."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <Button onClick={() => change(false)}>Done</Button>
