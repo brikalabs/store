@@ -24,6 +24,7 @@ import { Route as V1SearchRouteImport } from './routes/v1/search'
 import { Route as V1RegistryRouteImport } from './routes/v1/registry'
 import { Route as UIdRouteImport } from './routes/u/$id'
 import { Route as OperatorScopesRouteImport } from './routes/operator/scopes'
+import { Route as OperatorReportsRouteImport } from './routes/operator/reports'
 import { Route as OperatorPackagesRouteImport } from './routes/operator/packages'
 import { Route as OperatorAuditRouteImport } from './routes/operator/audit'
 import { Route as LegalTermsRouteImport } from './routes/legal/terms'
@@ -53,6 +54,7 @@ import { Route as ApiPluginsDeprecateRouteImport } from './routes/api/plugins/de
 import { Route as ApiPluginsDeleteRouteImport } from './routes/api/plugins/delete'
 import { Route as ApiPluginsCreateRouteImport } from './routes/api/plugins/create'
 import { Route as ApiOperatorScopesRouteImport } from './routes/api/operator/scopes'
+import { Route as ApiOperatorReportsRouteImport } from './routes/api/operator/reports'
 import { Route as ApiOperatorPackagesRouteImport } from './routes/api/operator/packages'
 import { Route as ApiOperatorAuditRouteImport } from './routes/api/operator/audit'
 import { Route as ApiDeviceApproveRouteImport } from './routes/api/device/approve'
@@ -63,6 +65,7 @@ import { Route as ApiAccountAvatarRouteImport } from './routes/api/account/avata
 import { Route as ApiAccountActivityRouteImport } from './routes/api/account/activity'
 import { Route as V1PluginsNameVersionsRouteImport } from './routes/v1/plugins/$name/versions'
 import { Route as V1PluginsNameReviewsRouteImport } from './routes/v1/plugins/$name/reviews'
+import { Route as V1PluginsNameReportsRouteImport } from './routes/v1/plugins/$name/reports'
 import { Route as V1PluginsNameReadmeRouteImport } from './routes/v1/plugins/$name/readme'
 import { Route as V1PluginsNameCommentsRouteImport } from './routes/v1/plugins/$name/comments'
 import { Route as ApiScopesScopeTrustedPublishersRouteImport } from './routes/api/scopes/$scope/trusted-publishers'
@@ -71,9 +74,11 @@ import { Route as ApiScopesScopeMembersRouteImport } from './routes/api/scopes/$
 import { Route as ApiScopesScopeIconRouteImport } from './routes/api/scopes/$scope/icon'
 import { Route as ApiScopesScopeDomainsRouteImport } from './routes/api/scopes/$scope/domains'
 import { Route as ApiScopesScopeDisplayNameRouteImport } from './routes/api/scopes/$scope/display-name'
+import { Route as ApiOperatorReportsUpdateRouteImport } from './routes/api/operator/reports/update'
 import { Route as ApiOperatorPackagesVersionsRouteImport } from './routes/api/operator/packages/versions'
 import { Route as ApiOperatorPackagesTakedownRouteImport } from './routes/api/operator/packages/takedown'
 import { Route as ApiOperatorPackagesRestoreRouteImport } from './routes/api/operator/packages/restore'
+import { Route as ApiOperatorPackagesBulkTakedownRouteImport } from './routes/api/operator/packages/bulk-takedown'
 import { Route as ApiAccountTokensHashRouteImport } from './routes/api/account/tokens/$hash'
 import { Route as ApiScopesScopeMembersMemberIdRouteImport } from './routes/api/scopes/$scope/members/$memberId'
 import { Route as ApiOperatorScopesScopeTakedownRouteImport } from './routes/api/operator/scopes/$scope/takedown'
@@ -156,6 +161,11 @@ const UIdRoute = UIdRouteImport.update({
 const OperatorScopesRoute = OperatorScopesRouteImport.update({
   id: '/scopes',
   path: '/scopes',
+  getParentRoute: () => OperatorRoute,
+} as any)
+const OperatorReportsRoute = OperatorReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => OperatorRoute,
 } as any)
 const OperatorPackagesRoute = OperatorPackagesRouteImport.update({
@@ -303,6 +313,11 @@ const ApiOperatorScopesRoute = ApiOperatorScopesRouteImport.update({
   path: '/api/operator/scopes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOperatorReportsRoute = ApiOperatorReportsRouteImport.update({
+  id: '/api/operator/reports',
+  path: '/api/operator/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOperatorPackagesRoute = ApiOperatorPackagesRouteImport.update({
   id: '/api/operator/packages',
   path: '/api/operator/packages',
@@ -353,6 +368,11 @@ const V1PluginsNameReviewsRoute = V1PluginsNameReviewsRouteImport.update({
   path: '/reviews',
   getParentRoute: () => V1PluginsNameRoute,
 } as any)
+const V1PluginsNameReportsRoute = V1PluginsNameReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => V1PluginsNameRoute,
+} as any)
 const V1PluginsNameReadmeRoute = V1PluginsNameReadmeRouteImport.update({
   id: '/readme',
   path: '/readme',
@@ -395,6 +415,12 @@ const ApiScopesScopeDisplayNameRoute =
     path: '/display-name',
     getParentRoute: () => ApiScopesScopeRoute,
   } as any)
+const ApiOperatorReportsUpdateRoute =
+  ApiOperatorReportsUpdateRouteImport.update({
+    id: '/update',
+    path: '/update',
+    getParentRoute: () => ApiOperatorReportsRoute,
+  } as any)
 const ApiOperatorPackagesVersionsRoute =
   ApiOperatorPackagesVersionsRouteImport.update({
     id: '/versions',
@@ -411,6 +437,12 @@ const ApiOperatorPackagesRestoreRoute =
   ApiOperatorPackagesRestoreRouteImport.update({
     id: '/restore',
     path: '/restore',
+    getParentRoute: () => ApiOperatorPackagesRoute,
+  } as any)
+const ApiOperatorPackagesBulkTakedownRoute =
+  ApiOperatorPackagesBulkTakedownRouteImport.update({
+    id: '/bulk-takedown',
+    path: '/bulk-takedown',
     getParentRoute: () => ApiOperatorPackagesRoute,
   } as any)
 const ApiAccountTokensHashRoute = ApiAccountTokensHashRouteImport.update({
@@ -483,6 +515,7 @@ export interface FileRoutesByFullPath {
   '/legal/terms': typeof LegalTermsRoute
   '/operator/audit': typeof OperatorAuditRoute
   '/operator/packages': typeof OperatorPackagesRoute
+  '/operator/reports': typeof OperatorReportsRoute
   '/operator/scopes': typeof OperatorScopesRoute
   '/u/$id': typeof UIdRoute
   '/v1/registry': typeof V1RegistryRoute
@@ -500,6 +533,7 @@ export interface FileRoutesByFullPath {
   '/api/device/approve': typeof ApiDeviceApproveRoute
   '/api/operator/audit': typeof ApiOperatorAuditRoute
   '/api/operator/packages': typeof ApiOperatorPackagesRouteWithChildren
+  '/api/operator/reports': typeof ApiOperatorReportsRouteWithChildren
   '/api/operator/scopes': typeof ApiOperatorScopesRouteWithChildren
   '/api/plugins/create': typeof ApiPluginsCreateRoute
   '/api/plugins/delete': typeof ApiPluginsDeleteRoute
@@ -515,9 +549,11 @@ export interface FileRoutesByFullPath {
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/dashboard/plugins/': typeof DashboardPluginsIndexRoute
   '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
+  '/api/operator/packages/bulk-takedown': typeof ApiOperatorPackagesBulkTakedownRoute
   '/api/operator/packages/restore': typeof ApiOperatorPackagesRestoreRoute
   '/api/operator/packages/takedown': typeof ApiOperatorPackagesTakedownRoute
   '/api/operator/packages/versions': typeof ApiOperatorPackagesVersionsRoute
+  '/api/operator/reports/update': typeof ApiOperatorReportsUpdateRoute
   '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
   '/api/scopes/$scope/domains': typeof ApiScopesScopeDomainsRoute
   '/api/scopes/$scope/icon': typeof ApiScopesScopeIconRoute
@@ -526,6 +562,7 @@ export interface FileRoutesByFullPath {
   '/api/scopes/$scope/trusted-publishers': typeof ApiScopesScopeTrustedPublishersRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
+  '/v1/plugins/$name/reports': typeof V1PluginsNameReportsRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
   '/api/operator/scopes/$scope/restore': typeof ApiOperatorScopesScopeRestoreRoute
@@ -556,6 +593,7 @@ export interface FileRoutesByTo {
   '/legal/terms': typeof LegalTermsRoute
   '/operator/audit': typeof OperatorAuditRoute
   '/operator/packages': typeof OperatorPackagesRoute
+  '/operator/reports': typeof OperatorReportsRoute
   '/operator/scopes': typeof OperatorScopesRoute
   '/u/$id': typeof UIdRoute
   '/v1/registry': typeof V1RegistryRoute
@@ -573,6 +611,7 @@ export interface FileRoutesByTo {
   '/api/device/approve': typeof ApiDeviceApproveRoute
   '/api/operator/audit': typeof ApiOperatorAuditRoute
   '/api/operator/packages': typeof ApiOperatorPackagesRouteWithChildren
+  '/api/operator/reports': typeof ApiOperatorReportsRouteWithChildren
   '/api/operator/scopes': typeof ApiOperatorScopesRouteWithChildren
   '/api/plugins/create': typeof ApiPluginsCreateRoute
   '/api/plugins/delete': typeof ApiPluginsDeleteRoute
@@ -588,9 +627,11 @@ export interface FileRoutesByTo {
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/dashboard/plugins': typeof DashboardPluginsIndexRoute
   '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
+  '/api/operator/packages/bulk-takedown': typeof ApiOperatorPackagesBulkTakedownRoute
   '/api/operator/packages/restore': typeof ApiOperatorPackagesRestoreRoute
   '/api/operator/packages/takedown': typeof ApiOperatorPackagesTakedownRoute
   '/api/operator/packages/versions': typeof ApiOperatorPackagesVersionsRoute
+  '/api/operator/reports/update': typeof ApiOperatorReportsUpdateRoute
   '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
   '/api/scopes/$scope/domains': typeof ApiScopesScopeDomainsRoute
   '/api/scopes/$scope/icon': typeof ApiScopesScopeIconRoute
@@ -599,6 +640,7 @@ export interface FileRoutesByTo {
   '/api/scopes/$scope/trusted-publishers': typeof ApiScopesScopeTrustedPublishersRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
+  '/v1/plugins/$name/reports': typeof V1PluginsNameReportsRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
   '/api/operator/scopes/$scope/restore': typeof ApiOperatorScopesScopeRestoreRoute
@@ -632,6 +674,7 @@ export interface FileRoutesById {
   '/legal/terms': typeof LegalTermsRoute
   '/operator/audit': typeof OperatorAuditRoute
   '/operator/packages': typeof OperatorPackagesRoute
+  '/operator/reports': typeof OperatorReportsRoute
   '/operator/scopes': typeof OperatorScopesRoute
   '/u/$id': typeof UIdRoute
   '/v1/registry': typeof V1RegistryRoute
@@ -649,6 +692,7 @@ export interface FileRoutesById {
   '/api/device/approve': typeof ApiDeviceApproveRoute
   '/api/operator/audit': typeof ApiOperatorAuditRoute
   '/api/operator/packages': typeof ApiOperatorPackagesRouteWithChildren
+  '/api/operator/reports': typeof ApiOperatorReportsRouteWithChildren
   '/api/operator/scopes': typeof ApiOperatorScopesRouteWithChildren
   '/api/plugins/create': typeof ApiPluginsCreateRoute
   '/api/plugins/delete': typeof ApiPluginsDeleteRoute
@@ -664,9 +708,11 @@ export interface FileRoutesById {
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/dashboard/plugins/': typeof DashboardPluginsIndexRoute
   '/api/account/tokens/$hash': typeof ApiAccountTokensHashRoute
+  '/api/operator/packages/bulk-takedown': typeof ApiOperatorPackagesBulkTakedownRoute
   '/api/operator/packages/restore': typeof ApiOperatorPackagesRestoreRoute
   '/api/operator/packages/takedown': typeof ApiOperatorPackagesTakedownRoute
   '/api/operator/packages/versions': typeof ApiOperatorPackagesVersionsRoute
+  '/api/operator/reports/update': typeof ApiOperatorReportsUpdateRoute
   '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
   '/api/scopes/$scope/domains': typeof ApiScopesScopeDomainsRoute
   '/api/scopes/$scope/icon': typeof ApiScopesScopeIconRoute
@@ -675,6 +721,7 @@ export interface FileRoutesById {
   '/api/scopes/$scope/trusted-publishers': typeof ApiScopesScopeTrustedPublishersRoute
   '/v1/plugins/$name/comments': typeof V1PluginsNameCommentsRouteWithChildren
   '/v1/plugins/$name/readme': typeof V1PluginsNameReadmeRoute
+  '/v1/plugins/$name/reports': typeof V1PluginsNameReportsRoute
   '/v1/plugins/$name/reviews': typeof V1PluginsNameReviewsRouteWithChildren
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
   '/api/operator/scopes/$scope/restore': typeof ApiOperatorScopesScopeRestoreRoute
@@ -709,6 +756,7 @@ export interface FileRouteTypes {
     | '/legal/terms'
     | '/operator/audit'
     | '/operator/packages'
+    | '/operator/reports'
     | '/operator/scopes'
     | '/u/$id'
     | '/v1/registry'
@@ -726,6 +774,7 @@ export interface FileRouteTypes {
     | '/api/device/approve'
     | '/api/operator/audit'
     | '/api/operator/packages'
+    | '/api/operator/reports'
     | '/api/operator/scopes'
     | '/api/plugins/create'
     | '/api/plugins/delete'
@@ -741,9 +790,11 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name'
     | '/dashboard/plugins/'
     | '/api/account/tokens/$hash'
+    | '/api/operator/packages/bulk-takedown'
     | '/api/operator/packages/restore'
     | '/api/operator/packages/takedown'
     | '/api/operator/packages/versions'
+    | '/api/operator/reports/update'
     | '/api/scopes/$scope/display-name'
     | '/api/scopes/$scope/domains'
     | '/api/scopes/$scope/icon'
@@ -752,6 +803,7 @@ export interface FileRouteTypes {
     | '/api/scopes/$scope/trusted-publishers'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
+    | '/v1/plugins/$name/reports'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
     | '/api/operator/scopes/$scope/restore'
@@ -782,6 +834,7 @@ export interface FileRouteTypes {
     | '/legal/terms'
     | '/operator/audit'
     | '/operator/packages'
+    | '/operator/reports'
     | '/operator/scopes'
     | '/u/$id'
     | '/v1/registry'
@@ -799,6 +852,7 @@ export interface FileRouteTypes {
     | '/api/device/approve'
     | '/api/operator/audit'
     | '/api/operator/packages'
+    | '/api/operator/reports'
     | '/api/operator/scopes'
     | '/api/plugins/create'
     | '/api/plugins/delete'
@@ -814,9 +868,11 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name'
     | '/dashboard/plugins'
     | '/api/account/tokens/$hash'
+    | '/api/operator/packages/bulk-takedown'
     | '/api/operator/packages/restore'
     | '/api/operator/packages/takedown'
     | '/api/operator/packages/versions'
+    | '/api/operator/reports/update'
     | '/api/scopes/$scope/display-name'
     | '/api/scopes/$scope/domains'
     | '/api/scopes/$scope/icon'
@@ -825,6 +881,7 @@ export interface FileRouteTypes {
     | '/api/scopes/$scope/trusted-publishers'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
+    | '/v1/plugins/$name/reports'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
     | '/api/operator/scopes/$scope/restore'
@@ -857,6 +914,7 @@ export interface FileRouteTypes {
     | '/legal/terms'
     | '/operator/audit'
     | '/operator/packages'
+    | '/operator/reports'
     | '/operator/scopes'
     | '/u/$id'
     | '/v1/registry'
@@ -874,6 +932,7 @@ export interface FileRouteTypes {
     | '/api/device/approve'
     | '/api/operator/audit'
     | '/api/operator/packages'
+    | '/api/operator/reports'
     | '/api/operator/scopes'
     | '/api/plugins/create'
     | '/api/plugins/delete'
@@ -889,9 +948,11 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name'
     | '/dashboard/plugins/'
     | '/api/account/tokens/$hash'
+    | '/api/operator/packages/bulk-takedown'
     | '/api/operator/packages/restore'
     | '/api/operator/packages/takedown'
     | '/api/operator/packages/versions'
+    | '/api/operator/reports/update'
     | '/api/scopes/$scope/display-name'
     | '/api/scopes/$scope/domains'
     | '/api/scopes/$scope/icon'
@@ -900,6 +961,7 @@ export interface FileRouteTypes {
     | '/api/scopes/$scope/trusted-publishers'
     | '/v1/plugins/$name/comments'
     | '/v1/plugins/$name/readme'
+    | '/v1/plugins/$name/reports'
     | '/v1/plugins/$name/reviews'
     | '/v1/plugins/$name/versions'
     | '/api/operator/scopes/$scope/restore'
@@ -942,6 +1004,7 @@ export interface RootRouteChildren {
   ApiDeviceApproveRoute: typeof ApiDeviceApproveRoute
   ApiOperatorAuditRoute: typeof ApiOperatorAuditRoute
   ApiOperatorPackagesRoute: typeof ApiOperatorPackagesRouteWithChildren
+  ApiOperatorReportsRoute: typeof ApiOperatorReportsRouteWithChildren
   ApiOperatorScopesRoute: typeof ApiOperatorScopesRouteWithChildren
   ApiPluginsCreateRoute: typeof ApiPluginsCreateRoute
   ApiPluginsDeleteRoute: typeof ApiPluginsDeleteRoute
@@ -1057,6 +1120,13 @@ declare module '@tanstack/react-router' {
       path: '/scopes'
       fullPath: '/operator/scopes'
       preLoaderRoute: typeof OperatorScopesRouteImport
+      parentRoute: typeof OperatorRoute
+    }
+    '/operator/reports': {
+      id: '/operator/reports'
+      path: '/reports'
+      fullPath: '/operator/reports'
+      preLoaderRoute: typeof OperatorReportsRouteImport
       parentRoute: typeof OperatorRoute
     }
     '/operator/packages': {
@@ -1262,6 +1332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOperatorScopesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/operator/reports': {
+      id: '/api/operator/reports'
+      path: '/api/operator/reports'
+      fullPath: '/api/operator/reports'
+      preLoaderRoute: typeof ApiOperatorReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/operator/packages': {
       id: '/api/operator/packages'
       path: '/api/operator/packages'
@@ -1332,6 +1409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1PluginsNameReviewsRouteImport
       parentRoute: typeof V1PluginsNameRoute
     }
+    '/v1/plugins/$name/reports': {
+      id: '/v1/plugins/$name/reports'
+      path: '/reports'
+      fullPath: '/v1/plugins/$name/reports'
+      preLoaderRoute: typeof V1PluginsNameReportsRouteImport
+      parentRoute: typeof V1PluginsNameRoute
+    }
     '/v1/plugins/$name/readme': {
       id: '/v1/plugins/$name/readme'
       path: '/readme'
@@ -1388,6 +1472,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiScopesScopeDisplayNameRouteImport
       parentRoute: typeof ApiScopesScopeRoute
     }
+    '/api/operator/reports/update': {
+      id: '/api/operator/reports/update'
+      path: '/update'
+      fullPath: '/api/operator/reports/update'
+      preLoaderRoute: typeof ApiOperatorReportsUpdateRouteImport
+      parentRoute: typeof ApiOperatorReportsRoute
+    }
     '/api/operator/packages/versions': {
       id: '/api/operator/packages/versions'
       path: '/versions'
@@ -1407,6 +1498,13 @@ declare module '@tanstack/react-router' {
       path: '/restore'
       fullPath: '/api/operator/packages/restore'
       preLoaderRoute: typeof ApiOperatorPackagesRestoreRouteImport
+      parentRoute: typeof ApiOperatorPackagesRoute
+    }
+    '/api/operator/packages/bulk-takedown': {
+      id: '/api/operator/packages/bulk-takedown'
+      path: '/bulk-takedown'
+      fullPath: '/api/operator/packages/bulk-takedown'
+      preLoaderRoute: typeof ApiOperatorPackagesBulkTakedownRouteImport
       parentRoute: typeof ApiOperatorPackagesRoute
     }
     '/api/account/tokens/$hash': {
@@ -1499,6 +1597,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 interface OperatorRouteChildren {
   OperatorAuditRoute: typeof OperatorAuditRoute
   OperatorPackagesRoute: typeof OperatorPackagesRoute
+  OperatorReportsRoute: typeof OperatorReportsRoute
   OperatorScopesRoute: typeof OperatorScopesRoute
   OperatorIndexRoute: typeof OperatorIndexRoute
 }
@@ -1506,6 +1605,7 @@ interface OperatorRouteChildren {
 const OperatorRouteChildren: OperatorRouteChildren = {
   OperatorAuditRoute: OperatorAuditRoute,
   OperatorPackagesRoute: OperatorPackagesRoute,
+  OperatorReportsRoute: OperatorReportsRoute,
   OperatorScopesRoute: OperatorScopesRoute,
   OperatorIndexRoute: OperatorIndexRoute,
 }
@@ -1573,12 +1673,14 @@ const ApiAccountTokensRouteWithChildren =
   ApiAccountTokensRoute._addFileChildren(ApiAccountTokensRouteChildren)
 
 interface ApiOperatorPackagesRouteChildren {
+  ApiOperatorPackagesBulkTakedownRoute: typeof ApiOperatorPackagesBulkTakedownRoute
   ApiOperatorPackagesRestoreRoute: typeof ApiOperatorPackagesRestoreRoute
   ApiOperatorPackagesTakedownRoute: typeof ApiOperatorPackagesTakedownRoute
   ApiOperatorPackagesVersionsRoute: typeof ApiOperatorPackagesVersionsRoute
 }
 
 const ApiOperatorPackagesRouteChildren: ApiOperatorPackagesRouteChildren = {
+  ApiOperatorPackagesBulkTakedownRoute: ApiOperatorPackagesBulkTakedownRoute,
   ApiOperatorPackagesRestoreRoute: ApiOperatorPackagesRestoreRoute,
   ApiOperatorPackagesTakedownRoute: ApiOperatorPackagesTakedownRoute,
   ApiOperatorPackagesVersionsRoute: ApiOperatorPackagesVersionsRoute,
@@ -1586,6 +1688,17 @@ const ApiOperatorPackagesRouteChildren: ApiOperatorPackagesRouteChildren = {
 
 const ApiOperatorPackagesRouteWithChildren =
   ApiOperatorPackagesRoute._addFileChildren(ApiOperatorPackagesRouteChildren)
+
+interface ApiOperatorReportsRouteChildren {
+  ApiOperatorReportsUpdateRoute: typeof ApiOperatorReportsUpdateRoute
+}
+
+const ApiOperatorReportsRouteChildren: ApiOperatorReportsRouteChildren = {
+  ApiOperatorReportsUpdateRoute: ApiOperatorReportsUpdateRoute,
+}
+
+const ApiOperatorReportsRouteWithChildren =
+  ApiOperatorReportsRoute._addFileChildren(ApiOperatorReportsRouteChildren)
 
 interface ApiOperatorScopesRouteChildren {
   ApiOperatorScopesScopeRestoreRoute: typeof ApiOperatorScopesScopeRestoreRoute
@@ -1628,6 +1741,7 @@ const V1PluginsNameReviewsRouteWithChildren =
 interface V1PluginsNameRouteChildren {
   V1PluginsNameCommentsRoute: typeof V1PluginsNameCommentsRouteWithChildren
   V1PluginsNameReadmeRoute: typeof V1PluginsNameReadmeRoute
+  V1PluginsNameReportsRoute: typeof V1PluginsNameReportsRoute
   V1PluginsNameReviewsRoute: typeof V1PluginsNameReviewsRouteWithChildren
   V1PluginsNameVersionsRoute: typeof V1PluginsNameVersionsRoute
   V1PluginsNameVVersionChar91indexChar93Route: typeof V1PluginsNameVVersionChar91indexChar93Route
@@ -1637,6 +1751,7 @@ interface V1PluginsNameRouteChildren {
 const V1PluginsNameRouteChildren: V1PluginsNameRouteChildren = {
   V1PluginsNameCommentsRoute: V1PluginsNameCommentsRouteWithChildren,
   V1PluginsNameReadmeRoute: V1PluginsNameReadmeRoute,
+  V1PluginsNameReportsRoute: V1PluginsNameReportsRoute,
   V1PluginsNameReviewsRoute: V1PluginsNameReviewsRouteWithChildren,
   V1PluginsNameVersionsRoute: V1PluginsNameVersionsRoute,
   V1PluginsNameVVersionChar91indexChar93Route:
@@ -1679,6 +1794,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDeviceApproveRoute: ApiDeviceApproveRoute,
   ApiOperatorAuditRoute: ApiOperatorAuditRoute,
   ApiOperatorPackagesRoute: ApiOperatorPackagesRouteWithChildren,
+  ApiOperatorReportsRoute: ApiOperatorReportsRouteWithChildren,
   ApiOperatorScopesRoute: ApiOperatorScopesRouteWithChildren,
   ApiPluginsCreateRoute: ApiPluginsCreateRoute,
   ApiPluginsDeleteRoute: ApiPluginsDeleteRoute,

@@ -3,6 +3,13 @@ import type { Comment, Review, UserProfile } from "@brika/registry-contract";
 import { getPluginPage } from "@/lib/registry/registry";
 import { CommentStore } from "@/server/stores/comment-store";
 import { PluginStore } from "@/server/stores/plugin-store";
+import {
+  type OperatorReport,
+  type ReportResolution,
+  type ReportStatusCounts,
+  type ReportStatusFilter,
+  ReportStore,
+} from "@/server/stores/report-store";
 import { type ReviewInput, ReviewStore } from "@/server/stores/review-store";
 import { UserProfileStore } from "@/server/stores/user-profile-store";
 import { UserStore } from "@/server/stores/user-store";
@@ -18,6 +25,7 @@ export class SocialService {
   readonly #plugins = inject(PluginStore);
   readonly #profiles = inject(UserProfileStore);
   readonly #users = inject(UserStore);
+  readonly #reports = inject(ReportStore);
 
   /**
    * Ensure a `plugins` cache row exists (cache-aside from the registry read model) so
@@ -91,5 +99,60 @@ export class SocialService {
   /** The account id for a verified email, or null - resolves a scope invite's typed email to a user. */
   findUserIdByEmail(email: string): Promise<string | null> {
     return this.#users.findIdByEmail(email);
+  }
+
+  /**
+   * File a plugin report. No-ops when this user already has an open report on the plugin, so a
+   * double-submit stays idempotent rather than flooding the queue.
+   */
+  async submitReport(
+    pluginName: string,
+    userId: string,
+    input: { reason: string; details?: string },
+  ): Promise<void> {
+    if (await this.#reports.hasOpenFrom(userId, "plugin", pluginName)) return;
+    await this.#reports.create({
+      targetType: "plugin",
+      targetId: pluginName,
+      reporterUserId: userId,
+      reason: input.reason,
+      details: input.details,
+    });
+  }
+
+  /** A page of the moderation queue, narrowed by status/reason/search (operator-only). */
+  listReports(opts: {
+    status: ReportStatusFilter;
+    reason?: string;
+    q?: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ items: OperatorReport[]; total: number }> {
+    return this.#reports.list(opts);
+  }
+
+  /** Per-status report counts for the queue's filter chips. */
+  reportStatusCounts(filter: { reason?: string; q?: string }): Promise<ReportStatusCounts> {
+    return this.#reports.statusCounts(filter);
+  }
+
+  /** Resolve/dismiss an open report; returns the reported plugin name, or null if already handled. */
+  setReportStatus(id: string, status: ReportResolution): Promise<string | null> {
+    return this.#reports.setStatus(id, status);
+  }
+
+  /** Open-report counts per plugin name, for the operator Packages badges. */
+  openReportCounts(names: string[]): Promise<Map<string, number>> {
+    return this.#reports.openCountsByTarget(names);
+  }
+
+  /** The top open-report reason key per plugin name, for the operator Packages "flag" line. */
+  topReportReasons(names: string[]): Promise<Map<string, string>> {
+    return this.#reports.topReasonByTarget(names);
+  }
+
+  /** Open-report counts per scope (summed over the scope's plugins), for the operator Scopes badges. */
+  openReportCountsByScope(scopes: string[]): Promise<Map<string, number>> {
+    return this.#reports.openCountsByScope(scopes);
   }
 }

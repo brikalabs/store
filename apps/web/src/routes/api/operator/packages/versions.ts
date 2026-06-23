@@ -22,6 +22,7 @@ export const Route = createFileRoute("/api/operator/packages/versions")({
             .map((v) => ({
               version: v.version,
               publishedAt: v.publishedAt,
+              size: v.size,
               deprecated: v.deprecated,
               yanked: v.yanked,
               takedownReason: v.takedownReason,

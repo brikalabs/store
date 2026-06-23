@@ -1,23 +1,82 @@
 import { Input } from "@brika/clay";
 import { Layers } from "lucide-react";
-import { useCallback, useState } from "react";
-import { Pager } from "@/components/clay/pagination";
+import { useCallback, useMemo, useState } from "react";
 import { OperatorShell } from "@/components/operator/operator-shell";
+import {
+  BulkBar,
+  type Facet,
+  FacetChips,
+  OperatorHeader,
+  SortSelect,
+} from "@/components/operator/operator-toolbar";
 import { TakedownControls } from "@/components/operator/takedown-controls";
-import { useServerPage } from "@/hooks/use-server-page";
+import { useOperatorList } from "@/hooks/use-operator-list";
 
 interface OperatorScope {
   scope: string;
   displayName: string | null;
   takedown: string | null;
+  openReports: number;
 }
 
-const PAGE_SIZE = 20;
+type ScopeFacet = "all" | "review" | "takedown";
+type ScopeSort = "newest" | "name" | "reports";
+
+const FACET_PREDICATES: Record<ScopeFacet, (s: OperatorScope) => boolean> = {
+  all: () => true,
+  review: (s) => s.openReports > 0,
+  takedown: (s) => s.takedown !== null,
+};
 
 export function OperatorScopesPage() {
-  const list = useServerPage<OperatorScope>("/api/operator/scopes", PAGE_SIZE);
+  const list = useOperatorList<OperatorScope>("/api/operator/scopes");
+  const [facet, setFacet] = useState<ScopeFacet>("all");
+  const [sort, setSort] = useState<ScopeSort>("newest");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const facets: Facet<ScopeFacet>[] = useMemo(
+    () => [
+      { key: "all", label: "All scopes", count: list.items.length },
+      {
+        key: "review",
+        label: "Needs review",
+        count: list.items.filter(FACET_PREDICATES.review).length,
+      },
+      {
+        key: "takedown",
+        label: "Taken down",
+        count: list.items.filter(FACET_PREDICATES.takedown).length,
+      },
+    ],
+    [list.items],
+  );
+
+  const visible = useMemo(() => {
+    const sorted = list.items.filter(FACET_PREDICATES[facet]);
+    if (sort === "name") sorted.sort((a, b) => a.scope.localeCompare(b.scope));
+    else if (sort === "reports")
+      sorted.sort((a, b) => b.openReports - a.openReports || a.scope.localeCompare(b.scope));
+    return sorted; // "newest" keeps the server order
+  }, [list.items, facet, sort]);
+
+  // Scope the selection to what's on screen, so a facet/search change never takes down a scope the
+  // operator can no longer see.
+  const selectedScopes = useMemo(
+    () => visible.filter((s) => selected.has(s.scope)).map((s) => s.scope),
+    [visible, selected],
+  );
+
+  function toggle(scope: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(scope)) next.delete(scope);
+      else next.add(scope);
+      return next;
+    });
+  }
 
   const act = useCallback(
     async (scope: string, path: string, body?: unknown) => {
@@ -39,19 +98,52 @@ export function OperatorScopesPage() {
     [list.reload],
   );
 
+  const bulkTakedown = useCallback(
+    async (reason: string) => {
+      setBulkBusy(true);
+      setError(null);
+      const results = await Promise.all(
+        selectedScopes.map((scope) =>
+          fetch(`/api/operator/scopes/${encodeURIComponent(scope)}/takedown`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ reason }),
+          }),
+        ),
+      );
+      setBulkBusy(false);
+      setSelected(new Set());
+      list.reload();
+      if (!results.every((r) => r.ok)) setError("Some scopes could not be taken down.");
+    },
+    [selectedScopes, list.reload],
+  );
+
   function renderBody() {
     if (list.loading) return <p className="text-muted-foreground text-sm">Loading…</p>;
-    if (list.items.length === 0) {
+    if (visible.length === 0) {
       return <p className="text-muted-foreground text-sm">No scopes match.</p>;
     }
     return (
       <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
-        {list.items.map((scope) => (
-          <li key={scope.scope} className="flex items-center gap-4 px-4 py-3">
+        {visible.map((scope) => (
+          <li key={scope.scope} className="flex items-center gap-3 px-4 py-3">
+            <input
+              type="checkbox"
+              checked={selected.has(scope.scope)}
+              onChange={() => toggle(scope.scope)}
+              aria-label={`Select ${scope.scope}`}
+              className="size-4 shrink-0 cursor-pointer accent-brand"
+            />
             <Layers className="size-5 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="truncate font-medium font-mono text-sm">{scope.scope}</span>
+                {scope.openReports > 0 && (
+                  <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-600 text-xs dark:text-amber-400">
+                    {scope.openReports} report{scope.openReports === 1 ? "" : "s"}
+                  </span>
+                )}
                 {scope.takedown !== null && (
                   <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-medium text-destructive text-xs">
                     Taken down
@@ -78,14 +170,25 @@ export function OperatorScopesPage() {
 
   return (
     <OperatorShell activeLabel="Scopes">
-      <header className="flex flex-col gap-1">
-        <h1 className="font-bold font-heading text-2xl tracking-tight">Scopes</h1>
-        <p className="text-muted-foreground text-sm">
-          Every scope on the registry. Taking one down withdraws it from public listings (its{" "}
-          <span className="font-mono">/@scope</span> page 404s); the reason is recorded in the audit
-          log.
-        </p>
-      </header>
+      <OperatorHeader title="Scopes">
+        Every scope on the registry. Filter the moderation queue or search to act on any scope.
+        Taking one down withdraws it from public listings (its{" "}
+        <span className="font-mono">/@scope</span> page 404s); the reason is recorded in the audit
+        log.
+      </OperatorHeader>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FacetChips facets={facets} active={facet} onSelect={setFacet} />
+        <SortSelect
+          value={sort}
+          onChange={setSort}
+          options={[
+            { value: "newest", label: "Newest" },
+            { value: "reports", label: "Most reported" },
+            { value: "name", label: "Name A–Z" },
+          ]}
+        />
+      </div>
 
       <Input
         value={list.query}
@@ -94,19 +197,23 @@ export function OperatorScopesPage() {
         className="max-w-sm"
       />
 
+      {list.capped && (
+        <p className="text-muted-foreground text-xs">
+          Showing the first {list.items.length} of {list.total}. Search to narrow.
+        </p>
+      )}
       {error !== null && <p className="text-destructive text-sm">{error}</p>}
+      {selectedScopes.length > 0 && (
+        <BulkBar
+          count={selectedScopes.length}
+          noun="scope"
+          busy={bulkBusy}
+          onTakedown={bulkTakedown}
+          onClear={() => setSelected(new Set())}
+        />
+      )}
 
       {renderBody()}
-
-      <Pager
-        page={list.page}
-        pages={list.pages}
-        from={list.from}
-        to={list.to}
-        total={list.total}
-        noun="scopes"
-        onChange={list.setPage}
-      />
     </OperatorShell>
   );
 }

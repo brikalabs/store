@@ -1,6 +1,7 @@
 import { inject, token } from "@brika/di";
 import { HttpStatus } from "./http-status";
 import { isCanonicalName, scopeOf } from "./names";
+import { MetadataReader } from "./ports";
 import { OwnershipPolicy, type PublishIdentity } from "./publish";
 
 /**
@@ -31,12 +32,18 @@ export type ManageResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly status: number; readonly message: string };
 
+/** A package-wide takedown result: the count of versions taken down, or a failure. */
+export type PackageTakedownResult =
+  | { readonly ok: true; readonly versions: number }
+  | { readonly ok: false; readonly status: number; readonly message: string };
+
 /** Maximum length of a deprecation message / takedown reason. */
 const MAX_MESSAGE = 1024;
 
 /** Post-publish management operations (deprecate, yank, takedown, restore), owner-gated except takedown. */
 export class ManagementService {
   readonly #meta = inject(VersionManager);
+  readonly #reader = inject(MetadataReader);
   readonly #ownership = inject(OwnershipPolicy);
 
   /** Shared gate: the identity must own the scope and the version must exist. */
@@ -96,6 +103,26 @@ export class ManagementService {
     }
     await this.#meta.setTakedown(name, version, reason.slice(0, MAX_MESSAGE));
     return { ok: true };
+  }
+
+  /**
+   * Operator takedown of a whole package: take down every still-live version in one sweep, skipping
+   * versions already down. Not ownership-gated (an admin acts against the owner). Returns the count
+   * of versions taken down, or a 404 when the package does not exist.
+   */
+  async takedownPackage(name: string, reason: string): Promise<PackageTakedownResult> {
+    const pkg = await this.#reader.getPackage(name);
+    if (pkg === null) {
+      return { ok: false, status: HttpStatus.NOT_FOUND, message: `package ${name} does not exist` };
+    }
+    const trimmed = reason.slice(0, MAX_MESSAGE);
+    let versions = 0;
+    for (const version of pkg.versions) {
+      if (version.takedownReason !== null) continue; // already down
+      await this.#meta.setTakedown(name, version.version, trimmed);
+      versions += 1;
+    }
+    return { ok: true, versions };
   }
 
   /** Reverse a takedown, restoring the version to new installs. */

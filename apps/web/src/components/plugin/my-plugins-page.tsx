@@ -17,6 +17,7 @@ import { SegmentedControl } from "@/components/clay/segmented";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { StatusBadge } from "@/components/plugin/status-badge";
 import { useOwnedPlugins } from "@/hooks/use-owned-plugins";
+import { paginate } from "@/lib/pagination";
 
 const route = getRouteApi("/dashboard/plugins/");
 const PAGE_SIZE = 8;
@@ -58,10 +59,10 @@ export function MyPluginsPage() {
     offset: (page - 1) * PAGE_SIZE,
   });
   const items = data?.page.items ?? [];
-  const total = data?.page.total ?? 0;
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const from = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const to = Math.min(page * PAGE_SIZE, total);
+  const pagination = paginate(data?.page.total ?? 0, {
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+  });
 
   return (
     <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="My plugins">
@@ -156,15 +157,7 @@ export function MyPluginsPage() {
           )}
         </Card>
 
-        <Pager
-          page={page}
-          pages={pages}
-          from={from}
-          to={to}
-          total={total}
-          noun="plugins"
-          onChange={setPage}
-        />
+        <Pager pagination={pagination} onPageChange={setPage} />
       </section>
     </AdminShell>
   );

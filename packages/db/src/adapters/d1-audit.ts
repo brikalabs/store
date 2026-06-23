@@ -7,7 +7,7 @@ import type {
   AuditRecord,
   PublishIdentity,
 } from "@brika/registry-core";
-import { desc, eq, like, or } from "drizzle-orm";
+import { count, desc, eq, like, or } from "drizzle-orm";
 import { Db } from "../client";
 import { regAudit } from "../schema";
 import { resolveActor } from "./queries";
@@ -38,6 +38,38 @@ export class D1AuditLog implements AuditLog, AuditReader {
       .orderBy(desc(regAudit.at), desc(regAudit.id))
       .limit(limit);
     return rows.map(toRecord);
+  }
+
+  /**
+   * A page of the audit log, newest first, plus the total row count for the pager. Optionally
+   * narrowed to a single `action` type.
+   */
+  async recentPage(
+    limit: number,
+    offset: number,
+    action?: string,
+  ): Promise<{ items: AuditRecord[]; total: number }> {
+    const where = action ? eq(regAudit.action, action) : undefined;
+    const [rows, totalRows] = await Promise.all([
+      this.#db
+        .select()
+        .from(regAudit)
+        .where(where)
+        .orderBy(desc(regAudit.at), desc(regAudit.id))
+        .limit(limit)
+        .offset(offset),
+      this.#db.select({ value: count() }).from(regAudit).where(where),
+    ]);
+    return { items: rows.map(toRecord), total: totalRows[0]?.value ?? 0 };
+  }
+
+  /** The distinct action types present in the log, alphabetical, for the operator type filter. */
+  async distinctActions(): Promise<string[]> {
+    const rows = await this.#db
+      .selectDistinct({ action: regAudit.action })
+      .from(regAudit)
+      .orderBy(regAudit.action);
+    return rows.map((row) => row.action);
   }
 
   /**

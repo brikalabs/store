@@ -212,14 +212,30 @@ export const commentVotes = sqliteTable(
   (t) => [primaryKey({ columns: [t.userId, t.commentId] })],
 );
 
-export const reports = sqliteTable("reports", {
-  id: text("id").primaryKey(),
-  targetType: text("target_type").notNull(),
-  targetId: text("target_id").notNull(),
-  reporterUserId: text("reporter_user_id")
-    .notNull()
-    .references(() => users.id),
-  reason: text("reason").notNull(),
-  status: text("status").notNull().default("open"),
-  createdAt: integer("created_at").notNull().default(epoch),
-});
+/**
+ * User-submitted moderation reports. `targetType`/`targetId` keep the door open for reporting
+ * reviews/comments later; today only plugins are reported (`targetType = "plugin"`, `targetId` =
+ * plugin name). `reason` is a category key (see `@/lib/reports`), `details` the optional free text.
+ * `status` walks open -> resolved | dismissed as an operator works the queue.
+ */
+export const reports = sqliteTable(
+  "reports",
+  {
+    id: text("id").primaryKey(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    reporterUserId: text("reporter_user_id")
+      .notNull()
+      .references(() => users.id),
+    reason: text("reason").notNull(),
+    details: text("details"),
+    status: text("status").notNull().default("open"),
+    createdAt: integer("created_at").notNull().default(epoch),
+  },
+  (t) => [
+    // The operator queue lists open reports newest-first.
+    index("idx_reports_status").on(t.status),
+    // Per-target open-report counts for the operator Packages badges.
+    index("idx_reports_target").on(t.targetType, t.targetId, t.status),
+  ],
+);

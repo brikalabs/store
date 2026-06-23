@@ -65,6 +65,8 @@ export interface OperatorPackage {
   readonly versionCount: number;
   readonly takenDownCount: number;
   readonly yankedCount: number;
+  /** ISO timestamp of the most recently published version, or null when the package has none. */
+  readonly updatedAt: string | null;
 }
 
 /**
@@ -110,23 +112,28 @@ export async function listAllPackages(
         name: regVersions.name,
         takedown: regVersions.takedown,
         yanked: regVersions.yanked,
+        publishedAt: regVersions.publishedAt,
       })
       .from(regVersions)
       .where(inArray(regVersions.name, names)),
   ]);
 
   const latestByName = new Map(latest.map((row) => [row.name, row.version]));
-  const counts = new Map<string, { total: number; takenDown: number; yanked: number }>();
+  const counts = new Map<
+    string,
+    { total: number; takenDown: number; yanked: number; lastPublished: number }
+  >();
   for (const v of versions) {
-    const c = counts.get(v.name) ?? { total: 0, takenDown: 0, yanked: 0 };
+    const c = counts.get(v.name) ?? { total: 0, takenDown: 0, yanked: 0, lastPublished: 0 };
     c.total += 1;
     if (v.takedown !== null) c.takenDown += 1;
     if (v.yanked) c.yanked += 1;
+    if (v.publishedAt > c.lastPublished) c.lastPublished = v.publishedAt;
     counts.set(v.name, c);
   }
 
   const items = packages.map((pkg) => {
-    const c = counts.get(pkg.name) ?? { total: 0, takenDown: 0, yanked: 0 };
+    const c = counts.get(pkg.name) ?? { total: 0, takenDown: 0, yanked: 0, lastPublished: 0 };
     return {
       name: pkg.name,
       scope: pkg.scope,
@@ -135,6 +142,7 @@ export async function listAllPackages(
       versionCount: c.total,
       takenDownCount: c.takenDown,
       yankedCount: c.yanked,
+      updatedAt: c.lastPublished > 0 ? new Date(c.lastPublished * 1000).toISOString() : null,
     };
   });
 
