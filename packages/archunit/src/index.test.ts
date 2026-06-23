@@ -91,7 +91,7 @@ describe("ArchRules engine (imports)", () => {
       .filesMatching("src/scan.ts")
       .mayNotImport(modules("node:fs"))
       .check();
-    expect(violations.length).toBe(1);
+    expect(violations).toHaveLength(1);
     expect(violations[0]).toContain("src/scan.ts");
     expect(violations[0]).toContain("no node built-ins");
   });
@@ -200,7 +200,7 @@ describe("ArchRules engine (filenames)", () => {
       .filesMatching("src/scan.ts")
       .mustBeNamed(/^z/)
       .check();
-    expect(violations.length).toBe(1);
+    expect(violations).toHaveLength(1);
     expect(violations[0]).toContain("src/scan.ts");
     expect(violations[0]).toContain("is not named like");
   });
