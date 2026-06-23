@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { authHandler } from "@/lib/auth/auth";
 import { runHandler } from "@/server/http";
-import { AUTH_WINDOW, clientKey, enforceLimit } from "@/server/rate-limit";
+import { clientKey, enforceLimit } from "@/server/rate-limit";
 
 /**
  * `GET|POST /api/auth/*` - the single BetterAuth handler mounting every auth endpoint (sign-in,
@@ -17,7 +17,7 @@ export const Route = createFileRoute("/api/auth/$")({
       GET: ({ request }) => authHandler(request),
       POST: ({ request }) =>
         runHandler(async () => {
-          await enforceLimit("AUTH_LIMITER", clientKey(request), AUTH_WINDOW);
+          await enforceLimit("AUTH_LIMITER", clientKey(request));
           return authHandler(request);
         }),
     },

@@ -52,8 +52,8 @@ declare global {
       CACHE: KVNamespace;
       ASSETS: R2Bucket;
       // Rate-limit bindings (see server/rate-limit.ts). Unbound in dev -> in-memory fallback.
-      WRITE_LIMITER: RateLimitBinding;
-      AUTH_LIMITER: RateLimitBinding;
+      WRITE_LIMITER?: RateLimitBinding;
+      AUTH_LIMITER?: RateLimitBinding;
     }
   }
 }

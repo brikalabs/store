@@ -2,7 +2,7 @@ import { readBytes, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { MAX_AVATAR_BYTES } from "@/lib/avatar";
 import { runAuthed } from "@/server/http";
-import { enforceLimit, WRITE_WINDOW } from "@/server/rate-limit";
+import { enforceLimit } from "@/server/rate-limit";
 import { clearUserAvatar, uploadUserAvatar } from "@/server/user-avatar";
 
 /**
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/account/avatar")({
       POST: ({ request }) =>
         runAuthed(request, async (a) => {
           // Cap avatar uploads per user: each is an R2 write.
-          await enforceLimit("WRITE_LIMITER", `avatar:${a.user.id}`, WRITE_WINDOW);
+          await enforceLimit("WRITE_LIMITER", `avatar:${a.user.id}`);
           const bytes = await readBytes(request, MAX_AVATAR_BYTES, "Avatar exceeds 512 KiB");
           const avatarUrl = await uploadUserAvatar(a.user.id, bytes);
           return reply({ ok: true, avatarUrl });

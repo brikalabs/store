@@ -74,6 +74,70 @@ export class FixedWindowRateLimiter implements RateLimiter {
   }
 }
 
+/** A backend rate-limit probe (e.g. a Cloudflare Workers rate-limit binding). Structural, so the
+ *  router never depends on a platform type. */
+export interface RateLimitProbe {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
+/**
+ * A {@link RateLimiter} over a backend `probe` (read lazily via a thunk, so the app's env seam stays
+ * out of the router), failing OPEN to a per-isolate {@link FixedWindowRateLimiter} when the probe is
+ * absent (unbound) or rejects (infra noise): a transient backend fault never blocks a real request.
+ * The fallback is built once, so its window persists across calls.
+ */
+export function fallbackRateLimiter(
+  window: RateLimitWindow,
+  probe: () => RateLimitProbe | undefined,
+): RateLimiter {
+  const fallback = new FixedWindowRateLimiter(window);
+  return {
+    async limit(key) {
+      const bound = probe();
+      if (bound === undefined) return fallback.limit(key);
+      const success = await bound.limit({ key }).then(
+        (r) => r.success,
+        () => null,
+      );
+      if (success === null) return fallback.limit(key); // probe faulted
+      return success
+        ? { allowed: true }
+        : { allowed: false, retryAfterSeconds: window.windowSeconds };
+    },
+  };
+}
+
+/**
+ * Canonicalize a client IP into a stable rate-limit key. IPv6 is keyed by its /64 (a client
+ * typically owns a whole /64, so keying the full address lets it walk its range); canonicalizing
+ * spellings stops two forms of one address minting distinct keys.
+ */
+export function normalizeIp(ip: string): string {
+  const address = (ip.split("%")[0] ?? "").toLowerCase();
+  if (!address.includes(":")) return address; // plain IPv4
+  const mappedV4 = /(\d{1,3}(?:\.\d{1,3}){3})$/.exec(address); // ::ffff:1.2.3.4 -> 1.2.3.4
+  if (mappedV4 !== null) return mappedV4[1] ?? address;
+
+  // Expand the `::` zero-run to eight groups, then keep the /64 (first four).
+  const [head = "", tail = ""] = address.split("::");
+  const headGroups = head === "" ? [] : head.split(":");
+  const tailGroups = tail === "" ? [] : tail.split(":");
+  const zeros = Array.from(
+    { length: Math.max(0, 8 - headGroups.length - tailGroups.length) },
+    () => "0",
+  );
+  const prefix = [...headGroups, ...zeros, ...tailGroups]
+    .slice(0, 4)
+    .map((group) => group.replace(/^0+(?=.)/, ""));
+  return `${prefix.join(":")}::/64`;
+}
+
+/** The trusted client IP as a stable rate-limit key, or `"unknown"`. Pass the unspoofable edge IP
+ *  (e.g. `CF-Connecting-IP`); never a client-supplied header an attacker can rotate. */
+export function trustedIpKey(ip: string | null | undefined): string {
+  return ip === null || ip === undefined ? "unknown" : normalizeIp(ip);
+}
+
 /** A duration string for a rate-limit window: `"30s"`, `"5m"`, `"1h"`. */
 export type Duration = `${number}${"s" | "m" | "h"}`;
 

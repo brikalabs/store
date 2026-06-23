@@ -13,10 +13,14 @@ export { jsonLogger } from "./logger";
 export {
   type Duration,
   FixedWindowRateLimiter,
+  fallbackRateLimiter,
+  normalizeIp,
   type RateLimiter,
   type RateLimitKey,
+  type RateLimitProbe,
   type RateLimitWindow,
   rateLimit,
+  trustedIpKey,
 } from "./rate-limit";
 export { created, json, noContent, type ResponseInit, reply, text } from "./response";
 export { okOrThrow, readBody, readBytes } from "./result";
