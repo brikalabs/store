@@ -71,4 +71,9 @@ export interface AuditRecord {
 export interface AuditReader {
   /** The most recent entries, newest first, capped at `limit`. */
   recent(limit: number): Promise<AuditRecord[]>;
+  /**
+   * The most recent entries targeting the given scopes (a scope itself or any package under it),
+   * newest first, capped at `limit`. Backs each developer's own activity feed. Empty for no scopes.
+   */
+  recentForScopes(scopes: readonly string[], limit: number): Promise<AuditRecord[]>;
 }

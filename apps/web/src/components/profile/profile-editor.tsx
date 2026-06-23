@@ -1,8 +1,10 @@
-import { Button, Input, Textarea } from "@brika/clay";
+import { Button, Card, Input, Textarea } from "@brika/clay";
 import { type UserProfile, UserProfile as UserProfileSchema } from "@brika/registry-contract";
 import { Check, Plus, X } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
+import { LinkIcon } from "@/components/clay/link-icon";
 import { AvatarPicker } from "@/components/profile/avatar-picker";
+import { cleanLinks, useLinks } from "@/hooks/use-links";
 
 export function ProfileEditor({
   profile,
@@ -17,34 +19,15 @@ export function ProfileEditor({
   const [displayName, setDisplayName] = useState(profile.displayName ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [website, setWebsite] = useState(profile.website ?? "");
-  // Rows carry a stable client id so React keys are identity-based, not positional;
-  // the id is stripped before save.
-  const [links, setLinks] = useState<{ id: string; label: string; url: string }[]>(() =>
-    profile.links.map((link) => ({ ...link, id: crypto.randomUUID() })),
-  );
+  // Rows carry a stable client id so React keys (and edits) are identity-based, not positional.
+  const { links, add, update, remove, reset } = useLinks(profile.links);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  function setLink(id: string, patch: Partial<{ label: string; url: string }>) {
-    setLinks((prev) => prev.map((link) => (link.id === id ? { ...link, ...patch } : link)));
-  }
-
-  function removeLink(id: string) {
-    setLinks((prev) => prev.filter((link) => link.id !== id));
-  }
-
-  function addLink() {
-    setLinks((prev) => [...prev, { id: crypto.randomUUID(), label: "", url: "" }]);
-  }
 
   async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setSaved(false);
-    // Only keep links with both a label and a url; the API rejects partial rows.
-    const cleanLinks = links
-      .map((link) => ({ label: link.label.trim(), url: link.url.trim() }))
-      .filter((link) => link.label.length > 0 && link.url.length > 0);
     const res = await fetch("/api/account/profile", {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -52,7 +35,7 @@ export function ProfileEditor({
         displayName: displayName.trim() || undefined,
         bio: bio.trim() || undefined,
         website: website.trim() || undefined,
-        links: cleanLinks,
+        links: cleanLinks(links),
       }),
     });
     setSaving(false);
@@ -60,15 +43,17 @@ export function ProfileEditor({
       const parsed = UserProfileSchema.safeParse(await res.json());
       if (parsed.success) {
         onSaved(parsed.data);
-        setLinks(parsed.data.links.map((link) => ({ ...link, id: crypto.randomUUID() })));
+        reset(parsed.data.links);
         setSaved(true);
       }
     }
   }
 
   return (
-    <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-6">
-      <h2 className="font-bold font-heading text-xl tracking-tight">Public profile</h2>
+    <Card className="flex flex-col gap-5 rounded-[20px] border border-border bg-card p-[26px] shadow-sm">
+      <h2 className="font-bold font-heading text-[18px] text-foreground tracking-tight">
+        Public profile
+      </h2>
 
       <AvatarPicker
         id={profile.id}
@@ -77,76 +62,106 @@ export function ProfileEditor({
         onChange={setAvatar}
       />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label htmlFor="profile-name" className="flex flex-col gap-1.5 text-sm">
-          <span className="font-semibold text-foreground">Display name</span>
-          <Input
-            id="profile-name"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-          />
-        </label>
-        <label htmlFor="profile-bio" className="flex flex-col gap-1.5 text-sm">
-          <span className="font-semibold text-foreground">Bio</span>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label htmlFor="profile-name" className="flex flex-col gap-1.5">
+            <span className="font-semibold text-[13px] text-foreground">Display name</span>
+            <Input
+              id="profile-name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              className="h-11 rounded-[11px] border-input bg-muted"
+            />
+          </label>
+          <label htmlFor="profile-website" className="flex flex-col gap-1.5">
+            <span className="font-semibold text-[13px] text-foreground">Website</span>
+            <Input
+              id="profile-website"
+              type="url"
+              placeholder="https://"
+              value={website}
+              onChange={(event) => setWebsite(event.target.value)}
+              className="h-11 rounded-[11px] border-input bg-muted"
+            />
+          </label>
+        </div>
+
+        <label htmlFor="profile-bio" className="flex flex-col gap-1.5">
+          <span className="font-semibold text-[13px] text-foreground">Bio</span>
           <Textarea
             id="profile-bio"
             value={bio}
             onChange={(event) => setBio(event.target.value)}
             rows={3}
-          />
-        </label>
-        <label htmlFor="profile-website" className="flex flex-col gap-1.5 text-sm">
-          <span className="font-semibold text-foreground">Website</span>
-          <Input
-            id="profile-website"
-            type="url"
-            placeholder="https://"
-            value={website}
-            onChange={(event) => setWebsite(event.target.value)}
+            className="rounded-[11px] border-input bg-muted"
           />
         </label>
 
-        <div className="flex flex-col gap-2 text-sm">
-          <span className="font-semibold text-foreground">Links</span>
-          {links.map((link) => (
-            <div key={link.id} className="flex items-center gap-2">
-              <Input
-                placeholder="Label"
-                value={link.label}
-                onChange={(event) => setLink(link.id, { label: event.target.value })}
-                className="w-1/3"
-              />
-              <Input
-                type="url"
-                placeholder="https://"
-                value={link.url}
-                onChange={(event) => setLink(link.id, { url: event.target.value })}
-                className="flex-1"
-              />
-              <button
-                type="button"
-                aria-label="Remove link"
-                onClick={() => removeLink(link.id)}
-                className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted"
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-baseline justify-between">
+            <span className="font-semibold text-[13px] text-foreground">Links</span>
+            <span className="text-[12px] text-muted-foreground">
+              {links.length} of 8 - shown on your public profile
+            </span>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {links.map((link) => (
+              <div
+                key={link.id}
+                className="flex h-11 items-stretch overflow-hidden rounded-xl border border-input bg-muted transition focus-within:border-brand-border focus-within:bg-card focus-within:ring-2 focus-within:ring-brand-tint"
               >
-                <X className="size-4" />
-              </button>
-            </div>
-          ))}
+                <span
+                  title={link.url}
+                  className="flex w-[46px] shrink-0 items-center justify-center border-border border-r text-muted-foreground"
+                >
+                  <LinkIcon url={link.url} />
+                </span>
+                <Input
+                  placeholder="Label"
+                  value={link.label}
+                  onChange={(event) => update(link.id, { label: event.target.value })}
+                  className="h-full w-32 shrink-0 rounded-none border-none bg-transparent px-3 font-semibold text-[13.5px] shadow-none focus-visible:ring-0"
+                />
+                <span className="w-px shrink-0 bg-border" />
+                <Input
+                  type="url"
+                  placeholder="https://"
+                  value={link.url}
+                  onChange={(event) => update(link.id, { url: event.target.value })}
+                  className="h-full min-w-0 flex-1 rounded-none border-none bg-transparent px-3 font-mono text-[13px] text-muted-foreground shadow-none focus-visible:ring-0"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Remove link"
+                  onClick={() => remove(link.id)}
+                  className="flex h-full w-11 shrink-0 items-center justify-center rounded-none border-border border-l text-muted-foreground transition hover:bg-danger-tint hover:text-danger"
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
           {links.length < 8 ? (
-            <button
+            <Button
               type="button"
-              onClick={addLink}
-              className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-border border-dashed px-3 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted"
+              variant="outline"
+              onClick={add}
+              className="inline-flex h-[42px] w-full items-center justify-center gap-1.5 rounded-xl border border-input border-dashed font-semibold text-muted-foreground text-sm transition hover:border-brand-border hover:bg-brand-tint hover:text-brand-ink"
             >
               <Plus className="size-4" />
               Add link
-            </button>
+            </Button>
           ) : null}
         </div>
 
         <div className="flex items-center gap-3">
-          <Button type="submit" disabled={saving}>
+          <Button
+            type="submit"
+            disabled={saving}
+            className="inline-flex h-11 items-center rounded-xl bg-brand px-5 font-bold text-brand-foreground text-sm hover:brightness-105"
+          >
             {saving ? "Saving…" : "Save profile"}
           </Button>
           {saved ? (
@@ -157,6 +172,6 @@ export function ProfileEditor({
           ) : null}
         </div>
       </form>
-    </div>
+    </Card>
   );
 }

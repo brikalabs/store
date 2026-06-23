@@ -1,8 +1,9 @@
-import { Button } from "@brika/clay";
+import { Button, Card } from "@brika/clay";
 import { getRouteApi } from "@tanstack/react-router";
 import { LogOut, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { type Token, TokenList } from "@/components/account/token-list";
+import { SettingsCard } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { CopyButton } from "@/components/plugin/copy-button";
 
@@ -45,54 +46,67 @@ export function TokensPage() {
 
   return (
     <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="API tokens">
-      <header className="flex flex-col gap-1">
-        <h1 className="font-bold font-heading text-2xl tracking-tight">API tokens</h1>
-        <p className="text-muted-foreground text-sm">
-          Tokens authenticate <span className="font-mono">brika publish</span> from your machine. A
-          token is shown once at creation; afterward it is identified only by its fingerprint.
+      <header className="flex flex-col gap-1.5">
+        <h1 className="font-bold font-heading text-[30px] text-foreground tracking-tight">
+          API tokens
+        </h1>
+        <p className="max-w-[640px] text-muted-foreground text-sm">
+          Tokens authenticate <span className="font-mono text-foreground">brika publish</span> from
+          your machine. A token is shown once at creation; afterward it is identified only by its
+          fingerprint.
         </p>
       </header>
 
       {fresh !== null && (
-        <div className="flex flex-col gap-2 rounded-2xl border border-brand/40 bg-brand/5 p-5">
+        <Card className="flex flex-col gap-2.5 rounded-[18px] border border-brand-border bg-brand-tint p-[22px] shadow-sm">
           <span className="font-semibold text-foreground text-sm">
             Your new token (copy it now, it won't be shown again):
           </span>
           <div className="flex items-center gap-2">
-            <code className="flex-1 truncate rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm">
+            <code className="flex-1 truncate rounded-[10px] border border-border bg-card px-3 py-2 font-mono text-sm">
               {fresh}
             </code>
             <CopyButton value={fresh} label="Copy token" />
           </div>
-        </div>
+        </Card>
       )}
 
-      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold font-heading text-lg tracking-tight">Active tokens</h2>
-          <Button type="button" onClick={create} disabled={busy}>
+      <SettingsCard className="gap-0">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-bold font-heading text-foreground text-lg tracking-tight">
+            Active tokens
+          </h2>
+          <Button
+            type="button"
+            onClick={create}
+            disabled={busy}
+            className="inline-flex h-[38px] items-center gap-1.5 rounded-[10px] bg-brand px-4 font-bold text-brand-foreground text-sm hover:brightness-105 disabled:opacity-60"
+          >
             <Plus className="size-4" />
             {busy ? "Creating…" : "New token"}
           </Button>
         </div>
         <TokenList tokens={tokens} onRevoke={revoke} />
-      </div>
+      </SettingsCard>
 
-      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-6">
+      <SettingsCard className="flex-row items-center justify-between gap-0 px-[22px] py-[18px]">
         <div>
           <div className="font-semibold text-foreground text-sm">
             Signed in as {user.name ?? "your account"}
           </div>
           <div className="text-muted-foreground text-xs">End your session on this device.</div>
         </div>
-        <a
-          href="/auth/logout"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 font-medium text-sm text-foreground transition-colors hover:bg-muted"
+        <Button
+          asChild
+          variant="outline"
+          className="inline-flex h-[38px] items-center gap-1.5 rounded-[10px] border border-input bg-card px-4 font-semibold text-foreground text-sm transition-colors hover:border-danger-border hover:text-danger"
         >
-          <LogOut className="size-4" />
-          Sign out
-        </a>
-      </div>
+          <a href="/auth/logout">
+            <LogOut className="size-4" />
+            Sign out
+          </a>
+        </Button>
+      </SettingsCard>
     </AdminShell>
   );
 }

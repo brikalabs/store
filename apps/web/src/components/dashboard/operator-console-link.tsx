@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ShieldAlert } from "lucide-react";
+import { ArrowRight, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchIsOperator } from "@/server/require-operator";
 
@@ -18,10 +18,11 @@ export function OperatorConsoleLink() {
   return (
     <Link
       to="/operator/scopes"
-      className="inline-flex w-fit items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-2.5 font-semibold text-foreground text-sm transition-colors hover:bg-amber-500/10"
+      className="flex items-center gap-2.5 rounded-2xl border border-warning-border bg-warning-tint px-[17px] py-[15px] font-semibold text-[13.5px] text-foreground transition-shadow hover:shadow-sm"
     >
-      <ShieldAlert className="size-4 text-amber-600" />
+      <ShieldAlert className="size-[18px] text-warning" />
       Operator console
+      <ArrowRight className="ml-auto size-4 text-warning" />
     </Link>
   );
 }

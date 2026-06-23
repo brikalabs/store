@@ -1,49 +1,204 @@
+import {
+  Button,
+  Card,
+  EmptyState,
+  EmptyStateDescription,
+  EmptyStateIcon,
+  EmptyStateTitle,
+  Input,
+} from "@brika/clay";
 import type { PluginSummary } from "@brika/registry-contract";
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { Box, Pencil, ShieldCheck } from "lucide-react";
+import { Box, ChevronRight, Rocket, Search, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Pager } from "@/components/clay/pagination";
 import { PluginIcon } from "@/components/clay/plugin-icon";
+import { SegmentedControl } from "@/components/clay/segmented";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { StatusBadge } from "@/components/plugin/status-badge";
-import { useMyPlugins } from "@/hooks/use-my-plugins";
+import { useOwnedPlugins } from "@/hooks/use-owned-plugins";
 
 const route = getRouteApi("/dashboard/plugins/");
+const PAGE_SIZE = 8;
+
+/** The status segments. `taken_down` is folded under "Yanked" so the filter stays simple. */
+type StatusFilter = "all" | "published" | "deprecated" | "yanked";
+const STATUS_FILTERS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "published", label: "Published" },
+  { value: "deprecated", label: "Deprecated" },
+  { value: "yanked", label: "Yanked" },
+];
 
 export function MyPluginsPage() {
   const { user } = route.useRouteContext();
-  const plugins = useMyPlugins();
+
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [scope, setScope] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  // Debounce the search box so a keystroke does not hit the server every time; applying the query
+  // also returns to page 1. Status/scope reset the page inline at the click.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setDebounced(query.trim());
+      setPage(1);
+    }, 250);
+    return () => clearTimeout(id);
+  }, [query]);
+
+  // Server-side filter + pagination: only this page's rows come over the wire.
+  const { data } = useOwnedPlugins({
+    q: debounced,
+    status,
+    scope,
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+  });
+  const items = data?.page.items ?? [];
+  const total = data?.page.total ?? 0;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const from = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE, total);
 
   return (
     <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="My plugins">
-      <section className="flex flex-col gap-6">
-        <div>
-          <h1 className="font-bold font-heading text-2xl tracking-tight">My plugins</h1>
-          <p className="mt-1 text-muted-foreground text-sm">
-            Plugins published under scopes you own. Code &amp; versions come from the published
-            package.
-          </p>
+      <section className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="font-bold font-heading text-[30px] text-foreground tracking-tight">
+              My plugins
+            </h1>
+            <p className="mt-1.5 text-[15px] text-muted-foreground">
+              Plugins published under scopes you own. Code &amp; versions come from the published
+              package.
+            </p>
+          </div>
+          <Button asChild>
+            <Link to="/dashboard/plugins/create">
+              <Rocket className="size-4" />
+              Create plugin
+            </Link>
+          </Button>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <div className="grid grid-cols-[2.4fr_1fr_1.2fr_44px] items-center gap-3 border-border border-b bg-muted/50 px-5 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
-            <span>Plugin</span>
-            <span>Status</span>
-            <span>Capabilities</span>
-            <span />
+        {/* toolbar: search + status segmented filter */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[230px] flex-1">
+            <Search className="-translate-y-1/2 absolute top-1/2 left-3.5 size-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name or package…"
+              className="pl-10"
+            />
           </div>
-          {plugins.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
-              <Box className="size-7 text-muted-foreground" />
-              <p className="font-medium text-foreground">No published plugins yet</p>
-              <p className="text-muted-foreground text-sm">
-                Plugins published under scopes you belong to show up here.
-              </p>
-            </div>
-          ) : (
-            plugins.map((plugin) => <PluginRow key={plugin.name} plugin={plugin} />)
-          )}
+          <SegmentedControl
+            options={STATUS_FILTERS}
+            value={status}
+            onChange={(next) => {
+              setStatus(next);
+              setPage(1);
+            }}
+            fill={false}
+            ariaLabel="Filter by status"
+          />
         </div>
+
+        {/* scope chips (facet counts over the full owned set, from the server) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <ScopeChip
+            label="All"
+            count={data?.stats.total ?? 0}
+            active={scope === null}
+            onClick={() => {
+              setScope(null);
+              setPage(1);
+            }}
+          />
+          {(data?.scopes ?? []).map((facet) => (
+            <ScopeChip
+              key={facet.scope}
+              label={facet.scope}
+              count={facet.count}
+              mono
+              active={scope === facet.scope}
+              onClick={() => {
+                setScope(facet.scope);
+                setPage(1);
+              }}
+            />
+          ))}
+        </div>
+
+        {/* table */}
+        <Card className="overflow-hidden rounded-[20px] p-0 shadow-sm">
+          <div className="grid grid-cols-[1fr_130px_130px_52px] items-center gap-3.5 border-border border-b bg-muted px-5 py-3 font-bold text-[11px] text-muted-foreground uppercase tracking-[0.06em]">
+            <div>Plugin</div>
+            <div>Status</div>
+            <div>Capabilities</div>
+            <div />
+          </div>
+          {items.length === 0 ? (
+            <EmptyState className="py-[54px]">
+              <EmptyStateIcon>
+                <Box />
+              </EmptyStateIcon>
+              <EmptyStateTitle>No plugins match your search</EmptyStateTitle>
+              <EmptyStateDescription>
+                Try a different name, package, or status.
+              </EmptyStateDescription>
+            </EmptyState>
+          ) : (
+            items.map((plugin) => <PluginRow key={plugin.name} plugin={plugin} />)
+          )}
+        </Card>
+
+        <Pager
+          page={page}
+          pages={pages}
+          from={from}
+          to={to}
+          total={total}
+          noun="plugins"
+          onChange={setPage}
+        />
       </section>
     </AdminShell>
+  );
+}
+
+/** A rounded-full scope pill with a trailing count badge. */
+function ScopeChip({
+  label,
+  count,
+  active,
+  onClick,
+  mono = false,
+}: Readonly<{
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+  mono?: boolean;
+}>) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex h-9 items-center gap-2 rounded-full border py-0 pr-2 pl-3 font-semibold text-xs transition-colors ${
+        active
+          ? "border-brand-border bg-brand-tint text-brand-ink"
+          : "border-input bg-card text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      <span className={mono ? "font-mono" : undefined}>{label}</span>
+      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 font-bold text-[11px]">
+        {count}
+      </span>
+    </button>
   );
 }
 
@@ -56,36 +211,43 @@ function PluginRow({ plugin }: Readonly<{ plugin: PluginSummary }>) {
       plugin.capabilities.pages
     : 0;
   return (
-    <div className="grid grid-cols-[2.4fr_1fr_1.2fr_44px] items-center gap-3 border-border border-b px-5 py-3.5 last:border-b-0">
-      <div className="flex min-w-0 items-center gap-3">
+    <Link
+      to="/dashboard/plugins/$"
+      params={{ _splat: plugin.name }}
+      aria-label={`Edit ${plugin.name}`}
+      className="grid grid-cols-[1fr_130px_130px_52px] items-center gap-3.5 border-border border-b px-5 py-[15px] text-left transition-colors last:border-b-0 hover:bg-muted"
+    >
+      <div className="flex min-w-0 items-center gap-3.5">
         <PluginIcon
           name={plugin.name}
           iconUrl={plugin.iconUrl}
           capabilities={plugin.capabilities}
-          size={36}
+          size={42}
         />
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="truncate font-heading font-semibold text-foreground text-sm">
+            <span className="truncate font-heading font-semibold text-[14.5px] text-foreground">
               {plugin.displayName ?? plugin.name}
             </span>
             {plugin.verified ? <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" /> : null}
           </div>
-          <div className="font-mono text-muted-foreground text-xs">v{plugin.version}</div>
+          <div className="truncate font-mono text-[12px] text-muted-foreground">
+            {plugin.name}
+            {plugin.version ? ` · v${plugin.version}` : ""}
+          </div>
         </div>
       </div>
       <div>
         <StatusBadge status={plugin.listingStatus} />
       </div>
-      <div className="text-muted-foreground text-sm">{caps > 0 ? `${caps} capabilities` : "·"}</div>
-      <Link
-        to="/dashboard/plugins/$"
-        params={{ _splat: plugin.name }}
-        aria-label={`Edit ${plugin.name}`}
-        className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <Pencil className="size-4" />
-      </Link>
-    </div>
+      <div className="text-[13px] text-muted-foreground">
+        {caps > 0 ? `${caps} capabilities` : "·"}
+      </div>
+      <div className="flex justify-end">
+        <span className="flex size-8 items-center justify-center rounded-[9px] border border-input text-muted-foreground">
+          <ChevronRight className="size-4" />
+        </span>
+      </div>
+    </Link>
   );
 }

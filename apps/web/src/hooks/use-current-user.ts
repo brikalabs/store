@@ -7,6 +7,7 @@ import { fetchJson } from "@/lib/fetch-json";
 const CurrentUser = z.object({
   id: z.string(),
   name: z.string().nullable(),
+  email: z.string().nullish(),
   avatarUrl: z.string().nullable(),
 });
 export type CurrentUser = z.infer<typeof CurrentUser>;

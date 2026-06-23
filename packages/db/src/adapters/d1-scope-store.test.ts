@@ -73,6 +73,27 @@ describe("D1ScopeStore", () => {
     await store.setTakedown("@acme", null);
     expect((await store.get("@acme"))?.takedown).toBeNull();
   });
+
+  test("listPage filters by scope or display name and pages the results", async () => {
+    await store.claim("@acme");
+    await store.claim("@beta");
+    await store.setDisplayName("@beta", "Acme Labs");
+
+    const all = await store.listPage({ limit: 10, offset: 0 });
+    expect(all.total).toBe(2);
+    expect(all.items).toHaveLength(2);
+
+    // "acme" matches the @acme scope AND @beta's "Acme Labs" display name.
+    const matched = await store.listPage({ q: "acme", limit: 10, offset: 0 });
+    expect(matched.total).toBe(2);
+
+    const onlyScope = await store.listPage({ q: "@beta", limit: 10, offset: 0 });
+    expect(onlyScope.items.map((s) => s.scope)).toEqual(["@beta"]);
+
+    const second = await store.listPage({ limit: 1, offset: 1 });
+    expect(second.total).toBe(2);
+    expect(second.items).toHaveLength(1);
+  });
 });
 
 describe("D1ScopeMembers.countScopesAdminedBy", () => {

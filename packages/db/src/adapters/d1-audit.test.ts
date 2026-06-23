@@ -54,6 +54,33 @@ describe("D1AuditLog.recent (operator audit view)", () => {
   });
 });
 
+describe("D1AuditLog.recentForScopes (developer activity feed)", () => {
+  test("returns only entries under the given scopes (the scope itself or its packages)", async () => {
+    const db = makeDb();
+    const log = makeAdapter(db, D1AuditLog);
+    const actor = { userId: "dev", provider: null, repository: null };
+    await log.record({ action: "publish", packageName: "@brika/x", version: "1.0.0", actor });
+    await log.record({ action: "scope_create", packageName: "@brika", version: null, actor });
+    await log.record({ action: "publish", packageName: "@other/y", version: "1.0.0", actor });
+
+    const mine = await log.recentForScopes(["@brika"], 10);
+    expect(mine.map((r) => r.target).sort()).toEqual(["@brika", "@brika/x"]);
+    expect(mine.some((r) => r.target === "@other/y")).toBe(false);
+  });
+
+  test("is empty for no scopes", async () => {
+    const db = makeDb();
+    const log = makeAdapter(db, D1AuditLog);
+    await log.record({
+      action: "publish",
+      packageName: "@brika/x",
+      version: "1.0.0",
+      actor: { userId: "dev", provider: null, repository: null },
+    });
+    expect(await log.recentForScopes([], 10)).toEqual([]);
+  });
+});
+
 describe("D1AuditLog.record", () => {
   test("swallows a write failure so a committed action is never turned into a 500", async () => {
     // A db whose audit insert rejects (e.g. transient D1 failure).

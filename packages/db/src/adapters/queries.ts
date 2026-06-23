@@ -1,5 +1,5 @@
-import type { ScopeRole } from "@brika/registry-core";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import type { Page, ScopeRole } from "@brika/registry-core";
+import { and, count, desc, eq, inArray, like, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import {
   regDistTags,
@@ -67,29 +67,52 @@ export interface OperatorPackage {
   readonly yankedCount: number;
 }
 
-/** Every package with moderation counts, newest first. Aggregates in memory (the bounded scope is small). */
-export async function listAllPackages(db: Db): Promise<OperatorPackage[]> {
-  const [packages, latest, versions] = await Promise.all([
-    db
-      .select({
-        name: regPackages.name,
-        scope: regPackages.scope,
-        createdAt: regPackages.createdAt,
-        scopeDisplayName: regScopes.displayName,
-      })
-      .from(regPackages)
-      .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope)),
+/**
+ * A page of packages with moderation-relevant counts, newest published first, optionally narrowed
+ * by a case-insensitive name substring (`q`). Search and pagination are pushed down to SQL: the
+ * `total` is a `COUNT` over the (filtered) packages, and only this page's names have their `latest`
+ * dist-tag and version rows fetched, so we never load every version to render one screen. The small
+ * per-page count aggregation still happens in memory, which keeps it simple and exact.
+ */
+export async function listAllPackages(
+  db: Db,
+  opts: { q?: string; limit: number; offset: number },
+): Promise<Page<OperatorPackage>> {
+  const needle = opts.q?.trim().toLowerCase();
+  const where = needle ? like(regPackages.name, `%${needle}%`) : undefined;
+
+  const totalRows = await db.select({ value: count() }).from(regPackages).where(where);
+  const total = totalRows[0]?.value ?? 0;
+
+  const packages = await db
+    .select({
+      name: regPackages.name,
+      scope: regPackages.scope,
+      scopeDisplayName: regScopes.displayName,
+    })
+    .from(regPackages)
+    .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
+    .where(where)
+    .orderBy(desc(regPackages.createdAt))
+    .limit(opts.limit)
+    .offset(opts.offset);
+
+  const names = packages.map((pkg) => pkg.name);
+  if (names.length === 0) return { items: [], total, limit: opts.limit, offset: opts.offset };
+
+  const [latest, versions] = await Promise.all([
     db
       .select({ name: regDistTags.name, version: regDistTags.version })
       .from(regDistTags)
-      .where(eq(regDistTags.tag, "latest")),
+      .where(and(eq(regDistTags.tag, "latest"), inArray(regDistTags.name, names))),
     db
       .select({
         name: regVersions.name,
         takedown: regVersions.takedown,
         yanked: regVersions.yanked,
       })
-      .from(regVersions),
+      .from(regVersions)
+      .where(inArray(regVersions.name, names)),
   ]);
 
   const latestByName = new Map(latest.map((row) => [row.name, row.version]));
@@ -102,22 +125,20 @@ export async function listAllPackages(db: Db): Promise<OperatorPackage[]> {
     counts.set(v.name, c);
   }
 
-  return packages
-    .map((pkg) => {
-      const c = counts.get(pkg.name) ?? { total: 0, takenDown: 0, yanked: 0 };
-      return {
-        name: pkg.name,
-        scope: pkg.scope,
-        scopeDisplayName: pkg.scopeDisplayName,
-        latestVersion: latestByName.get(pkg.name) ?? null,
-        versionCount: c.total,
-        takenDownCount: c.takenDown,
-        yankedCount: c.yanked,
-        createdAt: pkg.createdAt,
-      };
-    })
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .map(({ createdAt: _createdAt, ...rest }) => rest);
+  const items = packages.map((pkg) => {
+    const c = counts.get(pkg.name) ?? { total: 0, takenDown: 0, yanked: 0 };
+    return {
+      name: pkg.name,
+      scope: pkg.scope,
+      scopeDisplayName: pkg.scopeDisplayName,
+      latestVersion: latestByName.get(pkg.name) ?? null,
+      versionCount: c.total,
+      takenDownCount: c.takenDown,
+      yankedCount: c.yanked,
+    };
+  });
+
+  return { items, total, limit: opts.limit, offset: opts.offset };
 }
 
 /**

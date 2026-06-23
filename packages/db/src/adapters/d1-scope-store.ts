@@ -1,6 +1,6 @@
 import { inject } from "@brika/di";
-import type { ScopeProfileInput, ScopeRecord, ScopeStore } from "@brika/registry-core";
-import { desc, eq } from "drizzle-orm";
+import type { Page, ScopeProfileInput, ScopeRecord, ScopeStore } from "@brika/registry-core";
+import { count, desc, eq, like, or } from "drizzle-orm";
 import { Db } from "../client";
 import { regScopes } from "../schema";
 
@@ -30,6 +30,23 @@ export class D1ScopeStore implements ScopeStore {
   async listAll(): Promise<ScopeRecord[]> {
     const rows = await this.#db.select().from(regScopes).orderBy(desc(regScopes.createdAt));
     return rows.map(toRecord);
+  }
+
+  async listPage(opts: { q?: string; limit: number; offset: number }): Promise<Page<ScopeRecord>> {
+    const needle = opts.q?.trim().toLowerCase();
+    const where = needle
+      ? or(like(regScopes.scope, `%${needle}%`), like(regScopes.displayName, `%${needle}%`))
+      : undefined;
+    const totalRows = await this.#db.select({ value: count() }).from(regScopes).where(where);
+    const total = totalRows[0]?.value ?? 0;
+    const rows = await this.#db
+      .select()
+      .from(regScopes)
+      .where(where)
+      .orderBy(desc(regScopes.createdAt))
+      .limit(opts.limit)
+      .offset(opts.offset);
+    return { items: rows.map(toRecord), total, limit: opts.limit, offset: opts.offset };
   }
 
   /**

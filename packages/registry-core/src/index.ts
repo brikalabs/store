@@ -72,6 +72,7 @@ export {
   trimTrailingSlash,
   unscopedName,
 } from "./packument";
+export { emptyPage, hasMore, type Page, type Pageable, paginate } from "./pagination";
 export { MetadataReader, TarballReader } from "./ports";
 export {
   type ScopeLink,

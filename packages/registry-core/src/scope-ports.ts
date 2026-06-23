@@ -1,4 +1,5 @@
 import { token } from "@brika/di";
+import type { Page } from "./pagination";
 import type { ScopeLink, ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 
@@ -25,6 +26,13 @@ export interface ScopeStore {
   get(scope: string): Promise<ScopeRecord | null>;
   /** Every scope, newest first - for the operator console directory (no membership filter). */
   listAll(): Promise<ScopeRecord[]>;
+  /**
+   * A page of scopes (newest first) for the operator directory, optionally filtered by a
+   * case-insensitive substring `q` matched against the scope and its display name. The store
+   * pushes the filter + window down (LIMIT/OFFSET + COUNT), so the wire never carries the
+   * whole list.
+   */
+  listPage(opts: { q?: string; limit: number; offset: number }): Promise<Page<ScopeRecord>>;
   /** Create `scope` if unclaimed; return the persisted record and whether this call created it. */
   claim(scope: string): Promise<{ record: ScopeRecord; created: boolean }>;
   setDisplayName(scope: string, displayName: string | null): Promise<void>;

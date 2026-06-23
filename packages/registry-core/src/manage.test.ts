@@ -37,6 +37,20 @@ class FakeVersions implements VersionManager {
     this.takedown.set(`${name}@${version}`, reason);
     return Promise.resolve();
   }
+  readonly deleted = new Set<string>();
+  deletePackage(name: string): Promise<void> {
+    this.deleted.add(name);
+    return Promise.resolve();
+  }
+  readonly created = new Map<string, string | null>();
+  packageExists(name: string): Promise<boolean> {
+    const hasVersion = [...this.existing].some((k) => k.startsWith(`${name}@`));
+    return Promise.resolve(hasVersion || this.created.has(name));
+  }
+  createPackage(name: string, scope: string | null): Promise<void> {
+    this.created.set(name, scope);
+    return Promise.resolve();
+  }
 }
 
 const NAME = "@brika/plugin-i18n";
@@ -139,5 +153,53 @@ describe("takedown / restore (operator, not ownership-gated)", () => {
     expect((await svc.takedown(NAME, "9.9.9", "x")).ok).toBe(false);
     expect((await svc.restore(NAME, "9.9.9")).ok).toBe(false);
     expect(meta.takedown.size).toBe(0);
+  });
+});
+
+describe("deletePackage", () => {
+  test("owner can delete the whole package", async () => {
+    const { meta, svc } = service();
+    expect(await svc.deletePackage(OWNER, NAME)).toEqual({ ok: true });
+    expect(meta.deleted.has(NAME)).toBe(true);
+  });
+
+  test("a non-owner is forbidden and nothing is deleted", async () => {
+    const { meta, svc } = service();
+    expect(await svc.deletePackage(STRANGER, NAME)).toEqual({
+      ok: false,
+      status: 403,
+      message: "scope @brika is owned by brikalabs",
+    });
+    expect(meta.deleted.size).toBe(0);
+  });
+});
+
+describe("reservePackage", () => {
+  test("owner reserves a fresh name, creating the package row with its scope", async () => {
+    const { meta, svc } = service([]);
+    expect(await svc.reservePackage(OWNER, "@brika/new-plugin")).toEqual({ ok: true });
+    expect(meta.created.get("@brika/new-plugin")).toBe("@brika");
+  });
+
+  test("an invalid name is rejected before any ownership check", async () => {
+    const { meta, svc } = service([]);
+    const result = await svc.reservePackage(OWNER, "Not_A_Valid/Name");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+    expect(meta.created.size).toBe(0);
+  });
+
+  test("a non-owner is forbidden and nothing is created", async () => {
+    const { meta, svc } = service([]);
+    expect((await svc.reservePackage(STRANGER, "@brika/new-plugin")).ok).toBe(false);
+    expect(meta.created.size).toBe(0);
+  });
+
+  test("an already-taken name is a conflict", async () => {
+    const { meta, svc } = service();
+    const result = await svc.reservePackage(OWNER, NAME);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(409);
+    expect(meta.created.size).toBe(0);
   });
 });

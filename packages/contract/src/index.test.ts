@@ -1,5 +1,30 @@
 import { expect, test } from "bun:test";
-import { PluginDetail, PluginSummary, RegistryCapabilities, SearchQuery } from "./index";
+import { z } from "zod";
+import {
+  PageQuery,
+  PluginDetail,
+  PluginSummary,
+  pageSchema,
+  RegistryCapabilities,
+  SearchQuery,
+} from "./index";
+
+test("PageQuery coerces and clamps the window", () => {
+  expect(PageQuery.parse({})).toEqual({ limit: 20, offset: 0 });
+  expect(PageQuery.parse({ limit: "5", offset: "40" })).toEqual({ limit: 5, offset: 40 });
+  expect(PageQuery.safeParse({ limit: "0" }).success).toBe(false);
+  expect(PageQuery.safeParse({ limit: "101" }).success).toBe(false);
+});
+
+test("pageSchema validates a paginated response over its item", () => {
+  const Page = pageSchema(z.object({ name: z.string() }));
+  expect(Page.parse({ items: [{ name: "a" }], total: 1, limit: 20, offset: 0 }).items).toEqual([
+    { name: "a" },
+  ]);
+  expect(Page.safeParse({ items: [{ name: "a" }], total: -1, limit: 20, offset: 0 }).success).toBe(
+    false,
+  );
+});
 
 test("SearchQuery coerces strings and applies defaults", () => {
   const parsed = SearchQuery.parse({ limit: "30", offset: "10" });

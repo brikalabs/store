@@ -42,6 +42,7 @@ import { Route as ApiScopesRouteImport } from './routes/api/scopes'
 import { Route as DashboardPluginsIndexRouteImport } from './routes/dashboard/plugins/index'
 import { Route as V1PluginsNameRouteImport } from './routes/v1/plugins/$name'
 import { Route as DashboardScopesScopeRouteImport } from './routes/dashboard/scopes_/$scope'
+import { Route as DashboardPluginsCreateRouteImport } from './routes/dashboard/plugins/create'
 import { Route as DashboardPluginsSplatRouteImport } from './routes/dashboard/plugins/$'
 import { Route as DashboardAccountTokensRouteImport } from './routes/dashboard/account/tokens'
 import { Route as ApiScopesScopeRouteImport } from './routes/api/scopes/$scope'
@@ -49,6 +50,8 @@ import { Route as ApiPluginsYankRouteImport } from './routes/api/plugins/yank'
 import { Route as ApiPluginsVersionsRouteImport } from './routes/api/plugins/versions'
 import { Route as ApiPluginsMineRouteImport } from './routes/api/plugins/mine'
 import { Route as ApiPluginsDeprecateRouteImport } from './routes/api/plugins/deprecate'
+import { Route as ApiPluginsDeleteRouteImport } from './routes/api/plugins/delete'
+import { Route as ApiPluginsCreateRouteImport } from './routes/api/plugins/create'
 import { Route as ApiOperatorScopesRouteImport } from './routes/api/operator/scopes'
 import { Route as ApiOperatorPackagesRouteImport } from './routes/api/operator/packages'
 import { Route as ApiOperatorAuditRouteImport } from './routes/api/operator/audit'
@@ -57,6 +60,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAccountTokensRouteImport } from './routes/api/account/tokens'
 import { Route as ApiAccountProfileRouteImport } from './routes/api/account/profile'
 import { Route as ApiAccountAvatarRouteImport } from './routes/api/account/avatar'
+import { Route as ApiAccountActivityRouteImport } from './routes/api/account/activity'
 import { Route as V1PluginsNameVersionsRouteImport } from './routes/v1/plugins/$name/versions'
 import { Route as V1PluginsNameReviewsRouteImport } from './routes/v1/plugins/$name/reviews'
 import { Route as V1PluginsNameReadmeRouteImport } from './routes/v1/plugins/$name/readme'
@@ -244,6 +248,11 @@ const DashboardScopesScopeRoute = DashboardScopesScopeRouteImport.update({
   path: '/scopes/$scope',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardPluginsCreateRoute = DashboardPluginsCreateRouteImport.update({
+  id: '/plugins/create',
+  path: '/plugins/create',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardPluginsSplatRoute = DashboardPluginsSplatRouteImport.update({
   id: '/plugins/$',
   path: '/plugins/$',
@@ -277,6 +286,16 @@ const ApiPluginsMineRoute = ApiPluginsMineRouteImport.update({
 const ApiPluginsDeprecateRoute = ApiPluginsDeprecateRouteImport.update({
   id: '/api/plugins/deprecate',
   path: '/api/plugins/deprecate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPluginsDeleteRoute = ApiPluginsDeleteRouteImport.update({
+  id: '/api/plugins/delete',
+  path: '/api/plugins/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPluginsCreateRoute = ApiPluginsCreateRouteImport.update({
+  id: '/api/plugins/create',
+  path: '/api/plugins/create',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOperatorScopesRoute = ApiOperatorScopesRouteImport.update({
@@ -317,6 +336,11 @@ const ApiAccountProfileRoute = ApiAccountProfileRouteImport.update({
 const ApiAccountAvatarRoute = ApiAccountAvatarRouteImport.update({
   id: '/api/account/avatar',
   path: '/api/account/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAccountActivityRoute = ApiAccountActivityRouteImport.update({
+  id: '/api/account/activity',
+  path: '/api/account/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const V1PluginsNameVersionsRoute = V1PluginsNameVersionsRouteImport.update({
@@ -468,6 +492,7 @@ export interface FileRoutesByFullPath {
   '/legal/': typeof LegalIndexRoute
   '/operator/': typeof OperatorIndexRoute
   '/plugins/': typeof PluginsIndexRoute
+  '/api/account/activity': typeof ApiAccountActivityRoute
   '/api/account/avatar': typeof ApiAccountAvatarRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
@@ -476,6 +501,8 @@ export interface FileRoutesByFullPath {
   '/api/operator/audit': typeof ApiOperatorAuditRoute
   '/api/operator/packages': typeof ApiOperatorPackagesRouteWithChildren
   '/api/operator/scopes': typeof ApiOperatorScopesRouteWithChildren
+  '/api/plugins/create': typeof ApiPluginsCreateRoute
+  '/api/plugins/delete': typeof ApiPluginsDeleteRoute
   '/api/plugins/deprecate': typeof ApiPluginsDeprecateRoute
   '/api/plugins/mine': typeof ApiPluginsMineRoute
   '/api/plugins/versions': typeof ApiPluginsVersionsRoute
@@ -483,6 +510,7 @@ export interface FileRoutesByFullPath {
   '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
   '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
+  '/dashboard/plugins/create': typeof DashboardPluginsCreateRoute
   '/dashboard/scopes/$scope': typeof DashboardScopesScopeRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/dashboard/plugins/': typeof DashboardPluginsIndexRoute
@@ -537,6 +565,7 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalIndexRoute
   '/operator': typeof OperatorIndexRoute
   '/plugins': typeof PluginsIndexRoute
+  '/api/account/activity': typeof ApiAccountActivityRoute
   '/api/account/avatar': typeof ApiAccountAvatarRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
@@ -545,6 +574,8 @@ export interface FileRoutesByTo {
   '/api/operator/audit': typeof ApiOperatorAuditRoute
   '/api/operator/packages': typeof ApiOperatorPackagesRouteWithChildren
   '/api/operator/scopes': typeof ApiOperatorScopesRouteWithChildren
+  '/api/plugins/create': typeof ApiPluginsCreateRoute
+  '/api/plugins/delete': typeof ApiPluginsDeleteRoute
   '/api/plugins/deprecate': typeof ApiPluginsDeprecateRoute
   '/api/plugins/mine': typeof ApiPluginsMineRoute
   '/api/plugins/versions': typeof ApiPluginsVersionsRoute
@@ -552,6 +583,7 @@ export interface FileRoutesByTo {
   '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
   '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
+  '/dashboard/plugins/create': typeof DashboardPluginsCreateRoute
   '/dashboard/scopes/$scope': typeof DashboardScopesScopeRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/dashboard/plugins': typeof DashboardPluginsIndexRoute
@@ -609,6 +641,7 @@ export interface FileRoutesById {
   '/legal/': typeof LegalIndexRoute
   '/operator/': typeof OperatorIndexRoute
   '/plugins/': typeof PluginsIndexRoute
+  '/api/account/activity': typeof ApiAccountActivityRoute
   '/api/account/avatar': typeof ApiAccountAvatarRoute
   '/api/account/profile': typeof ApiAccountProfileRoute
   '/api/account/tokens': typeof ApiAccountTokensRouteWithChildren
@@ -617,6 +650,8 @@ export interface FileRoutesById {
   '/api/operator/audit': typeof ApiOperatorAuditRoute
   '/api/operator/packages': typeof ApiOperatorPackagesRouteWithChildren
   '/api/operator/scopes': typeof ApiOperatorScopesRouteWithChildren
+  '/api/plugins/create': typeof ApiPluginsCreateRoute
+  '/api/plugins/delete': typeof ApiPluginsDeleteRoute
   '/api/plugins/deprecate': typeof ApiPluginsDeprecateRoute
   '/api/plugins/mine': typeof ApiPluginsMineRoute
   '/api/plugins/versions': typeof ApiPluginsVersionsRoute
@@ -624,6 +659,7 @@ export interface FileRoutesById {
   '/api/scopes/$scope': typeof ApiScopesScopeRouteWithChildren
   '/dashboard/account/tokens': typeof DashboardAccountTokensRoute
   '/dashboard/plugins/$': typeof DashboardPluginsSplatRoute
+  '/dashboard/plugins/create': typeof DashboardPluginsCreateRoute
   '/dashboard/scopes_/$scope': typeof DashboardScopesScopeRoute
   '/v1/plugins/$name': typeof V1PluginsNameRouteWithChildren
   '/dashboard/plugins/': typeof DashboardPluginsIndexRoute
@@ -682,6 +718,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/operator/'
     | '/plugins/'
+    | '/api/account/activity'
     | '/api/account/avatar'
     | '/api/account/profile'
     | '/api/account/tokens'
@@ -690,6 +727,8 @@ export interface FileRouteTypes {
     | '/api/operator/audit'
     | '/api/operator/packages'
     | '/api/operator/scopes'
+    | '/api/plugins/create'
+    | '/api/plugins/delete'
     | '/api/plugins/deprecate'
     | '/api/plugins/mine'
     | '/api/plugins/versions'
@@ -697,6 +736,7 @@ export interface FileRouteTypes {
     | '/api/scopes/$scope'
     | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
+    | '/dashboard/plugins/create'
     | '/dashboard/scopes/$scope'
     | '/v1/plugins/$name'
     | '/dashboard/plugins/'
@@ -751,6 +791,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/operator'
     | '/plugins'
+    | '/api/account/activity'
     | '/api/account/avatar'
     | '/api/account/profile'
     | '/api/account/tokens'
@@ -759,6 +800,8 @@ export interface FileRouteTypes {
     | '/api/operator/audit'
     | '/api/operator/packages'
     | '/api/operator/scopes'
+    | '/api/plugins/create'
+    | '/api/plugins/delete'
     | '/api/plugins/deprecate'
     | '/api/plugins/mine'
     | '/api/plugins/versions'
@@ -766,6 +809,7 @@ export interface FileRouteTypes {
     | '/api/scopes/$scope'
     | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
+    | '/dashboard/plugins/create'
     | '/dashboard/scopes/$scope'
     | '/v1/plugins/$name'
     | '/dashboard/plugins'
@@ -822,6 +866,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/operator/'
     | '/plugins/'
+    | '/api/account/activity'
     | '/api/account/avatar'
     | '/api/account/profile'
     | '/api/account/tokens'
@@ -830,6 +875,8 @@ export interface FileRouteTypes {
     | '/api/operator/audit'
     | '/api/operator/packages'
     | '/api/operator/scopes'
+    | '/api/plugins/create'
+    | '/api/plugins/delete'
     | '/api/plugins/deprecate'
     | '/api/plugins/mine'
     | '/api/plugins/versions'
@@ -837,6 +884,7 @@ export interface FileRouteTypes {
     | '/api/scopes/$scope'
     | '/dashboard/account/tokens'
     | '/dashboard/plugins/$'
+    | '/dashboard/plugins/create'
     | '/dashboard/scopes_/$scope'
     | '/v1/plugins/$name'
     | '/dashboard/plugins/'
@@ -886,6 +934,7 @@ export interface RootRouteChildren {
   V1VerifiedRoute: typeof V1VerifiedRoute
   LegalIndexRoute: typeof LegalIndexRoute
   PluginsIndexRoute: typeof PluginsIndexRoute
+  ApiAccountActivityRoute: typeof ApiAccountActivityRoute
   ApiAccountAvatarRoute: typeof ApiAccountAvatarRoute
   ApiAccountProfileRoute: typeof ApiAccountProfileRoute
   ApiAccountTokensRoute: typeof ApiAccountTokensRouteWithChildren
@@ -894,6 +943,8 @@ export interface RootRouteChildren {
   ApiOperatorAuditRoute: typeof ApiOperatorAuditRoute
   ApiOperatorPackagesRoute: typeof ApiOperatorPackagesRouteWithChildren
   ApiOperatorScopesRoute: typeof ApiOperatorScopesRouteWithChildren
+  ApiPluginsCreateRoute: typeof ApiPluginsCreateRoute
+  ApiPluginsDeleteRoute: typeof ApiPluginsDeleteRoute
   ApiPluginsDeprecateRoute: typeof ApiPluginsDeprecateRoute
   ApiPluginsMineRoute: typeof ApiPluginsMineRoute
   ApiPluginsVersionsRoute: typeof ApiPluginsVersionsRoute
@@ -1134,6 +1185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardScopesScopeRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/plugins/create': {
+      id: '/dashboard/plugins/create'
+      path: '/plugins/create'
+      fullPath: '/dashboard/plugins/create'
+      preLoaderRoute: typeof DashboardPluginsCreateRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/plugins/$': {
       id: '/dashboard/plugins/$'
       path: '/plugins/$'
@@ -1181,6 +1239,20 @@ declare module '@tanstack/react-router' {
       path: '/api/plugins/deprecate'
       fullPath: '/api/plugins/deprecate'
       preLoaderRoute: typeof ApiPluginsDeprecateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/plugins/delete': {
+      id: '/api/plugins/delete'
+      path: '/api/plugins/delete'
+      fullPath: '/api/plugins/delete'
+      preLoaderRoute: typeof ApiPluginsDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/plugins/create': {
+      id: '/api/plugins/create'
+      path: '/api/plugins/create'
+      fullPath: '/api/plugins/create'
+      preLoaderRoute: typeof ApiPluginsCreateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/operator/scopes': {
@@ -1237,6 +1309,13 @@ declare module '@tanstack/react-router' {
       path: '/api/account/avatar'
       fullPath: '/api/account/avatar'
       preLoaderRoute: typeof ApiAccountAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/account/activity': {
+      id: '/api/account/activity'
+      path: '/api/account/activity'
+      fullPath: '/api/account/activity'
+      preLoaderRoute: typeof ApiAccountActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/v1/plugins/$name/versions': {
@@ -1396,6 +1475,7 @@ interface DashboardRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAccountTokensRoute: typeof DashboardAccountTokensRoute
   DashboardPluginsSplatRoute: typeof DashboardPluginsSplatRoute
+  DashboardPluginsCreateRoute: typeof DashboardPluginsCreateRoute
   DashboardScopesScopeRoute: typeof DashboardScopesScopeRoute
   DashboardPluginsIndexRoute: typeof DashboardPluginsIndexRoute
 }
@@ -1407,6 +1487,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAccountTokensRoute: DashboardAccountTokensRoute,
   DashboardPluginsSplatRoute: DashboardPluginsSplatRoute,
+  DashboardPluginsCreateRoute: DashboardPluginsCreateRoute,
   DashboardScopesScopeRoute: DashboardScopesScopeRoute,
   DashboardPluginsIndexRoute: DashboardPluginsIndexRoute,
 }
@@ -1590,6 +1671,7 @@ const rootRouteChildren: RootRouteChildren = {
   V1VerifiedRoute: V1VerifiedRoute,
   LegalIndexRoute: LegalIndexRoute,
   PluginsIndexRoute: PluginsIndexRoute,
+  ApiAccountActivityRoute: ApiAccountActivityRoute,
   ApiAccountAvatarRoute: ApiAccountAvatarRoute,
   ApiAccountProfileRoute: ApiAccountProfileRoute,
   ApiAccountTokensRoute: ApiAccountTokensRouteWithChildren,
@@ -1598,6 +1680,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOperatorAuditRoute: ApiOperatorAuditRoute,
   ApiOperatorPackagesRoute: ApiOperatorPackagesRouteWithChildren,
   ApiOperatorScopesRoute: ApiOperatorScopesRouteWithChildren,
+  ApiPluginsCreateRoute: ApiPluginsCreateRoute,
+  ApiPluginsDeleteRoute: ApiPluginsDeleteRoute,
   ApiPluginsDeprecateRoute: ApiPluginsDeprecateRoute,
   ApiPluginsMineRoute: ApiPluginsMineRoute,
   ApiPluginsVersionsRoute: ApiPluginsVersionsRoute,
