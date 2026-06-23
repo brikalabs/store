@@ -4,8 +4,14 @@
  * blocks). Pure bytes (Streams, no Node imports) so it stays in the runtime-agnostic core.
  */
 
+import { REGISTRY_LIMITS } from "./limits";
+
 const BLOCK = 512;
 const PACKAGE_PREFIX = "package/";
+// Hard ceiling on decompressed bytes. Generous over maxUnpackedBytes (file-data sum is re-checked
+// downstream) to leave room for tar headers + padding, while still aborting a decompression bomb
+// long before a Worker's ~128 MB heap. A ~20 MiB compressed bomb expands to GiB without this.
+const MAX_DECOMPRESSED_BYTES = REGISTRY_LIMITS.maxUnpackedBytes * 2;
 // USTAR header field offsets and lengths within a 512-byte block.
 const NAME_OFFSET = 0;
 const NAME_LEN = 100;
@@ -24,12 +30,28 @@ export interface TarEntry {
   readonly data: Uint8Array;
 }
 
-async function gunzip(gzipped: Uint8Array): Promise<Uint8Array> {
+// A counting stage that errors the stream once decompression passes `maxBytes`, so a tiny gzip can
+// never expand into GiB of memory: the bomb aborts mid-stream instead of buffering whole.
+function capBytes(maxBytes: number): TransformStream<Uint8Array, Uint8Array> {
+  let total = 0;
+  return new TransformStream({
+    transform(chunk, controller) {
+      total += chunk.byteLength;
+      if (total > maxBytes) throw new Error(`decompressed size exceeds ${maxBytes} bytes`);
+      controller.enqueue(chunk);
+    },
+  });
+}
+
+async function gunzip(gzipped: Uint8Array, maxBytes: number): Promise<Uint8Array> {
   // Copy into a fresh ArrayBuffer-backed view so the Blob/Streams signatures are
   // satisfied regardless of the caller's buffer type (mirrors `integrity.ts`).
   const view = new Uint8Array(gzipped.byteLength);
   view.set(gzipped);
-  const stream = new Blob([view]).stream().pipeThrough(new DecompressionStream("gzip"));
+  const stream = new Blob([view])
+    .stream()
+    .pipeThrough(new DecompressionStream("gzip"))
+    .pipeThrough(capBytes(maxBytes));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -69,10 +91,14 @@ function stripPackagePrefix(fullName: string): string {
 
 /**
  * Decompress a gzipped tarball and return its regular-file entries. Throws if the bytes are not a
- * readable gzip stream; non-file entries (directories, symlinks) are skipped.
+ * readable gzip stream, or if decompression exceeds `maxBytes` (a decompression-bomb guard, default
+ * {@link MAX_DECOMPRESSED_BYTES}); non-file entries (directories, symlinks) are skipped.
  */
-export async function readTarGzEntries(gzipped: Uint8Array): Promise<TarEntry[]> {
-  const tar = await gunzip(gzipped);
+export async function readTarGzEntries(
+  gzipped: Uint8Array,
+  maxBytes: number = MAX_DECOMPRESSED_BYTES,
+): Promise<TarEntry[]> {
+  const tar = await gunzip(gzipped, maxBytes);
   const decoder = new TextDecoder();
   const entries: TarEntry[] = [];
   let offset = 0;

@@ -1,5 +1,6 @@
 import { inject } from "@brika/di";
 import {
+  isTrustedLogEntry,
   type PublishErrorCode,
   type PublishIdentity,
   PublishService,
@@ -30,15 +31,18 @@ const PublishBody = z.object({
 
 /**
  * Attach the client-provided transparency entry to provenance only when trustworthy: the publish is
- * OIDC-authenticated AND the attested integrity matches the received bytes. Otherwise dropped,
- * never blocking the publish.
+ * OIDC-authenticated, the attested integrity matches the received bytes, AND the entry names a known
+ * provider with a logUrl on that provider's real log host (so a forged entry cannot dress an
+ * arbitrary URL up as a verified ledger link). Otherwise dropped, never blocking the publish.
  */
 async function withAttestation(
   identity: PublishIdentity,
   tarball: Uint8Array,
   entry: TransparencyEntry | undefined,
 ): Promise<PublishIdentity> {
-  if (entry === undefined || identity.provenance === undefined) return identity;
+  if (entry === undefined || identity.provenance === undefined || !isTrustedLogEntry(entry)) {
+    return identity;
+  }
   const integrity = await sha512Integrity(tarball);
   if (entry.integrity !== integrity) return identity;
   return { ...identity, provenance: { ...identity.provenance, transparencyLog: entry } };

@@ -4,6 +4,7 @@ import {
   attestationProviderIds,
   clearAttestationProviders,
   getAttestationProvider,
+  isTrustedLogEntry,
   nullAttestationProvider,
   registerAttestationProvider,
   TransparencyEntry,
@@ -25,6 +26,31 @@ function fakeProvider(id = "fake"): AttestationProvider {
     verify: (entry) => Promise.resolve(entry.integrity === "sha512-abc"),
   };
 }
+
+describe("isTrustedLogEntry (ledger-link trust anchor)", () => {
+  const entry = (provider: string, logUrl: string): TransparencyEntry => ({
+    provider,
+    logUrl,
+    integrity: "sha512-x",
+  });
+
+  test("accepts a sigstore entry on the real Rekor search host", () => {
+    expect(isTrustedLogEntry(entry("sigstore", "https://search.sigstore.dev/?logIndex=42"))).toBe(
+      true,
+    );
+  });
+
+  test("rejects an off-host or look-alike URL (spoofed ledger link)", () => {
+    expect(isTrustedLogEntry(entry("sigstore", "https://evil.example/?logIndex=42"))).toBe(false);
+    expect(isTrustedLogEntry(entry("sigstore", "https://search.sigstore.dev.evil.example/"))).toBe(
+      false,
+    );
+  });
+
+  test("rejects an unknown provider", () => {
+    expect(isTrustedLogEntry(entry("totally-real", "https://search.sigstore.dev/"))).toBe(false);
+  });
+});
 
 describe("TransparencyEntry schema", () => {
   test("accepts a well-formed entry and rejects a bad URL", () => {

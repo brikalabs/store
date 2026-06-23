@@ -24,9 +24,11 @@ export function parseCookies(header: string | null): Record<string, string> {
   return result;
 }
 
-/** A safe post-login redirect target: a same-site path starting with a single `/`. Absolute and
- * protocol-relative `//host` paths fall back to `/`, so a crafted `?return=` can't open-redirect. */
+/** A safe post-login redirect target: a same-site path starting with a single `/`. Absolute,
+ * protocol-relative `//host`, and backslash forms (browsers normalize `\` to `/`, so `/\host` ->
+ * `//host`) fall back to `/`, so a crafted `?return=` can't open-redirect. */
 export function safeReturnPath(raw: string | null | undefined): string {
-  if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//")) return "/";
+  if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\"))
+    return "/";
   return raw;
 }
