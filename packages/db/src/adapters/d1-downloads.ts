@@ -71,5 +71,3 @@ export class D1DownloadStore implements DownloadStore {
     return result;
   }
 }
-
-export { ZERO_DOWNLOADS } from "@brika/registry-core";

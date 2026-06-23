@@ -1,25 +1,18 @@
 import { Button, Input } from "@brika/clay";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { Check, Cloud, Layers, Rocket, ShieldCheck } from "lucide-react";
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useState } from "react";
 import { GithubIcon, GitlabIcon } from "@/components/clay/icons";
 import { Pill } from "@/components/clay/pill";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { ErrorBanner } from "@/components/layout/error-banner";
+import { MAX_NAME, type NameCheck, useNameCheck } from "@/hooks/use-name-check";
 import { type MemberScope, useScopes } from "@/hooks/use-scopes";
 
 const route = getRouteApi("/dashboard/plugins/create");
 
-// The name segment: lowercase, starts alphanumeric, then a-z0-9-. Mirrors the registry's
-// canonical-name rule (the scope prefix is added separately), so the client and server agree.
-const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
-// npm caps the full `@scope/name` at 214 chars; the registry's isCanonicalName enforces the same.
-const MAX_NAME = 214;
-
-/** Live name-check state. `ok` = valid + available, the only state that lets you create. */
-type NameCheck = "idle" | "checking" | "ok" | "taken" | "invalid";
 const CHECK_PILL: Record<
   Exclude<NameCheck, "idle">,
   { tone: "muted" | "success" | "danger"; text: string }
@@ -40,45 +33,6 @@ const PROVIDERS = [
   icon: ComponentType<{ className?: string }>;
 }>;
 type Provider = (typeof PROVIDERS)[number]["value"];
-
-/** Map an availability-probe response to a `NameCheck`. A null (failed) probe falls back to "ok". */
-function probeToCheck(d: { valid: boolean; available: boolean } | null): NameCheck {
-  if (d === null) return "ok";
-  if (!d.valid) return "invalid";
-  return d.available ? "ok" : "taken";
-}
-
-/**
- * Live-check the name as it is typed: format first, then a debounced availability probe so the user
- * learns "Taken" before submitting (the POST still re-checks, so this is a hint not a gate).
- */
-function useNameCheck(scope: string | null, name: string): NameCheck {
-  const [check, setCheck] = useState<NameCheck>("idle");
-  useEffect(() => {
-    if (name === "" || scope === null) {
-      setCheck("idle");
-      return;
-    }
-    if (!NAME_RE.test(name) || `${scope}/${name}`.length > MAX_NAME) {
-      setCheck("invalid");
-      return;
-    }
-    setCheck("checking");
-    let active = true;
-    const timer = setTimeout(() => {
-      const q = `scope=${encodeURIComponent(scope)}&name=${encodeURIComponent(name)}`;
-      fetch(`/api/plugins/create?${q}`)
-        .then((r) => (r.ok ? (r.json() as Promise<{ valid: boolean; available: boolean }>) : null))
-        .then((d) => active && setCheck(probeToCheck(d)))
-        .catch(() => active && setCheck("ok"));
-    }, 350);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [scope, name]);
-  return check;
-}
 
 /**
  * Reserve a plugin name in one of your scopes (and optionally wire a trusted publisher). The name
