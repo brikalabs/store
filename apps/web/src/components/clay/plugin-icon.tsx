@@ -91,12 +91,15 @@ export function GradientAvatar({
   label,
   imageUrl,
   size = 40,
+  round = false,
   className,
 }: Readonly<{
   seed: string;
   label: string;
   imageUrl?: string | null;
   size?: number;
+  /** Fully circular instead of the default squircle - use inside pill-shaped containers. */
+  round?: boolean;
   className?: string;
 }>) {
   const initials =
@@ -104,9 +107,12 @@ export function GradientAvatar({
       .replace(/[^a-zA-Z0-9]/g, "")
       .slice(0, 2)
       .toUpperCase() || "?";
-  // Clay's Avatar (Radix) renders the image only once it LOADS, so a missing/404/broken image
-  // stays on the gradient + initials fallback instead of the broken-image glyph.
-  const radius = Math.round(size * 0.26);
+  // Clay's Avatar (Radix) renders the image only once it LOADS; a missing/404/broken image never
+  // shows the browser's broken-image glyph - it stays on the fallback (the brand gradient tile +
+  // initials). A proportional squircle (radius = 26% of size) carried on each child - not the Root
+  // - so every avatar reads the same shape at any size (matching the plugin-icon tiles), clay's
+  // near-circular `rounded-avatar` is overridden, and the tile's drop shadow is not clipped.
+  const radius = round ? Math.round(size / 2) : Math.round(size * 0.26);
   return (
     <Avatar
       data-slot="gradient-avatar"

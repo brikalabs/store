@@ -7,10 +7,24 @@ import type {
   AuditRecord,
   PublishIdentity,
 } from "@brika/registry-core";
-import { desc } from "drizzle-orm";
+import { desc, eq, like, or } from "drizzle-orm";
 import { Db } from "../client";
 import { regAudit } from "../schema";
 import { resolveActor } from "./queries";
+
+type AuditRow = typeof regAudit.$inferSelect;
+
+function toRecord(row: AuditRow): AuditRecord {
+  return {
+    id: row.id,
+    action: row.action,
+    target: row.packageName,
+    version: row.version,
+    actor: row.actor,
+    detail: row.detail ?? null,
+    at: new Date(row.at * 1000).toISOString(),
+  };
+}
 
 /** D1 {@link AuditLog} (write) and {@link AuditReader} (read) over the append-only `reg_audit` table. */
 export class D1AuditLog implements AuditLog, AuditReader {
@@ -23,15 +37,26 @@ export class D1AuditLog implements AuditLog, AuditReader {
       .from(regAudit)
       .orderBy(desc(regAudit.at), desc(regAudit.id))
       .limit(limit);
-    return rows.map((row) => ({
-      id: row.id,
-      action: row.action,
-      target: row.packageName,
-      version: row.version,
-      actor: row.actor,
-      detail: row.detail ?? null,
-      at: new Date(row.at * 1000).toISOString(),
-    }));
+    return rows.map(toRecord);
+  }
+
+  /**
+   * The most recent entries for the given scopes, newest first. A row targets a scope when its
+   * `packageName` is the scope itself (a scope-level action) or a package under it (`@scope/...`).
+   */
+  async recentForScopes(scopes: readonly string[], limit: number): Promise<AuditRecord[]> {
+    if (scopes.length === 0) return [];
+    const match = scopes.flatMap((scope) => [
+      eq(regAudit.packageName, scope),
+      like(regAudit.packageName, `${scope}/%`),
+    ]);
+    const rows = await this.#db
+      .select()
+      .from(regAudit)
+      .where(or(...match))
+      .orderBy(desc(regAudit.at), desc(regAudit.id))
+      .limit(limit);
+    return rows.map(toRecord);
   }
 
   /**

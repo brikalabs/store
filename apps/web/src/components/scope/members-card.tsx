@@ -1,7 +1,18 @@
-import { Button, Input } from "@brika/clay";
-import { Trash2, UserPlus } from "lucide-react";
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@brika/clay";
+import { UserPlus, X } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
+import { Pill } from "@/components/clay/pill";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { SettingsCard } from "@/components/clay/settings-card";
+import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
 
 export interface Member {
@@ -13,7 +24,7 @@ export interface Member {
 }
 
 const ROLE_SELECT =
-  "rounded-lg border border-border bg-background px-2.5 py-1.5 font-medium text-sm";
+  "h-[34px] rounded-[10px] border border-input bg-muted px-3 font-semibold text-[12.5px] text-foreground";
 
 interface MembersCardProps extends ScopeCardProps {
   readonly members: Member[] | null;
@@ -51,44 +62,47 @@ export function MembersCard({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6">
-      <h2 className="font-bold font-heading text-lg tracking-tight">Members</h2>
+    <SettingsCard className="gap-1">
+      <h2 className="font-bold text-base text-foreground">Members</h2>
+      <p className="text-[12.5px] text-muted-foreground leading-relaxed">
+        Members are identified by their Brika user ID. Emails are never shown or stored on the
+        scope.
+      </p>
       {members === null ? (
-        <div className="h-16 animate-pulse rounded-xl bg-muted" />
+        <div className="mt-3 h-16 animate-pulse rounded-[11px] bg-muted" />
       ) : (
-        <ul className="flex flex-col divide-y divide-border">
+        <ul className="mt-2 flex flex-col">
           {members.map((m) => {
             const label = m.displayName ?? m.userId;
             return (
-              <li key={m.userId} className="flex items-center gap-3 py-3">
-                <GradientAvatar seed={m.userId} label={label} imageUrl={m.avatarUrl} size={28} />
-                <span className="flex-1 truncate text-sm">{label}</span>
+              <li key={m.userId} className="flex items-center gap-3 border-border border-b py-3">
+                <GradientAvatar seed={m.userId} label={label} imageUrl={m.avatarUrl} size={34} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold text-[13.5px] text-foreground">
+                    {label}
+                  </div>
+                  <div className="truncate font-mono text-muted-foreground text-xs">{m.userId}</div>
+                </div>
                 {isAdmin ? (
                   <>
-                    <select
-                      aria-label={`Role for ${label}`}
+                    <Select
                       value={m.role}
-                      onChange={(event) =>
-                        setRole(m, event.target.value === "admin" ? "admin" : "member")
-                      }
-                      className={ROLE_SELECT}
+                      onValueChange={(value) => setRole(m, value === "admin" ? "admin" : "member")}
                     >
-                      <option value="admin">admin</option>
-                      <option value="member">member</option>
-                    </select>
-                    <button
-                      type="button"
-                      aria-label={`Remove ${label}`}
-                      onClick={() => remove(m)}
-                      className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+                      <SelectTrigger aria-label={`Role for ${label}`} className={ROLE_SELECT}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">admin</SelectItem>
+                        <SelectItem value="member">member</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <RemoveMember member={m} label={label} onRemove={() => remove(m)} />
                   </>
                 ) : (
-                  <span className="rounded-full border border-border bg-muted px-2.5 py-1 font-semibold text-muted-foreground text-xs capitalize">
+                  <Pill tone="muted" className="capitalize">
                     {m.role}
-                  </span>
+                  </Pill>
                 )}
               </li>
             );
@@ -96,7 +110,47 @@ export function MembersCard({
         </ul>
       )}
       {isAdmin && <AddMember scope={scope} onAdded={onReload} onError={onError} />}
-    </section>
+    </SettingsCard>
+  );
+}
+
+/** Remove button + a destructive confirm dialog (keeps the parent's `remove(member)` handler). */
+function RemoveMember({
+  member,
+  label,
+  onRemove,
+}: Readonly<{ member: Member; label: string; onRemove: () => void }>) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        aria-label={`Remove ${label}`}
+        onClick={() => setOpen(true)}
+        className="flex size-[34px] items-center justify-center rounded-[10px] border border-input bg-card text-muted-foreground hover:border-danger-border hover:bg-card hover:text-danger"
+      >
+        <X className="size-4" />
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Remove member"
+        description={
+          <>
+            Remove <span className="font-mono">{member.userId}</span> from this scope? They will
+            lose access immediately.
+          </>
+        }
+        confirmLabel="Remove member"
+        destructive
+        onConfirm={() => {
+          setOpen(false);
+          onRemove();
+        }}
+      />
+    </>
   );
 }
 
@@ -127,27 +181,44 @@ function AddMember({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-2 border-border border-t pt-4 sm:flex-row">
-      <Input
-        type="email"
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
-        placeholder="member@email.com"
-        aria-label="Email of the account to invite"
-      />
-      <select
-        aria-label="Role for the new member"
-        value={role}
-        onChange={(event) => setRole(event.target.value === "admin" ? "admin" : "member")}
-        className={ROLE_SELECT}
-      >
-        <option value="member">member</option>
-        <option value="admin">admin</option>
-      </select>
-      <Button type="submit" disabled={busy || email.trim().length === 0}>
-        <UserPlus className="size-4" />
-        {busy ? "Adding…" : "Add member"}
-      </Button>
-    </form>
+    <div className="mt-4 flex flex-col gap-2.5">
+      <p className="text-muted-foreground text-xs leading-relaxed">
+        Add someone by their account. They will lose access if you remove them; we never list or
+        search users by email.
+      </p>
+      <form onSubmit={submit} className="flex flex-col gap-2.5 sm:flex-row">
+        <Input
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="member@email.com"
+          aria-label="Email of the account to invite"
+          className="flex-1 rounded-[11px] border-input bg-muted"
+        />
+        <Select
+          value={role}
+          onValueChange={(value) => setRole(value === "admin" ? "admin" : "member")}
+        >
+          <SelectTrigger
+            aria-label="Role for the new member"
+            className="h-[42px] rounded-[11px] border border-input bg-muted px-3 font-semibold text-foreground text-sm"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="member">member</SelectItem>
+            <SelectItem value="admin">admin</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          type="submit"
+          disabled={busy || email.trim().length === 0}
+          className="h-[42px] rounded-[11px] bg-brand px-4 font-bold text-brand-foreground hover:bg-brand hover:brightness-105"
+        >
+          <UserPlus className="size-4" />
+          {busy ? "Adding…" : "Add member"}
+        </Button>
+      </form>
+    </div>
   );
 }

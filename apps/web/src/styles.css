@@ -21,6 +21,24 @@
   /* Darker ember for brand-colored *text* on light surfaces (the bright fill
      fails contrast as text). Flips bright in dark mode below. */
   --color-brand-ink: #d33f18;
+  /* Tinted ember fill + hairline for chips, stat tiles and hovered controls. */
+  --color-brand-tint: #fceee9;
+  --color-brand-border: #f6cdbe;
+
+  /* Status palette (success / warning / danger) used by stat tiles, activity
+     rows and status badges. Each is a readable ink, a soft tint fill, and a
+     matching hairline border; all three flip for dark mode below. `star` is the
+     rating gold. Kept as tokens because the design reuses them everywhere. */
+  --color-success: #15875a;
+  --color-success-tint: #e4f4ec;
+  --color-success-border: #c2e6d2;
+  --color-warning: #92600f;
+  --color-warning-tint: #fbf1de;
+  --color-warning-border: #eedcb4;
+  --color-danger: #c2402b;
+  --color-danger-tint: #fbeae6;
+  --color-danger-border: #f2c9bf;
+  --color-star: #e6a11e;
 }
 
 /* Light: white page (per the Claude design), with subtle grey fills and
@@ -71,6 +89,18 @@
   --color-brand-foreground: #181a1f;
   --color-brand-muted: #ff8a66;
   --color-brand-ink: #ff8a5e;
+  --color-brand-tint: rgb(242 84 45 / 0.15);
+  --color-brand-border: rgb(242 84 45 / 0.4);
+  --color-success: #43c089;
+  --color-success-tint: rgb(67 192 137 / 0.15);
+  --color-success-border: rgb(67 192 137 / 0.32);
+  --color-warning: #e9b45e;
+  --color-warning-tint: rgb(226 169 75 / 0.14);
+  --color-warning-border: rgb(226 169 75 / 0.3);
+  --color-danger: #f07a5e;
+  --color-danger-tint: rgb(240 122 94 / 0.14);
+  --color-danger-border: rgb(240 122 94 / 0.32);
+  --color-star: #e6a93c;
 }
 
 /* Warm ember wash for the storefront hero (a single reusable surface). */

@@ -1,6 +1,16 @@
-import { Button, Input } from "@brika/clay";
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@brika/clay";
 import { KeyRound, Plus, X } from "lucide-react";
 import { type SyntheticEvent, useCallback, useEffect, useState } from "react";
+import { Pill } from "@/components/clay/pill";
+import { SettingsCard } from "@/components/clay/settings-card";
 import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
 
 interface Binding {
@@ -68,7 +78,7 @@ export function TrustedPublishersCard({
   }
 
   function renderBindings() {
-    if (bindings === null) return <div className="h-8 animate-pulse rounded-lg bg-muted" />;
+    if (bindings === null) return <div className="h-8 animate-pulse rounded-[10px] bg-muted" />;
     if (bindings.length === 0) {
       return (
         <p className="text-muted-foreground text-xs">
@@ -83,22 +93,24 @@ export function TrustedPublishersCard({
             key={`${b.provider} ${b.repository} ${b.workflow}`}
             className="flex items-center gap-2 text-sm"
           >
-            <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs capitalize">
+            <Pill tone="muted" className="rounded-md bg-muted px-2 py-0.5 capitalize">
               {b.provider}
-            </span>
+            </Pill>
             <span className="font-mono text-foreground">{b.repository}</span>
             <span className="text-muted-foreground">·</span>
             <span className="font-mono text-muted-foreground">{b.workflow}</span>
             {isAdmin && (
-              <button
+              <Button
                 type="button"
+                size="icon"
+                variant="ghost"
                 disabled={busy}
                 onClick={() => mutate("DELETE", b)}
                 aria-label={`Remove ${b.provider} ${b.repository} ${b.workflow}`}
-                className="ml-auto rounded-md p-1 text-muted-foreground hover:text-destructive"
+                className="ml-auto flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-danger"
               >
                 <X className="size-4" />
-              </button>
+              </Button>
             )}
           </li>
         ))}
@@ -107,52 +119,57 @@ export function TrustedPublishersCard({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6">
-      <div className="flex items-center gap-2">
-        <KeyRound className="size-4 text-brand-ink" />
-        <h2 className="font-bold font-heading text-lg tracking-tight">Trusted publishers</h2>
-      </div>
-      <p className="text-muted-foreground text-sm">
+    <SettingsCard className="gap-1.5">
+      <h2 className="flex items-center gap-2 font-bold text-base text-foreground">
+        <KeyRound className="size-[18px] text-brand-ink" />
+        Trusted publishers
+      </h2>
+      <p className="text-[12.5px] text-muted-foreground leading-relaxed">
         Authorize a GitHub repo + workflow to publish to this scope from CI with no token (OIDC). A
         release running that workflow publishes to Brika; a publish from anywhere else is refused.
       </p>
-      <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+      <div className="mt-2 flex flex-col gap-3 rounded-[13px] border border-border bg-muted p-4">
         <span className="font-mono font-semibold text-foreground text-sm">{scope}</span>
         {renderBindings()}
         {isAdmin && (
           <form
             onSubmit={add}
-            className="flex flex-col gap-2 border-border border-t pt-3 sm:flex-row"
+            className="flex flex-col gap-2.5 border-border border-t pt-3 sm:flex-row"
           >
-            <select
-              value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              aria-label="OIDC provider"
-              className="rounded-lg border border-border bg-card px-3 py-2 text-sm"
-            >
-              {PROVIDERS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+            <Select value={provider} onValueChange={setProvider}>
+              <SelectTrigger
+                aria-label="OIDC provider"
+                className="h-[38px] rounded-[10px] border border-input bg-card px-3 font-semibold text-foreground text-sm"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROVIDERS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>
+                    {p.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Input
               value={repository}
               onChange={(e) => setRepository(e.target.value)}
               placeholder={hints.repoHint}
               aria-label="Repository"
-              className="font-mono"
+              className="flex-1 rounded-[10px] border-input bg-card font-mono"
             />
             <Input
               value={workflow}
               onChange={(e) => setWorkflow(e.target.value)}
               placeholder={hints.workflowHint}
               aria-label="Workflow filename"
-              className="font-mono sm:max-w-[12rem]"
+              className="rounded-[10px] border-input bg-card font-mono sm:max-w-[12rem]"
             />
             <Button
               type="submit"
+              variant="outline"
               disabled={busy || repository.trim().length === 0 || workflow.trim().length === 0}
+              className="h-[38px] rounded-[10px] border border-input bg-card px-3.5 font-semibold text-foreground shadow-none hover:border-brand-border hover:bg-card hover:brightness-100"
             >
               <Plus className="size-4" />
               Add
@@ -160,6 +177,6 @@ export function TrustedPublishersCard({
           </form>
         )}
       </div>
-    </section>
+    </SettingsCard>
   );
 }

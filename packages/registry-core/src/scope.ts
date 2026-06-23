@@ -2,6 +2,7 @@ import { inject, injectOr, token } from "@brika/di";
 import { HttpStatus } from "./http-status";
 import { REGISTRY_LIMITS } from "./limits";
 import { type ScopeMember, ScopeMembers, type ScopeRole } from "./membership";
+import type { Page } from "./pagination";
 import type { ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 import {
@@ -400,12 +401,14 @@ export class ScopeService {
   }
 
   /**
-   * Every scope with its takedown state, for the operator console directory (ORG-007). No membership
-   * gate (the controller restricts this to operators) - a moderation directory must show scopes the
-   * operator is not a member of.
+   * A page of scopes with their takedown state, for the operator console directory (ORG-007),
+   * optionally filtered by `q` (a substring over the scope + display name). No membership gate -
+   * the controller restricts this to operators; the console needs to see scopes it is not a
+   * member of (that is the whole point of a moderation directory). The store pushes the filter +
+   * window down, so the wire never carries the whole list.
    */
-  listForOperator(): Promise<ScopeRecord[]> {
-    return this.#scopes.listAll();
+  listForOperator(opts: { q?: string; limit: number; offset: number }): Promise<Page<ScopeRecord>> {
+    return this.#scopes.listPage(opts);
   }
 
   async #setTakedown(

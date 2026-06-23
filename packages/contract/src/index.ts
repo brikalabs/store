@@ -77,9 +77,16 @@ export type RatingSummary = z.infer<typeof RatingSummary>;
 /**
  * A package's listing state, projecting the per-version yank/deprecate flags to the package level:
  * `published` (installable, no deprecation), `deprecated` (latest carries a message, still installs),
- * `yanked` (every version yanked, nothing installs; owner can un-yank), `taken_down` (operator-only restore).
+ * `yanked` (every version yanked, nothing installs; owner can un-yank), `taken_down` (operator-only
+ * restore), `reserved` (name claimed but nothing published yet; hidden from the store).
  */
-export const PluginListingStatus = z.enum(["published", "deprecated", "yanked", "taken_down"]);
+export const PluginListingStatus = z.enum([
+  "published",
+  "deprecated",
+  "yanked",
+  "taken_down",
+  "reserved",
+]);
 export type PluginListingStatus = z.infer<typeof PluginListingStatus>;
 
 /** A plugin as it appears in search results and cards. */
@@ -205,14 +212,32 @@ export const PluginVersion = z.object({
 });
 export type PluginVersion = z.infer<typeof PluginVersion>;
 
+/**
+ * The offset-based pagination window every list endpoint accepts (`?limit=&offset=`). Mirrors the
+ * domain {@link Pageable}; defaults to the first page of 20, capped at 100 per request.
+ */
+export const PageQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+export type PageQuery = z.infer<typeof PageQuery>;
+
+/** A paginated response over `item`: the window's items plus the total across all pages. */
+export function pageSchema<T extends z.ZodType>(item: T) {
+  return z.object({
+    items: z.array(item),
+    total: z.number().int().nonnegative(),
+    limit: z.number().int().nonnegative(),
+    offset: z.number().int().nonnegative(),
+  });
+}
+
 export const SearchSort = z.enum(["downloads", "rating", "recent", "name"]);
 export type SearchSort = z.infer<typeof SearchSort>;
 
 /** `GET /v1/search?q=&limit=&offset=&sort=` */
-export const SearchQuery = z.object({
+export const SearchQuery = PageQuery.extend({
   q: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  offset: z.coerce.number().int().min(0).default(0),
   sort: SearchSort.default("downloads"),
 });
 export type SearchQuery = z.infer<typeof SearchQuery>;

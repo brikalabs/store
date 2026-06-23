@@ -6,6 +6,8 @@ import { Auth } from "@/server/auth";
 export interface SessionUser {
   id: string;
   name: string | null;
+  /** Shown to the user themselves (their own account menu); never identity. */
+  email: string | null;
   avatarUrl: string | null;
 }
 
@@ -16,11 +18,13 @@ export async function getCurrentUser(request: Request): Promise<SessionUser | nu
   const user = session.user as {
     id: string;
     name?: string | null;
+    email?: string | null;
     image?: string | null;
   };
   return {
     id: user.id,
     name: user.name ?? null,
+    email: user.email ?? null,
     avatarUrl: user.image ?? null,
   };
 }

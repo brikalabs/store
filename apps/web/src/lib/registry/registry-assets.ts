@@ -1,6 +1,6 @@
 import { readTarGzEntries, tarballPath } from "@brika/registry-core";
 import { cacheJson } from "@/lib/blob-cache";
-import { contentTypeFor, REGISTRY_ORIGIN } from "@/lib/registry/registry-source";
+import { contentTypeFor, REGISTRY_ORIGIN, registryFetch } from "@/lib/registry/registry-source";
 import type { BlobStore } from "@/server/ports/blob-store";
 
 /**
@@ -89,8 +89,8 @@ async function extractFromTarball(
   version: string,
   path: string,
 ): Promise<Uint8Array | null> {
-  const res = await fetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
-  if (!res.ok) return null;
+  const res = await registryFetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
+  if (!res?.ok) return null;
   const entries = await readTarGzEntries(new Uint8Array(await res.arrayBuffer()));
   const entry = entries.find((candidate) => candidate.path === path);
   return entry?.data ?? null;
@@ -104,8 +104,8 @@ export function getRegistryFileList(
   version: string,
 ): Promise<PluginFileIndex | null> {
   return cacheJson(assets, cacheKey(name, version, "__index.json"), async () => {
-    const res = await fetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
-    if (!res.ok) return null;
+    const res = await registryFetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
+    if (!res?.ok) return null;
     const tarball = new Uint8Array(await res.arrayBuffer());
     const entries = await readTarGzEntries(tarball);
 

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 import type { Db } from "../client";
 import { regDistTags, regPackages, regScopes, regVersions } from "../schema";
 import { makeAdapter, makeDb } from "../test-harness";
@@ -103,5 +104,30 @@ describe("D1MetadataWriter latest-tag maintenance", () => {
     ]);
     await writer.setYanked(NAME, "2.0.0", true);
     expect(await latestTag(db)).toBe("1.5.0");
+  });
+});
+
+describe("D1MetadataWriter deletePackage", () => {
+  test("removes the package, its versions, and its dist-tags", async () => {
+    await writer.deletePackage(NAME);
+    expect(await makeAdapter(db, D1MetadataReader).getPackage(NAME)).toBeNull();
+    expect(await db.select().from(regVersions).where(eq(regVersions.name, NAME))).toEqual([]);
+    expect(await db.select().from(regDistTags).where(eq(regDistTags.name, NAME))).toEqual([]);
+    expect(await db.select().from(regPackages).where(eq(regPackages.name, NAME))).toEqual([]);
+  });
+});
+
+describe("D1MetadataWriter packageExists / createPackage (name reservation)", () => {
+  test("packageExists reflects whether the package row is present", async () => {
+    expect(await writer.packageExists(NAME)).toBe(true);
+    expect(await writer.packageExists("@brika/missing")).toBe(false);
+  });
+
+  test("createPackage reserves a name as a version-less row", async () => {
+    await writer.createPackage("@brika/reserved", "@brika");
+    expect(await writer.packageExists("@brika/reserved")).toBe(true);
+    expect(
+      await db.select().from(regVersions).where(eq(regVersions.name, "@brika/reserved")),
+    ).toEqual([]);
   });
 });

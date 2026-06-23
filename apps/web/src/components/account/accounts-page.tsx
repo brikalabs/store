@@ -3,7 +3,10 @@ import { getRouteApi } from "@tanstack/react-router";
 import { Check, Link2, Loader2, Unlink } from "lucide-react";
 import { type ComponentType, useCallback, useEffect, useState } from "react";
 import { GithubIcon } from "@/components/clay/icons";
+import { Pill } from "@/components/clay/pill";
+import { SettingsCard } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
+import { ErrorBanner } from "@/components/layout/error-banner";
 import { linkSocial, listAccounts, unlinkAccount } from "@/lib/auth/client";
 
 /** A social provider on the connected-accounts surface (USER-004); `id` matches `listAccounts()`. */
@@ -89,38 +92,38 @@ export function AccountsPage() {
       activeLabel="Connected accounts"
     >
       <div>
-        <h1 className="font-bold font-heading text-2xl tracking-tight">Connected accounts</h1>
-        <p className="mt-1 text-muted-foreground text-sm">
+        <h1 className="font-bold font-heading text-[30px] text-foreground tracking-tight">
+          Connected accounts
+        </h1>
+        <p className="mt-1.5 text-[15px] text-muted-foreground">
           The sign-in providers linked to your Brika account. Link another to sign in more ways; you
           can unlink any provider as long as one sign-in method remains.
         </p>
       </div>
 
-      {error === null ? null : (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-destructive text-sm">
-          {error}
-        </div>
-      )}
+      <ErrorBanner>{error}</ErrorBanner>
 
       {accounts === null ? (
-        <div className="h-40 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-40 animate-pulse rounded-[18px] bg-muted" />
       ) : (
-        <div className="flex flex-col gap-3">
-          {PROVIDERS.map((provider) => {
-            const connected = accounts.some((a) => a.providerId === provider.id);
-            return (
-              <AccountRow
-                key={provider.id}
-                provider={provider}
-                connected={connected}
-                busy={busy === provider.id}
-                // Can't remove the only remaining sign-in method (USER-004-AC4).
-                isLastLinked={connected && linkedCount <= 1}
-                onLink={() => link(provider.id)}
-                onUnlink={() => unlink(provider.id)}
-              />
-            );
-          })}
+        <div className="flex flex-col gap-4">
+          <SettingsCard className="overflow-hidden p-0">
+            {PROVIDERS.map((provider) => {
+              const connected = accounts.some((a) => a.providerId === provider.id);
+              return (
+                <AccountRow
+                  key={provider.id}
+                  provider={provider}
+                  connected={connected}
+                  busy={busy === provider.id}
+                  // Can't remove the only remaining sign-in method (USER-004-AC4).
+                  isLastLinked={connected && linkedCount <= 1}
+                  onLink={() => link(provider.id)}
+                  onUnlink={() => unlink(provider.id)}
+                />
+              );
+            })}
+          </SettingsCard>
 
           <p className="px-1 text-muted-foreground text-xs">
             More sign-in providers are coming. When a provider is added, it appears here ready to
@@ -150,42 +153,49 @@ function AccountRow({
   onUnlink: () => void;
 }>) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-5">
-      <div className="flex items-center gap-3">
-        <span className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-muted">
-          <provider.Icon className="size-5" />
-        </span>
-        <div>
-          <div className="font-semibold text-foreground text-sm">{provider.label}</div>
-          <div className="text-muted-foreground text-xs">
-            {connected ? (
-              <span className="inline-flex items-center gap-1">
-                <Check className="size-3.5 text-brand-ink" />
-                Connected
-              </span>
-            ) : (
-              "Not connected"
-            )}
-          </div>
+    <div className="flex flex-wrap items-center gap-3.5 px-5 py-[18px] [&:not(:last-child)]:border-border [&:not(:last-child)]:border-b">
+      <span className="inline-flex size-[42px] shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
+        <provider.Icon className="size-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="font-bold text-[14.5px] text-foreground">{provider.label}</div>
+        <div className="text-[12.5px] text-muted-foreground">
+          Link to sign in and to verify ownership when publishing.
         </div>
       </div>
       {connected ? (
+        <div className="flex items-center gap-2.5">
+          <Pill tone="success" className="font-bold text-[12px]">
+            <Check className="size-3.5" />
+            Connected
+          </Pill>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy || isLastLinked}
+            className="border-input hover:border-danger-border hover:text-danger"
+            title={
+              isLastLinked
+                ? "You can't unlink your only sign-in method."
+                : `Disconnect ${provider.label}`
+            }
+            onClick={onUnlink}
+          >
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Unlink className="size-4" />}
+            Disconnect
+          </Button>
+        </div>
+      ) : (
         <Button
           type="button"
-          variant="secondary"
-          disabled={busy || isLastLinked}
-          title={
-            isLastLinked ? "You can't unlink your only sign-in method." : `Unlink ${provider.label}`
-          }
-          onClick={onUnlink}
+          variant="outline"
+          disabled={busy}
+          className="border-input hover:border-brand-border"
+          onClick={onLink}
+          title={`Connect ${provider.label}`}
         >
-          {busy ? <Loader2 className="size-4 animate-spin" /> : <Unlink className="size-4" />}
-          Unlink
-        </Button>
-      ) : (
-        <Button type="button" disabled={busy} onClick={onLink} title={`Link ${provider.label}`}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
-          Link
+          Connect
         </Button>
       )}
     </div>

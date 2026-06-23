@@ -1,8 +1,10 @@
 import { Input } from "@brika/clay";
 import { Layers } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { Pager } from "@/components/clay/pagination";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import { TakedownControls } from "@/components/operator/takedown-controls";
+import { useServerPage } from "@/hooks/use-server-page";
 
 interface OperatorScope {
   scope: string;
@@ -10,22 +12,12 @@ interface OperatorScope {
   takedown: string | null;
 }
 
+const PAGE_SIZE = 20;
+
 export function OperatorScopesPage() {
-  const [scopes, setScopes] = useState<OperatorScope[] | null>(null);
-  const [query, setQuery] = useState("");
+  const list = useServerPage<OperatorScope>("/api/operator/scopes", PAGE_SIZE);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    const res = await fetch("/api/operator/scopes");
-    if (res.ok) {
-      const data: { scopes: OperatorScope[] } = await res.json();
-      setScopes(data.scopes);
-    }
-  }, []);
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const act = useCallback(
     async (scope: string, path: string, body?: unknown) => {
@@ -38,27 +30,23 @@ export function OperatorScopesPage() {
       });
       setBusy(null);
       if (res.ok) {
-        await load();
+        list.reload();
         return;
       }
-      const data: { error?: string } = await res.json();
-      setError(data.error ?? "Action failed");
+      const result: { error?: string } = await res.json();
+      setError(result.error ?? "Action failed");
     },
-    [load],
-  );
-
-  const filtered = (scopes ?? []).filter((s) =>
-    `${s.scope} ${s.displayName ?? ""}`.toLowerCase().includes(query.trim().toLowerCase()),
+    [list.reload],
   );
 
   function renderBody() {
-    if (scopes === null) return <p className="text-muted-foreground text-sm">Loading…</p>;
-    if (filtered.length === 0) {
+    if (list.loading) return <p className="text-muted-foreground text-sm">Loading…</p>;
+    if (list.items.length === 0) {
       return <p className="text-muted-foreground text-sm">No scopes match.</p>;
     }
     return (
       <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
-        {filtered.map((scope) => (
+        {list.items.map((scope) => (
           <li key={scope.scope} className="flex items-center gap-4 px-4 py-3">
             <Layers className="size-5 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1">
@@ -100,8 +88,8 @@ export function OperatorScopesPage() {
       </header>
 
       <Input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        value={list.query}
+        onChange={(e) => list.setQuery(e.target.value)}
         placeholder="Filter by scope or name"
         className="max-w-sm"
       />
@@ -109,6 +97,16 @@ export function OperatorScopesPage() {
       {error !== null && <p className="text-destructive text-sm">{error}</p>}
 
       {renderBody()}
+
+      <Pager
+        page={list.page}
+        pages={list.pages}
+        from={list.from}
+        to={list.to}
+        total={list.total}
+        noun="scopes"
+        onChange={list.setPage}
+      />
     </OperatorShell>
   );
 }

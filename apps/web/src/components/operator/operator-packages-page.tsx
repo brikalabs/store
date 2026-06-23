@@ -1,8 +1,12 @@
 import { Input } from "@brika/clay";
 import { Box as BoxIcon, ChevronDown, ChevronRight } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { Pager } from "@/components/clay/pagination";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import { TakedownControls } from "@/components/operator/takedown-controls";
+import { useServerPage } from "@/hooks/use-server-page";
+
+const PAGE_SIZE = 20;
 
 interface OperatorPackage {
   name: string;
@@ -23,34 +27,18 @@ interface PackageVersion {
 }
 
 export function OperatorPackagesPage() {
-  const [packages, setPackages] = useState<OperatorPackage[] | null>(null);
-  const [query, setQuery] = useState("");
+  const list = useServerPage<OperatorPackage>("/api/operator/packages", PAGE_SIZE);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const res = await fetch("/api/operator/packages");
-    if (res.ok) {
-      const data: { packages: OperatorPackage[] } = await res.json();
-      setPackages(data.packages);
-    }
-  }, []);
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const filtered = (packages ?? []).filter((p) =>
-    p.name.toLowerCase().includes(query.trim().toLowerCase()),
-  );
-
   function renderBody() {
-    if (packages === null) return <p className="text-muted-foreground text-sm">Loading…</p>;
-    if (filtered.length === 0) {
+    if (list.loading) return <p className="text-muted-foreground text-sm">Loading…</p>;
+    if (list.items.length === 0) {
       return <p className="text-muted-foreground text-sm">No packages match.</p>;
     }
     return (
       <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
-        {filtered.map((pkg) => (
-          <PackageRow key={pkg.name} pkg={pkg} onError={setError} onChanged={load} />
+        {list.items.map((pkg) => (
+          <PackageRow key={pkg.name} pkg={pkg} onError={setError} onChanged={list.reload} />
         ))}
       </ul>
     );
@@ -67,8 +55,8 @@ export function OperatorPackagesPage() {
       </header>
 
       <Input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        value={list.query}
+        onChange={(e) => list.setQuery(e.target.value)}
         placeholder="Filter by package name"
         className="max-w-sm"
       />
@@ -76,6 +64,16 @@ export function OperatorPackagesPage() {
       {error !== null && <p className="text-destructive text-sm">{error}</p>}
 
       {renderBody()}
+
+      <Pager
+        page={list.page}
+        pages={list.pages}
+        from={list.from}
+        to={list.to}
+        total={list.total}
+        noun="packages"
+        onChange={list.setPage}
+      />
     </OperatorShell>
   );
 }
@@ -87,7 +85,7 @@ function PackageRow({
 }: Readonly<{
   pkg: OperatorPackage;
   onError: (message: string | null) => void;
-  onChanged: () => Promise<void>;
+  onChanged: () => void;
 }>) {
   const [open, setOpen] = useState(false);
   const [versions, setVersions] = useState<PackageVersion[] | null>(null);
@@ -120,7 +118,8 @@ function PackageRow({
       });
       setBusy(null);
       if (res.ok) {
-        await Promise.all([loadVersions(), onChanged()]);
+        await loadVersions();
+        onChanged();
         return;
       }
       const data: { error?: string } = await res.json();

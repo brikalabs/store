@@ -54,11 +54,20 @@ describe("listScopesForMember", () => {
 });
 
 describe("listAllPackages (operator directory)", () => {
+  const PAGE = { limit: 20, offset: 0 };
+
+  // A bare package row (no scope membership / versions) with an explicit `createdAt`, so the
+  // newest-first ordering and the page window are deterministic across tests.
+  async function pkg(name: string, scopeName: string, createdAt: number) {
+    await db.insert(regPackages).values({ name, scope: scopeName, createdAt });
+  }
+
   test("reports owning scope, latest version, and version counts", async () => {
     await seedExamplePackage(db, "octocat"); // @brika/x@1.0.0 owned by scope @brika
-    const packages = await listAllPackages(db);
-    expect(packages).toHaveLength(1);
-    expect(packages[0]).toMatchObject({
+    const page = await listAllPackages(db, PAGE);
+    expect(page.total).toBe(1);
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0]).toMatchObject({
       name: "@brika/x",
       scope: "@brika",
       latestVersion: "1.0.0",
@@ -90,8 +99,8 @@ describe("listAllPackages (operator directory)", () => {
       yanked: true,
     });
 
-    const [pkg] = await listAllPackages(db);
-    expect(pkg).toMatchObject({ versionCount: 3, takenDownCount: 1, yankedCount: 1 });
+    const { items } = await listAllPackages(db, PAGE);
+    expect(items[0]).toMatchObject({ versionCount: 3, takenDownCount: 1, yankedCount: 1 });
   });
 
   test("includes a package whose scope is unclaimed (no reg_scopes row)", async () => {
@@ -106,8 +115,43 @@ describe("listAllPackages (operator directory)", () => {
     });
     await db.insert(regDistTags).values({ name: "@orphan/y", tag: "latest", version: "1.0.0" });
 
-    const [pkg] = await listAllPackages(db);
-    expect(pkg).toMatchObject({ name: "@orphan/y", scope: "@orphan", scopeDisplayName: null });
+    const { items } = await listAllPackages(db, PAGE);
+    expect(items[0]).toMatchObject({ name: "@orphan/y", scope: "@orphan", scopeDisplayName: null });
+  });
+
+  test("the q filter narrows by a case-insensitive name substring, total reflects the filter", async () => {
+    await pkg("@acme/alpha", "@acme", 100);
+    await pkg("@acme/beta", "@acme", 200);
+    await pkg("@other/alpha-tool", "@other", 300);
+
+    const all = await listAllPackages(db, PAGE);
+    expect(all.total).toBe(3);
+
+    const matched = await listAllPackages(db, { ...PAGE, q: "ALPHA" });
+    expect(matched.total).toBe(2);
+    expect(matched.items.map((p) => p.name).sort()).toEqual(["@acme/alpha", "@other/alpha-tool"]);
+
+    const none = await listAllPackages(db, { ...PAGE, q: "nomatch" });
+    expect(none.total).toBe(0);
+    expect(none.items).toEqual([]);
+  });
+
+  test("limit/offset page the results, total stays the unfiltered-by-page count", async () => {
+    // Newest-first: created 300 > 200 > 100, so the order is gamma, beta, alpha.
+    await pkg("@acme/alpha", "@acme", 100);
+    await pkg("@acme/beta", "@acme", 200);
+    await pkg("@acme/gamma", "@acme", 300);
+
+    const first = await listAllPackages(db, { q: undefined, limit: 2, offset: 0 });
+    expect(first.total).toBe(3);
+    expect(first.limit).toBe(2);
+    expect(first.offset).toBe(0);
+    expect(first.items.map((p) => p.name)).toEqual(["@acme/gamma", "@acme/beta"]);
+
+    const second = await listAllPackages(db, { q: undefined, limit: 2, offset: 2 });
+    expect(second.total).toBe(3);
+    expect(second.offset).toBe(2);
+    expect(second.items.map((p) => p.name)).toEqual(["@acme/alpha"]);
   });
 });
 

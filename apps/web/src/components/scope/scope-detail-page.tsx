@@ -1,7 +1,13 @@
-import { getRouteApi, Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { Button } from "@brika/clay";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, LogOut, Shield } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Pill } from "@/components/clay/pill";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { AdminShell } from "@/components/layout/admin-shell";
+import { ConfirmDialog } from "@/components/layout/confirm-dialog";
+import { DangerRow, DangerZone } from "@/components/layout/danger-zone";
+import { ErrorBanner } from "@/components/layout/error-banner";
 import { DisplayNameCard } from "@/components/scope/display-name-card";
 import { DomainsCard } from "@/components/scope/domains-card";
 import { LogoCard } from "@/components/scope/logo-card";
@@ -41,21 +47,35 @@ export function ScopeDetailPage() {
   return (
     <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="Scopes">
       <div>
-        <Link
-          to="/dashboard/scopes"
-          className="inline-flex items-center gap-1.5 text-muted-foreground text-sm hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" />
-          All scopes
-        </Link>
-        <h1 className="mt-2 font-mono font-bold text-2xl tracking-tight">{scope}</h1>
+        <Button asChild variant="link" size="sm" className="h-auto w-fit gap-1.5 p-0">
+          <Link
+            to="/dashboard/scopes"
+            className="inline-flex items-center text-muted-foreground text-sm hover:text-brand-ink hover:no-underline"
+          >
+            <ArrowLeft className="size-4" />
+            All scopes
+          </Link>
+        </Button>
+        <div className="mt-2.5 flex items-center gap-3.5">
+          <GradientAvatar
+            seed={scope}
+            label={scope}
+            imageUrl={`/api/scopes/${encodeURIComponent(scope)}/icon`}
+            size={46}
+            className="rounded-[13px] border border-border"
+          />
+          <h1 className="font-mono font-semibold text-[28px] text-foreground tracking-[-0.02em]">
+            {scope}
+          </h1>
+          {isAdmin && (
+            <Pill tone="brand" className="px-3 font-bold">
+              Admin
+            </Pill>
+          )}
+        </div>
       </div>
 
-      {error !== null && (
-        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive text-sm">
-          {error}
-        </p>
-      )}
+      <ErrorBanner>{error}</ErrorBanner>
 
       {isAdmin && <DisplayNameCard scope={scope} onError={setError} />}
       {isAdmin && <LogoCard scope={scope} onError={setError} />}
@@ -69,6 +89,85 @@ export function ScopeDetailPage() {
         onReload={loadMembers}
         onError={setError}
       />
+      {isAdmin && (
+        <ScopeDangerZone scope={scope} userId={user.id} members={members} onError={setError} />
+      )}
     </AdminShell>
+  );
+}
+
+/**
+ * Admin-only danger zone with a single "Leave scope" action: removes the signed-in user's own
+ * membership via the same member-DELETE endpoint the members card uses, then sends them back to
+ * the scopes list. Disabled when they are the only admin (the last-admin invariant), matching the
+ * server guard so the user gets the amber hint instead of a failed request.
+ */
+function ScopeDangerZone({
+  scope,
+  userId,
+  members,
+  onError,
+}: Readonly<{
+  scope: string;
+  userId: string;
+  members: Member[] | null;
+  onError: (message: string) => void;
+}>) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const onlyAdmin = (members?.filter((m) => m.role === "admin").length ?? 0) <= 1;
+
+  async function leave() {
+    const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(userId)}`), {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      await navigate({ to: "/dashboard/scopes" });
+      return;
+    }
+    onError(await readError(res));
+  }
+
+  return (
+    <DangerZone>
+      <DangerRow
+        title="Leave this scope"
+        description={
+          onlyAdmin ? (
+            <span className="flex items-center gap-1.5 text-warning">
+              <Shield className="size-4 shrink-0" />
+              You are the only admin. Promote another member to admin before you can leave.
+            </span>
+          ) : (
+            "You will lose access to this scope and its plugins."
+          )
+        }
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            disabled={onlyAdmin}
+            onClick={() => setOpen(true)}
+            className="border-danger text-danger hover:bg-danger hover:text-white disabled:opacity-50"
+          >
+            <LogOut className="size-4" />
+            Leave scope
+          </Button>
+        }
+      />
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Leave scope"
+        description={
+          <>
+            Leave <span className="font-mono">{scope}</span>? You will lose access to this scope and
+            its plugins.
+          </>
+        }
+        confirmLabel="Leave scope"
+        onConfirm={leave}
+      />
+    </DangerZone>
   );
 }

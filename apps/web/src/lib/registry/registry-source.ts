@@ -266,11 +266,33 @@ export function versionsFromPackument(pkg: Packument): PluginVersion[] {
   return list;
 }
 
+// ---------------------------------------------------------------------------
+// Network (registry HTTP surface).
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch from the registry, returning `null` instead of throwing when it is
+ * unreachable (a network error / "connection lost"). The store is a read model
+ * over the registry's HTTP surface, so a registry outage should degrade a read
+ * to its empty fallback rather than crash the page with an unhandled 500. A
+ * reached-but-non-2xx response is returned for the caller to branch on.
+ */
+export async function registryFetch(
+  input: string | URL,
+  init?: RequestInit,
+): Promise<Response | null> {
+  try {
+    return await fetch(input, init);
+  } catch {
+    return null;
+  }
+}
+
 export async function getRegistryPackument(name: string): Promise<Packument | null> {
-  const res = await fetch(`${REGISTRY_ORIGIN}${npmLink("/:name", { name })}`, {
+  const res = await registryFetch(`${REGISTRY_ORIGIN}${npmLink("/:name", { name })}`, {
     headers: { accept: "application/json" },
   });
-  if (!res.ok) return null;
+  if (!res?.ok) return null;
   const parsed = Packument.safeParse(await res.json());
   return parsed.success ? parsed.data : null;
 }
@@ -286,29 +308,28 @@ const NO_DOWNLOADS: RegistryDownloads = { total: 0, weekly: 0, series: [] };
 
 /** Install stats for a package (all-time + trailing week + series); zero on failure. */
 export async function getRegistryDownloads(name: string): Promise<RegistryDownloads> {
-  try {
-    const res = await fetch(`${REGISTRY_ORIGIN}${npmLink("/-/v1/downloads/:name", { name })}`, {
+  const res = await registryFetch(
+    `${REGISTRY_ORIGIN}${npmLink("/-/v1/downloads/:name", { name })}`,
+    {
       headers: { accept: "application/json" },
-    });
-    if (!res.ok) return NO_DOWNLOADS;
-    const parsed = DownloadsResponse.safeParse(await res.json());
-    if (!parsed.success) return NO_DOWNLOADS;
-    return {
-      total: parsed.data.total,
-      weekly: parsed.data.weekly,
-      series: parsed.data.series ?? [],
-    };
-  } catch {
-    return NO_DOWNLOADS;
-  }
+    },
+  );
+  if (!res?.ok) return NO_DOWNLOADS;
+  const parsed = DownloadsResponse.safeParse(await res.json());
+  if (!parsed.success) return NO_DOWNLOADS;
+  return {
+    total: parsed.data.total,
+    weekly: parsed.data.weekly,
+    series: parsed.data.series ?? [],
+  };
 }
 
 export async function fetchRegistryTarball(
   name: string,
   version: string,
 ): Promise<Uint8Array | null> {
-  const res = await fetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
-  if (!res.ok) return null;
+  const res = await registryFetch(`${REGISTRY_ORIGIN}/${tarballPath(name, version)}`);
+  if (!res?.ok) return null;
   return new Uint8Array(await res.arrayBuffer());
 }
 
@@ -435,10 +456,10 @@ export interface RegistryScope {
 /** Fetch a public scope's info (`GET /-/scope/:scope`), or null when it does not exist or is taken down.
  * The scope is URL-encoded as a single segment (`@brika` -> `%40brika`). */
 export async function getRegistryScope(scope: string): Promise<RegistryScope | null> {
-  const res = await fetch(`${REGISTRY_ORIGIN}/-/scope/${encodeURIComponent(scope)}`, {
+  const res = await registryFetch(`${REGISTRY_ORIGIN}/-/scope/${encodeURIComponent(scope)}`, {
     headers: { accept: "application/json" },
   });
-  if (!res.ok) return null;
+  if (!res?.ok) return null;
   const parsed = ScopeInfo.safeParse(await res.json());
   if (!parsed.success) return null;
   return {
@@ -461,8 +482,8 @@ export async function listRegistryPlugins(
   if (query && query.trim().length > 0) url.searchParams.set("text", query.trim());
   url.searchParams.set("limit", String(limit));
   url.searchParams.set("offset", String(offset));
-  const res = await fetch(url, { headers: { accept: "application/json" } });
-  if (!res.ok) return { plugins: [], total: 0 };
+  const res = await registryFetch(url, { headers: { accept: "application/json" } });
+  if (!res?.ok) return { plugins: [], total: 0 };
   const parsed = CatalogResponse.safeParse(await res.json());
   if (!parsed.success) return { plugins: [], total: 0 };
   const plugins = parsed.data.packages.flatMap((entry) => {

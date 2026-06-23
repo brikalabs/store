@@ -1,5 +1,6 @@
 import { inject, token } from "@brika/di";
 import { HttpStatus } from "./http-status";
+import { isCanonicalName, scopeOf } from "./names";
 import { OwnershipPolicy, type PublishIdentity } from "./publish";
 
 /**
@@ -12,11 +13,16 @@ import { OwnershipPolicy, type PublishIdentity } from "./publish";
 /** Write access to a published version's mutable management flags. */
 export interface VersionManager {
   versionExists(name: string, version: string): Promise<boolean>;
+  packageExists(name: string): Promise<boolean>;
+  /** Create the package row alone (no version) - a name reservation. */
+  createPackage(name: string, scope: string | null): Promise<void>;
   /** Set the deprecation message, or null to un-deprecate. */
   setDeprecated(name: string, version: string, message: string | null): Promise<void>;
   setYanked(name: string, version: string, yanked: boolean): Promise<void>;
   /** Set the operator takedown reason, or null to restore. */
   setTakedown(name: string, version: string, reason: string | null): Promise<void>;
+  /** Permanently remove a package and all its versions + dist-tags. Irreversible. */
+  deletePackage(name: string): Promise<void>;
 }
 /** DI token for the {@link VersionManager} port (an app binds the concrete D1 adapter). */
 export const VersionManager = token<VersionManager>("VersionManager");
@@ -102,6 +108,38 @@ export class ManagementService {
       };
     }
     await this.#meta.setTakedown(name, version, null);
+    return { ok: true };
+  }
+
+  /**
+   * Permanently delete an owned package: every published version and its dist-tags, so its
+   * install ids stop resolving for everyone. Owner-gated and irreversible (unlike yank, which
+   * keeps the bytes). The caller removes the tarball bytes separately, since this owns only the
+   * metadata. No-ops cleanly for a name with no rows.
+   */
+  async deletePackage(identity: PublishIdentity, name: string): Promise<ManageResult> {
+    const owns = await this.#ownership.canPublish(identity, name);
+    if (!owns.ok) return { ok: false, status: HttpStatus.FORBIDDEN, message: owns.message };
+    await this.#meta.deletePackage(name);
+    return { ok: true };
+  }
+
+  /**
+   * Reserve a name: create the package row with no version, so it is owned (publish-gated to the
+   * scope) and visible to its owner but stays out of the public store until the first publish
+   * (the catalog requires a `latest` dist-tag, which a version-less package never has). The same
+   * ownership gate as publishing applies, so reserving claims nothing a publish couldn't.
+   */
+  async reservePackage(identity: PublishIdentity, name: string): Promise<ManageResult> {
+    if (!isCanonicalName(name)) {
+      return { ok: false, status: HttpStatus.BAD_REQUEST, message: `${name} is not a valid name` };
+    }
+    const owns = await this.#ownership.canPublish(identity, name);
+    if (!owns.ok) return { ok: false, status: HttpStatus.FORBIDDEN, message: owns.message };
+    if (await this.#meta.packageExists(name)) {
+      return { ok: false, status: HttpStatus.CONFLICT, message: `${name} is already taken` };
+    }
+    await this.#meta.createPackage(name, scopeOf(name));
     return { ok: true };
   }
 }

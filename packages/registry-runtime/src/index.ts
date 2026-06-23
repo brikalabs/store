@@ -58,5 +58,7 @@ export const Catalog = token("Catalog", () => new D1CatalogReader());
 /** Operator package directory: every package with moderation counts (incl. hidden versions). */
 export const Packages = token("Packages", () => {
   const db = inject(Db);
-  return { list: () => listAllPackages(db) };
+  return {
+    list: (opts: { q?: string; limit: number; offset: number }) => listAllPackages(db, opts),
+  };
 });

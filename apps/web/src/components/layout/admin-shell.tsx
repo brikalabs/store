@@ -1,11 +1,11 @@
-import { Box, KeyRound, Layers, LayoutDashboard, Link2, type LucideIcon, User } from "lucide-react";
+import { Box, KeyRound, Layers, LayoutGrid, Link2, type LucideIcon, User } from "lucide-react";
 import type { ReactNode } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 
-type NavItem = { label: string; icon: LucideIcon; href?: string };
+type NavItem = { label: string; icon: LucideIcon; href: string };
 
 const NAV: NavItem[] = [
-  { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Overview", icon: LayoutGrid, href: "/dashboard" },
   { label: "My plugins", icon: Box, href: "/dashboard/plugins" },
   { label: "Scopes", icon: Layers, href: "/dashboard/scopes" },
   { label: "Profile", icon: User, href: "/dashboard/profile" },
@@ -29,55 +29,40 @@ export function AdminShell({
 }>) {
   const displayName = name ?? "Your account";
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      <div className="grid gap-8 lg:grid-cols-[208px_1fr] lg:items-start">
-        <aside className="flex flex-col gap-1 lg:sticky lg:top-20">
-          <div className="flex items-center gap-2.5 px-2 pb-3">
-            <GradientAvatar seed={id} label={displayName} imageUrl={avatarUrl} size={32} />
-            <div className="min-w-0">
-              <div className="truncate font-semibold text-foreground text-sm">{displayName}</div>
-              <div className="text-muted-foreground text-xs">Developer</div>
-            </div>
+    <main className="mx-auto grid max-w-7xl items-start gap-[34px] px-6 pt-[30px] pb-24 lg:grid-cols-[236px_1fr]">
+      <aside className="flex flex-col gap-0.5 lg:sticky lg:top-[92px]">
+        <div className="flex items-center gap-2.5 px-2.5 pt-2 pb-4">
+          <GradientAvatar
+            seed={id}
+            label={displayName}
+            imageUrl={avatarUrl}
+            size={38}
+            className="rounded-xl border border-border"
+          />
+          <div className="min-w-0">
+            <div className="truncate font-bold text-foreground text-sm">{displayName}</div>
+            <div className="text-muted-foreground text-xs">Developer</div>
           </div>
-          {NAV.map((item) => {
-            const active = item.label === activeLabel;
-            const base =
-              "flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium text-sm transition-colors";
-            const content = (
-              <>
-                <item.icon
-                  className={active ? "size-4 text-brand-ink" : "size-4 text-muted-foreground"}
-                />
-                {item.label}
-              </>
-            );
-            if (item.href) {
-              return (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className={`${base} ${
-                    active
-                      ? "bg-brand/10 text-brand-ink"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  {content}
-                </a>
-              );
-            }
-            return (
-              <span
-                key={item.label}
-                className={`${base} cursor-not-allowed text-muted-foreground/60`}
-              >
-                {content}
-              </span>
-            );
-          })}
-        </aside>
-        <div className="flex flex-col gap-8">{children}</div>
-      </div>
+        </div>
+        {NAV.map((item) => {
+          const active = item.label === activeLabel;
+          return (
+            <a
+              key={item.label}
+              href={item.href}
+              className={`flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 font-semibold text-[13.5px] transition-colors ${
+                active
+                  ? "bg-brand-tint text-brand-ink"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              <item.icon className="size-[18px]" />
+              {item.label}
+            </a>
+          );
+        })}
+      </aside>
+      <div className="flex min-w-0 flex-col gap-[26px]">{children}</div>
     </main>
   );
 }

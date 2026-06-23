@@ -33,6 +33,7 @@ export const Route = createFileRoute("/api/plugins/versions")({
             versions: record.versions.map((v) => ({
               version: v.version,
               publishedAt: v.publishedAt,
+              size: v.size,
               deprecated: v.deprecated,
               yanked: v.yanked,
               takedownReason: v.takedownReason,

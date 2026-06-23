@@ -23,6 +23,20 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
     return rows[0] !== undefined;
   }
 
+  async packageExists(name: string): Promise<boolean> {
+    const rows = await this.#db
+      .select({ name: regPackages.name })
+      .from(regPackages)
+      .where(eq(regPackages.name, name))
+      .limit(1);
+    return rows[0] !== undefined;
+  }
+
+  /** Reserve a name: the package row alone, no version (so the catalog never lists it). */
+  async createPackage(name: string, scope: string | null): Promise<void> {
+    await this.#db.insert(regPackages).values({ name, scope }).onConflictDoNothing();
+  }
+
   async commitVersion({ scope, version, tag }: CommitVersionInput): Promise<void> {
     const statements = [
       this.#db.insert(regPackages).values({ name: version.name, scope }).onConflictDoNothing(),
@@ -73,6 +87,20 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
       .set({ takedown: reason })
       .where(and(eq(regVersions.name, name), eq(regVersions.version, version)));
     await this.#refreshLatestTag(name);
+  }
+
+  /**
+   * Permanently delete a package: its dist-tags, every version row, and the package row. The
+   * children (`reg_versions`, `reg_dist_tags`) declare `onDelete: cascade`, but we delete them
+   * explicitly (children first) so it is correct whether or not D1 enforces foreign keys. One
+   * transaction-aware batch, so it lands atomically.
+   */
+  async deletePackage(name: string): Promise<void> {
+    await this.#db.deferBatch([
+      this.#db.delete(regDistTags).where(eq(regDistTags.name, name)),
+      this.#db.delete(regVersions).where(eq(regVersions.name, name)),
+      this.#db.delete(regPackages).where(eq(regPackages.name, name)),
+    ]);
   }
 
   /**

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { provide, type TestBed, testBed } from "@brika/di";
 import { type ScopeMember, ScopeMembers, type ScopeRole } from "./membership";
+import type { Page } from "./pagination";
 import type { ScopeProfileInput } from "./profile";
 import type { PublishIdentity } from "./publish";
 import {
@@ -32,6 +33,20 @@ class FakeScopeStore implements ScopeStore {
   }
   async listAll(): Promise<ScopeRecord[]> {
     return [...this.rows.values()];
+  }
+  async listPage(opts: { q?: string; limit: number; offset: number }): Promise<Page<ScopeRecord>> {
+    const needle = opts.q?.trim().toLowerCase();
+    const matched = [...this.rows.values()].filter((r) =>
+      needle === undefined || needle === ""
+        ? true
+        : `${r.scope} ${r.displayName ?? ""}`.toLowerCase().includes(needle),
+    );
+    return {
+      items: matched.slice(opts.offset, opts.offset + opts.limit),
+      total: matched.length,
+      limit: opts.limit,
+      offset: opts.offset,
+    };
   }
   async claim(scope: string): Promise<{ record: ScopeRecord; created: boolean }> {
     const existing = this.rows.get(scope);
@@ -371,13 +386,14 @@ describe("operator takedown (ORG-007)", () => {
     expect(await service.restore("@ghost")).toMatchObject({ status: 404 });
   });
 
-  test("listForOperator returns every scope with its takedown state (no membership filter)", async () => {
+  test("listForOperator returns a page of scopes with their takedown state (no membership filter)", async () => {
     await service.claim(gh("alice"), "@acme");
     await service.claim(gh("bob"), "@beta");
     await service.takedown("@beta", "squatting");
-    const all = await service.listForOperator();
-    expect(all.map((s) => s.scope).sort()).toEqual(["@acme", "@beta"]);
-    expect(all.find((s) => s.scope === "@beta")?.takedown).toBe("squatting");
+    const page = await service.listForOperator({ limit: 20, offset: 0 });
+    expect(page.total).toBe(2);
+    expect(page.items.map((s) => s.scope).sort()).toEqual(["@acme", "@beta"]);
+    expect(page.items.find((s) => s.scope === "@beta")?.takedown).toBe("squatting");
   });
 });
 
