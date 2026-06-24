@@ -1,4 +1,5 @@
 import { Input } from "@brika/clay";
+import { Checkbox } from "@brika/clay/components/checkbox";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Flag, Search } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -75,6 +76,8 @@ export function OperatorPackagesPage() {
     [visible, selected],
   );
   const allSelected = visible.length > 0 && selectedNames.length === visible.length;
+  // Indeterminate when some (but not all) visible packages are selected.
+  const someSelected = selectedNames.length > 0 && !allSelected;
 
   // On a successful bulk takedown, drop the (now actioned) selection then refetch the window.
   const { busy, error, setError, bulkTakedown } = useBulkTakedown(selectedNames, () => {
@@ -154,12 +157,10 @@ export function OperatorPackagesPage() {
       </div>
 
       <div className="flex items-center gap-2.5 px-1">
-        <input
-          type="checkbox"
-          checked={allSelected}
-          onChange={toggleAll}
+        <Checkbox
+          checked={someSelected ? "indeterminate" : allSelected}
+          onCheckedChange={toggleAll}
           aria-label="Select all packages on this page"
-          className="size-4 cursor-pointer accent-brand"
         />
         <span className="text-muted-foreground text-xs">{shownLabel()}</span>
       </div>
@@ -221,12 +222,11 @@ function PackageRow({
   return (
     <li className="flex flex-col">
       <div className="flex items-center gap-3 px-4 py-3.5">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={selected}
-          onChange={onToggle}
+          onCheckedChange={onToggle}
           aria-label={`Select ${pkg.name}`}
-          className="size-4 shrink-0 cursor-pointer accent-brand"
+          className="shrink-0"
         />
         <button
           type="button"

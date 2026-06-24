@@ -1,4 +1,5 @@
 import { Input } from "@brika/clay";
+import { Checkbox } from "@brika/clay/components/checkbox";
 import { Layers } from "lucide-react";
 import { useMemo, useState } from "react";
 import { OperatorShell } from "@/components/operator/operator-shell";
@@ -47,12 +48,11 @@ function OperatorScopeRow({
 }>) {
   return (
     <li className="flex items-center gap-3 px-4 py-3">
-      <input
-        type="checkbox"
+      <Checkbox
         checked={selected}
-        onChange={onToggle}
+        onCheckedChange={onToggle}
         aria-label={`Select ${scope.scope}`}
-        className="size-4 shrink-0 cursor-pointer accent-brand"
+        className="shrink-0"
       />
       <Layers className="size-5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
