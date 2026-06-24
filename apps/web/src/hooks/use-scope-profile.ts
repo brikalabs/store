@@ -21,7 +21,7 @@ export interface ScopeProfile {
  * unsaved work); `save` reports a failure through `onError` and re-seeds the rows from what it sent.
  */
 export function useScopeProfile(scope: string, onError: (message: string) => void): ScopeProfile {
-  const [description, setDescriptionState] = useState("");
+  const [description, setDescription] = useState("");
   const { links, add, update, remove, reset } = useLinks();
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -31,14 +31,14 @@ export function useScopeProfile(scope: string, onError: (message: string) => voi
       const res = await fetch(scopePath(scope)).catch(() => null);
       if (!res?.ok) return;
       const data: { description?: string | null; links?: ProfileLink[] } = await res.json();
-      setDescriptionState(data.description ?? "");
+      setDescription(data.description ?? "");
       reset(data.links ?? []);
     })();
   }, [scope, reset]);
 
   // Any edit means the persisted "Saved" state is stale, so clear the flag on every mutation.
-  const setDescription = (value: string) => {
-    setDescriptionState(value);
+  const changeDescription = (value: string) => {
+    setDescription(value);
     setSaved(false);
   };
   const updateLink = (id: string, patch: Partial<ProfileLink>) => {
@@ -71,7 +71,7 @@ export function useScopeProfile(scope: string, onError: (message: string) => voi
 
   return {
     description,
-    setDescription,
+    setDescription: changeDescription,
     links,
     addLink: add,
     updateLink,
