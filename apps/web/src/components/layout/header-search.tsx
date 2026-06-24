@@ -59,7 +59,7 @@ export function HeaderSearch() {
       label="Search plugins and scopes"
       shouldFilter={false}
       loop
-      className="relative hidden h-auto max-w-md flex-1 flex-col overflow-visible rounded-input border border-input-group-border bg-input-group-container text-input-group-label shadow-surface backdrop-blur-input-group transition-[color,box-shadow] focus-within:border-input-group-focus-border focus-within:ring-[3px] focus-within:ring-input-group-focus-ring/50 sm:flex [&_[data-slot=command-input-wrapper]]:border-b-0 [&_[data-slot=command-input-wrapper]]:px-3 [&_[data-slot=command-input-wrapper]_svg]:text-muted-foreground [&_[data-slot=command-input-wrapper]_svg]:opacity-100 [&_[data-slot=command-input]]:placeholder:text-input-placeholder"
+      className="relative hidden h-auto max-w-md flex-1 flex-col overflow-visible rounded-input border border-input-group-border bg-input-group-container text-input-group-label shadow-surface backdrop-blur-input-group transition-[color,box-shadow] focus-within:border-input-group-focus-border focus-within:ring-[3px] focus-within:ring-input-group-focus-ring/50 sm:flex [&_[data-slot=command-input-wrapper]]:h-input-height [&_[data-slot=command-input-wrapper]]:border-b-0 [&_[data-slot=command-input-wrapper]]:px-3 [&_[data-slot=command-input-wrapper]_svg]:text-muted-foreground [&_[data-slot=command-input-wrapper]_svg]:opacity-100 [&_[data-slot=command-input]]:h-full [&_[data-slot=command-input]]:py-0 [&_[data-slot=command-input]]:placeholder:text-input-placeholder"
     >
       <CommandInput
         ref={inputRef}
