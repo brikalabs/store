@@ -1,16 +1,10 @@
 import { Button, Input } from "@brika/clay";
 import { Check, Copy, Globe, Plus, ShieldCheck, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Pill } from "@/components/clay/pill";
 import { SettingsCard } from "@/components/clay/settings-card";
-import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
-
-interface DomainRow {
-  domain: string;
-  verified: boolean;
-  host: string;
-  txt: string;
-}
+import { type ScopeDomain, useScopeDomains } from "@/hooks/use-scope-domains";
+import type { ScopeCardProps } from "@/lib/scope-api";
 
 /** A bordered TXT-row with a label, a mono value, and a copy button (shows a check briefly). */
 function TxtRow({
@@ -52,39 +46,95 @@ function TxtRow({
   );
 }
 
+/** One claimed domain: a verified badge, or the pending TXT challenge with a Verify action. */
+function DomainListItem({
+  domain,
+  busy,
+  onVerify,
+  onRemove,
+}: Readonly<{
+  domain: ScopeDomain;
+  busy: boolean;
+  onVerify: () => void;
+  onRemove: () => void;
+}>) {
+  if (domain.verified) {
+    return (
+      <li className="flex items-center gap-2.5 rounded-[11px] border border-border bg-muted px-3.5 py-2.5">
+        <Globe className="size-4 text-muted-foreground" />
+        <span className="flex-1 truncate font-mono text-[13.5px] text-foreground">
+          {domain.domain}
+        </span>
+        <Pill tone="success" className="gap-1 py-[3px] font-bold text-[11.5px] [&>svg]:size-3.5">
+          <Check className="size-3.5" />
+          Verified
+        </Pill>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          aria-label={`Remove ${domain.domain}`}
+          disabled={busy}
+          onClick={onRemove}
+          className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-danger"
+        >
+          <X className="size-4" />
+        </Button>
+      </li>
+    );
+  }
+  return (
+    <li className="overflow-hidden rounded-[13px] border border-warning-border">
+      <div className="flex items-center gap-2.5 bg-warning-tint px-3.5 py-2.5">
+        <Globe className="size-4 text-warning" />
+        <span className="flex-1 truncate font-mono text-[13.5px] text-foreground">
+          {domain.domain}
+        </span>
+        <Pill tone="warning" dot className="bg-card py-[3px] font-bold text-[11.5px]">
+          Pending
+        </Pill>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          aria-label={`Remove ${domain.domain}`}
+          disabled={busy}
+          onClick={onRemove}
+          className="flex size-7 items-center justify-center rounded-lg text-warning hover:bg-card"
+        >
+          <X className="size-4" />
+        </Button>
+      </div>
+      <div className="bg-card p-3.5">
+        <p className="mb-2.5 text-muted-foreground text-xs leading-relaxed">
+          Add this <span className="font-mono text-foreground">TXT</span> record at your DNS
+          provider, then verify. Propagation can take a few minutes.
+        </p>
+        <div className="overflow-hidden rounded-[11px] border border-border bg-muted">
+          <TxtRow label="Type" value="TXT" />
+          <TxtRow label="Name" value={domain.host} copyable />
+          <TxtRow label="Value" value={domain.txt} copyable last />
+        </div>
+        <div className="mt-3 flex gap-2.5">
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={onVerify}
+            className="inline-flex h-[38px] items-center gap-1.5 rounded-[10px] bg-brand px-4 font-bold text-brand-foreground text-sm hover:bg-brand hover:brightness-105 disabled:opacity-60"
+          >
+            <ShieldCheck className="size-3.5" />
+            Verify
+          </Button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 /** Claim + DNS-verify domains (ORG-010): add, show the TXT challenge, verify, remove. */
 export function DomainsCard({ scope, onError }: Readonly<ScopeCardProps>) {
-  const [domains, setDomains] = useState<DomainRow[] | null>(null);
+  const { domains, busy, add, verify, remove } = useScopeDomains(scope, onError);
   const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const load = useCallback(async () => {
-    const res = await fetch(scopePath(scope, "/domains"));
-    if (res.ok) {
-      const data: { domains: DomainRow[] } = await res.json();
-      setDomains(data.domains);
-    }
-  }, [scope]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  // PUT claims, POST verifies, DELETE removes - all carry `{ domain }` in the body.
-  async function call(method: string, domain: string) {
-    setBusy(true);
-    const res = await fetch(scopePath(scope, "/domains"), {
-      method,
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ domain }),
-    });
-    setBusy(false);
-    if (res.ok) {
-      if (method === "PUT") setInput("");
-      await load();
-    } else {
-      onError(await readError(res));
-    }
-  }
 
   return (
     <SettingsCard className="gap-1.5">
@@ -97,91 +147,23 @@ export function DomainsCard({ scope, onError }: Readonly<ScopeCardProps>) {
         <div className="mt-2 h-12 animate-pulse rounded-[11px] bg-muted" />
       ) : (
         <ul className="mt-2 flex flex-col gap-2.5">
-          {domains.map((d) =>
-            d.verified ? (
-              <li
-                key={d.domain}
-                className="flex items-center gap-2.5 rounded-[11px] border border-border bg-muted px-3.5 py-2.5"
-              >
-                <Globe className="size-4 text-muted-foreground" />
-                <span className="flex-1 truncate font-mono text-[13.5px] text-foreground">
-                  {d.domain}
-                </span>
-                <Pill
-                  tone="success"
-                  className="gap-1 py-[3px] font-bold text-[11.5px] [&>svg]:size-3.5"
-                >
-                  <Check className="size-3.5" />
-                  Verified
-                </Pill>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  aria-label={`Remove ${d.domain}`}
-                  disabled={busy}
-                  onClick={() => call("DELETE", d.domain)}
-                  className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-danger"
-                >
-                  <X className="size-4" />
-                </Button>
-              </li>
-            ) : (
-              <li
-                key={d.domain}
-                className="overflow-hidden rounded-[13px] border border-warning-border"
-              >
-                <div className="flex items-center gap-2.5 bg-warning-tint px-3.5 py-2.5">
-                  <Globe className="size-4 text-warning" />
-                  <span className="flex-1 truncate font-mono text-[13.5px] text-foreground">
-                    {d.domain}
-                  </span>
-                  <Pill tone="warning" dot className="bg-card py-[3px] font-bold text-[11.5px]">
-                    Pending
-                  </Pill>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Remove ${d.domain}`}
-                    disabled={busy}
-                    onClick={() => call("DELETE", d.domain)}
-                    className="flex size-7 items-center justify-center rounded-lg text-warning hover:bg-card"
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </div>
-                <div className="bg-card p-3.5">
-                  <p className="mb-2.5 text-muted-foreground text-xs leading-relaxed">
-                    Add this <span className="font-mono text-foreground">TXT</span> record at your
-                    DNS provider, then verify. Propagation can take a few minutes.
-                  </p>
-                  <div className="overflow-hidden rounded-[11px] border border-border bg-muted">
-                    <TxtRow label="Type" value="TXT" />
-                    <TxtRow label="Name" value={d.host} copyable />
-                    <TxtRow label="Value" value={d.txt} copyable last />
-                  </div>
-                  <div className="mt-3 flex gap-2.5">
-                    <Button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => call("POST", d.domain)}
-                      className="inline-flex h-[38px] items-center gap-1.5 rounded-[10px] bg-brand px-4 font-bold text-brand-foreground text-sm hover:bg-brand hover:brightness-105 disabled:opacity-60"
-                    >
-                      <ShieldCheck className="size-3.5" />
-                      Verify
-                    </Button>
-                  </div>
-                </div>
-              </li>
-            ),
-          )}
+          {domains.map((d) => (
+            <DomainListItem
+              key={d.domain}
+              domain={d}
+              busy={busy}
+              onVerify={() => verify(d.domain)}
+              onRemove={() => remove(d.domain)}
+            />
+          ))}
         </ul>
       )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void call("PUT", input.trim().toLowerCase());
+          void add(input.trim().toLowerCase()).then((ok) => {
+            if (ok) setInput("");
+          });
         }}
         className="mt-2 flex flex-col gap-2.5 sm:flex-row"
       >
