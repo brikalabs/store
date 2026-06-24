@@ -6,6 +6,7 @@ import {
   CommandList,
   Kbd,
   KbdGroup,
+  useModifier,
 } from "@brika/clay";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Search } from "lucide-react";
@@ -25,11 +26,8 @@ export function HeaderSearch() {
   const [open, setOpen] = useState(false);
   const { plugins, scopes } = usePluginSearch(value);
 
-  // Starts false so SSR and the first client render agree (no hydration mismatch).
-  const [isMac, setIsMac] = useState(false);
-  useEffect(() => {
-    setIsMac(/Mac/i.test(navigator.userAgent));
-  }, []);
+  // Platform shortcut glyph (⌘ on Apple, Ctrl elsewhere), resolved client-side by Clay.
+  const { symbol } = useModifier();
 
   // Mirror the active query from the URL (e.g. /plugins?q=ai).
   const urlQuery = useRouterState({
@@ -89,7 +87,7 @@ export function HeaderSearch() {
         className="pr-16"
       />
       <KbdGroup className="-translate-y-1/2 absolute top-1/2 right-3 z-10">
-        <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
+        <Kbd>{symbol}</Kbd>
         <Kbd>K</Kbd>
       </KbdGroup>
 
