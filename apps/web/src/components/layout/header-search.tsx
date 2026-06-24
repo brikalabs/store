@@ -1,13 +1,13 @@
 import {
   Command,
   CommandGroup,
-  CommandInput,
+  CommandInputControl,
   CommandItem,
   CommandList,
   Kbd,
-  KbdGroup,
   useModifier,
 } from "@brika/clay";
+import { InputGroup, InputGroupAddon } from "@brika/clay/components/input-group";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -16,7 +16,9 @@ import { useSearch } from "@/components/layout/search-context";
 import { usePluginSearch } from "@/hooks/use-plugin-search";
 
 /**
- * Header search: a live text field with a keyboard-navigable results dropdown (Clay's cmdk).
+ * Header search: a live text field with a keyboard-navigable results dropdown (Clay's cmdk),
+ * in the detached command mode - the input is a CommandInputControl inside an InputGroup (so it
+ * matches the app's other search fields), with the CommandList rendered as a dropdown below.
  * ⌘K focuses it; the first row is highlighted so a plain Enter goes to the full results page.
  */
 export function HeaderSearch() {
@@ -59,37 +61,41 @@ export function HeaderSearch() {
       label="Search plugins and scopes"
       shouldFilter={false}
       loop
-      className="relative hidden h-auto max-w-md flex-1 flex-col overflow-visible rounded-input border border-input-group-border bg-input-group-container text-input-group-label shadow-surface backdrop-blur-input-group transition-[color,box-shadow] focus-within:border-input-group-focus-border focus-within:ring-[3px] focus-within:ring-input-group-focus-ring/50 sm:flex [&_[data-slot=command-input-wrapper]]:h-input-height [&_[data-slot=command-input-wrapper]]:border-b-0 [&_[data-slot=command-input-wrapper]]:px-3 [&_[data-slot=command-input-wrapper]_svg]:text-muted-foreground [&_[data-slot=command-input-wrapper]_svg]:opacity-100 [&_[data-slot=command-input]]:h-full [&_[data-slot=command-input]]:py-0 [&_[data-slot=command-input]]:placeholder:text-input-placeholder"
+      className="relative hidden max-w-md flex-1 overflow-visible sm:block"
     >
-      <CommandInput
-        ref={inputRef}
-        value={value}
-        onValueChange={(next) => {
-          setValue(next);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 120)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            setOpen(false);
-            inputRef.current?.blur();
-            return;
-          }
-          // Enter pressed before cmdk has selected a row (same frame as typing):
-          // fall back to the search page; otherwise cmdk opens the highlighted result.
-          if (event.key === "Enter") {
-            const root = event.currentTarget.closest("[data-slot=command]");
-            if (!root?.querySelector('[aria-selected="true"]')) goSearch();
-          }
-        }}
-        placeholder="Search plugins and scopes…"
-        className="pr-16"
-      />
-      <KbdGroup className="-translate-y-1/2 absolute top-1/2 right-3 z-10">
-        <Kbd>{symbol}</Kbd>
-        <Kbd>K</Kbd>
-      </KbdGroup>
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <Search className="size-4 text-muted-foreground" />
+        </InputGroupAddon>
+        <CommandInputControl
+          ref={inputRef}
+          value={value}
+          onValueChange={(next) => {
+            setValue(next);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setOpen(false);
+              inputRef.current?.blur();
+              return;
+            }
+            // Enter pressed before cmdk has selected a row (same frame as typing):
+            // fall back to the search page; otherwise cmdk opens the highlighted result.
+            if (event.key === "Enter") {
+              const root = event.currentTarget.closest("[data-slot=command]");
+              if (!root?.querySelector('[aria-selected="true"]')) goSearch();
+            }
+          }}
+          placeholder="Search plugins and scopes…"
+        />
+        <InputGroupAddon align="inline-end">
+          <Kbd>{symbol}</Kbd>
+          <Kbd>K</Kbd>
+        </InputGroupAddon>
+      </InputGroup>
 
       {showResults ? (
         <CommandList className="absolute top-full left-0 z-50 mt-2 max-h-[60vh] w-full rounded-xl border border-border bg-popover p-1.5 shadow-2xl">
