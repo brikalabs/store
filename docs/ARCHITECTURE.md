@@ -192,7 +192,10 @@ buys us.
   async context, so nested calls and helpers find it without threading a handle.
 - **Resources self-enlist** - the call site stays clean:
   - the **R2 tarball writer**'s `put` registers `onRollback(() => delete(key))`, so a
-    staged object is removed if the unit fails;
+    staged object is removed if the unit fails; the store's **R2 blob store**
+    (`CfR2BlobStore`) self-enlists the same way, so a web saga (`uploadUserAvatar`, the scope
+    icon upload) just wraps its put + D1 pointer in `transaction(...)` with no compensation at
+    the call site;
   - the **D1 metadata writer** is overlaid with `transactionalDb`, and `commitVersion`
     hands its statements to `deferBatch`, which runs them as **one atomic D1 batch at
     the commit point** (after the reversible work is staged), or immediately when no

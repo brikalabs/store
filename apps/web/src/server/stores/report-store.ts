@@ -1,6 +1,6 @@
 import { inject } from "@brika/di";
 import { and, desc, eq, inArray, isNotNull, like, or, type SQL, sql } from "drizzle-orm";
-import { Database } from "@/server/db/client";
+import { Db } from "@/server/db/client";
 import { plugins, reports, users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 import { authorColumns, toAuthor } from "@/server/stores/author";
@@ -36,7 +36,7 @@ export interface OperatorReport {
  * are never exposed on the public `/v1` surface.
  */
 export class ReportStore {
-  readonly #db = inject(Database);
+  readonly #db = inject(Db);
   readonly #blob = inject(BlobStore);
 
   /** File a new report (always `open`). */

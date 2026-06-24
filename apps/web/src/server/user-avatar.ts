@@ -1,5 +1,6 @@
 import { inject } from "@brika/di";
 import { badRequest } from "@brika/router";
+import { transaction } from "@brika/tx";
 import { avatarUrlOf, MAX_AVATAR_BYTES, userAvatarKey } from "@/lib/avatar";
 import { sniffImageMime } from "@/lib/image-format";
 import { BlobStore } from "@/server/ports/blob-store";
@@ -28,10 +29,15 @@ export async function uploadUserAvatar(
   if (sniffImageMime(bytes) !== "image/webp") throw badRequest("Avatar must be a WebP image");
 
   const assets = inject(BlobStore);
-  await assets.put(userAvatarKey(userId), bytes, "image/webp");
+  const key = userAvatarKey(userId);
   // Store only the content version; the public URL is derived from it at read time.
   const version = await contentTag(bytes);
-  await inject(SocialService).setUserAvatar(userId, version);
+  // Stage the blob then commit the D1 pointer in one unit: the blob self-enlists its rollback, so a
+  // failed setUserAvatar leaves no orphan in R2.
+  await transaction(async () => {
+    await assets.put(key, bytes, "image/webp");
+    await inject(SocialService).setUserAvatar(userId, version);
+  });
   return avatarUrlOf(assets, version, userId, null);
 }
 

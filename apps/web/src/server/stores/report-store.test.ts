@@ -1,31 +1,10 @@
-import { Database as Sqlite } from "bun:sqlite";
 import { beforeEach, expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { provide, testBed } from "@brika/di";
-import { drizzle } from "drizzle-orm/bun-sqlite";
-import { Database, type Db } from "@/server/db/client";
-import * as schema from "@/server/db/schema";
+import { Db } from "@/server/db/client";
 import { plugins, users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 import { ReportStore } from "@/server/stores/report-store";
-
-const MIGRATIONS = join(import.meta.dir, "../../../drizzle");
-
-/** A real in-memory drizzle Db with the web migrations applied (mirrors packages/db's harness). */
-function makeDb(): Db {
-  const sqlite = new Sqlite(":memory:");
-  for (const file of readdirSync(MIGRATIONS)
-    .filter((f) => f.endsWith(".sql"))
-    .sort()) {
-    const sql = readFileSync(join(MIGRATIONS, file), "utf8");
-    for (const statement of sql.split("--> statement-breakpoint")) {
-      const trimmed = statement.trim();
-      if (trimmed.length > 0) sqlite.run(trimmed);
-    }
-  }
-  return drizzle(sqlite, { schema }) as unknown as Db;
-}
+import { makeStoreDb } from "@/server/stores/test-harness";
 
 const blob: BlobStore = {
   url: () => undefined,
@@ -38,8 +17,8 @@ let db: Db;
 let store: ReportStore;
 
 beforeEach(async () => {
-  db = makeDb();
-  store = testBed(provide(Database, db), provide(BlobStore, blob)).inject(ReportStore);
+  db = makeStoreDb();
+  store = testBed(provide(Db, db), provide(BlobStore, blob)).inject(ReportStore);
   await db.insert(users).values({ id: "u1", name: "Alice" });
   await db.insert(users).values({ id: "u2", name: "Bob" });
   await db

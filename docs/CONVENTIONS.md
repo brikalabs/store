@@ -139,7 +139,10 @@ collapsed `else if`, no parameter reassignment, no unused imports or variables.
 
 ## Tests
 
+See **[the testing guide](TESTING.md)** for the full rules: the naming convention, the three DI test
+seams (`testBed`, `makeAdapter`/`makeDb`, `runInContext`), and what to test. In short:
+
 - `bun test`, with `*.test.ts` colocated next to the source.
 - Test pure logic directly; inject in-memory fakes for ports (no live Cloudflare
   needed). Security-critical code (integrity, OIDC, the publish gates) has
-  explicit positive and negative cases.
+  explicit positive and negative cases, and every saga ships a rollback test.

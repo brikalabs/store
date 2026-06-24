@@ -1,7 +1,7 @@
 import { inject } from "@brika/di";
 import { Review } from "@brika/registry-contract";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { Database } from "@/server/db/client";
+import { Db } from "@/server/db/client";
 import { reviews, reviewVotes, users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 import { authorColumns, toAuthor } from "@/server/stores/author";
@@ -20,7 +20,7 @@ export interface ReviewInput {
  * contract. The rating denormalization on the `plugins` row is recomputed by {@link PluginStore}.
  */
 export class ReviewStore {
-  readonly #db = inject(Database);
+  readonly #db = inject(Db);
   readonly #blob = inject(BlobStore);
 
   /** Every review of a plugin, newest first, with the viewer's helpful-vote state. */

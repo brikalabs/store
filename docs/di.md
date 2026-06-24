@@ -63,9 +63,10 @@ export class ReviewStore {
 
 ### 2. An interface port (to swap implementations, and for tests) -> `token<T>("Name")`
 
-A TypeScript interface has no runtime identity, so give it one with `token<T>("Name")`, declared
-under the SAME name (TypeScript merges a type and a value). **Always pass the name** - it is the
-token's label in a missing-provider error.
+A TypeScript interface has no runtime identity, so give it one with `token<T>("Name")`. The token
+const, the type/interface it wraps, and the string label **MUST be the same identifier** (TypeScript
+merges the type and the value), so `inject(X)` reads as the type `X` and a missing-provider error
+names `X`. They may never drift: it is `Db = token<Db>("Db")`, never `Database = token<Db>("Database")`.
 
 ```ts
 export interface ScopeStore { get(scope: string): Promise<ScopeRecord | null>; /* ... */ }
@@ -175,6 +176,8 @@ hierarchical lazy-memoized injectors, no decorators / `reflect-metadata` / strin
   helper (`testBed` / `makeAdapter`).
 - No `inject(X, { optional: true }) ?? d` - use `injectOr(X, d)`.
 - No unnamed `token<T>()` - always `token<T>("Name")`.
+- No `token` whose const name or string label differs from the type it wraps: the const, the type
+  `T`, and the label MUST be one identifier (`Foo = token<Foo>("Foo")`).
 - No `@Injectable` markers, decorators, or `reflect-metadata`.
 - No `createInjector` / `runInInjectionContext` in application code - the framework glue does it.
 - No reading `cloudflare:workers` `env` outside the composition root.

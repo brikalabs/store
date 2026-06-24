@@ -35,21 +35,6 @@ export function levelFor(entry: RouteLogEntry): LogLevel {
   return "info";
 }
 
-/** Format a log entry as a single line, e.g. `POST 201 12.3ms /-/publish`. */
-export function formatLogEntry(entry: RouteLogEntry): string {
-  const line = `${entry.method} ${entry.status} ${entry.durationMs.toFixed(1)}ms ${entry.path}`;
-  return entry.path === entry.pattern ? line : `${line} (${entry.pattern})`;
-}
-
-/** A {@link RouterLogger} that writes one line per request, at a console level by outcome. */
-export const consoleLogger: RouterLogger = (entry) => {
-  const line = formatLogEntry(entry);
-  const level = levelFor(entry);
-  if (level === "error") console.error(line, entry.error ?? "");
-  else if (level === "warn") console.warn(line);
-  else console.log(line);
-};
-
 /** The structured record {@link jsonLogger} emits (a stable, ingest-friendly shape). */
 export interface JsonLogRecord {
   readonly timestamp: string;

@@ -1,7 +1,7 @@
 import { inject, token } from "@brika/di";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { Database } from "@/server/db/client";
+import { Db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { config } from "@/server/env";
 
@@ -9,7 +9,7 @@ import { config } from "@/server/env";
 function buildAuth() {
   const { SESSION_SECRET, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, BETTER_AUTH_URL } = config();
   return betterAuth({
-    database: drizzleAdapter(inject(Database), { provider: "sqlite", schema }),
+    database: drizzleAdapter(inject(Db), { provider: "sqlite", schema }),
     secret: SESSION_SECRET,
     baseURL: BETTER_AUTH_URL,
     trustedOrigins: [BETTER_AUTH_URL],
