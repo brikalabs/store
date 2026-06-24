@@ -1,6 +1,6 @@
 import { Button, Input } from "@brika/clay";
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { Check, X } from "lucide-react";
+import { Check, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Pager } from "@/components/clay/pagination";
 import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
@@ -174,12 +174,15 @@ export function OperatorReportsPage() {
         />
       </div>
 
-      <Input
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Search plugin, reporter, or details"
-        className="max-w-sm"
-      />
+      <div className="relative max-w-sm">
+        <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
+        <Input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Search plugin, reporter, or details"
+          className="pl-9"
+        />
+      </div>
 
       {error !== null && <p className="text-destructive text-sm">{error}</p>}
 
