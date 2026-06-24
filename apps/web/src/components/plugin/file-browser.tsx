@@ -7,17 +7,10 @@ import {
   CodeBlockHeader,
   CodeBlockInfo,
 } from "@brika/clay/components/code-block";
+import { Tree, TreeItem } from "@brika/clay/components/tree";
 import type { PluginFile } from "@brika/registry-contract";
 import { Box, File as FileIcon, Folder, ShieldCheck } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
-import {
-  Tree,
-  TreeItem,
-  TreeItemBadge,
-  TreeItemContent,
-  TreeItemLabel,
-  TreeItemRow,
-} from "@/components/clay/tree";
 import { usePluginFileContent, usePluginFiles } from "@/hooks/use-plugin-files";
 import { formatBytes } from "@/lib/format";
 import {
@@ -32,30 +25,31 @@ import {
 
 // npm-style file browser for a published tarball: a two-pane tree + source viewer.
 
-/** Recursively render a level of the file tree, using the Tree slot components. */
-function FileTreeItems({ level }: Readonly<{ level: Map<string, FileTreeNode> }>) {
+/** A file's label: the mono name plus a "manifest" pill for package.json. */
+function FileLabel({ name }: Readonly<{ name: string }>) {
   return (
-    <>
-      {sortedChildren(level).map((node) =>
-        node.isDir ? (
-          <TreeItem key={node.path} nodeId={node.path} isFolder>
-            <TreeItemRow>
-              <TreeItemLabel>{node.name}</TreeItemLabel>
-            </TreeItemRow>
-            <TreeItemContent>
-              <FileTreeItems level={node.children} />
-            </TreeItemContent>
-          </TreeItem>
-        ) : (
-          <TreeItem key={node.path} nodeId={node.path}>
-            <TreeItemRow>
-              <TreeItemLabel>{node.name}</TreeItemLabel>
-              {node.name === "package.json" ? <TreeItemBadge>manifest</TreeItemBadge> : null}
-            </TreeItemRow>
-          </TreeItem>
-        ),
-      )}
-    </>
+    <span className="flex min-w-0 items-center gap-1.5">
+      <span className="truncate font-mono text-[12.5px]">{name}</span>
+      {name === "package.json" ? (
+        <span className="shrink-0 rounded-full border border-brand/40 bg-brand/10 px-1.5 py-0.5 font-medium font-sans text-[10px] text-brand">
+          manifest
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** Recursively render a level of the file tree with Clay's Tree. A folder is a
+ *  TreeItem with nested children; a file is a leaf TreeItem. */
+function FileTreeItems({ level }: Readonly<{ level: Map<string, FileTreeNode> }>) {
+  return sortedChildren(level).map((node) =>
+    node.isDir ? (
+      <TreeItem key={node.path} nodeId={node.path} label={node.name}>
+        <FileTreeItems level={node.children} />
+      </TreeItem>
+    ) : (
+      <TreeItem key={node.path} nodeId={node.path} label={<FileLabel name={node.name} />} />
+    ),
   );
 }
 
@@ -243,6 +237,7 @@ function FileBrowser({
           onExpandedChange={setExpanded}
           selectedIds={selected}
           onSelectedChange={handleSelect}
+          showLines
         >
           <FileTreeItems level={tree} />
         </Tree>
