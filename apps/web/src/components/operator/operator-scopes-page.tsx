@@ -1,6 +1,6 @@
-import { Input } from "@brika/clay";
 import { Checkbox } from "@brika/clay/components/checkbox";
-import { Layers } from "lucide-react";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
+import { Layers, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import {
@@ -183,12 +183,16 @@ export function OperatorScopesPage() {
         />
       </div>
 
-      <Input
-        value={list.query}
-        onChange={(e) => list.setQuery(e.target.value)}
-        placeholder="Filter by scope or name"
-        className="max-w-sm"
-      />
+      <InputGroup className="max-w-sm">
+        <InputGroupAddon align="inline-start">
+          <Search className="size-4 text-muted-foreground" />
+        </InputGroupAddon>
+        <InputGroupInput
+          value={list.query}
+          onChange={(e) => list.setQuery(e.target.value)}
+          placeholder="Filter by scope or name"
+        />
+      </InputGroup>
 
       {list.capped && (
         <p className="text-muted-foreground text-xs">

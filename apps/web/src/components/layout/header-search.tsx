@@ -61,7 +61,7 @@ export function HeaderSearch() {
       label="Search plugins and scopes"
       shouldFilter={false}
       loop
-      className="relative hidden h-auto max-w-md flex-1 flex-col overflow-visible rounded-xl border border-border bg-muted/50 shadow-none backdrop-blur-none transition-colors focus-within:border-brand/40 focus-within:bg-card sm:flex [&_[data-slot=command-input-wrapper]]:border-b-0 [&_[data-slot=command-input-wrapper]]:px-3"
+      className="relative hidden h-auto max-w-md flex-1 flex-col overflow-visible rounded-xl border border-border bg-muted/50 shadow-none backdrop-blur-none transition-colors focus-within:border-brand/40 focus-within:bg-card sm:flex [&_[data-slot=command-input-wrapper]]:border-b-0 [&_[data-slot=command-input-wrapper]]:px-3 [&_[data-slot=command-input-wrapper]_svg]:text-muted-foreground [&_[data-slot=command-input-wrapper]_svg]:opacity-100"
     >
       <CommandInput
         ref={inputRef}
