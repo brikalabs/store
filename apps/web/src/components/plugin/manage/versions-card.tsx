@@ -1,4 +1,5 @@
-import { Card, Input } from "@brika/clay";
+import { Card } from "@brika/clay";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
 import { Archive, Ban, RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Pager, usePagedList } from "@/components/clay/pagination";
@@ -46,15 +47,17 @@ export function VersionsCard({ name }: Readonly<{ name: string }>) {
         </p>
       )}
 
-      <div className="relative">
-        <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
-        <Input
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <Search className="size-4 text-muted-foreground" />
+        </InputGroupAddon>
+        <InputGroupInput
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search version, e.g. 2.4"
-          className="pl-9 font-mono"
+          className="font-mono"
         />
-      </div>
+      </InputGroup>
 
       {state === null ? (
         <div className="h-40 animate-pulse rounded-[14px] bg-muted" />

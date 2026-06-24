@@ -1,5 +1,5 @@
-import { Input } from "@brika/clay";
 import { Checkbox } from "@brika/clay/components/checkbox";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Flag, Search } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -135,15 +135,16 @@ export function OperatorPackagesPage() {
       <div className="flex flex-wrap items-center gap-3">
         <FacetChips facets={facets} active={facet} onSelect={setFacet} />
         <div className="min-w-3 flex-1" />
-        <div className="relative min-w-[220px] max-w-xs flex-1">
-          <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
-          <Input
+        <InputGroup className="min-w-[220px] max-w-xs flex-1">
+          <InputGroupAddon align="inline-start">
+            <Search className="size-4 text-muted-foreground" />
+          </InputGroupAddon>
+          <InputGroupInput
             value={list.query}
             onChange={(e) => list.setQuery(e.target.value)}
             placeholder="Search package or owner"
-            className="pl-9"
           />
-        </div>
+        </InputGroup>
         <SortSelect
           value={sort}
           onChange={setSort}

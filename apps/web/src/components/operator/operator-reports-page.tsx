@@ -1,4 +1,5 @@
-import { Button, Input } from "@brika/clay";
+import { Button } from "@brika/clay";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Check, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -174,15 +175,16 @@ export function OperatorReportsPage() {
         />
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
-        <Input
+      <InputGroup className="max-w-sm">
+        <InputGroupAddon align="inline-start">
+          <Search className="size-4 text-muted-foreground" />
+        </InputGroupAddon>
+        <InputGroupInput
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Search plugin, reporter, or details"
-          className="pl-9"
         />
-      </div>
+      </InputGroup>
 
       {error !== null && <p className="text-destructive text-sm">{error}</p>}
 

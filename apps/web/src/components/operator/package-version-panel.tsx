@@ -1,4 +1,4 @@
-import { Input } from "@brika/clay";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TakedownControls } from "@/components/operator/takedown-controls";
@@ -72,15 +72,17 @@ export function VersionPanel({
               ))}
             </div>
             <div className="min-w-3 flex-1" />
-            <div className="relative w-44">
-              <Search className="-translate-y-1/2 absolute top-1/2 left-2.5 size-3.5 text-muted-foreground" />
-              <Input
+            <InputGroup className="w-44 h-8">
+              <InputGroupAddon align="inline-start">
+                <Search className="size-3.5 text-muted-foreground" />
+              </InputGroupAddon>
+              <InputGroupInput
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Find version"
-                className="h-8 pl-8 font-mono text-xs"
+                className="font-mono text-xs"
               />
-            </div>
+            </InputGroup>
           </div>
 
           <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
