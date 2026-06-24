@@ -4,21 +4,17 @@ import { getRequest } from "@tanstack/react-start/server";
 import { DEFAULT_LOCALE, type Locale, readLocaleCookie, SUPPORTED_LOCALES } from "@/i18n/catalog";
 
 /**
- * The UI locale for the current request: the explicit `brika-locale` cookie, else the best
- * `Accept-Language` match. Shared by the SSR loader ({@link fetchLocale}) and the per-request DI
- * scope (`runWeb`). Defaults safely if no request is in scope.
+ * The UI locale for a request: the explicit `brika-locale` cookie, else the best `Accept-Language`
+ * match. Pure (it takes the request), so server-only callers can import it without dragging a
+ * server-only `getRequest()` into a client-reachable module. Shared by {@link fetchLocale} and the
+ * per-request DI scope (`runWeb`).
  */
-export function resolveRequestLocale(): Locale {
-  try {
-    const request = getRequest();
-    return (
-      readLocaleCookie(request.headers.get("cookie")) ??
-      resolveLocale(request.headers.get("accept-language"), SUPPORTED_LOCALES, DEFAULT_LOCALE)
-    );
-  } catch {
-    return DEFAULT_LOCALE;
-  }
+export function localeForRequest(request: Request): Locale {
+  return (
+    readLocaleCookie(request.headers.get("cookie")) ??
+    resolveLocale(request.headers.get("accept-language"), SUPPORTED_LOCALES, DEFAULT_LOCALE)
+  );
 }
 
 /** The request's UI locale, as a server function for the SSR root loader. */
-export const fetchLocale = createServerFn().handler((): Locale => resolveRequestLocale());
+export const fetchLocale = createServerFn().handler((): Locale => localeForRequest(getRequest()));
