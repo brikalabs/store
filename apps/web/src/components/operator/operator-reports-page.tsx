@@ -1,5 +1,6 @@
 import { Button } from "@brika/clay";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
+import type { Translate } from "@brika/i18n";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Check, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -13,12 +14,20 @@ import {
   SortSelect,
 } from "@/components/operator/operator-toolbar";
 import { type OperatorReport, useOperatorReports } from "@/hooks/use-operator-reports";
-import { formatRelative } from "@/lib/format";
-import { REPORT_REASON_KEYS, REPORT_REASONS, reportReasonLabel } from "@/lib/reports";
+import { type AppKey, useRelativeTime, useT } from "@/i18n";
+import { REPORT_REASON_KEYS, reportReasonLabelKey } from "@/lib/reports";
 
 const route = getRouteApi("/operator/reports");
 
 type StatusKey = "open" | "resolved" | "dismissed" | "all";
+type AppTranslate = Translate<AppKey>;
+
+/** Localized label for a report's settled status; unknown values fall back to the raw key. */
+function statusLabel(status: string, t: AppTranslate): string {
+  if (status === "resolved") return t("operator:reportStatusResolved");
+  if (status === "dismissed") return t("operator:reportStatusDismissed");
+  return status;
+}
 
 /** One report row: plugin, reason/status badges, details, reporter, and the open-report actions. */
 function ReportRow({
@@ -30,6 +39,8 @@ function ReportRow({
   busy: boolean;
   onAct: (status: "resolved" | "dismissed") => void;
 }>) {
+  const t = useT();
+  const relative = useRelativeTime();
   return (
     <li className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-start">
       <PluginIcon name={report.pluginName} size={36} />
@@ -43,18 +54,18 @@ function ReportRow({
             {report.pluginName}
           </Link>
           <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-600 text-xs dark:text-amber-400">
-            {reportReasonLabel(report.reason)}
+            {t(reportReasonLabelKey(report.reason))}
           </span>
           {report.status !== "open" && (
             <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground text-xs capitalize">
-              {report.status}
+              {statusLabel(report.status, t)}
             </span>
           )}
         </div>
         {report.details !== null && report.details.length > 0 ? (
           <p className="text-foreground text-sm leading-relaxed">{report.details}</p>
         ) : (
-          <p className="text-muted-foreground text-sm italic">No details provided.</p>
+          <p className="text-muted-foreground text-sm italic">{t("operator:reportsNoDetails")}</p>
         )}
         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
           <GradientAvatar
@@ -66,18 +77,18 @@ function ReportRow({
           />
           <span>{report.reporter.displayName}</span>
           <span aria-hidden>·</span>
-          <span>{formatRelative(report.createdAt)}</span>
+          <span>{relative(report.createdAt)}</span>
         </div>
       </div>
       {report.status === "open" && (
         <div className="flex shrink-0 gap-2">
           <Button variant="outline" size="sm" disabled={busy} onClick={() => onAct("dismissed")}>
             <X className="size-4" />
-            Dismiss
+            {t("operator:reportDismiss")}
           </Button>
           <Button size="sm" disabled={busy} onClick={() => onAct("resolved")}>
             <Check className="size-4" />
-            Resolve
+            {t("operator:reportResolve")}
           </Button>
         </div>
       )}
@@ -86,6 +97,7 @@ function ReportRow({
 }
 
 export function OperatorReportsPage() {
+  const t = useT();
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const { data, busy, error, act } = useOperatorReports(search);
@@ -106,12 +118,12 @@ export function OperatorReportsPage() {
 
   const counts = data?.counts;
   const statusFacets: Facet<StatusKey>[] = [
-    { key: "open", label: "Open", count: counts?.open ?? 0 },
-    { key: "resolved", label: "Resolved", count: counts?.resolved ?? 0 },
-    { key: "dismissed", label: "Dismissed", count: counts?.dismissed ?? 0 },
+    { key: "open", label: t("operator:reportsFacetOpen"), count: counts?.open ?? 0 },
+    { key: "resolved", label: t("operator:reportsFacetResolved"), count: counts?.resolved ?? 0 },
+    { key: "dismissed", label: t("operator:reportsFacetDismissed"), count: counts?.dismissed ?? 0 },
     {
       key: "all",
-      label: "All",
+      label: t("operator:reportsFacetAll"),
       count: counts ? counts.open + counts.resolved + counts.dismissed : 0,
     },
   ];
@@ -120,11 +132,12 @@ export function OperatorReportsPage() {
     search.q !== undefined || search.reason !== undefined || search.status !== "open";
 
   function renderBody() {
-    if (data === null) return <p className="text-muted-foreground text-sm">Loading…</p>;
+    if (data === null)
+      return <p className="text-muted-foreground text-sm">{t("operator:loading")}</p>;
     if (data.items.length === 0) {
       return (
         <p className="text-muted-foreground text-sm">
-          {filtered ? "No reports match these filters." : "No open reports. The queue is clear."}
+          {filtered ? t("operator:reportsEmptyFiltered") : t("operator:reportsEmptyOpen")}
         </p>
       );
     }
@@ -143,11 +156,9 @@ export function OperatorReportsPage() {
   }
 
   return (
-    <OperatorShell activeLabel="Reports">
-      <OperatorHeader title="Reports">
-        User-submitted moderation reports. Filter by status or reason, or search a plugin, reporter,
-        or the report text. Resolve once you've acted (e.g. taken the package down), or dismiss a
-        report that needs no action. Either choice is recorded in the audit log.
+    <OperatorShell activeLabel="reports">
+      <OperatorHeader title={t("operator:reportsTitle")}>
+        {t("operator:reportsIntro")}
       </OperatorHeader>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -157,11 +168,14 @@ export function OperatorReportsPage() {
           onSelect={(status) => navigate({ search: (prev) => ({ ...prev, status, page: 1 }) })}
         />
         <SortSelect
-          label="Reason"
+          label={t("operator:reportsReasonLabel")}
           value={search.reason ?? "all"}
           options={[
-            { value: "all", label: "All reasons" },
-            ...REPORT_REASON_KEYS.map((key) => ({ value: key, label: REPORT_REASONS[key].label })),
+            { value: "all", label: t("operator:reportsAllReasons") },
+            ...REPORT_REASON_KEYS.map((key) => ({
+              value: key,
+              label: t(reportReasonLabelKey(key)),
+            })),
           ]}
           onChange={(value) =>
             navigate({
@@ -182,7 +196,7 @@ export function OperatorReportsPage() {
         <InputGroupInput
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Search plugin, reporter, or details"
+          placeholder={t("operator:reportsSearchPlaceholder")}
         />
       </InputGroup>
 

@@ -1,16 +1,29 @@
 import { Box, KeyRound, Layers, LayoutGrid, Link2, type LucideIcon, User } from "lucide-react";
 import type { ReactNode } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { type AppKey, useT } from "@/i18n";
 
-type NavItem = { label: string; icon: LucideIcon; href: string };
+// `label` is the stable English identifier callers pass as `activeLabel`; `labelKey` is the
+// locale-resolved display text. Keeping both lets matching stay locale-independent.
+type NavItem = { label: string; labelKey: AppKey; icon: LucideIcon; href: string };
 
 const NAV: NavItem[] = [
-  { label: "Overview", icon: LayoutGrid, href: "/dashboard" },
-  { label: "My plugins", icon: Box, href: "/dashboard/plugins" },
-  { label: "Scopes", icon: Layers, href: "/dashboard/scopes" },
-  { label: "Profile", icon: User, href: "/dashboard/profile" },
-  { label: "Connected accounts", icon: Link2, href: "/dashboard/accounts" },
-  { label: "API tokens", icon: KeyRound, href: "/dashboard/account/tokens" },
+  { label: "Overview", labelKey: "layout:navOverview", icon: LayoutGrid, href: "/dashboard" },
+  { label: "My plugins", labelKey: "layout:navMyPlugins", icon: Box, href: "/dashboard/plugins" },
+  { label: "Scopes", labelKey: "layout:navScopes", icon: Layers, href: "/dashboard/scopes" },
+  { label: "Profile", labelKey: "layout:navProfile", icon: User, href: "/dashboard/profile" },
+  {
+    label: "Connected accounts",
+    labelKey: "layout:navConnectedAccounts",
+    icon: Link2,
+    href: "/dashboard/accounts",
+  },
+  {
+    label: "API tokens",
+    labelKey: "layout:navApiTokens",
+    icon: KeyRound,
+    href: "/dashboard/account/tokens",
+  },
 ];
 
 /** Signed-in developer dashboard chrome: a sticky sidebar nav + main column. */
@@ -27,7 +40,8 @@ export function AdminShell({
   activeLabel: string;
   children: ReactNode;
 }>) {
-  const displayName = name ?? "Your account";
+  const t = useT();
+  const displayName = name ?? t("layout:accountFallback");
   return (
     <main className="mx-auto grid max-w-7xl items-start gap-[34px] px-6 pt-[30px] pb-24 lg:grid-cols-[236px_1fr]">
       <aside className="flex flex-col gap-0.5 lg:sticky lg:top-[92px]">
@@ -41,7 +55,7 @@ export function AdminShell({
           />
           <div className="min-w-0">
             <div className="truncate font-bold text-foreground text-sm">{displayName}</div>
-            <div className="text-muted-foreground text-xs">Developer</div>
+            <div className="text-muted-foreground text-xs">{t("layout:developer")}</div>
           </div>
         </div>
         {NAV.map((item) => {
@@ -57,7 +71,7 @@ export function AdminShell({
               }`}
             >
               <item.icon className="size-[18px]" />
-              {item.label}
+              {t(item.labelKey)}
             </a>
           );
         })}

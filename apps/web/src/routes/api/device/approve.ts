@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { publicJson, runHandler } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 import { enforceLimit } from "@/server/rate-limit";
 import { DeviceApprovalStore } from "@/server/stores/device-approval-store";
 
@@ -19,15 +20,19 @@ export const Route = createFileRoute("/api/device/approve")({
       POST: ({ request }) =>
         runHandler(async () => {
           const user = await getCurrentUser(request);
-          if (user === null) throw unauthorized("Sign in required");
+          if (user === null) throw unauthorized(inject(ServerT).t("api:signInRequired"));
 
           // Cap approvals per user to throttle abuse of the device-binding endpoint.
           await enforceLimit("WRITE_LIMITER", `device-approve:${user.id}`);
-          const parsed = await readBody(request, ApproveInput, "Invalid request");
+          const parsed = await readBody(
+            request,
+            ApproveInput,
+            inject(ServerT).t("api:invalidRequest"),
+          );
 
           const code = parsed.user_code.trim().toUpperCase();
           if (!(await inject(DeviceApprovalStore).approve(code, user.id))) {
-            throw badRequest("That code is invalid, expired, or already used");
+            throw badRequest(inject(ServerT).t("api:deviceCodeInvalid"));
           }
           return publicJson({ ok: true });
         }),

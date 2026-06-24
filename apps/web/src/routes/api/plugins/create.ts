@@ -10,6 +10,7 @@ import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { recordAudit, runAuthed } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 
 const Body = z.object({
   scope: z.string().min(1),
@@ -42,7 +43,7 @@ export const Route = createFileRoute("/api/plugins/create")({
           const { scope, name, publisher } = await readBody(
             request,
             Body,
-            "Invalid create request",
+            inject(ServerT).t("api:invalidCreateRequest"),
           );
           const fullName = `${scope}/${name}`;
 

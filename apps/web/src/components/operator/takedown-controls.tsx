@@ -1,6 +1,7 @@
 import { Button, Input } from "@brika/clay";
 import { Ban, Undo2 } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
+import { useT } from "@/i18n";
 
 /**
  * The takedown/restore control for the operator views (versions, packages, scopes). "Take down"
@@ -18,6 +19,7 @@ export function TakedownControls({
   onTakedown: (reason: string) => void;
   onRestore: () => void;
 }>) {
+  const t = useT();
   const [prompting, setPrompting] = useState(false);
   const [reason, setReason] = useState("");
 
@@ -31,7 +33,7 @@ export function TakedownControls({
         className="shrink-0 gap-1.5 text-emerald-700 hover:text-emerald-700 dark:text-emerald-400"
       >
         <Undo2 className="size-4" />
-        Restore
+        {t("operator:restore")}
       </Button>
     );
   }
@@ -46,7 +48,7 @@ export function TakedownControls({
         className="shrink-0 gap-1.5"
       >
         <Ban className="size-4" />
-        Take down
+        {t("operator:takeDown")}
       </Button>
     );
   }
@@ -64,7 +66,7 @@ export function TakedownControls({
         autoFocus
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        placeholder="Reason (recorded in the audit log)"
+        placeholder={t("operator:reasonPlaceholder")}
         className="h-9 w-56"
       />
       <Button
@@ -73,7 +75,7 @@ export function TakedownControls({
         size="sm"
         disabled={busy || reason.trim().length === 0}
       >
-        Confirm
+        {t("operator:confirm")}
       </Button>
       <Button
         type="button"
@@ -85,7 +87,7 @@ export function TakedownControls({
           setReason("");
         }}
       >
-        Cancel
+        {t("operator:cancel")}
       </Button>
     </form>
   );

@@ -2,40 +2,50 @@ import { BrikaLogo } from "@brika/clay";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { GithubIcon } from "@/components/clay/icons";
+import { type FooterKey, useT } from "@/i18n";
 
 type FooterLink = { label: string; to?: string; href?: string };
 
-const COLUMNS: { title: string; links: FooterLink[] }[] = [
+// Static structure (keys + targets); labels are resolved against the active locale at render.
+const COLUMN_DEFS: {
+  titleKey: FooterKey;
+  links: { key: FooterKey; to?: string; href?: string }[];
+}[] = [
   {
-    title: "Product",
+    titleKey: "product",
     links: [
-      { label: "Browse plugins", to: "/plugins" },
-      { label: "Trending", to: "/plugins" },
-      { label: "Categories" },
-      { label: "Publish a plugin", to: "/dashboard" },
+      { key: "browsePlugins", to: "/plugins" },
+      { key: "trending", to: "/plugins" },
+      { key: "categories" },
+      { key: "publish", to: "/dashboard" },
     ],
   },
   {
-    title: "Developers",
+    titleKey: "developers",
     links: [
-      { label: "Documentation" },
-      { label: "API reference" },
-      { label: "Registry contract" },
-      { label: "Status", href: "https://status.brika.dev" },
+      { key: "documentation" },
+      { key: "apiReference" },
+      { key: "registryContract" },
+      { key: "status", href: "https://status.brika.dev" },
     ],
   },
   {
-    title: "Legal",
+    titleKey: "legal",
     links: [
-      { label: "Terms of Service", to: "/legal/terms" },
-      { label: "Privacy Policy", to: "/legal/privacy" },
-      { label: "Licenses", to: "/legal/licenses" },
-      { label: "Cookie settings", to: "/legal/cookies" },
+      { key: "terms", to: "/legal/terms" },
+      { key: "privacy", to: "/legal/privacy" },
+      { key: "licenses", to: "/legal/licenses" },
+      { key: "cookies", to: "/legal/cookies" },
     ],
   },
 ];
 
 export function SiteFooter() {
+  const t = useT("footer");
+  const columns = COLUMN_DEFS.map((column) => ({
+    title: t(column.titleKey),
+    links: column.links.map<FooterLink>((link) => ({ ...link, label: t(link.key) })),
+  }));
   return (
     <footer className="border-border border-t bg-muted/40">
       <div className="mx-auto max-w-7xl px-6 pt-9 pb-6">
@@ -45,9 +55,7 @@ export function SiteFooter() {
               <BrikaLogo className="h-6 w-auto" />
               <span className="font-bold font-heading tracking-tight">Brika Store</span>
             </div>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              The marketplace for Brika plugins. A fast, searchable home for every Brika plugin.
-            </p>
+            <p className="text-muted-foreground text-sm leading-relaxed">{t("tagline")}</p>
             <div className="mt-0.5 flex gap-2">
               <FooterSocial href="https://github.com/brikalabs" label="GitHub">
                 <GithubIcon className="size-4" />
@@ -55,7 +63,7 @@ export function SiteFooter() {
             </div>
           </div>
 
-          {COLUMNS.map((column) => (
+          {columns.map((column) => (
             <div key={column.title} className="flex flex-col gap-2.5">
               <div className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.05em]">
                 {column.title}
@@ -68,7 +76,7 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-7 flex flex-wrap items-center justify-between gap-2.5 border-border border-t pt-5 text-muted-foreground text-xs">
-          <span>© 2026 Brika</span>
+          <span>{t("copyright", { year: "2026" })}</span>
           <span className="font-mono">store.brika.dev</span>
         </div>
       </div>

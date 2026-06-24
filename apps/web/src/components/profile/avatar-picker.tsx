@@ -4,6 +4,7 @@ import { type ChangeEvent, useRef, useState } from "react";
 import { ImageCropModal } from "@/components/clay/image-crop-modal";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { useAccountAvatar } from "@/hooks/use-account-avatar";
+import { useT } from "@/i18n";
 
 /**
  * Upload / clear the signed-in account's avatar. The picked image goes through a crop+zoom step
@@ -21,6 +22,7 @@ export function AvatarPicker({
   avatarUrl?: string;
   onChange: (avatarUrl: string | undefined) => void;
 }>) {
+  const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   // The file awaiting crop is view state local to the modal flow; the upload itself lives in the hook.
   const [pending, setPending] = useState<File | null>(null);
@@ -55,7 +57,7 @@ export function AvatarPicker({
         className="inline-flex h-[38px] items-center gap-1.5 rounded-[10px] border border-input bg-card px-3.5 font-semibold text-sm transition-colors hover:border-brand-border disabled:opacity-60"
       >
         <Upload className="size-4" />
-        {busy ? "Uploading…" : "Upload"}
+        {busy ? t("profile:avatarUploading") : t("profile:avatarUpload")}
       </Button>
       <Button
         type="button"
@@ -65,15 +67,13 @@ export function AvatarPicker({
         className="inline-flex h-[38px] items-center gap-1.5 rounded-[10px] border border-input bg-card px-3.5 font-semibold text-muted-foreground text-sm transition-colors hover:border-danger-border hover:text-danger disabled:opacity-60"
       >
         <Trash2 className="size-4" />
-        Remove
+        {t("profile:avatarRemove")}
       </Button>
-      <span className="text-muted-foreground text-xs">
-        {error ?? "Remove it to use your provider avatar."}
-      </span>
+      <span className="text-muted-foreground text-xs">{error ?? t("profile:avatarHint")}</span>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={pick} />
       <ImageCropModal
         file={pending}
-        title="Crop your avatar"
+        title={t("profile:avatarCropTitle")}
         shape="circle"
         onCancel={() => setPending(null)}
         onApply={crop}

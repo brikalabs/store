@@ -1,0 +1,11 @@
+{
+  "signIn": "Connexion",
+  "browse": "Explorer",
+  "dashboard": "Tableau de bord",
+  "accountSettings": "Paramètres du compte",
+  "operatorConsole": "Console opérateur",
+  "theme": "Thème",
+  "signOut": "Déconnexion",
+  "account": "Votre compte",
+  "developer": "Développeur"
+}

@@ -11,6 +11,7 @@ import { Check, ShieldCheck } from "lucide-react";
 import type { SyntheticEvent } from "react";
 import { GithubIcon } from "@/components/clay/icons";
 import type { CurrentUser } from "@/hooks/use-current-user";
+import { useT } from "@/i18n";
 import { CODE_LENGTH, normalizeCode } from "@/lib/device-code";
 
 // Each slot is its own single-slot group: a fully rounded box, not Clay's connected default.
@@ -47,6 +48,8 @@ export function DeviceBody({
   onValueChange,
   onSubmit,
 }: Readonly<DeviceBodyProps>) {
+  const t = useT();
+
   if (loading) {
     return <div className="h-[50px] w-full animate-pulse rounded-xl bg-muted" />;
   }
@@ -58,7 +61,7 @@ export function DeviceBody({
         className="flex h-[50px] w-full items-center justify-center gap-2.5 rounded-xl bg-foreground font-semibold text-background transition-opacity hover:opacity-90"
       >
         <GithubIcon className="size-5" />
-        Sign in with GitHub to continue
+        {t("device:signInToContinue")}
       </a>
     );
   }
@@ -69,8 +72,8 @@ export function DeviceBody({
         <span className="flex size-10 items-center justify-center rounded-full bg-brand/10 text-brand-ink">
           <Check className="size-5" />
         </span>
-        <p className="font-medium font-heading">Device authorized</p>
-        <p className="text-muted-foreground text-sm">You can return to your terminal.</p>
+        <p className="font-medium font-heading">{t("device:authorizedTitle")}</p>
+        <p className="text-muted-foreground text-sm">{t("device:authorizedBody")}</p>
       </div>
     );
   }
@@ -96,9 +99,7 @@ export function DeviceBody({
       </InputOTP>
 
       {state === "error" ? (
-        <p className="-mt-3 text-destructive text-sm">
-          That code is invalid, expired, or already used.
-        </p>
+        <p className="-mt-3 text-destructive text-sm">{t("device:codeError")}</p>
       ) : null}
 
       <button
@@ -107,34 +108,35 @@ export function DeviceBody({
         className="flex h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-brand font-semibold text-[15px] text-brand-foreground shadow-[0_8px_20px_-8px_rgba(242,84,45,0.5)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Check className="size-4" />
-        {submitting ? "Authorizing…" : "Authorize device"}
+        {submitting ? t("device:authorizing") : t("device:authorizeCta")}
       </button>
 
       <div className="flex w-full items-start gap-2.5 rounded-xl border border-border bg-muted/50 px-3.5 py-3 text-left text-[12.5px] text-foreground leading-relaxed">
         <ShieldCheck className="mt-px size-[18px] shrink-0 text-brand-ink" />
         <p>
-          Only approve if you just ran{" "}
+          {t("device:approveHintBefore")}{" "}
           <code className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[11.5px]">
             brika login
           </code>{" "}
-          on this device.
+          {t("device:approveHintAfter")}
           <br />
-          <span className="text-muted-foreground">
-            This code expires in 10 minutes. Never share it with anyone.
-          </span>
+          <span className="text-muted-foreground">{t("device:expiryWarning")}</span>
         </p>
       </div>
 
       <p className="flex items-center gap-2 text-muted-foreground text-[13px]">
-        <span>Signed in as</span>
+        <span>{t("device:signedInAs")}</span>
         <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
           <Avatar className="size-[18px]">
-            <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name ?? "Your account"} />
+            <AvatarImage
+              src={user.avatarUrl ?? undefined}
+              alt={user.name ?? t("device:yourAccount")}
+            />
             <AvatarFallback className="text-[8px]">
               {(user.name ?? "?").slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          {user.name ?? "your account"}
+          {user.name ?? t("device:yourAccount")}
         </span>
       </p>
     </form>

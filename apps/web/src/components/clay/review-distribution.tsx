@@ -1,4 +1,5 @@
 import { cn, Rating } from "@brika/clay";
+import { useT } from "@/i18n";
 
 /** Average score beside a 5→1 star histogram. */
 export function ReviewDistribution({
@@ -13,6 +14,7 @@ export function ReviewDistribution({
   distribution: Record<number, number>;
   className?: string;
 }>) {
+  const t = useT();
   const total = count > 0 ? count : 1;
   return (
     <div
@@ -27,9 +29,7 @@ export function ReviewDistribution({
           {average.toFixed(1)}
         </span>
         <Rating value={average} size="lg" color="var(--color-star)" />
-        <span className="text-muted-foreground text-xs">
-          {count} {count === 1 ? "review" : "reviews"}
-        </span>
+        <span className="text-muted-foreground text-xs">{t("clay:reviewCount", { count })}</span>
       </div>
       <div className="flex flex-1 flex-col gap-1.5">
         {[5, 4, 3, 2, 1].map((star) => {

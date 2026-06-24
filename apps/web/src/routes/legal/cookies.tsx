@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalPage } from "@/components/layout/legal-page";
-import content from "@/content/legal/cookies.md?raw";
 
 export const Route = createFileRoute("/legal/cookies")({
   head: () => ({
@@ -12,5 +11,5 @@ export const Route = createFileRoute("/legal/cookies")({
       },
     ],
   }),
-  component: () => <LegalPage slug="cookies" content={content} />,
+  component: () => <LegalPage slug="cookies" />,
 });

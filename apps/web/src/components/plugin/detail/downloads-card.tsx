@@ -1,6 +1,7 @@
 import { Card } from "@brika/clay/components/card";
 import { Chart } from "@brika/clay/components/chart";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import { cumulativePoints, weekTrend } from "./helpers";
 
@@ -31,13 +32,14 @@ export function DownloadsCard({
   series,
   since,
 }: Readonly<{ installs: number; weekly: number; series: number[]; since?: string }>) {
+  const t = useT();
   const trend = weekTrend(series);
   return (
     <Card className="flex flex-col gap-3 p-4">
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-0.5">
           <span className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
-            Total downloads
+            {t("pluginDetail:totalDownloads")}
           </span>
           <span className="font-bold font-heading text-2xl text-foreground leading-tight">
             {formatCount(installs)}
@@ -50,12 +52,14 @@ export function DownloadsCard({
           data={cumulativePoints(series)}
           color="var(--color-brand)"
           formatValue={formatCount}
-          formatX={(ts) => `Day ${Math.round(ts) + 1}`}
+          formatX={(ts) => t("pluginDetail:chartDay", { day: Math.round(ts) + 1 })}
         />
       </div>
       <div className="flex justify-between font-mono text-muted-foreground text-xs">
-        <span>{formatCount(weekly)} this week</span>
-        <span>{since ? `since ${since}` : "last 30 days"}</span>
+        <span>{t("pluginDetail:thisWeek", { count: formatCount(weekly) })}</span>
+        <span>
+          {since ? t("pluginDetail:since", { date: since }) : t("pluginDetail:last30Days")}
+        </span>
       </div>
     </Card>
   );

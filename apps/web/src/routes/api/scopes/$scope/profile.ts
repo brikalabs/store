@@ -3,6 +3,7 @@ import { ScopeService, scopeProfileSchema } from "@brika/registry-core";
 import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { recordAudit, runAuthed } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 
 /** `PUT /api/scopes/:scope/profile` - set the scope's description + links (admin only; ORG-009). */
 export const Route = createFileRoute("/api/scopes/$scope/profile")({
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/api/scopes/$scope/profile")({
           const parsed = await readBody(
             request,
             scopeProfileSchema,
-            "Invalid description or links",
+            inject(ServerT).t("api:invalidProfile"),
           );
           const result = okOrThrow(
             await inject(ScopeService).setProfile(a.identity, params.scope, {

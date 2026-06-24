@@ -4,6 +4,7 @@ import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { recordAudit, runOperator } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 
 const Body = z.object({ name: z.string().min(1), version: z.string().min(1) });
 
@@ -13,7 +14,11 @@ export const Route = createFileRoute("/api/operator/packages/restore")({
     handlers: {
       POST: ({ request }) =>
         runOperator(request, async (a) => {
-          const parsed = await readBody(request, Body, "name and version are required");
+          const parsed = await readBody(
+            request,
+            Body,
+            inject(ServerT).t("api:restoreFieldsRequired"),
+          );
           const { name, version } = parsed;
           okOrThrow(await inject(ManagementService).restore(name, version));
           await recordAudit(a, { action: "restore", packageName: name, version });

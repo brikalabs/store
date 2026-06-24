@@ -1,0 +1,10 @@
+{
+  "notFoundTitle": "Cette brique manque au mur.",
+  "notFoundMessage": "Nous avons fouillé tous les plugins sans trouver cette page. Elle a été dépubliée, mal saisie, ou n'a jamais existé.",
+  "backToStore": "Retour au store",
+  "searchPlugins": "Rechercher des plugins",
+  "serverErrorTitle": "Une étincelle a fait des siennes.",
+  "serverErrorMessage": "Un problème de notre côté a provoqué une exception en plein rendu. L'équipe d'astreinte a été alertée, patientez un instant et réessayez.",
+  "tryAgain": "Réessayer",
+  "statusPage": "Page de statut"
+}

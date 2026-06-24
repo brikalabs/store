@@ -12,6 +12,7 @@ import type { PluginFile } from "@brika/registry-contract";
 import { Box, File as FileIcon, Folder, ShieldCheck } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { usePluginFileContent, usePluginFiles } from "@/hooks/use-plugin-files";
+import { useT } from "@/i18n";
 import { formatBytes } from "@/lib/format";
 import {
   buildTree,
@@ -27,12 +28,13 @@ import {
 
 /** A file's label: the mono name plus a "manifest" pill for package.json. */
 function FileLabel({ name }: Readonly<{ name: string }>) {
+  const t = useT();
   return (
     <span className="flex min-w-0 items-center gap-1.5">
       <span className="truncate font-mono text-[12.5px]">{name}</span>
       {name === "package.json" ? (
         <span className="shrink-0 rounded-full border border-brand/40 bg-brand/10 px-1.5 py-0.5 font-medium font-sans text-[10px] text-brand">
-          manifest
+          {t("plugin:manifest")}
         </span>
       ) : null}
     </span>
@@ -66,19 +68,21 @@ function ViewerMessage({ title, children }: Readonly<{ title: string; children?:
 
 /** Empty-state shown in the viewer pane when no file is selected. */
 function ViewerEmptyState() {
+  const t = useT();
   return (
-    <ViewerMessage title="Select a file to view its contents">
-      Source is read straight from the published tarball.
+    <ViewerMessage title={t("plugin:viewerEmptyTitle")}>
+      {t("plugin:viewerEmptyDescription")}
     </ViewerMessage>
   );
 }
 
 /** Not-previewable fallback (binary, oversized, or load error) with an "Open raw" link. */
 function ViewerNotPreviewable({ src, reason }: Readonly<{ src: string; reason: string }>) {
+  const t = useT();
   return (
     <ViewerMessage title={reason}>
       <a href={src} target="_blank" rel="noreferrer" className="font-semibold text-brand">
-        Open raw
+        {t("plugin:openRaw")}
       </a>
     </ViewerMessage>
   );
@@ -96,6 +100,7 @@ function ViewerHeader({
   text: string | null;
   src: string;
 }>) {
+  const t = useT();
   return (
     <CodeBlockHeader>
       <CodeBlockInfo>
@@ -121,7 +126,7 @@ function ViewerHeader({
             rel="noreferrer"
             className="font-semibold text-[11.5px] text-brand"
           >
-            Raw
+            {t("plugin:raw")}
           </a>
         )}
       </CodeBlockActions>
@@ -140,9 +145,10 @@ function ViewerImage({ src }: Readonly<{ src: string }>) {
 
 /** Loading placeholder shown while the file fetch is in flight. */
 function ViewerLoading() {
+  const t = useT();
   return (
     <div className="flex min-h-0 flex-1 items-center justify-center p-6 text-muted-foreground text-sm">
-      Loading...
+      {t("plugin:loading")}
     </div>
   );
 }
@@ -164,18 +170,19 @@ function FileViewer({
   version,
   file,
 }: Readonly<{ name: string; version: string; file: PluginFile | undefined }>) {
+  const t = useT();
   const { src, kind, previewable, text, status } = usePluginFileContent(name, version, file);
 
   if (file === undefined) return <ViewerEmptyState />;
 
   if (kind === "binary") {
-    return <ViewerNotPreviewable src={src} reason="This is a built or binary file." />;
+    return <ViewerNotPreviewable src={src} reason={t("plugin:reasonBinary")} />;
   }
   if (!previewable) {
-    return <ViewerNotPreviewable src={src} reason="This file is large." />;
+    return <ViewerNotPreviewable src={src} reason={t("plugin:reasonLarge")} />;
   }
   if (status === "error") {
-    return <ViewerNotPreviewable src={src} reason="Could not load this file." />;
+    return <ViewerNotPreviewable src={src} reason={t("plugin:reasonLoadFailed")} />;
   }
 
   let body: ReactNode;
@@ -268,6 +275,7 @@ export function FilesSection({
   fileCount?: number;
   unpackedSize?: number;
 }>) {
+  const t = useT();
   const { files, failed } = usePluginFiles(name, version);
 
   return (
@@ -275,10 +283,11 @@ export function FilesSection({
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
           <Folder className="size-4 text-muted-foreground" />
-          Files
+          {t("plugin:files")}
         </h2>
         <span className="text-muted-foreground text-xs">
-          {fileCount ?? 0} files · {formatBytes(unpackedSize ?? 0)} unpacked
+          {t("plugin:filesCount", { count: fileCount ?? 0 })} ·{" "}
+          {t("plugin:unpacked", { size: formatBytes(unpackedSize ?? 0) })}
         </span>
       </div>
       <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -288,7 +297,7 @@ export function FilesSection({
         </div>
         {files === null || failed ? (
           <div className="flex h-[300px] items-center justify-center text-muted-foreground text-sm">
-            {failed ? "Could not load the file list." : "Loading files..."}
+            {failed ? t("plugin:fileListFailed") : t("plugin:loadingFiles")}
           </div>
         ) : (
           <FileBrowser name={name} version={version} files={files} />
@@ -296,7 +305,7 @@ export function FilesSection({
         <div className="flex items-center justify-between gap-2 border-border border-t bg-muted px-4 py-2.5 text-muted-foreground text-xs">
           <span className="inline-flex items-center gap-1.5">
             <ShieldCheck className="size-3.5 text-emerald-500" />
-            Exactly these files are installed, nothing else runs.
+            {t("plugin:filesAssurance")}
           </span>
           {tarballUrl ? (
             <a
@@ -305,7 +314,7 @@ export function FilesSection({
               target="_blank"
               rel="noreferrer"
             >
-              Download tarball
+              {t("plugin:downloadTarball")}
             </a>
           ) : null}
         </div>

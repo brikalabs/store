@@ -3,6 +3,7 @@ import { KeyRound } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDeviceApproval } from "@/hooks/use-device-approval";
+import { useT } from "@/i18n";
 import { normalizeCode } from "@/lib/device-code";
 import { DeviceBody } from "./device-body";
 
@@ -13,6 +14,7 @@ export function DevicePage() {
   const { user, loading } = useCurrentUser();
   const { state, submitting, approve } = useDeviceApproval();
   const [value, setValue] = useState(() => normalizeCode(code ?? ""));
+  const t = useT();
 
   function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,11 +31,9 @@ export function DevicePage() {
         </span>
 
         <div className="flex flex-col gap-2.5">
-          <h1 className="font-bold font-heading text-[27px] tracking-tight">
-            Authorize the Brika CLI
-          </h1>
+          <h1 className="font-bold font-heading text-[27px] tracking-tight">{t("device:title")}</h1>
           <p className="mx-auto max-w-[360px] text-[15px] text-muted-foreground leading-relaxed">
-            Confirm the code shown in your terminal to let the CLI publish on your behalf.
+            {t("device:subtitle")}
           </p>
         </div>
 

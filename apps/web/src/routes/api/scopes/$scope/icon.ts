@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { sniffImageMime } from "@/lib/image-format";
 import { ICON_TYPES, MAX_ICON_BYTES } from "@/lib/scope-icon";
 import { recordAudit, runAuthed, runHandler } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 import { BlobStore } from "@/server/ports/blob-store";
 import { streamScopeIcon } from "@/server/scope-icon";
 
@@ -22,12 +23,16 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
         runAuthed(request, async (a) => {
           const type = request.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
           const ext = ICON_TYPES[type];
-          if (ext === undefined) throw badRequest("Logo must be a PNG, JPEG, or WebP image");
-          const bytes = await readBytes(request, MAX_ICON_BYTES, "Logo exceeds 512 KiB");
+          if (ext === undefined) throw badRequest(inject(ServerT).t("api:logoBadType"));
+          const bytes = await readBytes(
+            request,
+            MAX_ICON_BYTES,
+            inject(ServerT).t("api:logoTooLarge"),
+          );
           // Validate the FORMAT by magic number, not the declared content-type, and require the
           // bytes to match the declared type - so a mislabelled or polyglot payload is rejected.
           if (sniffImageMime(bytes) !== type)
-            throw badRequest("Logo content does not match its type");
+            throw badRequest(inject(ServerT).t("api:logoContentMismatch"));
 
           // Stage the blob then commit the D1 pointer in one unit: the blob self-enlists its
           // rollback, so a failed (ownership-gated) setIcon leaves no orphan in R2.

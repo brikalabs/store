@@ -1,0 +1,14 @@
+{
+  "securityLabel": "Malware or security risk",
+  "securityDescription": "Steals data, runs unexpected code, or ships a known vulnerability.",
+  "spamLabel": "Spam or typosquatting",
+  "spamDescription": "Misleading name, impersonates another package, or low-quality spam.",
+  "impersonationLabel": "Impersonation or trademark",
+  "impersonationDescription": "Uses a brand or author identity it has no right to.",
+  "brokenLabel": "Broken or misleading behavior",
+  "brokenDescription": "Does something materially different from what it claims.",
+  "dmcaLabel": "Copyright / DMCA",
+  "dmcaDescription": "Includes code or assets that infringe copyright.",
+  "otherLabel": "Something else",
+  "otherDescription": "Anything the categories above do not cover."
+}

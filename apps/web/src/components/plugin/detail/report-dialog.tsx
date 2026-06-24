@@ -13,10 +13,17 @@ import {
 import { Check, Flag } from "lucide-react";
 import { useState } from "react";
 import { usePluginReport } from "@/hooks/use-plugin-report";
-import { REPORT_REASON_KEYS, REPORT_REASONS, type ReportReason } from "@/lib/reports";
+import { useT } from "@/i18n";
+import {
+  REPORT_REASON_KEYS,
+  type ReportReason,
+  reportReasonDescriptionKey,
+  reportReasonLabelKey,
+} from "@/lib/reports";
 
 /** The "Report plugin" trigger (subtle ghost button) plus its dialog. */
 export function ReportPluginButton({ name, version }: Readonly<{ name: string; version: string }>) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -26,7 +33,7 @@ export function ReportPluginButton({ name, version }: Readonly<{ name: string; v
         className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium text-muted-foreground text-xs transition-colors hover:bg-destructive/10 hover:text-destructive"
       >
         <Flag className="size-3.5" />
-        Report plugin
+        {t("pluginDetail:reportPlugin")}
       </button>
       <ReportDialog open={open} onOpenChange={setOpen} name={name} version={version} />
     </>
@@ -39,6 +46,7 @@ function ReportReasonOption({
   selected,
   onSelect,
 }: Readonly<{ reasonKey: ReportReason; selected: boolean; onSelect: () => void }>) {
+  const t = useT();
   return (
     <button
       type="button"
@@ -58,10 +66,10 @@ function ReportReasonOption({
       </span>
       <span className="min-w-0">
         <span className="block font-medium text-foreground text-sm">
-          {REPORT_REASONS[reasonKey].label}
+          {t(reportReasonLabelKey(reasonKey))}
         </span>
         <span className="block text-muted-foreground text-xs">
-          {REPORT_REASONS[reasonKey].description}
+          {t(reportReasonDescriptionKey(reasonKey))}
         </span>
       </span>
     </button>
@@ -79,6 +87,7 @@ function ReportDialog({
   name: string;
   version: string;
 }>) {
+  const t = useT();
   const { submitting, error, submitted, submit, reset } = usePluginReport(name);
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState("");
@@ -108,25 +117,25 @@ function ReportDialog({
               <Check className="size-6" />
             </span>
             <AlertDialogHeader className="items-center">
-              <AlertDialogTitle>Report submitted</AlertDialogTitle>
+              <AlertDialogTitle>{t("pluginDetail:reportSubmittedTitle")}</AlertDialogTitle>
               <AlertDialogDescription>
-                Thanks. A registry moderator will review{" "}
+                {t("pluginDetail:reportThanksReview")}{" "}
                 <span className="font-mono text-foreground">{name}</span>
-                {" for "}
+                {` ${t("pluginDetail:reportFor")} `}
                 <span className="text-foreground">
-                  {REPORT_REASONS[reason ?? "other"].label.toLowerCase()}
+                  {t(reportReasonLabelKey(reason ?? "other")).toLowerCase()}
                 </span>
-                {". It's now in the moderation queue."}
+                {t("pluginDetail:reportInQueue")}
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <Button onClick={() => change(false)}>Done</Button>
+            <Button onClick={() => change(false)}>{t("pluginDetail:done")}</Button>
           </div>
         ) : (
           <>
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <Flag className="size-4 text-destructive" />
-                Report this plugin
+                {t("pluginDetail:reportThisPlugin")}
               </AlertDialogTitle>
               <AlertDialogDescription className="font-mono">
                 {name} · v{version}
@@ -135,7 +144,7 @@ function ReportDialog({
 
             <div className="flex flex-col gap-3">
               <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                What's wrong?
+                {t("pluginDetail:whatsWrong")}
               </div>
               <div className="flex flex-col gap-2">
                 {REPORT_REASON_KEYS.map((key) => (
@@ -150,13 +159,16 @@ function ReportDialog({
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="report-details" className="font-medium text-foreground text-sm">
-                  Details <span className="font-normal text-muted-foreground">(optional)</span>
+                  {t("pluginDetail:detailsLabel")}{" "}
+                  <span className="font-normal text-muted-foreground">
+                    {t("pluginDetail:detailsOptional")}
+                  </span>
                 </label>
                 <Textarea
                   id="report-details"
                   value={details}
                   onChange={(e) => setDetails(e.target.value)}
-                  placeholder="Links, version numbers, or anything that helps our moderators investigate."
+                  placeholder={t("pluginDetail:detailsPlaceholder")}
                   rows={3}
                   maxLength={2000}
                 />
@@ -167,17 +179,19 @@ function ReportDialog({
 
             <AlertDialogFooter className="items-center sm:justify-between">
               <span className="text-muted-foreground text-xs">
-                False reports may affect your account standing.
+                {t("pluginDetail:falseReportsWarning")}
               </span>
               <div className="flex gap-2">
-                <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel disabled={submitting}>
+                  {t("pluginDetail:cancel")}
+                </AlertDialogCancel>
                 <Button
                   onClick={onSubmit}
                   disabled={reason === null || submitting}
                   className="bg-destructive text-white hover:bg-destructive/90"
                 >
                   <Flag className="size-4" />
-                  {submitting ? "Submitting…" : "Submit report"}
+                  {submitting ? t("pluginDetail:submitting") : t("pluginDetail:submitReport")}
                 </Button>
               </div>
             </AlertDialogFooter>

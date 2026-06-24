@@ -4,6 +4,7 @@ import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { recordAudit, runAuthed } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 
 const Body = z.object({ displayName: displayNameSchema.nullable() });
 
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/api/scopes/$scope/display-name")({
     handlers: {
       POST: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const parsed = await readBody(request, Body, "Invalid display name");
+          const parsed = await readBody(request, Body, inject(ServerT).t("api:invalidDisplayName"));
           const result = okOrThrow(
             await inject(ScopeService).setDisplayName(a.identity, params.scope, parsed.displayName),
           );

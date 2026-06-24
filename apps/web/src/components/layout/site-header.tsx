@@ -2,11 +2,14 @@ import { BrikaLogo, Button } from "@brika/clay";
 import { Link } from "@tanstack/react-router";
 import { LogIn } from "lucide-react";
 import { HeaderSearch } from "@/components/layout/header-search";
+import { LocaleToggle } from "@/components/layout/locale-toggle";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
 import { type CurrentUser, useCurrentUser } from "@/hooks/use-current-user";
+import { useT } from "@/i18n";
 
 function AuthArea({ loading, user }: Readonly<{ loading: boolean; user: CurrentUser | null }>) {
+  const t = useT();
   if (loading) return <div className="size-[42px] rounded-full bg-muted" />;
   if (user) return <UserMenu user={user} />;
   return (
@@ -16,13 +19,14 @@ function AuthArea({ loading, user }: Readonly<{ loading: boolean; user: CurrentU
     >
       <a href="/login">
         <LogIn className="size-4" />
-        <span className="hidden sm:inline">Sign in</span>
+        <span className="hidden sm:inline">{t("nav:signIn")}</span>
       </a>
     </Button>
   );
 }
 
 export function SiteHeader() {
+  const t = useT();
   const { user, loading } = useCurrentUser();
 
   return (
@@ -38,13 +42,14 @@ export function SiteHeader() {
         </div>
 
         <nav className="flex shrink-0 items-center gap-1.5">
+          <LocaleToggle />
           <ThemeToggle />
           <Button
             asChild
             variant="ghost"
             className="hidden h-[38px] rounded-[10px] px-3 font-semibold text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
           >
-            <Link to="/plugins">Browse</Link>
+            <Link to="/plugins">{t("nav:browse")}</Link>
           </Button>
           <div className="mx-1 hidden h-6 w-px bg-input sm:block" />
           <AuthArea loading={loading} user={user} />

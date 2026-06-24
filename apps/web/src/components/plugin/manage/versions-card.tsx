@@ -5,7 +5,8 @@ import { useMemo, useState } from "react";
 import { Pager, usePagedList } from "@/components/clay/pagination";
 import { Pill } from "@/components/clay/pill";
 import { type PkgVersion, usePluginVersions } from "@/hooks/use-plugin-versions";
-import { formatBytes, formatDate } from "@/lib/format";
+import { useDateFormat, useT } from "@/i18n";
+import { formatBytes } from "@/lib/format";
 
 const PAGE_SIZE = 8;
 
@@ -14,6 +15,7 @@ const PAGE_SIZE = 8;
  * ownership-gated). For packages not published to the registry the endpoint 404s; we show a note.
  */
 export function VersionsCard({ name }: Readonly<{ name: string }>) {
+  const t = useT();
   const { state, notRegistry, error, pending, act } = usePluginVersions(name);
   const [query, setQuery] = useState("");
 
@@ -31,7 +33,7 @@ export function VersionsCard({ name }: Readonly<{ name: string }>) {
       <Card className="flex flex-col gap-3.5 rounded-[20px] p-[22px] shadow-sm">
         <Header total={null} />
         <p className="text-muted-foreground text-sm">
-          Version management is available for plugins published to the Brika registry.
+          {t("pluginManage:versionManagementUnavailable")}
         </p>
       </Card>
     );
@@ -54,7 +56,7 @@ export function VersionsCard({ name }: Readonly<{ name: string }>) {
         <InputGroupInput
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search version, e.g. 2.4"
+          placeholder={t("pluginManage:searchVersionPlaceholder")}
           className="font-mono"
         />
       </InputGroup>
@@ -65,7 +67,7 @@ export function VersionsCard({ name }: Readonly<{ name: string }>) {
         <div className="overflow-hidden rounded-[14px] border border-border">
           {pageItems.length === 0 ? (
             <div className="px-4 py-9 text-center text-muted-foreground text-sm">
-              No version matches that search.
+              {t("pluginManage:noVersionMatch")}
             </div>
           ) : (
             pageItems.map((v) => (
@@ -86,23 +88,24 @@ export function VersionsCard({ name }: Readonly<{ name: string }>) {
       <Pager pagination={pagination} onPageChange={setPage} />
 
       {state !== null && !state.canManage ? (
-        <p className="text-muted-foreground text-xs">
-          You can manage versions only for scopes you belong to.
-        </p>
+        <p className="text-muted-foreground text-xs">{t("pluginManage:manageScopeNote")}</p>
       ) : null}
     </Card>
   );
 }
 
 function Header({ total }: Readonly<{ total: number | null }>) {
+  const t = useT();
   return (
     <div className="flex items-center justify-between gap-3">
       <h2 className="flex items-center gap-2.5 font-bold font-heading text-foreground text-lg tracking-tight">
         <Archive className="size-4 text-brand-ink" />
-        Versions
+        {t("pluginManage:versionsHeading")}
       </h2>
       {total !== null && (
-        <span className="text-[12.5px] text-muted-foreground">{total} published</span>
+        <span className="text-[12.5px] text-muted-foreground">
+          {t("pluginManage:versionsPublished", { count: total })}
+        </span>
       )}
     </div>
   );
@@ -126,13 +129,14 @@ function VersionRow({
   pending: string | null;
   onAct: (path: string, body: unknown, key: string) => void;
 }>) {
+  const date = useDateFormat();
   const v = version.version;
   const deprecated = version.deprecated !== null;
   return (
     <div className="flex flex-wrap items-center gap-2.5 border-border border-b px-3.5 py-2.5 last:border-b-0">
       <span className="min-w-[58px] font-mono font-semibold text-foreground text-sm">{v}</span>
       <VersionTags isLatest={isLatest} deprecated={deprecated} yanked={version.yanked} />
-      <span className="text-[12px] text-muted-foreground">{formatDate(version.publishedAt)}</span>
+      <span className="text-[12px] text-muted-foreground">{date(version.publishedAt)}</span>
       <span className="font-mono text-[11.5px] text-muted-foreground/70">
         {formatBytes(version.size)}
       </span>
@@ -155,21 +159,22 @@ function VersionTags({
   deprecated,
   yanked,
 }: Readonly<{ isLatest: boolean; deprecated: boolean; yanked: boolean }>) {
+  const t = useT();
   return (
     <>
       {isLatest ? (
         <Pill tone="brand" className="py-0.5 text-[11px] font-bold">
-          latest
+          {t("pluginManage:tagLatest")}
         </Pill>
       ) : null}
       {deprecated ? (
         <Pill tone="warning" className="py-0.5 text-[11px] font-bold">
-          deprecated
+          {t("pluginManage:tagDeprecated")}
         </Pill>
       ) : null}
       {yanked ? (
         <Pill tone="danger" className="py-0.5 text-[11px] font-bold">
-          yanked
+          {t("pluginManage:tagYanked")}
         </Pill>
       ) : null}
     </>
@@ -189,18 +194,23 @@ function RowActions({
   pending: string | null;
   onAct: (path: string, body: unknown, key: string) => void;
 }>) {
+  const t = useT();
   const v = version.version;
   return (
     <>
       <button
         type="button"
-        title={deprecated ? "Un-deprecate" : "Deprecate"}
-        aria-label={deprecated ? "Un-deprecate" : "Deprecate"}
+        title={deprecated ? t("pluginManage:undeprecate") : t("pluginManage:deprecate")}
+        aria-label={deprecated ? t("pluginManage:undeprecate") : t("pluginManage:deprecate")}
         disabled={pending === `dep:${v}`}
         onClick={() =>
           onAct(
             "/api/plugins/deprecate",
-            { name, version: v, message: deprecated ? null : "Deprecated by the maintainer" },
+            {
+              name,
+              version: v,
+              message: deprecated ? null : t("pluginManage:deprecatedByMaintainer"),
+            },
             `dep:${v}`,
           )
         }
@@ -210,8 +220,8 @@ function RowActions({
       </button>
       <button
         type="button"
-        title={version.yanked ? "Un-yank" : "Yank"}
-        aria-label={version.yanked ? "Un-yank" : "Yank"}
+        title={version.yanked ? t("pluginManage:unyank") : t("pluginManage:yank")}
+        aria-label={version.yanked ? t("pluginManage:unyank") : t("pluginManage:yank")}
         disabled={pending === `yank:${v}`}
         onClick={() =>
           onAct("/api/plugins/yank", { name, version: v, yanked: !version.yanked }, `yank:${v}`)

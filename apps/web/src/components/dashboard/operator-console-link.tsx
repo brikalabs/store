@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useT } from "@/i18n";
 import { fetchIsOperator } from "@/server/require-operator";
 
 /**
@@ -8,6 +9,7 @@ import { fetchIsOperator } from "@/server/require-operator";
  * rendered only for operators, so the console's existence stays hidden from everyone else.
  */
 export function OperatorConsoleLink() {
+  const t = useT();
   const [operator, setOperator] = useState(false);
   useEffect(() => {
     fetchIsOperator()
@@ -21,7 +23,7 @@ export function OperatorConsoleLink() {
       className="flex items-center gap-2.5 rounded-2xl border border-warning-border bg-warning-tint px-[17px] py-[15px] font-semibold text-[13.5px] text-foreground transition-shadow hover:shadow-sm"
     >
       <ShieldAlert className="size-[18px] text-warning" />
-      Operator console
+      {t("dashboard:operatorConsole")}
       <ArrowRight className="ml-auto size-4 text-warning" />
     </Link>
   );

@@ -3,7 +3,8 @@ import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TakedownControls } from "@/components/operator/takedown-controls";
 import type { OperatorPackage, PackageVersion } from "@/hooks/use-operator-packages";
-import { formatBytes, formatDate } from "@/lib/format";
+import { type AppKey, useDateFormat, useT } from "@/i18n";
+import { formatBytes } from "@/lib/format";
 
 type VerFacet = "all" | "active" | "deprecated" | "yanked" | "takedown";
 
@@ -15,12 +16,12 @@ const VER_PREDICATES: Record<VerFacet, (v: PackageVersion) => boolean> = {
   takedown: (v) => v.takedownReason !== null,
 };
 
-const VER_FACETS: { key: VerFacet; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "active", label: "Active" },
-  { key: "deprecated", label: "Deprecated" },
-  { key: "yanked", label: "Yanked" },
-  { key: "takedown", label: "Taken down" },
+const VER_FACETS: { key: VerFacet; labelKey: AppKey }[] = [
+  { key: "all", labelKey: "operator:versionFacetAll" },
+  { key: "active", labelKey: "operator:versionFacetActive" },
+  { key: "deprecated", labelKey: "operator:versionFacetDeprecated" },
+  { key: "yanked", labelKey: "operator:versionFacetYanked" },
+  { key: "takedown", labelKey: "operator:versionFacetTakedown" },
 ];
 
 export function VersionPanel({
@@ -34,6 +35,8 @@ export function VersionPanel({
   busy: string | null;
   onAct: (version: string, path: "takedown" | "restore", reason?: string) => void;
 }>) {
+  const t = useT();
+  const date = useDateFormat();
   const [facet, setFacet] = useState<VerFacet>("all");
   const [query, setQuery] = useState("");
 
@@ -48,12 +51,12 @@ export function VersionPanel({
   return (
     <div className="border-border border-t bg-muted/30 py-3.5 pr-4 pl-12">
       {versions === null ? (
-        <p className="py-1 text-muted-foreground text-sm">Loading versions…</p>
+        <p className="py-1 text-muted-foreground text-sm">{t("operator:versionsLoading")}</p>
       ) : (
         <>
           <div className="mb-3 flex flex-wrap items-center gap-2.5">
             <span className="font-semibold text-foreground text-sm">
-              {pkg.versionCount} published version{pkg.versionCount === 1 ? "" : "s"}
+              {t("operator:publishedVersions", { count: pkg.versionCount })}
             </span>
             <div className="flex flex-wrap gap-1.5">
               {VER_FACETS.map((f) => (
@@ -67,7 +70,7 @@ export function VersionPanel({
                       : "border-border text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  {f.label}
+                  {t(f.labelKey)}
                 </button>
               ))}
             </div>
@@ -79,7 +82,7 @@ export function VersionPanel({
               <InputGroupInput
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Find version"
+                placeholder={t("operator:findVersionPlaceholder")}
                 className="font-mono text-xs"
               />
             </InputGroup>
@@ -87,29 +90,31 @@ export function VersionPanel({
 
           <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
             {shown.length === 0 ? (
-              <li className="px-4 py-3 text-muted-foreground text-sm">No versions match.</li>
+              <li className="px-4 py-3 text-muted-foreground text-sm">
+                {t("operator:versionsEmpty")}
+              </li>
             ) : (
               shown.map((v) => (
                 <li key={v.version} className="flex items-center gap-3 px-4 py-2.5">
                   <span className="w-16 shrink-0 font-mono font-semibold text-sm">{v.version}</span>
                   {v.version === pkg.latestVersion && v.takedownReason === null && (
                     <span className="shrink-0 rounded-full bg-brand/10 px-2 py-0.5 font-semibold text-brand-ink text-xs">
-                      latest
+                      {t("operator:versionLatest")}
                     </span>
                   )}
                   {v.takedownReason !== null && (
                     <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-destructive text-xs">
-                      taken down
+                      {t("operator:versionTakenDown")}
                     </span>
                   )}
                   {v.deprecated !== null && (
                     <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-muted-foreground text-xs">
-                      deprecated
+                      {t("operator:versionDeprecated")}
                     </span>
                   )}
                   {v.yanked && (
                     <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-muted-foreground text-xs">
-                      yanked
+                      {t("operator:versionYanked")}
                     </span>
                   )}
                   <div className="flex-1" />
@@ -117,7 +122,7 @@ export function VersionPanel({
                     {formatBytes(v.size)}
                   </span>
                   <span className="w-24 shrink-0 text-right text-muted-foreground text-xs">
-                    {formatDate(v.publishedAt)}
+                    {date(v.publishedAt)}
                   </span>
                   <TakedownControls
                     takenDown={v.takedownReason !== null}

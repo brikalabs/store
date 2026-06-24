@@ -1,9 +1,11 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
+import { useT } from "@/i18n";
 
 type Props = Readonly<{ command: string; id?: string }>;
 
 export function InstallCommand({ command, id }: Props) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -22,11 +24,11 @@ export function InstallCommand({ command, id }: Props) {
       <button
         type="button"
         onClick={copy}
-        aria-label="Copy install command"
+        aria-label={t("plugin:copyInstallCommand")}
         className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-white/55 text-xs transition-colors hover:text-white"
       >
         {copied ? <Check className="size-4 text-brand-muted" /> : <Copy className="size-4" />}
-        {copied ? "Copied" : "Copy"}
+        {copied ? t("plugin:copied") : t("plugin:copy")}
       </button>
     </div>
   );

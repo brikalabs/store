@@ -6,6 +6,10 @@ import { LinkIcon } from "@/components/clay/link-icon";
 import { AvatarPicker } from "@/components/profile/avatar-picker";
 import { cleanLinks, type EditLink, type ProfileLink, useLinks } from "@/hooks/use-links";
 import { useProfileSave } from "@/hooks/use-profile-save";
+import { useT } from "@/i18n";
+
+/** The maximum number of profile links shown on a public profile. */
+const MAX_LINKS = 8;
 
 /** One editable link row: an icon hint, an inline label + URL pair, and a remove button. */
 function ProfileLinkRow({
@@ -17,6 +21,7 @@ function ProfileLinkRow({
   onUpdate: (patch: Partial<ProfileLink>) => void;
   onRemove: () => void;
 }>) {
+  const t = useT();
   return (
     <div className="flex h-11 items-stretch overflow-hidden rounded-xl border border-input bg-muted transition focus-within:border-brand-border focus-within:bg-card focus-within:ring-2 focus-within:ring-brand-tint">
       <span
@@ -26,7 +31,7 @@ function ProfileLinkRow({
         <LinkIcon url={link.url} />
       </span>
       <Input
-        placeholder="Label"
+        placeholder={t("profile:linkLabelPlaceholder")}
         value={link.label}
         onChange={(event) => onUpdate({ label: event.target.value })}
         className="h-full w-32 shrink-0 rounded-none border-none bg-transparent px-3 font-semibold text-[13.5px] shadow-none focus-visible:ring-0"
@@ -43,7 +48,7 @@ function ProfileLinkRow({
         type="button"
         size="icon"
         variant="ghost"
-        aria-label="Remove link"
+        aria-label={t("profile:linkRemove")}
         onClick={onRemove}
         className="flex h-full w-11 shrink-0 items-center justify-center rounded-none border-border border-l text-muted-foreground transition hover:bg-danger-tint hover:text-danger"
       >
@@ -60,6 +65,7 @@ export function ProfileEditor({
   profile: UserProfile;
   onSaved: (next: UserProfile) => void;
 }>) {
+  const t = useT();
   // Seed from the RESOLVED avatar (uploaded ?? provider), not the session image, so a reload
   // reflects an uploaded avatar instead of reverting to the provider one.
   const [avatar, setAvatar] = useState(profile.avatarUrl);
@@ -79,7 +85,7 @@ export function ProfileEditor({
   return (
     <Card className="flex flex-col gap-5 rounded-[20px] border border-border bg-card p-[26px] shadow-sm">
       <h2 className="font-bold font-heading text-[18px] text-foreground tracking-tight">
-        Public profile
+        {t("profile:publicProfileHeading")}
       </h2>
 
       <AvatarPicker
@@ -92,7 +98,9 @@ export function ProfileEditor({
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label htmlFor="profile-name" className="flex flex-col gap-1.5">
-            <span className="font-semibold text-[13px] text-foreground">Display name</span>
+            <span className="font-semibold text-[13px] text-foreground">
+              {t("profile:displayNameLabel")}
+            </span>
             <Input
               id="profile-name"
               value={displayName}
@@ -101,7 +109,9 @@ export function ProfileEditor({
             />
           </label>
           <label htmlFor="profile-website" className="flex flex-col gap-1.5">
-            <span className="font-semibold text-[13px] text-foreground">Website</span>
+            <span className="font-semibold text-[13px] text-foreground">
+              {t("profile:websiteLabel")}
+            </span>
             <Input
               id="profile-website"
               type="url"
@@ -114,7 +124,7 @@ export function ProfileEditor({
         </div>
 
         <label htmlFor="profile-bio" className="flex flex-col gap-1.5">
-          <span className="font-semibold text-[13px] text-foreground">Bio</span>
+          <span className="font-semibold text-[13px] text-foreground">{t("profile:bioLabel")}</span>
           <Textarea
             id="profile-bio"
             value={bio}
@@ -126,9 +136,11 @@ export function ProfileEditor({
 
         <div className="flex flex-col gap-2.5">
           <div className="flex items-baseline justify-between">
-            <span className="font-semibold text-[13px] text-foreground">Links</span>
+            <span className="font-semibold text-[13px] text-foreground">
+              {t("profile:linksLabel")}
+            </span>
             <span className="text-[12px] text-muted-foreground">
-              {links.length} of 8 - shown on your public profile
+              {t("profile:linksCount", { count: links.length, max: MAX_LINKS })}
             </span>
           </div>
           <div className="flex flex-col gap-2.5">
@@ -141,7 +153,7 @@ export function ProfileEditor({
               />
             ))}
           </div>
-          {links.length < 8 ? (
+          {links.length < MAX_LINKS ? (
             <Button
               type="button"
               variant="outline"
@@ -149,7 +161,7 @@ export function ProfileEditor({
               className="inline-flex h-[42px] w-full items-center justify-center gap-1.5 rounded-xl border border-input border-dashed font-semibold text-muted-foreground text-sm transition hover:border-brand-border hover:bg-brand-tint hover:text-brand-ink"
             >
               <Plus className="size-4" />
-              Add link
+              {t("profile:linkAdd")}
             </Button>
           ) : null}
         </div>
@@ -160,12 +172,12 @@ export function ProfileEditor({
             disabled={saving}
             className="inline-flex h-11 items-center rounded-xl bg-brand px-5 font-bold text-brand-foreground text-sm hover:brightness-105"
           >
-            {saving ? "Saving…" : "Save profile"}
+            {saving ? t("profile:saving") : t("profile:save")}
           </Button>
           {saved ? (
             <span className="inline-flex items-center gap-1 text-muted-foreground text-sm">
               <Check className="size-4 text-brand-ink" />
-              Saved
+              {t("profile:saved")}
             </span>
           ) : null}
         </div>

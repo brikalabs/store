@@ -4,6 +4,7 @@ import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { recordAudit, runAuthed } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 
 const Body = z.object({
   name: z.string().min(1),
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/api/plugins/yank")({
     handlers: {
       POST: ({ request }) =>
         runAuthed(request, async (a) => {
-          const parsed = await readBody(request, Body, "Invalid yank request");
+          const parsed = await readBody(request, Body, inject(ServerT).t("api:invalidYankRequest"));
           const { name, version, yanked } = parsed;
           okOrThrow(await inject(ManagementService).setYanked(a.identity, name, version, yanked));
           await recordAudit(a, {

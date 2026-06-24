@@ -3,6 +3,7 @@ import { isCanonicalScope, ScopeService } from "@brika/registry-core";
 import { badRequest, httpError, okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { recordAudit, runAuthed } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 
 /**
  * `GET /api/scopes/:scope` - the scope's editable profile, for hydrating the console editor. `PUT`
@@ -14,7 +15,8 @@ export const Route = createFileRoute("/api/scopes/$scope")({
       GET: ({ request, params }) =>
         runAuthed(request, async () => {
           const info = await inject(ScopeService).getPublic(params.scope);
-          if (info === null) throw httpError(404, `scope ${params.scope} does not exist`);
+          if (info === null)
+            throw httpError(404, inject(ServerT).t("api:scopeNotFound", { scope: params.scope }));
           return reply({
             scope: info.scope,
             displayName: info.displayName,
@@ -27,9 +29,7 @@ export const Route = createFileRoute("/api/scopes/$scope")({
         runAuthed(request, async (a) => {
           const { scope } = params;
           if (!isCanonicalScope(scope)) {
-            throw badRequest(
-              "Scope must be '@' + 2-20 lowercase letters, digits or hyphens, not starting with a hyphen",
-            );
+            throw badRequest(inject(ServerT).t("api:invalidScopeFormat"));
           }
           const result = okOrThrow(await inject(ScopeService).claim(a.identity, scope));
           if (result.created) {

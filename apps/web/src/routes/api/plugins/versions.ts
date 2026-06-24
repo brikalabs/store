@@ -4,6 +4,7 @@ import { MetadataReader } from "@brika/registry-runtime";
 import { badRequest, notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runAuthed } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
 
 /**
@@ -17,7 +18,8 @@ export const Route = createFileRoute("/api/plugins/versions")({
       GET: ({ request }) =>
         runAuthed(request, async (a) => {
           const name = new URL(request.url).searchParams.get("name");
-          if (name === null || name === "") throw badRequest("Missing package name");
+          if (name === null || name === "")
+            throw badRequest(inject(ServerT).t("api:missingPackageName"));
 
           const record = await inject(MetadataReader).getPackage(name);
           if (record === null) throw notFound();

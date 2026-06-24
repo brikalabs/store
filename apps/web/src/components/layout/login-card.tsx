@@ -3,13 +3,14 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { ChevronLeft, ShieldCheck } from "lucide-react";
 import type { ComponentType } from "react";
 import { GithubIcon } from "@/components/clay/icons";
+import { type AppKey, useT } from "@/i18n";
 
 /** The sign-in providers, in order; each maps to a `/auth/<id>` social sign-in route. */
 const PROVIDERS: ReadonlyArray<{
   id: string;
-  label: string;
+  labelKey: AppKey;
   Icon: ComponentType<{ className?: string }>;
-}> = [{ id: "github", label: "Continue with GitHub", Icon: GithubIcon }];
+}> = [{ id: "github", labelKey: "layout:loginContinueGithub", Icon: GithubIcon }];
 
 const route = getRouteApi("/login");
 
@@ -18,6 +19,7 @@ const route = getRouteApi("/login");
  * `requireUser`) is carried through so the user lands back where they were after sign-in.
  */
 export function LoginCard() {
+  const t = useT();
   const { return: returnTo } = route.useSearch();
   const back = encodeURIComponent(returnTo ?? "/dashboard");
 
@@ -27,41 +29,39 @@ export function LoginCard() {
         <div className="flex flex-col items-center gap-2.5 text-center">
           <BrikaLogo className="h-11 w-auto" />
           <h1 className="mt-1.5 font-bold font-heading text-2xl tracking-tight">
-            Sign in to Brika Store
+            {t("layout:loginTitle")}
           </h1>
-          <p className="text-muted-foreground text-sm">
-            Publish, localize, and manage your plugins.
-          </p>
+          <p className="text-muted-foreground text-sm">{t("layout:loginSubtitle")}</p>
         </div>
 
-        {PROVIDERS.map(({ id, label, Icon }) => (
+        {PROVIDERS.map(({ id, labelKey, Icon }) => (
           <a
             key={id}
             href={`/auth/${id}?return=${back}`}
             className="flex h-[50px] w-full items-center justify-center gap-2.5 rounded-xl bg-foreground font-semibold text-background transition-opacity hover:opacity-90"
           >
             <Icon className="size-5" />
-            {label}
+            {t(labelKey)}
           </a>
         ))}
 
         <div className="flex w-full items-start gap-2.5 rounded-xl border border-border bg-muted/50 px-3.5 py-3 text-muted-foreground text-xs leading-relaxed">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand-ink" />
-          We use your provider only to verify your identity. The store never touches your code.
+          {t("layout:loginPrivacyNote")}
         </div>
 
         <div className="h-px w-full bg-border" />
 
         <div className="flex w-full flex-col items-center gap-3.5">
           <p className="text-center text-[11.5px] text-muted-foreground leading-relaxed">
-            By continuing you agree to the Terms of Service and Privacy Policy.
+            {t("layout:loginTermsNote")}
           </p>
           <Link
             to="/"
             className="inline-flex items-center gap-1.5 font-semibold text-foreground text-sm transition-colors hover:text-brand-ink"
           >
             <ChevronLeft className="size-4" />
-            Back to the store
+            {t("layout:loginBack")}
           </Link>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { cn } from "@brika/clay";
 import type { PluginVersion } from "@brika/registry-contract";
-import { formatDate } from "@/lib/format";
+import { useDateFormat, useT } from "@/i18n";
 
 function bulletsFrom(changelog: string | undefined): string[] {
   if (!changelog) return [];
@@ -16,6 +16,8 @@ export function Changelog({
   versions,
   className,
 }: Readonly<{ versions: PluginVersion[]; className?: string }>) {
+  const date = useDateFormat();
+  const t = useT();
   if (versions.length === 0) return null;
   return (
     <ol data-slot="changelog" className={cn("flex flex-col", className)}>
@@ -40,18 +42,16 @@ export function Changelog({
                   v{entry.version}
                 </span>
                 {entry.publishedAt ? (
-                  <span className="text-muted-foreground text-xs">
-                    {formatDate(entry.publishedAt)}
-                  </span>
+                  <span className="text-muted-foreground text-xs">{date(entry.publishedAt)}</span>
                 ) : null}
                 {index === 0 ? (
                   <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 font-semibold text-[10.5px] text-emerald-600 dark:text-emerald-400">
-                    Latest
+                    {t("clay:changelogLatest")}
                   </span>
                 ) : null}
                 {entry.deprecated ? (
                   <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-semibold text-[10.5px] text-amber-600 dark:text-amber-400">
-                    Deprecated
+                    {t("clay:changelogDeprecated")}
                   </span>
                 ) : null}
               </div>

@@ -4,6 +4,7 @@ import { okOrThrow, readBody, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { recordAudit, runAuthed } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 
 const RoleBody = z.object({ role: z.enum(["admin", "member"]) });
 
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/api/scopes/$scope/members/$memberId")({
     handlers: {
       PUT: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const { role } = await readBody(request, RoleBody, "Invalid role");
+          const { role } = await readBody(request, RoleBody, inject(ServerT).t("api:invalidRole"));
           const result = okOrThrow(
             await inject(ScopeService).setMember(a.identity, params.scope, params.memberId, role),
           );

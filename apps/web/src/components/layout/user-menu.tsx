@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { ThemeSegment } from "@/components/layout/theme-segment";
 import type { CurrentUser } from "@/hooks/use-current-user";
+import { useT } from "@/i18n";
 import { fetchIsOperator } from "@/server/require-operator";
 
 const itemClass =
@@ -23,7 +24,8 @@ const itemClass =
  * the console's existence stays hidden from everyone else.
  */
 export function UserMenu({ user }: Readonly<{ user: CurrentUser }>) {
-  const name = user.name ?? "Your account";
+  const t = useT();
+  const name = user.name ?? t("nav:account");
   const firstName = name.split(" ")[0];
   const [operator, setOperator] = useState(false);
   useEffect(() => {
@@ -48,7 +50,7 @@ export function UserMenu({ user }: Readonly<{ user: CurrentUser }>) {
           <div className="min-w-0">
             <div className="truncate font-bold text-foreground text-sm">{name}</div>
             <div className="truncate text-muted-foreground text-xs">
-              {user.email ?? "Developer"}
+              {user.email ?? t("nav:developer")}
             </div>
           </div>
         </div>
@@ -58,13 +60,13 @@ export function UserMenu({ user }: Readonly<{ user: CurrentUser }>) {
         <DropdownMenuItem asChild className={itemClass}>
           <Link to="/dashboard">
             <LayoutGrid />
-            Dashboard
+            {t("nav:dashboard")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className={itemClass}>
           <Link to="/dashboard/account/tokens">
             <Settings />
-            Account settings
+            {t("nav:accountSettings")}
           </Link>
         </DropdownMenuItem>
         {operator ? (
@@ -74,7 +76,7 @@ export function UserMenu({ user }: Readonly<{ user: CurrentUser }>) {
           >
             <Link to="/operator/scopes">
               <Shield />
-              Operator console
+              {t("nav:operatorConsole")}
             </Link>
           </DropdownMenuItem>
         ) : null}
@@ -82,7 +84,9 @@ export function UserMenu({ user }: Readonly<{ user: CurrentUser }>) {
         <DropdownMenuSeparator />
 
         <div className="px-2 py-1.5">
-          <span className="mb-2 block font-medium text-[13.5px] text-foreground">Theme</span>
+          <span className="mb-2 block font-medium text-[13.5px] text-foreground">
+            {t("nav:theme")}
+          </span>
           <ThemeSegment />
         </div>
 
@@ -94,7 +98,7 @@ export function UserMenu({ user }: Readonly<{ user: CurrentUser }>) {
         >
           <a href="/auth/logout">
             <LogOut />
-            Sign out
+            {t("nav:signOut")}
           </a>
         </DropdownMenuItem>
       </DropdownMenuContent>

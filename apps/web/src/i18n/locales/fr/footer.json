@@ -1,0 +1,19 @@
+{
+  "tagline": "La marketplace des plugins Brika. Un accès rapide et cherchable à chaque plugin Brika.",
+  "copyright": "© {year} Brika",
+  "product": "Produit",
+  "developers": "Développeurs",
+  "legal": "Mentions légales",
+  "browsePlugins": "Explorer les plugins",
+  "trending": "Tendances",
+  "categories": "Catégories",
+  "publish": "Publier un plugin",
+  "documentation": "Documentation",
+  "apiReference": "Référence API",
+  "registryContract": "Contrat du registre",
+  "status": "Statut",
+  "terms": "Conditions d'utilisation",
+  "privacy": "Politique de confidentialité",
+  "licenses": "Licences",
+  "cookies": "Paramètres des cookies"
+}

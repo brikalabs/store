@@ -3,6 +3,7 @@ import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { ProfileLinks } from "@/components/plugin/profile-links";
 import { PublishedPlugins } from "@/components/plugin/published-plugins";
 import { Stat } from "@/components/plugin/showcase-card";
+import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import type { ScopePage } from "@/lib/registry/registry";
 
@@ -11,6 +12,7 @@ import type { ScopePage } from "@/lib/registry/registry";
  * (display name, links, logo, verified domains) above the grid of every plugin it publishes.
  */
 export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
+  const t = useT();
   const { scope, displayName, verified, description, links, hasIcon, verifiedDomains, plugins } =
     page;
   const name = displayName ?? scope;
@@ -31,7 +33,7 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
             {verified ? (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-2.5 py-1 font-semibold text-brand-ink text-xs">
                 <ShieldCheck className="size-3.5" />
-                Verified
+                {t("plugin:verified")}
               </span>
             ) : null}
           </div>
@@ -45,7 +47,7 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
               {verifiedDomains.map((domain) => (
                 <span
                   key={domain}
-                  title="Verified domain"
+                  title={t("plugin:verifiedDomain")}
                   className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3 py-1 font-medium text-brand-ink text-xs"
                 >
                   <Globe className="size-3.5" />
@@ -57,8 +59,10 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
           ) : null}
         </div>
         <div className="flex gap-2.5">
-          <Stat value={String(plugins.length)} label="plugins" />
-          {weekly > 0 ? <Stat value={formatCount(weekly)} label="installs / week" /> : null}
+          <Stat value={String(plugins.length)} label={t("plugin:statPlugins")} />
+          {weekly > 0 ? (
+            <Stat value={formatCount(weekly)} label={t("plugin:statInstallsPerWeek")} />
+          ) : null}
         </div>
       </header>
 

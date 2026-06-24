@@ -7,7 +7,8 @@ import { BadgeCheck, ExternalLink, Link2, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { GithubIcon } from "@/components/clay/icons";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
-import { formatBytes, formatDate } from "@/lib/format";
+import { useDateFormat, useT } from "@/i18n";
+import { formatBytes } from "@/lib/format";
 import { DownloadsCard } from "./downloads-card";
 import { sinceLabel } from "./helpers";
 
@@ -51,17 +52,18 @@ function MetaLink({
 
 /** External links card (repository / homepage); hidden without a repo or homepage. */
 function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
+  const t = useT();
   if (!detail.repository && !detail.homepage) return null;
   return (
     <Card className="flex flex-col gap-2.5 p-4">
       {detail.repository ? (
         <MetaLink href={detail.repository} icon={<GithubIcon className="size-4" />}>
-          Repository
+          {t("pluginDetail:linkRepository")}
         </MetaLink>
       ) : null}
       {detail.homepage ? (
         <MetaLink href={detail.homepage} icon={<Link2 className="size-4" />}>
-          Homepage
+          {t("pluginDetail:linkHomepage")}
         </MetaLink>
       ) : null}
     </Card>
@@ -70,6 +72,7 @@ function SidebarLinks({ detail }: Readonly<{ detail: PluginDetail }>) {
 
 /** Author profile card; hidden when the plugin has no resolved author. */
 function SidebarAuthor({ detail }: Readonly<{ detail: PluginDetail }>) {
+  const t = useT();
   if (!detail.author) return null;
   // The author of a scoped package IS its scope, so show the scope's uploaded logo.
   const scope = scopeOf(detail.name);
@@ -93,7 +96,7 @@ function SidebarAuthor({ detail }: Readonly<{ detail: PluginDetail }>) {
             </span>
             {detail.verified ? <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" /> : null}
           </div>
-          <div className="text-muted-foreground text-xs">View scope</div>
+          <div className="text-muted-foreground text-xs">{t("pluginDetail:viewScope")}</div>
         </div>
       </Link>
     </Card>
@@ -102,11 +105,12 @@ function SidebarAuthor({ detail }: Readonly<{ detail: PluginDetail }>) {
 
 /** Keyword chips; hidden when the plugin declares no keywords. */
 function SidebarKeywords({ keywords }: Readonly<{ keywords: string[] }>) {
+  const t = useT();
   if (keywords.length === 0) return null;
   return (
     <div className="flex flex-col gap-2.5">
       <div className="font-semibold text-muted-foreground text-xs uppercase tracking-[0.04em]">
-        Keywords
+        {t("pluginDetail:keywords")}
       </div>
       <div className="flex flex-wrap gap-1.5">
         {keywords.slice(0, 8).map((keyword) => (
@@ -127,6 +131,8 @@ export function DetailSidebar({
   displayLocales,
   downloadsSeries,
 }: Readonly<{ detail: PluginDetail; displayLocales: string[]; downloadsSeries: number[] }>) {
+  const t = useT();
+  const date = useDateFormat();
   const hasTrend = downloadsSeries.some((value) => value > 0);
   return (
     <aside className="flex flex-col gap-4 lg:sticky lg:top-20">
@@ -140,28 +146,36 @@ export function DetailSidebar({
       ) : null}
 
       <Card className="flex flex-col gap-2.5 p-4 text-sm">
-        <MetaRow label="Version" value={detail.version} mono />
-        {detail.updatedAt ? <MetaRow label="Updated" value={formatDate(detail.updatedAt)} /> : null}
-        {detail.publishedAt ? (
-          <MetaRow label="Published" value={formatDate(detail.publishedAt)} />
+        <MetaRow label={t("pluginDetail:metaVersion")} value={detail.version} mono />
+        {detail.updatedAt ? (
+          <MetaRow label={t("pluginDetail:metaUpdated")} value={date(detail.updatedAt)} />
         ) : null}
-        {detail.license ? <MetaRow label="License" value={detail.license} /> : null}
-        <MetaRow label="Brika engine" value={detail.brikaEngine} mono />
+        {detail.publishedAt ? (
+          <MetaRow label={t("pluginDetail:metaPublished")} value={date(detail.publishedAt)} />
+        ) : null}
+        {detail.license ? (
+          <MetaRow label={t("pluginDetail:metaLicense")} value={detail.license} />
+        ) : null}
+        <MetaRow label={t("pluginDetail:metaBrikaEngine")} value={detail.brikaEngine} mono />
         {displayLocales.length > 0 ? (
-          <MetaRow label="Languages" value={String(displayLocales.length)} mono />
+          <MetaRow
+            label={t("pluginDetail:metaLanguages")}
+            value={String(displayLocales.length)}
+            mono
+          />
         ) : null}
         {detail.provenance ? (
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Provenance</span>
+            <span className="text-muted-foreground">{t("pluginDetail:metaProvenance")}</span>
             <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400">
               <BadgeCheck className="size-4" />
-              Signed
+              {t("pluginDetail:metaSigned")}
             </span>
           </div>
         ) : null}
         {detail.unpackedSize !== undefined || detail.size !== undefined ? (
           <MetaRow
-            label="Unpacked size"
+            label={t("pluginDetail:metaUnpackedSize")}
             value={formatBytes(detail.unpackedSize ?? detail.size ?? 0)}
             mono
           />

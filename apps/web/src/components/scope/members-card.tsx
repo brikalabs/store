@@ -14,6 +14,7 @@ import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { type Member, useScopeMembers } from "@/hooks/use-scope-members";
+import { useT } from "@/i18n";
 import type { ScopeCardProps } from "@/lib/scope-api";
 
 export type { Member } from "@/hooks/use-scope-members";
@@ -36,14 +37,14 @@ export function MembersCard({
   onReload,
   onError,
 }: Readonly<MembersCardProps>) {
+  const t = useT();
   const { busy, setRole, remove, add } = useScopeMembers(scope, onReload, onError);
 
   return (
     <SettingsCard className="gap-1">
-      <h2 className="font-bold text-base text-foreground">Members</h2>
+      <h2 className="font-bold text-base text-foreground">{t("scope:membersTitle")}</h2>
       <p className="text-[12.5px] text-muted-foreground leading-relaxed">
-        Members are identified by their Brika user ID. Emails are never shown or stored on the
-        scope.
+        {t("scope:membersDescription")}
       </p>
       {members === null ? (
         <div className="mt-3 h-16 animate-pulse rounded-[11px] bg-muted" />
@@ -77,6 +78,7 @@ function MemberRow({
   onRole: (role: "admin" | "member") => void;
   onRemove: () => void;
 }>) {
+  const t = useT();
   const label = member.displayName ?? member.userId;
   return (
     <li className="flex items-center gap-3 border-border border-b py-3">
@@ -91,7 +93,10 @@ function MemberRow({
             value={member.role}
             onValueChange={(value) => onRole(value === "admin" ? "admin" : "member")}
           >
-            <SelectTrigger aria-label={`Role for ${label}`} className={ROLE_SELECT}>
+            <SelectTrigger
+              aria-label={t("scope:roleForAriaLabel", { name: label })}
+              className={ROLE_SELECT}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -116,6 +121,7 @@ function RemoveMember({
   label,
   onRemove,
 }: Readonly<{ member: Member; label: string; onRemove: () => void }>) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -123,7 +129,7 @@ function RemoveMember({
         type="button"
         size="icon"
         variant="ghost"
-        aria-label={`Remove ${label}`}
+        aria-label={t("scope:removeMemberAriaLabel", { name: label })}
         onClick={() => setOpen(true)}
         className="flex size-[34px] items-center justify-center rounded-[10px] border border-input bg-card text-muted-foreground hover:border-danger-border hover:bg-card hover:text-danger"
       >
@@ -132,14 +138,15 @@ function RemoveMember({
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title="Remove member"
+        title={t("scope:removeMemberDialogTitle")}
         description={
           <>
-            Remove <span className="font-mono">{member.userId}</span> from this scope? They will
-            lose access immediately.
+            {t("scope:removeMemberDialogPrefix")}
+            <span className="font-mono">{member.userId}</span>
+            {t("scope:removeMemberDialogSuffix")}
           </>
         }
-        confirmLabel="Remove member"
+        confirmLabel={t("scope:removeMemberConfirm")}
         destructive
         onConfirm={() => {
           setOpen(false);
@@ -158,6 +165,7 @@ function AddMember({
   busy: boolean;
   onAdd: (email: string, role: "admin" | "member") => Promise<boolean>;
 }>) {
+  const t = useT();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "member">("member");
 
@@ -171,16 +179,15 @@ function AddMember({
   return (
     <div className="mt-4 flex flex-col gap-2.5">
       <p className="text-muted-foreground text-xs leading-relaxed">
-        Add someone by their account. They will lose access if you remove them; we never list or
-        search users by email.
+        {t("scope:addMemberDescription")}
       </p>
       <form onSubmit={submit} className="flex flex-col gap-2.5 sm:flex-row">
         <Input
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="member@email.com"
-          aria-label="Email of the account to invite"
+          placeholder={t("scope:addMemberEmailPlaceholder")}
+          aria-label={t("scope:addMemberEmailAriaLabel")}
           className="flex-1 rounded-[11px] border-input bg-muted"
         />
         <Select
@@ -188,7 +195,7 @@ function AddMember({
           onValueChange={(value) => setRole(value === "admin" ? "admin" : "member")}
         >
           <SelectTrigger
-            aria-label="Role for the new member"
+            aria-label={t("scope:addMemberRoleAriaLabel")}
             className="h-[42px] rounded-[11px] border border-input bg-muted px-3 font-semibold text-foreground text-sm"
           >
             <SelectValue />
@@ -204,7 +211,7 @@ function AddMember({
           className="h-[42px] rounded-[11px] bg-brand px-4 font-bold text-brand-foreground hover:bg-brand hover:brightness-105"
         >
           <UserPlus className="size-4" />
-          {busy ? "Adding…" : "Add member"}
+          {busy ? t("scope:adding") : t("scope:addMember")}
         </Button>
       </form>
     </div>

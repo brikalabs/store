@@ -11,17 +11,18 @@ import { ErrorBanner } from "@/components/layout/error-banner";
 import { useCreatePlugin } from "@/hooks/use-create-plugin";
 import { MAX_NAME, type NameCheck, useNameCheck } from "@/hooks/use-name-check";
 import { type MemberScope, useScopes } from "@/hooks/use-scopes";
+import { type AppKey, useT } from "@/i18n";
 
 const route = getRouteApi("/dashboard/plugins/create");
 
 const CHECK_PILL: Record<
   Exclude<NameCheck, "idle">,
-  { tone: "muted" | "success" | "danger"; text: string }
+  { tone: "muted" | "success" | "danger"; textKey: AppKey }
 > = {
-  checking: { tone: "muted", text: "Checking…" },
-  ok: { tone: "success", text: "Available" },
-  taken: { tone: "danger", text: "Taken" },
-  invalid: { tone: "danger", text: "Invalid" },
+  checking: { tone: "muted", textKey: "plugin:checkChecking" },
+  ok: { tone: "success", textKey: "plugin:checkAvailable" },
+  taken: { tone: "danger", textKey: "plugin:checkTaken" },
+  invalid: { tone: "danger", textKey: "plugin:checkInvalid" },
 };
 
 const PROVIDERS = [
@@ -40,6 +41,7 @@ type Provider = (typeof PROVIDERS)[number]["value"];
  * is held as "Reserved" and hidden from the store until the first publish from CI or the CLI.
  */
 export function CreatePluginPage() {
+  const t = useT();
   const { user } = route.useRouteContext();
   const navigate = useNavigate();
   const { scopes } = useScopes();
@@ -73,18 +75,20 @@ export function CreatePluginPage() {
         <div>
           <div className="flex items-center gap-1.5 font-mono text-[12.5px] text-muted-foreground">
             <Link to="/dashboard/plugins" className="transition-colors hover:text-brand-ink">
-              My plugins
+              {t("plugin:myPlugins")}
             </Link>
             <span>/</span>
-            <span className="text-foreground">Create</span>
+            <span className="text-foreground">{t("plugin:createBreadcrumb")}</span>
           </div>
           <h1 className="mt-2 font-bold font-heading text-[30px] text-foreground tracking-tight">
-            Create a plugin
+            {t("plugin:createTitle")}
           </h1>
           <p className="mt-1.5 max-w-[640px] text-[15px] text-muted-foreground">
-            Reserve a name in one of your scopes and set up trusted publishing. The plugin stays{" "}
-            <strong className="font-semibold text-foreground">reserved</strong> and hidden from the
-            store until your first version is published from CI or the CLI.
+            {t("plugin:createIntroBefore")}{" "}
+            <strong className="font-semibold text-foreground">
+              {t("plugin:createIntroReserved")}
+            </strong>{" "}
+            {t("plugin:createIntroAfter")}
           </p>
         </div>
 
@@ -137,13 +141,10 @@ function ScopeStep({
   selected: string | null;
   onSelect: (scope: string) => void;
 }>) {
+  const t = useT();
   return (
     <SettingsCard className="gap-0 rounded-[20px]">
-      <Step
-        n={1}
-        title="Scope"
-        hint="Choose which of your scopes will own this plugin. Only scopes you administer are shown."
-      >
+      <Step n={1} title={t("plugin:stepScopeTitle")} hint={t("plugin:stepScopeHint")}>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {scopes.map((s) => {
             const active = s.scope === selected;
@@ -169,7 +170,7 @@ function ScopeStep({
                     {s.scope}
                   </span>
                   <span className="block truncate text-[12px] text-muted-foreground">
-                    {s.displayName ?? "Scope"}
+                    {s.displayName ?? t("plugin:scopeFallback")}
                   </span>
                 </span>
                 {active ? <Check className="size-[18px] shrink-0 text-brand-ink" /> : null}
@@ -196,13 +197,10 @@ function NameStep({
   fullPkg: string;
   onChange: (name: string) => void;
 }>) {
+  const t = useT();
   return (
     <SettingsCard className="gap-0 rounded-[20px]">
-      <Step
-        n={2}
-        title="Plugin name"
-        hint="Lowercase letters, numbers and dashes. This becomes the permanent install id."
-      >
+      <Step n={2} title={t("plugin:stepNameTitle")} hint={t("plugin:stepNameHint")}>
         <div className="flex h-12 max-w-[520px] items-stretch overflow-hidden rounded-[13px] border border-input bg-muted focus-within:border-brand-border focus-within:bg-card focus-within:ring-2 focus-within:ring-brand-tint">
           <span className="flex items-center border-border border-r bg-accent px-3.5 font-mono font-semibold text-[14px] text-muted-foreground">
             {selected ?? "@scope"}/
@@ -211,20 +209,20 @@ function NameStep({
             value={name}
             onChange={(e) => onChange(e.target.value.toLowerCase())}
             placeholder="my-plugin"
-            aria-label="Plugin name"
+            aria-label={t("plugin:stepNameTitle")}
             maxLength={selected ? MAX_NAME - selected.length - 1 : MAX_NAME}
             className="min-w-0 flex-1 bg-transparent px-3.5 font-mono text-[14px] text-foreground outline-none"
           />
           {check !== "idle" && (
             <span className="flex items-center pr-2.5">
               <Pill tone={CHECK_PILL[check].tone} size="sm">
-                {CHECK_PILL[check].text}
+                {t(CHECK_PILL[check].textKey)}
               </Pill>
             </span>
           )}
         </div>
         <div className="mt-3 flex items-center gap-2 text-[13px] text-muted-foreground">
-          <span>Full id</span>
+          <span>{t("plugin:fullId")}</span>
           <span className="rounded-lg border border-border bg-muted px-2.5 py-1 font-mono text-[13px] text-foreground">
             {fullPkg}
           </span>
@@ -250,17 +248,18 @@ function PublisherStep({
   onRepo: (repo: string) => void;
   onWorkflow: (workflow: string) => void;
 }>) {
+  const t = useT();
   return (
     <SettingsCard className="gap-0 rounded-[20px]">
       <Step
         n={3}
-        title="Trusted publisher"
+        title={t("plugin:stepPublisherTitle")}
         optional
-        hint="Authorize a CI repo + workflow now so your first publish works with no token (OIDC). You can also set this up later from the plugin page."
+        hint={t("plugin:stepPublisherHint")}
       >
         <div
           role="tablist"
-          aria-label="Trusted publisher provider"
+          aria-label={t("plugin:stepPublisherTitle")}
           className="mb-3 flex max-w-[420px] gap-1 rounded-xl border border-border bg-muted p-1"
         >
           {PROVIDERS.map(({ value, label, icon: Icon }) => {
@@ -284,24 +283,21 @@ function PublisherStep({
           })}
         </div>
         {provider === "azure" ? (
-          <p className="text-[13px] text-muted-foreground">
-            Azure trusted publishing is coming soon. Use GitHub or GitLab for tokenless publishing
-            today.
-          </p>
+          <p className="text-[13px] text-muted-foreground">{t("plugin:azureComingSoon")}</p>
         ) : (
           <div className="flex flex-wrap gap-2.5">
             <Input
               value={repo}
               onChange={(e) => onRepo(e.target.value)}
               placeholder="owner/repository"
-              aria-label="Repository"
+              aria-label={t("plugin:repositoryLabel")}
               className="h-[42px] min-w-[180px] flex-1 rounded-[11px] border-input bg-muted font-mono text-[13px]"
             />
             <Input
               value={workflow}
               onChange={(e) => onWorkflow(e.target.value)}
               placeholder="publish.yml"
-              aria-label="Workflow file"
+              aria-label={t("plugin:workflowLabel")}
               className="h-[42px] w-[160px] rounded-[11px] border-input bg-muted font-mono text-[13px]"
             />
           </div>
@@ -325,20 +321,23 @@ function CreateFooter({
   onCancel: () => void;
   onCreate: () => void;
 }>) {
+  const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-3.5 rounded-[18px] border border-border bg-muted px-[22px] py-[18px]">
       <ShieldCheck className="size-[18px] shrink-0 text-muted-foreground" />
       <p className="min-w-[200px] flex-1 text-[12.5px] text-muted-foreground leading-relaxed">
-        Creating reserves <span className="font-mono text-foreground">{fullPkg}</span>. It will show
-        as <strong className="font-semibold text-foreground">Reserved</strong> and stay out of the
-        public store until your first publish.
+        {t("plugin:reserveSummaryBefore")}{" "}
+        <span className="font-mono text-foreground">{fullPkg}</span>{" "}
+        {t("plugin:reserveSummaryMiddle")}{" "}
+        <strong className="font-semibold text-foreground">{t("plugin:statusReserved")}</strong>{" "}
+        {t("plugin:reserveSummaryAfter")}
       </p>
       <Button type="button" variant="outline" onClick={onCancel}>
-        Cancel
+        {t("plugin:cancel")}
       </Button>
       <Button type="button" disabled={!canCreate} onClick={onCreate}>
         <Rocket className="size-4" />
-        {busy ? "Creating…" : "Create plugin"}
+        {busy ? t("plugin:creating") : t("plugin:createCta")}
       </Button>
     </div>
   );
@@ -358,6 +357,7 @@ function Step({
   optional?: boolean;
   children: React.ReactNode;
 }>) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-3.5">
       <div>
@@ -372,7 +372,7 @@ function Step({
           <h2 className="font-bold font-heading text-[17px] text-foreground">{title}</h2>
           {optional ? (
             <Pill tone="muted" size="sm" className="font-bold">
-              Optional
+              {t("plugin:optional")}
             </Pill>
           ) : null}
         </div>
@@ -385,17 +385,16 @@ function Step({
 
 /** Shown when the user administers no scope: a plugin must live under one. */
 function NoScopeGate({ onClaim }: Readonly<{ onClaim: () => void }>) {
+  const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-3.5 rounded-[18px] border border-warning-border bg-warning-tint px-[22px] py-5">
       <Layers className="size-5 shrink-0 text-warning" />
       <div className="min-w-[200px] flex-1">
-        <div className="font-bold text-[14px] text-foreground">You need a scope first</div>
-        <div className="text-[13px] text-muted-foreground">
-          A plugin must live under a scope you administer. Claim one to get started.
-        </div>
+        <div className="font-bold text-[14px] text-foreground">{t("plugin:noScopeTitle")}</div>
+        <div className="text-[13px] text-muted-foreground">{t("plugin:noScopeDescription")}</div>
       </div>
       <Button type="button" onClick={onClaim}>
-        Claim a scope
+        {t("plugin:claimScope")}
       </Button>
     </div>
   );

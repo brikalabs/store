@@ -7,6 +7,7 @@ import { Pill } from "@/components/clay/pill";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { ErrorBanner } from "@/components/layout/error-banner";
+import { useT } from "@/i18n";
 import { linkSocial, listAccounts, unlinkAccount } from "@/lib/auth/client";
 
 /** A social provider on the connected-accounts surface (USER-004); `id` matches `listAccounts()`. */
@@ -31,6 +32,7 @@ interface LinkedAccount {
 const route = getRouteApi("/dashboard/accounts");
 
 export function AccountsPage() {
+  const t = useT();
   const { user } = route.useRouteContext();
   const [accounts, setAccounts] = useState<LinkedAccount[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function AccountsPage() {
   const load = useCallback(async () => {
     const res = await listAccounts();
     if (res.error) {
-      setError(res.error.message ?? "Could not load connected accounts.");
+      setError(res.error.message ?? t("account:loadError"));
       setAccounts([]);
       return;
     }
@@ -51,7 +53,7 @@ export function AccountsPage() {
         accountId: a.accountId,
       })),
     );
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -67,7 +69,7 @@ export function AccountsPage() {
     // Full-page OAuth redirect; the browser leaves and returns to LINK_CALLBACK.
     const res = await linkSocial({ provider, callbackURL: LINK_CALLBACK });
     if (res.error) {
-      setError(res.error.message ?? `Could not start linking ${provider}.`);
+      setError(res.error.message ?? t("account:linkError", { provider }));
       setBusy(null);
     }
   }
@@ -78,7 +80,7 @@ export function AccountsPage() {
     const res = await unlinkAccount({ providerId });
     setBusy(null);
     if (res.error) {
-      setError(res.error.message ?? "Could not unlink this provider.");
+      setError(res.error.message ?? t("account:unlinkError"));
       return;
     }
     await load();
@@ -93,12 +95,9 @@ export function AccountsPage() {
     >
       <div>
         <h1 className="font-bold font-heading text-[30px] text-foreground tracking-tight">
-          Connected accounts
+          {t("account:connectedTitle")}
         </h1>
-        <p className="mt-1.5 text-[15px] text-muted-foreground">
-          The sign-in providers linked to your Brika account. Link another to sign in more ways; you
-          can unlink any provider as long as one sign-in method remains.
-        </p>
+        <p className="mt-1.5 text-[15px] text-muted-foreground">{t("account:connectedSubtitle")}</p>
       </div>
 
       <ErrorBanner>{error}</ErrorBanner>
@@ -125,11 +124,7 @@ export function AccountsPage() {
             })}
           </SettingsCard>
 
-          <p className="px-1 text-muted-foreground text-xs">
-            More sign-in providers are coming. When a provider is added, it appears here ready to
-            link, and any account linked by a trusted provider's verified email resolves to this
-            same Brika account.
-          </p>
+          <p className="px-1 text-muted-foreground text-xs">{t("account:providersComing")}</p>
         </div>
       )}
     </AdminShell>
@@ -152,6 +147,7 @@ function AccountRow({
   onLink: () => void;
   onUnlink: () => void;
 }>) {
+  const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-3.5 px-5 py-[18px] [&:not(:last-child)]:border-border [&:not(:last-child)]:border-b">
       <span className="inline-flex size-[42px] shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
@@ -159,15 +155,13 @@ function AccountRow({
       </span>
       <div className="min-w-0 flex-1">
         <div className="font-bold text-[14.5px] text-foreground">{provider.label}</div>
-        <div className="text-[12.5px] text-muted-foreground">
-          Link to sign in and to verify ownership when publishing.
-        </div>
+        <div className="text-[12.5px] text-muted-foreground">{t("account:providerHint")}</div>
       </div>
       {connected ? (
         <div className="flex items-center gap-2.5">
           <Pill tone="success" className="font-bold text-[12px]">
             <Check className="size-3.5" />
-            Connected
+            {t("account:connected")}
           </Pill>
           <Button
             type="button"
@@ -176,13 +170,13 @@ function AccountRow({
             className="border-input hover:border-danger-border hover:text-danger"
             title={
               isLastLinked
-                ? "You can't unlink your only sign-in method."
-                : `Disconnect ${provider.label}`
+                ? t("account:lastMethodTitle")
+                : t("account:disconnectTitle", { provider: provider.label })
             }
             onClick={onUnlink}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Unlink className="size-4" />}
-            Disconnect
+            {t("account:disconnect")}
           </Button>
         </div>
       ) : (
@@ -192,10 +186,10 @@ function AccountRow({
           disabled={busy}
           className="border-input hover:border-brand-border"
           onClick={onLink}
-          title={`Connect ${provider.label}`}
+          title={t("account:connectTitle", { provider: provider.label })}
         >
           {busy ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
-          Connect
+          {t("account:connect")}
         </Button>
       )}
     </div>

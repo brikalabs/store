@@ -15,6 +15,7 @@ import { MembersCard } from "@/components/scope/members-card";
 import { ProfileCard } from "@/components/scope/profile-card";
 import { TrustedPublishersCard } from "@/components/scope/trusted-publishers-card";
 import { type Member, useScopeMemberList } from "@/hooks/use-scope-members";
+import { useT } from "@/i18n";
 
 const route = getRouteApi("/dashboard/scopes_/$scope");
 
@@ -24,6 +25,7 @@ const route = getRouteApi("/dashboard/scopes_/$scope");
  * `components/scope/*`.
  */
 export function ScopeDetailPage() {
+  const t = useT();
   const { user } = route.useRouteContext();
   const { scope } = route.useParams();
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function ScopeDetailPage() {
             className="inline-flex items-center text-muted-foreground text-sm hover:text-brand-ink hover:no-underline"
           >
             <ArrowLeft className="size-4" />
-            All scopes
+            {t("scope:backToAll")}
           </Link>
         </Button>
         <div className="mt-2.5 flex items-center gap-3.5">
@@ -56,7 +58,7 @@ export function ScopeDetailPage() {
           </h1>
           {isAdmin && (
             <Pill tone="brand" className="px-3 font-bold">
-              Admin
+              {t("scope:adminBadge")}
             </Pill>
           )}
         </div>
@@ -100,6 +102,7 @@ function ScopeDangerZone({
   members: Member[] | null;
   onLeave: (userId: string) => Promise<boolean>;
 }>) {
+  const t = useT();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const onlyAdmin = (members?.filter((m) => m.role === "admin").length ?? 0) <= 1;
@@ -111,15 +114,15 @@ function ScopeDangerZone({
   return (
     <DangerZone>
       <DangerRow
-        title="Leave this scope"
+        title={t("scope:leaveTitle")}
         description={
           onlyAdmin ? (
             <span className="flex items-center gap-1.5 text-warning">
               <Shield className="size-4 shrink-0" />
-              You are the only admin. Promote another member to admin before you can leave.
+              {t("scope:leaveOnlyAdmin")}
             </span>
           ) : (
-            "You will lose access to this scope and its plugins."
+            t("scope:leaveDescription")
           )
         }
         action={
@@ -131,21 +134,22 @@ function ScopeDangerZone({
             className="border-danger text-danger hover:bg-danger hover:text-white disabled:opacity-50"
           >
             <LogOut className="size-4" />
-            Leave scope
+            {t("scope:leaveAction")}
           </Button>
         }
       />
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title="Leave scope"
+        title={t("scope:leaveDialogTitle")}
         description={
           <>
-            Leave <span className="font-mono">{scope}</span>? You will lose access to this scope and
-            its plugins.
+            {t("scope:leaveDialogPrefix")}
+            <span className="font-mono">{scope}</span>
+            {t("scope:leaveDialogSuffix")}
           </>
         }
-        confirmLabel="Leave scope"
+        confirmLabel={t("scope:leaveAction")}
         onConfirm={leave}
       />
     </DangerZone>

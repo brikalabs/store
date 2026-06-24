@@ -34,21 +34,20 @@ export interface GrantFamily {
 }
 
 interface FamilySpec {
-  readonly label: string;
   readonly risk: GrantRisk;
   readonly order: number;
 }
 
-// Known families. Secrets is the only "sensitive" family (it can read the keys
-// other plugins store); everything else is standard. Unknown families fall back
-// to a title-cased label at the end of the list.
+// Known families. Secrets is the only "sensitive" family (it can read the keys other plugins store);
+// everything else is standard. Unknown families sort last. Display labels are localized in the UI by
+// family id; `GrantFamily.label` carries a title-cased fallback for ids with no translation.
 const FAMILY_SPECS: Record<string, FamilySpec> = {
-  net: { label: "Network", risk: "standard", order: 1 },
-  netLocal: { label: "Local network", risk: "standard", order: 2 },
-  rawSocket: { label: "Raw sockets", risk: "standard", order: 3 },
-  fs: { label: "Filesystem", risk: "standard", order: 4 },
-  secrets: { label: "Secrets", risk: "sensitive", order: 5 },
-  storage: { label: "Storage", risk: "standard", order: 6 },
+  net: { risk: "standard", order: 1 },
+  netLocal: { risk: "standard", order: 2 },
+  rawSocket: { risk: "standard", order: 3 },
+  fs: { risk: "standard", order: 4 },
+  secrets: { risk: "sensitive", order: 5 },
+  storage: { risk: "standard", order: 6 },
 };
 
 const PREFIX = "dev.brika.";
@@ -67,7 +66,7 @@ function titleCase(id: string): string {
 }
 
 function specFor(family: string): FamilySpec {
-  return FAMILY_SPECS[family] ?? { label: titleCase(family), risk: "standard", order: 99 };
+  return FAMILY_SPECS[family] ?? { risk: "standard", order: 99 };
 }
 
 /** Pull a string array out of a scope object under any of the given keys. */
@@ -166,7 +165,7 @@ export function groupGrants(grants: Record<string, unknown>): GrantFamily[] {
     const spec = specFor(family);
     families.push({
       id: family,
-      label: spec.label,
+      label: titleCase(family),
       risk: spec.risk,
       verbs: uniq(entries.map((e) => e.verb).filter((v) => v.length > 0)),
       grantIds: entries.map((e) => e.id).sort((a, b) => a.localeCompare(b)),

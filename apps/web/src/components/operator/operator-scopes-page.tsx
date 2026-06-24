@@ -13,6 +13,7 @@ import {
 import { TakedownControls } from "@/components/operator/takedown-controls";
 import { useOperatorList } from "@/hooks/use-operator-list";
 import { useOperatorScopeModeration } from "@/hooks/use-operator-scope-moderation";
+import { useT } from "@/i18n";
 
 interface OperatorScope {
   scope: string;
@@ -46,12 +47,13 @@ function OperatorScopeRow({
   onTakedown: (reason: string) => void;
   onRestore: () => void;
 }>) {
+  const t = useT();
   return (
     <li className="flex items-center gap-3 px-4 py-3">
       <Checkbox
         checked={selected}
         onCheckedChange={onToggle}
-        aria-label={`Select ${scope.scope}`}
+        aria-label={t("operator:selectScope", { scope: scope.scope })}
         className="shrink-0"
       />
       <Layers className="size-5 shrink-0 text-muted-foreground" />
@@ -60,19 +62,19 @@ function OperatorScopeRow({
           <span className="truncate font-medium font-mono text-sm">{scope.scope}</span>
           {scope.openReports > 0 && (
             <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-600 text-xs dark:text-amber-400">
-              {scope.openReports} report{scope.openReports === 1 ? "" : "s"}
+              {t("operator:scopeReports", { count: scope.openReports })}
             </span>
           )}
           {scope.takedown !== null && (
             <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-medium text-destructive text-xs">
-              Taken down
+              {t("operator:takenDownBadge")}
             </span>
           )}
         </div>
         <div className="truncate text-muted-foreground text-xs">
           {scope.takedown === null
-            ? (scope.displayName ?? "No display name")
-            : `Reason: ${scope.takedown}`}
+            ? (scope.displayName ?? t("operator:noDisplayName"))
+            : t("operator:scopeReason", { reason: scope.takedown })}
         </div>
       </div>
       <TakedownControls
@@ -86,6 +88,7 @@ function OperatorScopeRow({
 }
 
 export function OperatorScopesPage() {
+  const t = useT();
   const list = useOperatorList<OperatorScope>("/api/operator/scopes");
   const { busy, bulkBusy, error, act, bulkTakedown } = useOperatorScopeModeration(list.reload);
   const [facet, setFacet] = useState<ScopeFacet>("all");
@@ -94,19 +97,19 @@ export function OperatorScopesPage() {
 
   const facets: Facet<ScopeFacet>[] = useMemo(
     () => [
-      { key: "all", label: "All scopes", count: list.items.length },
+      { key: "all", label: t("operator:scopesFacetAll"), count: list.items.length },
       {
         key: "review",
-        label: "Needs review",
+        label: t("operator:scopesFacetReview"),
         count: list.items.filter(FACET_PREDICATES.review).length,
       },
       {
         key: "takedown",
-        label: "Taken down",
+        label: t("operator:scopesFacetTakedown"),
         count: list.items.filter(FACET_PREDICATES.takedown).length,
       },
     ],
-    [list.items],
+    [list.items, t],
   );
 
   const visible = useMemo(() => {
@@ -140,9 +143,10 @@ export function OperatorScopesPage() {
   }
 
   function renderBody() {
-    if (list.loading) return <p className="text-muted-foreground text-sm">Loading…</p>;
+    if (list.loading)
+      return <p className="text-muted-foreground text-sm">{t("operator:loading")}</p>;
     if (visible.length === 0) {
-      return <p className="text-muted-foreground text-sm">No scopes match.</p>;
+      return <p className="text-muted-foreground text-sm">{t("operator:scopesEmpty")}</p>;
     }
     return (
       <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
@@ -162,12 +166,11 @@ export function OperatorScopesPage() {
   }
 
   return (
-    <OperatorShell activeLabel="Scopes">
-      <OperatorHeader title="Scopes">
-        Every scope on the registry. Filter the moderation queue or search to act on any scope.
-        Taking one down withdraws it from public listings (its{" "}
-        <span className="font-mono">/@scope</span> page 404s); the reason is recorded in the audit
-        log.
+    <OperatorShell activeLabel="scopes">
+      <OperatorHeader title={t("operator:scopesTitle")}>
+        {t("operator:scopesIntroPrefix")}
+        <span className="font-mono">/@scope</span>
+        {t("operator:scopesIntroSuffix")}
       </OperatorHeader>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -176,9 +179,9 @@ export function OperatorScopesPage() {
           value={sort}
           onChange={setSort}
           options={[
-            { value: "newest", label: "Newest" },
-            { value: "reports", label: "Most reported" },
-            { value: "name", label: "Name A–Z" },
+            { value: "newest", label: t("operator:scopesSortNewest") },
+            { value: "reports", label: t("operator:scopesSortReported") },
+            { value: "name", label: t("operator:scopesSortName") },
           ]}
         />
       </div>
@@ -190,20 +193,20 @@ export function OperatorScopesPage() {
         <InputGroupInput
           value={list.query}
           onChange={(e) => list.setQuery(e.target.value)}
-          placeholder="Filter by scope or name"
+          placeholder={t("operator:scopesSearchPlaceholder")}
         />
       </InputGroup>
 
       {list.capped && (
         <p className="text-muted-foreground text-xs">
-          Showing the first {list.items.length} of {list.total}. Search to narrow.
+          {t("operator:scopesCapped", { shown: list.items.length, total: list.total })}
         </p>
       )}
       {error !== null && <p className="text-destructive text-sm">{error}</p>}
       {selectedScopes.length > 0 && (
         <BulkBar
           count={selectedScopes.length}
-          noun="scope"
+          noun={t("operator:scopeNoun")}
           busy={bulkBusy}
           onTakedown={runBulkTakedown}
           onClear={() => setSelected(new Set())}

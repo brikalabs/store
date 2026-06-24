@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalPage } from "@/components/layout/legal-page";
-import content from "@/content/legal/acceptable-use.md?raw";
 
 export const Route = createFileRoute("/legal/acceptable-use")({
   head: () => ({
@@ -12,5 +11,5 @@ export const Route = createFileRoute("/legal/acceptable-use")({
       },
     ],
   }),
-  component: () => <LegalPage slug="acceptable-use" content={content} />,
+  component: () => <LegalPage slug="acceptable-use" />,
 });

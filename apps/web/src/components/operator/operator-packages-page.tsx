@@ -1,5 +1,6 @@
 import { Checkbox } from "@brika/clay/components/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
+import type { Translate } from "@brika/i18n";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Flag, Search } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -20,8 +21,11 @@ import {
   useBulkTakedown,
   usePackageModeration,
 } from "@/hooks/use-operator-packages";
-import { formatCount, formatRelative } from "@/lib/format";
-import { reportReasonLabel } from "@/lib/reports";
+import { type AppKey, useRelativeTime, useT } from "@/i18n";
+import { formatCount } from "@/lib/format";
+import { reportReasonLabelKey } from "@/lib/reports";
+
+type AppTranslate = Translate<AppKey>;
 
 type PkgFacet = "all" | "review" | "takedowns" | "hidden";
 type PkgSort = "flagged" | "installs" | "recent" | "name";
@@ -35,6 +39,7 @@ const FACET_PREDICATES: Record<PkgFacet, (p: OperatorPackage) => boolean> = {
 };
 
 export function OperatorPackagesPage() {
+  const t = useT();
   const list = useOperatorList<OperatorPackage>("/api/operator/packages");
   const [facet, setFacet] = useState<PkgFacet>("all");
   const [sort, setSort] = useState<PkgSort>("flagged");
@@ -42,20 +47,24 @@ export function OperatorPackagesPage() {
 
   const facets: Facet<PkgFacet>[] = useMemo(
     () => [
-      { key: "all", label: "All packages", count: list.items.length },
+      { key: "all", label: t("operator:packagesFacetAll"), count: list.items.length },
       {
         key: "review",
-        label: "Needs review",
+        label: t("operator:packagesFacetReview"),
         count: list.items.filter(FACET_PREDICATES.review).length,
       },
       {
         key: "takedowns",
-        label: "Has takedowns",
+        label: t("operator:packagesFacetTakedowns"),
         count: list.items.filter(FACET_PREDICATES.takedowns).length,
       },
-      { key: "hidden", label: "Hidden", count: list.items.filter(FACET_PREDICATES.hidden).length },
+      {
+        key: "hidden",
+        label: t("operator:packagesFacetHidden"),
+        count: list.items.filter(FACET_PREDICATES.hidden).length,
+      },
     ],
-    [list.items],
+    [list.items, t],
   );
 
   const visible = useMemo(() => {
@@ -99,15 +108,17 @@ export function OperatorPackagesPage() {
   }
 
   function shownLabel(): string {
-    if (list.loading) return "Loading…";
-    if (list.capped) return `Showing ${visible.length} of ${list.total}`;
-    return `Showing ${visible.length}`;
+    if (list.loading) return t("operator:loading");
+    if (list.capped)
+      return t("operator:packagesShowingCapped", { shown: visible.length, total: list.total });
+    return t("operator:packagesShowing", { shown: visible.length });
   }
 
   function renderList() {
-    if (list.loading) return <p className="px-1 text-muted-foreground text-sm">Loading…</p>;
+    if (list.loading)
+      return <p className="px-1 text-muted-foreground text-sm">{t("operator:loading")}</p>;
     if (visible.length === 0) {
-      return <p className="px-1 text-muted-foreground text-sm">No packages match.</p>;
+      return <p className="px-1 text-muted-foreground text-sm">{t("operator:packagesEmpty")}</p>;
     }
     return (
       <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -126,10 +137,9 @@ export function OperatorPackagesPage() {
   }
 
   return (
-    <OperatorShell activeLabel="Packages">
-      <OperatorHeader title="Packages">
-        Work the moderation queue, or search the whole registry. Expand a package to moderate
-        individual versions. Every action records its reason in the audit log.
+    <OperatorShell activeLabel="packages">
+      <OperatorHeader title={t("operator:packagesTitle")}>
+        {t("operator:packagesIntro")}
       </OperatorHeader>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -142,17 +152,17 @@ export function OperatorPackagesPage() {
           <InputGroupInput
             value={list.query}
             onChange={(e) => list.setQuery(e.target.value)}
-            placeholder="Search package or owner"
+            placeholder={t("operator:packagesSearchPlaceholder")}
           />
         </InputGroup>
         <SortSelect
           value={sort}
           onChange={setSort}
           options={[
-            { value: "flagged", label: "Most flagged" },
-            { value: "installs", label: "Most installed" },
-            { value: "recent", label: "Recently updated" },
-            { value: "name", label: "Name A–Z" },
+            { value: "flagged", label: t("operator:packagesSortFlagged") },
+            { value: "installs", label: t("operator:packagesSortInstalls") },
+            { value: "recent", label: t("operator:packagesSortRecent") },
+            { value: "name", label: t("operator:packagesSortName") },
           ]}
         />
       </div>
@@ -161,7 +171,7 @@ export function OperatorPackagesPage() {
         <Checkbox
           checked={someSelected ? "indeterminate" : allSelected}
           onCheckedChange={toggleAll}
-          aria-label="Select all packages on this page"
+          aria-label={t("operator:selectAllPackages")}
         />
         <span className="text-muted-foreground text-xs">{shownLabel()}</span>
       </div>
@@ -170,7 +180,7 @@ export function OperatorPackagesPage() {
       {selectedNames.length > 0 && (
         <BulkBar
           count={selectedNames.length}
-          noun="package"
+          noun={t("operator:packageNoun")}
           busy={busy}
           onTakedown={bulkTakedown}
           onClear={() => setSelected(new Set())}
@@ -182,12 +192,18 @@ export function OperatorPackagesPage() {
   );
 }
 
-function metaLine(pkg: OperatorPackage): string {
-  const parts = [`${pkg.versionCount} version${pkg.versionCount === 1 ? "" : "s"}`];
-  if (pkg.installs > 0) parts.push(`${formatCount(pkg.installs)} installs`);
-  const updated = formatRelative(pkg.updatedAt ?? undefined);
-  if (updated) parts.push(`updated ${updated}`);
-  if (pkg.flagReason !== null) parts.push(`Flagged: ${reportReasonLabel(pkg.flagReason)}`);
+function metaLine(
+  pkg: OperatorPackage,
+  relative: (value: string | Date | undefined) => string,
+  t: AppTranslate,
+): string {
+  const parts = [t("operator:metaVersions", { count: pkg.versionCount })];
+  if (pkg.installs > 0)
+    parts.push(t("operator:metaInstalls", { installs: formatCount(pkg.installs) }));
+  const updated = relative(pkg.updatedAt ?? undefined);
+  if (updated) parts.push(t("operator:metaUpdated", { relative: updated }));
+  if (pkg.flagReason !== null)
+    parts.push(t("operator:metaFlagged", { reason: t(reportReasonLabelKey(pkg.flagReason)) }));
   return parts.join(" · ");
 }
 
@@ -204,6 +220,8 @@ function PackageRow({
   onError: (message: string | null) => void;
   onChanged: () => void;
 }>) {
+  const t = useT();
+  const relative = useRelativeTime();
   const [open, setOpen] = useState(false);
   const { versions, busy, pkgBusy, loadVersions, act, takedownPackage } = usePackageModeration(
     pkg,
@@ -226,13 +244,17 @@ function PackageRow({
         <Checkbox
           checked={selected}
           onCheckedChange={onToggle}
-          aria-label={`Select ${pkg.name}`}
+          aria-label={t("operator:selectPackage", { name: pkg.name })}
           className="shrink-0"
         />
         <button
           type="button"
           onClick={expand}
-          aria-label={open ? `Collapse ${pkg.name}` : `Expand ${pkg.name}`}
+          aria-label={
+            open
+              ? t("operator:collapsePackage", { name: pkg.name })
+              : t("operator:expandPackage", { name: pkg.name })
+          }
           className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-transform hover:bg-muted hover:text-foreground"
         >
           {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
@@ -243,27 +265,29 @@ function PackageRow({
             <span className="truncate font-mono font-semibold text-sm">{pkg.name}</span>
             {pkg.latestVersion === null && pkg.versionCount > 0 && (
               <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 font-semibold text-muted-foreground text-xs">
-                Hidden
+                {t("operator:hiddenBadge")}
               </span>
             )}
             {pkg.openReports > 0 && (
               <Link
                 to="/operator/reports"
                 search={{ q: pkg.name, status: "open", page: 1 }}
-                title="View reports for this package"
+                title={t("operator:viewPackageReports")}
                 className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 font-semibold text-amber-600 text-xs transition-colors hover:bg-amber-500/20 dark:text-amber-400"
               >
                 <Flag className="size-3" />
-                {pkg.openReports} report{pkg.openReports === 1 ? "" : "s"}
+                {t("operator:packageReports", { count: pkg.openReports })}
               </Link>
             )}
             {pkg.takenDownCount > 0 && (
               <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 font-semibold text-destructive text-xs">
-                {pkg.takenDownCount} version{pkg.takenDownCount === 1 ? "" : "s"} down
+                {t("operator:versionsDownBadge", { count: pkg.takenDownCount })}
               </span>
             )}
           </div>
-          <div className="mt-0.5 truncate text-muted-foreground text-xs">{metaLine(pkg)}</div>
+          <div className="mt-0.5 truncate text-muted-foreground text-xs">
+            {metaLine(pkg, relative, t)}
+          </div>
         </div>
         {liveVersions > 0 ? (
           <TakedownControls
@@ -274,7 +298,7 @@ function PackageRow({
           />
         ) : (
           <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground text-xs">
-            All versions down
+            {t("operator:allVersionsDown")}
           </span>
         )}
       </div>
