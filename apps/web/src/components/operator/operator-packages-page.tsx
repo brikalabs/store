@@ -11,10 +11,14 @@ import {
   OperatorHeader,
   SortSelect,
 } from "@/components/operator/operator-toolbar";
-import { type OperatorPackage, VersionPanel } from "@/components/operator/package-version-panel";
+import { VersionPanel } from "@/components/operator/package-version-panel";
 import { TakedownControls } from "@/components/operator/takedown-controls";
 import { useOperatorList } from "@/hooks/use-operator-list";
-import { useBulkTakedown, usePackageModeration } from "@/hooks/use-operator-packages";
+import {
+  type OperatorPackage,
+  useBulkTakedown,
+  usePackageModeration,
+} from "@/hooks/use-operator-packages";
 import { formatCount, formatRelative } from "@/lib/format";
 import { reportReasonLabel } from "@/lib/reports";
 

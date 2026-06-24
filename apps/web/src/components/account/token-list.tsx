@@ -2,13 +2,7 @@ import { Button, EmptyState, EmptyStateDescription, EmptyStateTitle } from "@bri
 import { KeyRound } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
-
-export interface Token {
-  tokenHash: string;
-  createdAt: number;
-  expiresAt: number;
-  lastUsedAt: number | null;
-}
+import type { Token } from "@/hooks/use-account-tokens";
 
 /** Epoch-seconds timestamp to a short local date, or a placeholder. */
 function fmt(seconds: number | null): string {

@@ -1,5 +1,29 @@
 import { useCallback, useState } from "react";
-import type { OperatorPackage, PackageVersion } from "@/components/operator/package-version-panel";
+
+/** A package row in the operator console: the list item, and what the moderation hook acts on. */
+export interface OperatorPackage {
+  name: string;
+  scope: string | null;
+  scopeDisplayName: string | null;
+  latestVersion: string | null;
+  versionCount: number;
+  takenDownCount: number;
+  yankedCount: number;
+  updatedAt: string | null;
+  installs: number;
+  flagReason: string | null;
+  openReports: number;
+}
+
+/** One published version of a package, as the moderation panel lists it. */
+export interface PackageVersion {
+  version: string;
+  publishedAt: string;
+  size: number;
+  deprecated: string | null;
+  yanked: boolean;
+  takedownReason: string | null;
+}
 
 /**
  * The page-level bulk takedown for the operator packages console: take down every selected package

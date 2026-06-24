@@ -2,30 +2,8 @@ import { Input } from "@brika/clay";
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TakedownControls } from "@/components/operator/takedown-controls";
+import type { OperatorPackage, PackageVersion } from "@/hooks/use-operator-packages";
 import { formatBytes, formatDate } from "@/lib/format";
-
-export interface OperatorPackage {
-  name: string;
-  scope: string | null;
-  scopeDisplayName: string | null;
-  latestVersion: string | null;
-  versionCount: number;
-  takenDownCount: number;
-  yankedCount: number;
-  updatedAt: string | null;
-  installs: number;
-  flagReason: string | null;
-  openReports: number;
-}
-
-export interface PackageVersion {
-  version: string;
-  publishedAt: string;
-  size: number;
-  deprecated: string | null;
-  yanked: boolean;
-  takedownReason: string | null;
-}
 
 type VerFacet = "all" | "active" | "deprecated" | "yanked" | "takedown";
 

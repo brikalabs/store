@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Token } from "@/components/account/token-list";
 
-export type { Token };
+export interface Token {
+  tokenHash: string;
+  createdAt: number;
+  expiresAt: number;
+  lastUsedAt: number | null;
+}
 
 /**
  * The API tokens for the signed-in account: load the list and create/revoke a token, so the page
