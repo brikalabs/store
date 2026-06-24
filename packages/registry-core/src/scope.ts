@@ -252,8 +252,7 @@ export class ScopeService {
     if (!gate.ok) return gate;
     const existing = await this.#domains.get(scope, domain);
     if (existing !== null) return { ok: true, domain: existing };
-    const record = await this.#domains.add(scope, domain);
-    return { ok: true, domain: record };
+    return { ok: true, domain: await this.#domains.add(scope, domain) };
   }
 
   /**

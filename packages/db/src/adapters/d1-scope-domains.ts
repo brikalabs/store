@@ -12,12 +12,11 @@ export class D1ScopeDomains implements ScopeDomains {
   readonly #db = inject(Db);
 
   async list(scope: string): Promise<ScopeDomainRecord[]> {
-    const rows = await this.#db
+    return this.#db
       .select({ domain: regScopeDomains.domain, verified: regScopeDomains.verified })
       .from(regScopeDomains)
       .where(eq(regScopeDomains.scope, scope))
       .orderBy(regScopeDomains.domain);
-    return rows;
   }
 
   async get(scope: string, domain: string): Promise<ScopeDomainRecord | null> {

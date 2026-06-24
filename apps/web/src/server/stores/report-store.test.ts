@@ -103,8 +103,7 @@ test("openCountsByTarget aggregates open reports and ignores empty input", async
 test("setStatus resolves an open report, dropping it from the queue and counts", async () => {
   await fileReport();
   const [open] = (await store.list({ status: "open", limit: 20, offset: 0 })).items;
-  const target = await store.setStatus(open?.id ?? "", "resolved");
-  expect(target).toBe("@brika/x");
+  expect(await store.setStatus(open?.id ?? "", "resolved")).toBe("@brika/x");
 
   // Gone from the open queue, but still visible under the resolved filter.
   expect((await store.list({ status: "open", limit: 20, offset: 0 })).total).toBe(0);

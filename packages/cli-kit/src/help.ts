@@ -30,8 +30,7 @@ export function generateCommandHelp(cmd: Command, prefix: string): string {
         const shortPrefix = opt.short ? `-${opt.short}, ` : "";
         const nameStr = `${shortPrefix}--${key}`;
         const desc = opt.description ?? "";
-        const defaultLabel = ` (default: ${opt.default})`;
-        const def = opt.default === undefined ? "" : pc.dim(defaultLabel);
+        const def = opt.default === undefined ? "" : pc.dim(` (default: ${opt.default})`);
         return `  ${pc.green(nameStr.padEnd(20))} ${desc}${def}`;
       })
       .join("\n");

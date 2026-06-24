@@ -113,8 +113,7 @@ export function takedown(
 }
 
 export function restore(input: ManageContext): Promise<Response> {
-  const { params } = input;
-  return runAdmin(input, "restore", (svc, name) => svc.restore(name, params.version), {
+  return runAdmin(input, "restore", (svc, name) => svc.restore(name, input.params.version), {
     takedown: null,
   });
 }

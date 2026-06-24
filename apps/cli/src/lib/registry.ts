@@ -188,8 +188,9 @@ export class RegistryClient {
     const res = await this.#postJson("/-/publish", req, token);
     const body = await this.#parse(res, PublishResponseSchema);
     if (res.ok && body.integrity !== undefined) return { integrity: body.integrity };
-    const code = body.code === undefined ? "" : ` ${body.code}`;
-    throw new CliError(`publish rejected (${res.status}${code}): ${body.error ?? "unknown error"}`);
+    throw new CliError(
+      `publish rejected (${res.status}${codeSuffix(body.code)}): ${body.error ?? "unknown error"}`,
+    );
   }
 
   /**
@@ -204,9 +205,10 @@ export class RegistryClient {
     });
     const body = await this.#parse(res, ScopeResponseSchema);
     if (res.ok && body.ok === true) return { scope, created: body.created ?? false };
-    const code = body.code === undefined ? "" : ` ${body.code}`;
     throw new CliError(
-      `could not create scope ${scope} (${res.status}${code}): ${body.error ?? "unknown error"}`,
+      `could not create scope ${scope} (${res.status}${codeSuffix(body.code)}): ${
+        body.error ?? "unknown error"
+      }`,
     );
   }
 
@@ -259,8 +261,9 @@ export class RegistryClient {
     status: number,
     body: { error?: string; code?: string },
   ): string {
-    const code = body.code === undefined ? "" : ` ${body.code}`;
-    return `could not ${verb} ${scope} (${status}${code}): ${body.error ?? "unknown error"}`;
+    return `could not ${verb} ${scope} (${status}${codeSuffix(body.code)}): ${
+      body.error ?? "unknown error"
+    }`;
   }
 
   /** Deprecate (or, with `message: null`, un-deprecate) a published version. */
@@ -286,16 +289,14 @@ export class RegistryClient {
     action: "deprecate" | "yank",
     body: unknown,
   ): Promise<void> {
-    const path =
-      action === "deprecate"
-        ? npmLink("/-/package/:name/:version/deprecate", { name, version })
-        : npmLink("/-/package/:name/:version/yank", { name, version });
+    const path = npmLink(`/-/package/:name/:version/${action}`, { name, version });
     const res = await this.#postJson(path, body, token);
     const parsed = await this.#parse(res, ManageResponseSchema);
     if (res.ok && parsed.ok === true) return;
-    const code = parsed.code === undefined ? "" : ` ${parsed.code}`;
     throw new CliError(
-      `${action} rejected (${res.status}${code}): ${parsed.error ?? "unknown error"}`,
+      `${action} rejected (${res.status}${codeSuffix(parsed.code)}): ${
+        parsed.error ?? "unknown error"
+      }`,
     );
   }
 
@@ -340,4 +341,9 @@ export class RegistryClient {
 
 function bearer(token: string): Record<string, string> {
   return { authorization: `Bearer ${token}` };
+}
+
+/** ` <code>` for an error code, or "" when the response carried none. */
+function codeSuffix(code: string | undefined): string {
+  return code === undefined ? "" : ` ${code}`;
 }
