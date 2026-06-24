@@ -5,6 +5,7 @@ import {
   CommandItem,
   CommandList,
   Kbd,
+  KbdGroup,
   useModifier,
 } from "@brika/clay";
 import { InputGroup, InputGroupAddon } from "@brika/clay/components/input-group";
@@ -92,8 +93,10 @@ export function HeaderSearch() {
           placeholder="Search plugins and scopes…"
         />
         <InputGroupAddon align="inline-end">
-          <Kbd>{symbol}</Kbd>
-          <Kbd>K</Kbd>
+          <KbdGroup>
+            <Kbd>{symbol}</Kbd>
+            <Kbd>K</Kbd>
+          </KbdGroup>
         </InputGroupAddon>
       </InputGroup>
 
