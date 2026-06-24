@@ -1,8 +1,8 @@
 import { cn } from "@brika/clay";
+import { Image, ImageFallback } from "@brika/clay/components/image";
 import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { useState } from "react";
 import { gradientFor as gradientForSeed } from "./gradients";
-import { Image } from "./image";
 
 const MAX_THUMBS = 5;
 
@@ -58,8 +58,11 @@ export function ScreenshotPanels({
           loading="eager"
           timeoutMs={12000}
           className="size-full"
-          fallback={<GradientFallback seed={seed} index={safeActive} />}
-        />
+        >
+          <ImageFallback>
+            <GradientFallback seed={seed} index={safeActive} />
+          </ImageFallback>
+        </Image>
         {urls.length > 1 ? (
           <>
             <NavButton side="left" onClick={() => go(-1)} />
@@ -87,12 +90,11 @@ export function ScreenshotPanels({
                 index === safeActive ? "border-brand" : "border-border",
               )}
             >
-              <Image
-                src={url}
-                timeoutMs={12000}
-                className="size-full"
-                fallback={<GradientFallback seed={seed} index={index} showIcon={false} />}
-              />
+              <Image src={url} timeoutMs={12000} className="size-full">
+                <ImageFallback>
+                  <GradientFallback seed={seed} index={index} showIcon={false} />
+                </ImageFallback>
+              </Image>
               {isOverflowTile ? (
                 <span className="absolute inset-0 flex items-center justify-center bg-black/60 font-semibold text-sm text-white">
                   +{overflow + 1}
