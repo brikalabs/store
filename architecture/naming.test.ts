@@ -37,6 +37,28 @@ describe("filenames", () => {
       .mustBeNamed(kebabFilename())
       .assert();
   });
+
+  test("web components are kebab-case", () => {
+    rule()
+      .filesMatching("apps/web/src/components")
+      .mustBeNamed(kebabFilename())
+      .assert();
+  });
+
+  // Hooks read as `use-*`, so a file name alone tells you it is a hook (and `inject()`-free).
+  test("web hooks are named use-*", () => {
+    rule()
+      .filesMatching("apps/web/src/hooks")
+      .mustBeNamed(/^use-[a-z0-9-]+(\.test)?\.tsx?$/)
+      .assert();
+  });
+
+  test("web server adapters are kebab-case", () => {
+    rule()
+      .filesMatching("apps/web/src/server/adapters")
+      .mustBeNamed(kebabFilename())
+      .assert();
+  });
 });
 
 describe("class names", () => {
@@ -79,6 +101,20 @@ describe("class names", () => {
     rule()
       .filesMatching("apps/registry/src/adapters/r2-*.ts")
       .classesMustBePrefixed("R2")
+      .assert();
+  });
+
+  test("web server services are suffixed Service", () => {
+    rule()
+      .filesMatching("apps/web/src/server/services")
+      .classesMustBeSuffixed("Service")
+      .assert();
+  });
+
+  test("web server adapter classes are PascalCase", () => {
+    rule()
+      .filesMatching("apps/web/src/server/adapters")
+      .classesMustBeNamed(pascalCase)
       .assert();
   });
 });

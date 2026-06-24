@@ -64,6 +64,21 @@ describe("apps/web layering", () => {
       .mayNotImport(D1_ADAPTERS)
       .assert();
   });
+
+  // The web's analog of the registry's binding-confinement rule (apps.test.ts): bindings enter at
+  // the composition root, the env schema, and the cf seams; every other server file injects.
+  test("the Cloudflare bindings are read only at the composition root + env + cf seams", () => {
+    rule()
+      .filesMatching("apps/web/src/server")
+      .except(
+        "apps/web/src/server/injector.ts",
+        "apps/web/src/server/env.ts",
+        "apps/web/src/server/adapters",
+        "apps/web/src/server/rate-limit.ts",
+      )
+      .mayNotImport(modules("cloudflare:workers"))
+      .assert();
+  });
 });
 
 describe("apps/web stores", () => {
@@ -73,5 +88,13 @@ describe("apps/web stores", () => {
 
   test("repository classes are suffixed Store", () => {
     rule().filesMatching("apps/web/src/server/stores").classesMustBeSuffixed("Store").assert();
+  });
+
+  // Composition points one way: a service composes stores, a store never reaches back up to a service.
+  test("stores do not import services", () => {
+    rule()
+      .filesMatching("apps/web/src/server/stores")
+      .mayNotImport(modules("@/server/services"))
+      .assert();
   });
 });

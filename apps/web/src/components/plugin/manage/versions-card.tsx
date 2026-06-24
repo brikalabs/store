@@ -1,25 +1,11 @@
-import { Card, Input } from "@brika/clay";
+import { Card } from "@brika/clay";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
 import { Archive, Ban, RotateCcw, Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Pager, usePagedList } from "@/components/clay/pagination";
 import { Pill } from "@/components/clay/pill";
+import { type PkgVersion, usePluginVersions } from "@/hooks/use-plugin-versions";
 import { formatBytes, formatDate } from "@/lib/format";
-
-interface PkgVersion {
-  version: string;
-  publishedAt: string;
-  size: number;
-  deprecated: string | null;
-  yanked: boolean;
-  takedownReason: string | null;
-}
-
-interface VersionsState {
-  name: string;
-  latest: string | null;
-  canManage: boolean;
-  versions: PkgVersion[];
-}
 
 const PAGE_SIZE = 8;
 
@@ -28,40 +14,8 @@ const PAGE_SIZE = 8;
  * ownership-gated). For packages not published to the registry the endpoint 404s; we show a note.
  */
 export function VersionsCard({ name }: Readonly<{ name: string }>) {
-  const [state, setState] = useState<VersionsState | null>(null);
-  const [notRegistry, setNotRegistry] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<string | null>(null);
+  const { state, notRegistry, error, pending, act } = usePluginVersions(name);
   const [query, setQuery] = useState("");
-
-  const load = useCallback(async () => {
-    const res = await fetch(`/api/plugins/versions?name=${encodeURIComponent(name)}`);
-    if (res.status === 404) {
-      setNotRegistry(true);
-      return;
-    }
-    if (res.ok) setState((await res.json()) as VersionsState);
-  }, [name]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  async function act(path: string, body: unknown, key: string) {
-    setPending(key);
-    setError(null);
-    const res = await fetch(path, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setPending(null);
-    if (res.ok) {
-      await load();
-    } else {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error ?? "Action failed");
-    }
-  }
 
   const versions = state?.versions ?? [];
   const filtered = useMemo(() => {
@@ -93,15 +47,17 @@ export function VersionsCard({ name }: Readonly<{ name: string }>) {
         </p>
       )}
 
-      <div className="relative">
-        <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
-        <Input
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <Search className="size-4 text-muted-foreground" />
+        </InputGroupAddon>
+        <InputGroupInput
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search version, e.g. 2.4"
-          className="pl-9 font-mono"
+          className="font-mono"
         />
-      </div>
+      </InputGroup>
 
       {state === null ? (
         <div className="h-40 animate-pulse rounded-[14px] bg-muted" />

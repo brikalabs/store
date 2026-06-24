@@ -127,6 +127,10 @@ collapsed `else if`, no parameter reassignment, no unused imports or variables.
 
 ## UI (store app)
 
+- **Component architecture** is [ADR-0004](adr/0004-web-component-architecture.md): feature folders,
+  when to split a file, component/hook naming (the folder layout is
+  [ADR-0002](adr/0002-web-app-file-architecture.md); the server layer is
+  [ADR-0003](adr/0003-web-clean-architecture-and-di.md)).
 - `@brika/clay` is the UI kit; use its components and tokens.
 - Use Clay `Kbd`/`KbdGroup` for keyboard chords, never plain text.
 - Icons are `lucide-react` components, never emoji strings.
@@ -135,7 +139,10 @@ collapsed `else if`, no parameter reassignment, no unused imports or variables.
 
 ## Tests
 
+See **[the testing guide](TESTING.md)** for the full rules: the naming convention, the three DI test
+seams (`testBed`, `makeAdapter`/`makeDb`, `runInContext`), and what to test. In short:
+
 - `bun test`, with `*.test.ts` colocated next to the source.
 - Test pure logic directly; inject in-memory fakes for ports (no live Cloudflare
   needed). Security-critical code (integrity, OIDC, the publish gates) has
-  explicit positive and negative cases.
+  explicit positive and negative cases, and every saga ships a rollback test.

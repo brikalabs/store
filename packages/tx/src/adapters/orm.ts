@@ -26,7 +26,6 @@ export interface TransactionalDb<Statement> {
 export function transactionalDb<Db, Statement>(
   db: Db & Batchable<Statement>,
 ): Db & Batchable<Statement> & TransactionalDb<Statement> {
-  // Run the statements as one unit: the client's atomic batch when present, else in order.
   const runBatch = async (statements: readonly Statement[]): Promise<void> => {
     const client = db as { batch?: (statements: readonly Statement[]) => Promise<unknown> };
     if (typeof client.batch === "function") {

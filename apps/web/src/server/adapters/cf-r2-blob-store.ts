@@ -1,4 +1,5 @@
 import { inject, token } from "@brika/di";
+import { onRollback } from "@brika/tx";
 import { joinUrl } from "@/lib/url";
 import type { BlobObject, BlobStore } from "@/server/ports/blob-store";
 
@@ -31,6 +32,8 @@ export class CfR2BlobStore implements BlobStore {
 
   async put(key: string, value: Uint8Array | string, contentType?: string): Promise<void> {
     await this.#bucket.put(key, value, contentType ? { httpMetadata: { contentType } } : undefined);
+    // Inside a transaction, a failed commit rolls the staged object back; outside one, a no-op.
+    onRollback(() => this.delete(key));
   }
 
   async delete(key: string): Promise<void> {

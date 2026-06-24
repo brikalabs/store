@@ -1,3 +1,4 @@
+import { Rating } from "@brika/clay";
 import type { PluginDetail } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { Link } from "@tanstack/react-router";
@@ -14,7 +15,6 @@ import {
 import { useState } from "react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
 import { Segmented, segmentClassName } from "@/components/clay/segmented";
-import { Stars } from "@/components/clay/stars";
 import { ReportPluginButton } from "@/components/plugin/detail/report-dialog";
 import { formatCount } from "@/lib/format";
 
@@ -141,7 +141,7 @@ export function DetailHeader({
           <span className="font-mono text-xs">v{detail.version}</span>
           {detail.rating ? (
             <span className="inline-flex items-center gap-1.5">
-              <Stars value={detail.rating.average} />
+              <Rating value={detail.rating.average} color="var(--color-star)" />
               {detail.rating.average.toFixed(1)} ({detail.rating.count})
             </span>
           ) : null}

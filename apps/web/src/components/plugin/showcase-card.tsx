@@ -1,8 +1,8 @@
+import { Rating } from "@brika/clay";
 import type { PluginSummary } from "@brika/registry-contract";
 import { Link } from "@tanstack/react-router";
 import { Download, ShieldCheck } from "lucide-react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
-import { Stars } from "@/components/clay/stars";
 import { useIconPalette } from "@/hooks/use-icon-palette";
 import { formatCount } from "@/lib/format";
 
@@ -64,7 +64,7 @@ export function ShowcaseCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
           ) : null}
           {plugin.rating ? (
             <span className="inline-flex items-center gap-1 text-amber-500">
-              <Stars value={plugin.rating.average} starClassName="size-3" />
+              <Rating value={plugin.rating.average} size="sm" color="var(--color-star)" />
               {plugin.rating.average.toFixed(1)}
             </span>
           ) : null}

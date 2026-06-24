@@ -3,7 +3,7 @@ import { UserProfile } from "@brika/registry-contract";
 import { eq } from "drizzle-orm";
 import { avatarUrlOf } from "@/lib/avatar";
 import { displayNameOf } from "@/lib/display-name";
-import { Database } from "@/server/db/client";
+import { Db } from "@/server/db/client";
 import { users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 
@@ -13,7 +13,7 @@ import { BlobStore } from "@/server/ports/blob-store";
  * the display name falls back to the provider `name` (never npm-derived).
  */
 export class UserProfileStore {
-  readonly #db = inject(Database);
+  readonly #db = inject(Db);
   readonly #blob = inject(BlobStore);
 
   /** The account's public profile by opaque account id, or null when the account is unknown. */

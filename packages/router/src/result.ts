@@ -17,13 +17,6 @@ export function okOrThrow<R extends { readonly ok: true }>(
   return result;
 }
 
-/** Validate an already-read value against a schema, or throw a 400. Internal to {@link readBody}. */
-function validate<T>(schema: z.ZodType<T>, value: unknown, message: string): T {
-  const parsed = schema.safeParse(value);
-  if (!parsed.success) throw badRequest(message);
-  return parsed.data;
-}
-
 /**
  * Read AND validate a JSON request body in one step, throwing a 400 on malformed input. Malformed
  * JSON is also a clean 400 (a bare `request.json()` throws a `SyntaxError` that would surface as 500).
@@ -34,7 +27,9 @@ export async function readBody<T>(
   message = "Invalid request body",
 ): Promise<T> {
   const value: unknown = await request.json().catch(() => null);
-  return validate(schema, value, message);
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) throw badRequest(message);
+  return parsed.data;
 }
 
 /**

@@ -6,6 +6,7 @@ import { Pill } from "@/components/clay/pill";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
+import { useClaimScope } from "@/hooks/use-claim-scope";
 import { type MemberScope, useScopes } from "@/hooks/use-scopes";
 
 /** Normalize the claim input to a canonical `@name` scope (lowercase, single leading `@`). */
@@ -19,24 +20,16 @@ const route = getRouteApi("/dashboard/scopes");
 export function ScopesPage() {
   const { user } = route.useRouteContext();
   const { scopes, reload } = useScopes();
+  const { busy, claim } = useClaimScope(reload);
   const [name, setName] = useState("@");
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
-  async function claim(event: SyntheticEvent<HTMLFormElement>) {
+  async function onClaim(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
     setError(null);
-    const scope = normalizeScope(name);
-    const res = await fetch(`/api/scopes/${encodeURIComponent(scope)}`, { method: "PUT" });
-    setBusy(false);
-    if (res.ok) {
-      setName("@");
-      reload();
-    } else {
-      const data: { error?: string } = await res.json();
-      setError(data.error ?? "Could not claim scope");
-    }
+    const result = await claim(normalizeScope(name));
+    if (result.ok) setName("@");
+    else setError(result.error);
   }
 
   return (
@@ -53,7 +46,7 @@ export function ScopesPage() {
       </header>
 
       <SettingsCard className="block rounded-[20px]">
-        <form onSubmit={claim} className="contents">
+        <form onSubmit={onClaim} className="contents">
           <h2 className="mb-3.5 font-bold font-heading text-foreground text-lg tracking-tight">
             Claim a scope
           </h2>

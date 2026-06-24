@@ -1,10 +1,10 @@
 import { Button, Textarea } from "@brika/clay";
-import { Comment } from "@brika/registry-contract";
+import type { Comment } from "@brika/registry-contract";
 import { ChevronUp } from "lucide-react";
-import { type SyntheticEvent, useEffect, useState } from "react";
-import { z } from "zod";
+import { type SyntheticEvent, useState } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { usePluginComments } from "@/hooks/use-plugin-comments";
 import { formatDate } from "@/lib/format";
 
 /** The comment "grade": an upvote toggle showing the running tally. */
@@ -36,59 +36,15 @@ type Props = Readonly<{ pluginName: string; fallback?: Comment[] }>;
 
 export function CommentsSection({ pluginName, fallback = [] }: Props) {
   const { user } = useCurrentUser();
-  const endpoint = `/v1/plugins/${encodeURIComponent(pluginName)}/comments`;
-  const [comments, setComments] = useState<Comment[]>(fallback);
+  const { comments, submitting, error, vote, submit } = usePluginComments(pluginName, fallback);
   const [body, setBody] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    fetch(endpoint)
-      .then((res) => res.json())
-      .then((json: unknown) => {
-        const parsed = z.array(Comment).safeParse(json);
-        if (active && parsed.success && parsed.data.length > 0) setComments(parsed.data);
-      });
-    return () => {
-      active = false;
-    };
-  }, [endpoint]);
-
-  async function handleVote(commentId: string) {
-    const res = await fetch(`${endpoint}/${commentId}/vote`, { method: "POST" });
-    if (res.status === 401) {
-      setError("Please sign in to upvote comments.");
-      return;
-    }
-    const parsed = z.array(Comment).safeParse(await res.json());
-    if (parsed.success) setComments(parsed.data);
-  }
-
-  async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
+  function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (body.trim().length === 0) return;
-    setSubmitting(true);
-    setError(null);
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ body: body.trim() }),
+    void submit(body.trim()).then((ok) => {
+      if (ok) setBody("");
     });
-    setSubmitting(false);
-    if (res.status === 401) {
-      setError("Please sign in to comment.");
-      return;
-    }
-    if (!res.ok) {
-      setError("Could not post your comment.");
-      return;
-    }
-    const parsed = z.array(Comment).safeParse(await res.json());
-    if (parsed.success) {
-      setComments(parsed.data);
-      setBody("");
-    }
   }
 
   return (
@@ -134,7 +90,7 @@ export function CommentsSection({ pluginName, fallback = [] }: Props) {
                 comment={comment}
                 replies={comments.filter((reply) => reply.parentId === comment.id)}
                 viewerId={user?.id ?? null}
-                onVote={handleVote}
+                onVote={vote}
               />
             ))
         )}

@@ -1,8 +1,9 @@
 import { Database } from "bun:sqlite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { transactionalDb } from "@brika/tx";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import type { Db } from "@/server/db/client";
+import type { Db, RawDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 
 /**
@@ -26,5 +27,7 @@ export function makeStoreDb(): Db {
       if (trimmed.length > 0) sqlite.run(trimmed);
     }
   }
-  return drizzle(sqlite, { schema }) as unknown as Db;
+  // bun:sqlite shares D1's query API but not its `.batch`, so overlay the same tx seam the app uses;
+  // deferBatch then runs its statements in order (no real D1 batch), which is correct for tests.
+  return transactionalDb(drizzle(sqlite, { schema }) as unknown as RawDb);
 }

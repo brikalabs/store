@@ -1,17 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import {
-  consoleLogger,
-  formatLogEntry,
-  jsonLogger,
-  levelFor,
-  type RouteLogEntry,
-  toJsonRecord,
-} from "./logger";
+import { jsonLogger, levelFor, type RouteLogEntry, toJsonRecord } from "./logger";
 
 /**
- * The logging helpers: level selection, single-line formatting (including the
- * pattern suffix), and the two console-backed loggers. Console output is captured
- * and asserted on its observable text/level, not on internals.
+ * The logging helpers: level selection, the structured record, and the JSON logger. Console output is
+ * captured and asserted on its observable text/level, not on internals.
  */
 
 const base: Omit<RouteLogEntry, "status"> = {
@@ -37,32 +29,6 @@ describe("levelFor", () => {
 
   test("error when an error is present regardless of status", () => {
     expect(levelFor({ ...base, status: 200, error: new Error("boom") })).toBe("error");
-  });
-});
-
-describe("formatLogEntry", () => {
-  test("formats a single line and rounds the duration to one decimal", () => {
-    expect(
-      formatLogEntry({
-        method: "POST",
-        pattern: "/-/publish",
-        path: "/-/publish",
-        status: 201,
-        durationMs: 12.34,
-      }),
-    ).toBe("POST 201 12.3ms /-/publish");
-  });
-
-  test("appends the pattern when it differs from the concrete path", () => {
-    expect(
-      formatLogEntry({
-        method: "GET",
-        pattern: "/users/:id",
-        path: "/users/42",
-        status: 200,
-        durationMs: 5,
-      }),
-    ).toBe("GET 200 5.0ms /users/42 (/users/:id)");
   });
 });
 
@@ -105,40 +71,6 @@ let captured: Captured | undefined;
 afterEach(() => {
   captured?.restore();
   captured = undefined;
-});
-
-describe("consoleLogger", () => {
-  test("writes an info line with console.log", () => {
-    captured = captureConsole();
-    consoleLogger({ method: "GET", pattern: "/x", path: "/x", status: 200, durationMs: 2 });
-    expect(captured.calls).toHaveLength(1);
-    const call = captured.calls[0];
-    expect(call?.method).toBe("log");
-    expect(call?.args[0]).toBe("GET 200 2.0ms /x");
-  });
-
-  test("writes a warn line with console.warn for a 4xx", () => {
-    captured = captureConsole();
-    consoleLogger({ method: "GET", pattern: "/x", path: "/x", status: 404, durationMs: 2 });
-    expect(captured.calls[0]?.method).toBe("warn");
-  });
-
-  test("writes an error line with the error appended for a thrown error", () => {
-    captured = captureConsole();
-    const error = new Error("boom");
-    consoleLogger({ method: "GET", pattern: "/x", path: "/x", status: 500, durationMs: 2, error });
-    const call = captured.calls[0];
-    expect(call?.method).toBe("error");
-    expect(call?.args[1]).toBe(error);
-  });
-
-  test("error line passes an empty string when there is no error object", () => {
-    captured = captureConsole();
-    consoleLogger({ method: "GET", pattern: "/x", path: "/x", status: 500, durationMs: 2 });
-    const call = captured.calls[0];
-    expect(call?.method).toBe("error");
-    expect(call?.args[1]).toBe("");
-  });
 });
 
 describe("jsonLogger", () => {

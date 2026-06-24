@@ -21,14 +21,6 @@ import { blameMarkers, scan } from "./scan";
 
 type Sort = "file" | "kind" | "date";
 
-interface Args {
-  readonly kinds: string[];
-  readonly paths: string[];
-  readonly format: Format;
-  readonly sort: Sort;
-  readonly blame: boolean;
-}
-
 const VALUE_FLAGS: Readonly<Record<string, "kind" | "path" | "format" | "sort">> = {
   "--kind": "kind",
   "-k": "kind",
@@ -62,7 +54,7 @@ function applyValueFlag(
   }
 }
 
-function parseArgs(argv: readonly string[]): Args {
+function parseArgs(argv: readonly string[]): MutableArgs {
   const args: MutableArgs = { kinds: [], paths: [], format: "human", sort: "file", blame: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index] ?? "";

@@ -1,25 +1,19 @@
 import { Button, Input } from "@brika/clay";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { Check, Cloud, Layers, Rocket, ShieldCheck } from "lucide-react";
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useState } from "react";
 import { GithubIcon, GitlabIcon } from "@/components/clay/icons";
 import { Pill } from "@/components/clay/pill";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { ErrorBanner } from "@/components/layout/error-banner";
+import { useCreatePlugin } from "@/hooks/use-create-plugin";
+import { MAX_NAME, type NameCheck, useNameCheck } from "@/hooks/use-name-check";
 import { type MemberScope, useScopes } from "@/hooks/use-scopes";
 
 const route = getRouteApi("/dashboard/plugins/create");
 
-// The name segment: lowercase, starts alphanumeric, then a-z0-9-. Mirrors the registry's
-// canonical-name rule (the scope prefix is added separately), so the client and server agree.
-const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
-// npm caps the full `@scope/name` at 214 chars; the registry's isCanonicalName enforces the same.
-const MAX_NAME = 214;
-
-/** Live name-check state. `ok` = valid + available, the only state that lets you create. */
-type NameCheck = "idle" | "checking" | "ok" | "taken" | "invalid";
 const CHECK_PILL: Record<
   Exclude<NameCheck, "idle">,
   { tone: "muted" | "success" | "danger"; text: string }
@@ -41,45 +35,6 @@ const PROVIDERS = [
 }>;
 type Provider = (typeof PROVIDERS)[number]["value"];
 
-/** Map an availability-probe response to a `NameCheck`. A null (failed) probe falls back to "ok". */
-function probeToCheck(d: { valid: boolean; available: boolean } | null): NameCheck {
-  if (d === null) return "ok";
-  if (!d.valid) return "invalid";
-  return d.available ? "ok" : "taken";
-}
-
-/**
- * Live-check the name as it is typed: format first, then a debounced availability probe so the user
- * learns "Taken" before submitting (the POST still re-checks, so this is a hint not a gate).
- */
-function useNameCheck(scope: string | null, name: string): NameCheck {
-  const [check, setCheck] = useState<NameCheck>("idle");
-  useEffect(() => {
-    if (name === "" || scope === null) {
-      setCheck("idle");
-      return;
-    }
-    if (!NAME_RE.test(name) || `${scope}/${name}`.length > MAX_NAME) {
-      setCheck("invalid");
-      return;
-    }
-    setCheck("checking");
-    let active = true;
-    const timer = setTimeout(() => {
-      const q = `scope=${encodeURIComponent(scope)}&name=${encodeURIComponent(name)}`;
-      fetch(`/api/plugins/create?${q}`)
-        .then((r) => (r.ok ? (r.json() as Promise<{ valid: boolean; available: boolean }>) : null))
-        .then((d) => active && setCheck(probeToCheck(d)))
-        .catch(() => active && setCheck("ok"));
-    }, 350);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [scope, name]);
-  return check;
-}
-
 /**
  * Reserve a plugin name in one of your scopes (and optionally wire a trusted publisher). The name
  * is held as "Reserved" and hidden from the store until the first publish from CI or the CLI.
@@ -89,14 +44,13 @@ export function CreatePluginPage() {
   const navigate = useNavigate();
   const { scopes } = useScopes();
   const adminScopes = scopes?.filter((s) => s.role === "admin") ?? [];
+  const { busy, error, create: reserve } = useCreatePlugin();
 
   const [scope, setScope] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [provider, setProvider] = useState<Provider>("github");
   const [repo, setRepo] = useState("");
   const [workflow, setWorkflow] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Default the selected scope to the first one once they load.
   const selected = scope ?? adminScopes[0]?.scope ?? null;
@@ -106,28 +60,11 @@ export function CreatePluginPage() {
 
   async function create() {
     if (selected === null || check !== "ok") return;
-    setBusy(true);
-    setError(null);
     const publisher =
       (provider === "github" || provider === "gitlab") && repo.trim() && workflow.trim()
         ? { provider, repository: repo.trim(), workflow: workflow.trim() }
         : undefined;
-    const res = await fetch("/api/plugins/create", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ scope: selected, name, publisher }),
-    });
-    if (res.ok) {
-      navigate({ to: "/dashboard/plugins" });
-      return;
-    }
-    setBusy(false);
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    setError(
-      res.status === 409
-        ? "That name is already taken in this scope."
-        : (data.error ?? "Could not create the plugin."),
-    );
+    if (await reserve(selected, name, publisher)) navigate({ to: "/dashboard/plugins" });
   }
 
   return (

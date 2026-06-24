@@ -192,9 +192,7 @@ export class Injector {
     // one instance). Otherwise the token auto-resolves HERE, so an unregistered store's `inject()`ed
     // deps come from the scope it was asked from (e.g. the request's db), not the root.
     const parent = this.#parent;
-    if (parent !== undefined) {
-      if (parent.#canResolve(token)) return parent.#resolve(token);
-    }
+    if (parent !== undefined && parent.#canResolve(token)) return parent.#resolve(token);
     if (token instanceof InjectionToken) {
       const factory = token.factory;
       if (factory === undefined) throw new Error(`No provider for ${tokenName(token)}`);

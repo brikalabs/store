@@ -5,8 +5,8 @@ import {
   EmptyStateDescription,
   EmptyStateIcon,
   EmptyStateTitle,
-  Input,
 } from "@brika/clay";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
 import type { PluginSummary } from "@brika/registry-contract";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Box, ChevronRight, Rocket, Search, ShieldCheck } from "lucide-react";
@@ -87,15 +87,16 @@ export function MyPluginsPage() {
 
         {/* toolbar: search + status segmented filter */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[230px] flex-1">
-            <Search className="-translate-y-1/2 absolute top-1/2 left-3.5 size-4 text-muted-foreground" />
-            <Input
+          <InputGroup className="min-w-[230px] flex-1">
+            <InputGroupAddon align="inline-start">
+              <Search className="size-4 text-muted-foreground" />
+            </InputGroupAddon>
+            <InputGroupInput
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by name or package…"
-              className="pl-10"
             />
-          </div>
+          </InputGroup>
           <SegmentedControl
             options={STATUS_FILTERS}
             value={status}

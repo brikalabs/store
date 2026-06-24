@@ -1,7 +1,7 @@
+import { Rating } from "@brika/clay";
 import type { Review } from "@brika/registry-contract";
 import { Link } from "@tanstack/react-router";
 import { MessageSquare, Star } from "lucide-react";
-import { Stars } from "@/components/clay/stars";
 
 /** A single authored review on the profile page: plugin link, stars, and body. */
 export function ReviewRow({ review }: Readonly<{ review: Review }>) {
@@ -16,7 +16,7 @@ export function ReviewRow({ review }: Readonly<{ review: Review }>) {
           {review.pluginName}
         </Link>
         <span className="inline-flex items-center gap-1 text-amber-500">
-          <Stars value={review.rating} starClassName="size-3.5" />
+          <Rating value={review.rating} color="var(--color-star)" />
         </span>
         {review.helpfulCount > 0 ? (
           <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">

@@ -1,38 +1,14 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { GithubIcon } from "@/components/clay/icons";
 import { Pager } from "@/components/clay/pagination";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import { OperatorHeader, SortSelect } from "@/components/operator/operator-toolbar";
-import type { Pagination } from "@/lib/pagination";
+import { type Actor, type AuditEntry, useOperatorAudit } from "@/hooks/use-operator-audit";
 
-const PAGE_SIZE = 25;
 const route = getRouteApi("/operator/audit");
 const GRID = "grid grid-cols-[160px_130px_1fr_150px] items-center gap-4 px-5";
-
-/** The acting principal, snapshotted at write time (mirrors `@brika/registry-core`'s `Actor`). */
-interface Actor {
-  id: string | null;
-  displayName: string | null;
-  avatarUrl: string | null;
-}
-
-interface AuditEntry {
-  id: string;
-  action: string;
-  target: string | null;
-  version: string | null;
-  actor: Actor | null;
-  detail: Record<string, unknown> | null;
-  at: string;
-}
-
-interface AuditPage {
-  items: AuditEntry[];
-  pagination: Pagination;
-  actions: string[];
-}
 
 /** A takedown/removal action reads as destructive; everything else is neutral. */
 function isDestructive(action: string): boolean {
@@ -79,24 +55,38 @@ function ActorCell({ actor }: { readonly actor: Actor | null }) {
   );
 }
 
+/** One audit row: when, the action pill (destructive vs neutral), the target@version, and the actor. */
+function AuditRow({ entry }: { readonly entry: AuditEntry }) {
+  return (
+    <div
+      className={`${GRID} border-border border-t py-3`}
+      title={entry.detail ? JSON.stringify(entry.detail) : undefined}
+    >
+      <span className="text-muted-foreground text-xs">{whenLabel(entry.at)}</span>
+      <span>
+        <span
+          className={`rounded-full px-2.5 py-0.5 font-semibold text-xs ${
+            isDestructive(entry.action)
+              ? "bg-destructive/10 text-destructive"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {entry.action}
+        </span>
+      </span>
+      <span className="truncate font-mono text-foreground text-xs">
+        {entry.target ?? "·"}
+        {entry.version !== null && <span className="text-muted-foreground">@{entry.version}</span>}
+      </span>
+      <ActorCell actor={entry.actor} />
+    </div>
+  );
+}
+
 export function OperatorAuditPage() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
-  const [data, setData] = useState<AuditPage | null>(null);
-  const reqId = useRef(0);
-
-  useEffect(() => {
-    const id = ++reqId.current;
-    setData(null);
-    const params = new URLSearchParams({
-      limit: String(PAGE_SIZE),
-      offset: String((search.page - 1) * PAGE_SIZE),
-    });
-    if (search.action) params.set("action", search.action);
-    void fetch(`/api/operator/audit?${params}`).then(async (res) => {
-      if (res.ok && id === reqId.current) setData((await res.json()) as AuditPage);
-    });
-  }, [search.page, search.action]);
+  const data = useOperatorAudit(search.page, search.action);
 
   // Keep the selected type in the options even while a fetch is in flight (data momentarily null).
   const typeOptions = useMemo(() => {
@@ -117,31 +107,7 @@ export function OperatorAuditPage() {
     if (data.items.length === 0) {
       return <div className="px-5 py-4 text-muted-foreground text-sm">No audit entries.</div>;
     }
-    return data.items.map((e) => (
-      <div
-        key={e.id}
-        className={`${GRID} border-border border-t py-3`}
-        title={e.detail ? JSON.stringify(e.detail) : undefined}
-      >
-        <span className="text-muted-foreground text-xs">{whenLabel(e.at)}</span>
-        <span>
-          <span
-            className={`rounded-full px-2.5 py-0.5 font-semibold text-xs ${
-              isDestructive(e.action)
-                ? "bg-destructive/10 text-destructive"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {e.action}
-          </span>
-        </span>
-        <span className="truncate font-mono text-foreground text-xs">
-          {e.target ?? "·"}
-          {e.version !== null && <span className="text-muted-foreground">@{e.version}</span>}
-        </span>
-        <ActorCell actor={e.actor} />
-      </div>
-    ));
+    return data.items.map((e) => <AuditRow key={e.id} entry={e} />);
   }
 
   return (

@@ -27,7 +27,7 @@
     "db:setup:local": "bun run scripts/apply-registry-schema.ts"
   },
   "dependencies": {
-    "@brika/clay": "^0.2.0",
+    "@brika/clay": "^0.4.0",
     "@brika/di": "workspace:*",
     "@brika/env": "workspace:*",
     "@brika/registry-contract": "workspace:*",

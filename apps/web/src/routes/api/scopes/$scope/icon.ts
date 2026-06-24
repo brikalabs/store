@@ -1,7 +1,7 @@
 import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
 import { badRequest, okOrThrow, readBytes, reply } from "@brika/router";
-import { onRollback, transaction } from "@brika/tx";
+import { transaction } from "@brika/tx";
 import { createFileRoute } from "@tanstack/react-router";
 import { sniffImageMime } from "@/lib/image-format";
 import { ICON_TYPES, MAX_ICON_BYTES } from "@/lib/scope-icon";
@@ -29,13 +29,12 @@ export const Route = createFileRoute("/api/scopes/$scope/icon")({
           if (sniffImageMime(bytes) !== type)
             throw badRequest("Logo content does not match its type");
 
-          // Stage the blob then commit the D1 pointer atomically: if the ownership-gated setIcon
-          // fails, the rollback compensation deletes the staged blob, so no orphan is left in R2.
+          // Stage the blob then commit the D1 pointer in one unit: the blob self-enlists its
+          // rollback, so a failed (ownership-gated) setIcon leaves no orphan in R2.
           const key = `scope-icons/${params.scope}.${ext}`;
           const assets = inject(BlobStore);
           await transaction(async () => {
             await assets.put(key, bytes, type);
-            onRollback(() => assets.delete(key));
             okOrThrow(await inject(ScopeService).setIcon(a.identity, params.scope, key));
           });
           await recordAudit(a, {

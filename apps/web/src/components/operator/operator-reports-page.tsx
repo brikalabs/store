@@ -1,7 +1,8 @@
-import { Button, Input } from "@brika/clay";
+import { Button } from "@brika/clay";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { Check, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Pager } from "@/components/clay/pagination";
 import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
 import { OperatorShell } from "@/components/operator/operator-shell";
@@ -11,58 +12,84 @@ import {
   OperatorHeader,
   SortSelect,
 } from "@/components/operator/operator-toolbar";
+import { type OperatorReport, useOperatorReports } from "@/hooks/use-operator-reports";
 import { formatRelative } from "@/lib/format";
-import type { Pagination } from "@/lib/pagination";
 import { REPORT_REASON_KEYS, REPORT_REASONS, reportReasonLabel } from "@/lib/reports";
 
-const PAGE_SIZE = 20;
 const route = getRouteApi("/operator/reports");
 
-interface OperatorReport {
-  id: string;
-  pluginName: string;
-  pluginDisplayName: string | null;
-  reason: string;
-  details: string | null;
-  reporter: { id: string; displayName: string; avatarUrl?: string };
-  status: string;
-  createdAt: string;
-}
-
-interface ReportsPage {
-  items: OperatorReport[];
-  pagination: Pagination;
-  counts: { open: number; resolved: number; dismissed: number };
-}
-
 type StatusKey = "open" | "resolved" | "dismissed" | "all";
+
+/** One report row: plugin, reason/status badges, details, reporter, and the open-report actions. */
+function ReportRow({
+  report,
+  busy,
+  onAct,
+}: Readonly<{
+  report: OperatorReport;
+  busy: boolean;
+  onAct: (status: "resolved" | "dismissed") => void;
+}>) {
+  return (
+    <li className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-start">
+      <PluginIcon name={report.pluginName} size={36} />
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/$"
+            params={{ _splat: report.pluginName }}
+            className="truncate font-medium font-mono text-sm hover:underline"
+          >
+            {report.pluginName}
+          </Link>
+          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-600 text-xs dark:text-amber-400">
+            {reportReasonLabel(report.reason)}
+          </span>
+          {report.status !== "open" && (
+            <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground text-xs capitalize">
+              {report.status}
+            </span>
+          )}
+        </div>
+        {report.details !== null && report.details.length > 0 ? (
+          <p className="text-foreground text-sm leading-relaxed">{report.details}</p>
+        ) : (
+          <p className="text-muted-foreground text-sm italic">No details provided.</p>
+        )}
+        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+          <GradientAvatar
+            seed={report.reporter.id}
+            label={report.reporter.displayName}
+            imageUrl={report.reporter.avatarUrl}
+            size={18}
+            round
+          />
+          <span>{report.reporter.displayName}</span>
+          <span aria-hidden>·</span>
+          <span>{formatRelative(report.createdAt)}</span>
+        </div>
+      </div>
+      {report.status === "open" && (
+        <div className="flex shrink-0 gap-2">
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => onAct("dismissed")}>
+            <X className="size-4" />
+            Dismiss
+          </Button>
+          <Button size="sm" disabled={busy} onClick={() => onAct("resolved")}>
+            <Check className="size-4" />
+            Resolve
+          </Button>
+        </div>
+      )}
+    </li>
+  );
+}
 
 export function OperatorReportsPage() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
-  const [data, setData] = useState<ReportsPage | null>(null);
+  const { data, busy, error, act } = useOperatorReports(search);
   const [text, setText] = useState(search.q ?? "");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const reqId = useRef(0);
-
-  // Fetch keyed on the URL state; a monotonic request id discards stale responses. `load` is also
-  // called directly after a resolve/dismiss to refresh the list and the counts.
-  const load = useCallback(() => {
-    const id = ++reqId.current;
-    setData(null);
-    const params = new URLSearchParams({
-      status: search.status,
-      limit: String(PAGE_SIZE),
-      offset: String((search.page - 1) * PAGE_SIZE),
-    });
-    if (search.q) params.set("q", search.q);
-    if (search.reason) params.set("reason", search.reason);
-    void fetch(`/api/operator/reports?${params}`).then(async (res) => {
-      if (res.ok && id === reqId.current) setData((await res.json()) as ReportsPage);
-    });
-  }, [search.status, search.q, search.reason, search.page]);
-  useEffect(load, [load]);
 
   // Keep the box in sync when the URL `q` changes from outside (back/forward, cleared filters).
   useEffect(() => setText(search.q ?? ""), [search.q]);
@@ -76,26 +103,6 @@ export function OperatorReportsPage() {
     }, 300);
     return () => clearTimeout(id);
   }, [text, search.q, navigate]);
-
-  const act = useCallback(
-    async (id: string, status: "resolved" | "dismissed") => {
-      setBusy(id);
-      setError(null);
-      const res = await fetch("/api/operator/reports/update", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, status }),
-      });
-      setBusy(null);
-      if (res.ok) {
-        load();
-        return;
-      }
-      const result: { error?: string } = await res.json();
-      setError(result.error ?? "Action failed");
-    },
-    [load],
-  );
 
   const counts = data?.counts;
   const statusFacets: Facet<StatusKey>[] = [
@@ -124,69 +131,12 @@ export function OperatorReportsPage() {
     return (
       <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
         {data.items.map((report) => (
-          <li
+          <ReportRow
             key={report.id}
-            className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-start"
-          >
-            <PluginIcon name={report.pluginName} size={36} />
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  to="/$"
-                  params={{ _splat: report.pluginName }}
-                  className="truncate font-medium font-mono text-sm hover:underline"
-                >
-                  {report.pluginName}
-                </Link>
-                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-600 text-xs dark:text-amber-400">
-                  {reportReasonLabel(report.reason)}
-                </span>
-                {report.status !== "open" && (
-                  <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground text-xs capitalize">
-                    {report.status}
-                  </span>
-                )}
-              </div>
-              {report.details !== null && report.details.length > 0 ? (
-                <p className="text-foreground text-sm leading-relaxed">{report.details}</p>
-              ) : (
-                <p className="text-muted-foreground text-sm italic">No details provided.</p>
-              )}
-              <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                <GradientAvatar
-                  seed={report.reporter.id}
-                  label={report.reporter.displayName}
-                  imageUrl={report.reporter.avatarUrl}
-                  size={18}
-                  round
-                />
-                <span>{report.reporter.displayName}</span>
-                <span aria-hidden>·</span>
-                <span>{formatRelative(report.createdAt)}</span>
-              </div>
-            </div>
-            {report.status === "open" && (
-              <div className="flex shrink-0 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={busy === report.id}
-                  onClick={() => act(report.id, "dismissed")}
-                >
-                  <X className="size-4" />
-                  Dismiss
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={busy === report.id}
-                  onClick={() => act(report.id, "resolved")}
-                >
-                  <Check className="size-4" />
-                  Resolve
-                </Button>
-              </div>
-            )}
-          </li>
+            report={report}
+            busy={busy === report.id}
+            onAct={(status) => act(report.id, status)}
+          />
         ))}
       </ul>
     );
@@ -225,12 +175,16 @@ export function OperatorReportsPage() {
         />
       </div>
 
-      <Input
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Search plugin, reporter, or details"
-        className="max-w-sm"
-      />
+      <InputGroup className="max-w-sm">
+        <InputGroupAddon align="inline-start">
+          <Search className="size-4 text-muted-foreground" />
+        </InputGroupAddon>
+        <InputGroupInput
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Search plugin, reporter, or details"
+        />
+      </InputGroup>
 
       {error !== null && <p className="text-destructive text-sm">{error}</p>}
 

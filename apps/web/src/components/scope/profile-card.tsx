@@ -1,10 +1,11 @@
 import { Button, Input, Textarea } from "@brika/clay";
 import { Link2, X } from "lucide-react";
-import { type SyntheticEvent, useEffect, useState } from "react";
+import type { SyntheticEvent } from "react";
 import { LinkIcon } from "@/components/clay/link-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
-import { cleanLinks, type EditLink, type ProfileLink, useLinks } from "@/hooks/use-links";
-import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
+import type { EditLink, ProfileLink } from "@/hooks/use-links";
+import { useScopeProfile } from "@/hooks/use-scope-profile";
+import type { ScopeCardProps } from "@/lib/scope-api";
 
 /** One editable link row (icon preview + label + URL + remove). */
 function LinkRow({
@@ -53,48 +54,12 @@ function LinkRow({
 
 /** Edit the scope's description + arbitrary labelled links (hydrated from the public record). */
 export function ProfileCard({ scope, onError }: Readonly<ScopeCardProps>) {
-  const [description, setDescription] = useState("");
-  const { links, add, update, remove, reset } = useLinks();
-  const [saved, setSaved] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const { description, setDescription, links, addLink, updateLink, removeLink, saved, busy, save } =
+    useScopeProfile(scope, onError);
 
-  useEffect(() => {
-    void (async () => {
-      const res = await fetch(scopePath(scope)).catch(() => null);
-      if (!res?.ok) return;
-      const data: { description?: string | null; links?: ProfileLink[] } = await res.json();
-      setDescription(data.description ?? "");
-      reset(data.links ?? []);
-    })();
-  }, [scope, reset]);
-
-  function editLink(id: string, patch: Partial<ProfileLink>) {
-    update(id, patch);
-    setSaved(false);
-  }
-  function dropLink(id: string) {
-    remove(id);
-    setSaved(false);
-  }
-
-  async function save(event: SyntheticEvent<HTMLFormElement>) {
+  function onSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
-    setSaved(false);
-    const cleaned = cleanLinks(links);
-    const trimmed = description.trim();
-    const res = await fetch(scopePath(scope, "/profile"), {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ description: trimmed.length === 0 ? null : trimmed, links: cleaned }),
-    });
-    setBusy(false);
-    if (res.ok) {
-      reset(cleaned);
-      setSaved(true);
-    } else {
-      onError(await readError(res));
-    }
+    void save();
   }
 
   let saveLabel = "Save profile";
@@ -103,14 +68,11 @@ export function ProfileCard({ scope, onError }: Readonly<ScopeCardProps>) {
 
   return (
     <SettingsCard className="gap-3">
-      <form onSubmit={save} className="contents">
+      <form onSubmit={onSubmit} className="contents">
         <h2 className="font-bold text-base text-foreground">Profile</h2>
         <Textarea
           value={description}
-          onChange={(e) => {
-            setDescription(e.target.value);
-            setSaved(false);
-          }}
+          onChange={(e) => setDescription(e.target.value)}
           placeholder="What does this scope build?"
           aria-label="Scope description"
           rows={3}
@@ -124,14 +86,14 @@ export function ProfileCard({ scope, onError }: Readonly<ScopeCardProps>) {
               key={link.id}
               link={link}
               index={index}
-              onChange={(patch) => editLink(link.id, patch)}
-              onRemove={() => dropLink(link.id)}
+              onChange={(patch) => updateLink(link.id, patch)}
+              onRemove={() => removeLink(link.id)}
             />
           ))}
           <Button
             type="button"
             variant="outline"
-            onClick={add}
+            onClick={addLink}
             className="inline-flex h-[38px] w-fit items-center gap-2 rounded-[10px] border border-input border-dashed px-3.5 font-semibold text-muted-foreground text-sm shadow-none hover:border-brand-border hover:bg-transparent hover:text-foreground"
           >
             <Link2 className="size-4" />

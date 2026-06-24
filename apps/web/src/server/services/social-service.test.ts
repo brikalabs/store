@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createInjector } from "@brika/di";
 import { eq } from "drizzle-orm";
-import { Database, type Db } from "@/server/db/client";
+import { Db } from "@/server/db/client";
 import { comments, plugins } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 import { SocialService } from "@/server/services/social-service";
@@ -30,10 +30,10 @@ const fakeBlobStore: BlobStore = {
 
 function build() {
   const db = makeStoreDb();
-  // Override the auto-building Database with the in-memory drizzle client, so the stores resolve
-  // their `inject(Database)` to it without touching `Bindings`/the runtime.
+  // Override the auto-building Db with the in-memory drizzle client, so the stores resolve their
+  // `inject(Db)` to it without touching `Bindings`/the runtime.
   const injector = createInjector([
-    { provide: Database, useValue: db },
+    { provide: Db, useValue: db },
     { provide: BlobStore, useValue: fakeBlobStore },
   ]);
   return {

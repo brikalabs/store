@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { DangerRow, DangerZone } from "@/components/layout/danger-zone";
 import { StatusBadge } from "@/components/plugin/status-badge";
 import { TrustedPublishersCard } from "@/components/scope/trusted-publishers-card";
+import { usePluginDeletion } from "@/hooks/use-plugin-deletion";
 import { useIsScopeAdmin } from "@/hooks/use-scopes";
 import { formatCount, formatDate } from "@/lib/format";
 import { VersionsCard } from "./versions-card";
@@ -259,21 +260,11 @@ function PluginTrustedPublishers({
 function PluginDangerZone({ name }: Readonly<{ name: string }>) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { error, remove } = usePluginDeletion(name);
 
-  async function remove() {
-    setError(null);
-    const res = await fetch("/api/plugins/delete", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    if (res.ok) {
-      navigate({ to: "/dashboard/plugins" });
-      return;
-    }
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    setError(data.error ?? "Could not delete this plugin.");
+  // Navigate away only on a successful delete; the hook surfaces a failure through `error`.
+  async function confirmDelete() {
+    if (await remove()) navigate({ to: "/dashboard/plugins" });
   }
 
   return (
@@ -307,7 +298,7 @@ function PluginDangerZone({ name }: Readonly<{ name: string }>) {
         }
         confirmLabel="Delete plugin"
         confirmWord={name}
-        onConfirm={remove}
+        onConfirm={confirmDelete}
       />
     </DangerZone>
   );

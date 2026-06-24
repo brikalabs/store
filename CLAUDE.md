@@ -11,6 +11,8 @@ those before touching the area they cover:
 - **[docs/CONVENTIONS.md](docs/CONVENTIONS.md)** - TypeScript, validation, architecture, markers, style.
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - the layers and data flow.
 - **[docs/ENGINEERING.md](docs/ENGINEERING.md)** - how we build and ship.
+- **[docs/TESTING.md](docs/TESTING.md)** - how we test: naming, the three DI seams, what to test (positive+negative, rollback).
+- **[docs/adr/0004-web-component-architecture.md](docs/adr/0004-web-component-architecture.md)** - `apps/web` component/feature conventions (folders, when to split, naming).
 
 ## Simplicity is the first rule
 

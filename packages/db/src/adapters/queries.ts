@@ -119,12 +119,10 @@ export async function listAllPackages(
   ]);
 
   const latestByName = new Map(latest.map((row) => [row.name, row.version]));
-  const counts = new Map<
-    string,
-    { total: number; takenDown: number; yanked: number; lastPublished: number }
-  >();
+  const zeroCounts = () => ({ total: 0, takenDown: 0, yanked: 0, lastPublished: 0 });
+  const counts = new Map<string, ReturnType<typeof zeroCounts>>();
   for (const v of versions) {
-    const c = counts.get(v.name) ?? { total: 0, takenDown: 0, yanked: 0, lastPublished: 0 };
+    const c = counts.get(v.name) ?? zeroCounts();
     c.total += 1;
     if (v.takedown !== null) c.takenDown += 1;
     if (v.yanked) c.yanked += 1;
@@ -133,7 +131,7 @@ export async function listAllPackages(
   }
 
   const items = packages.map((pkg) => {
-    const c = counts.get(pkg.name) ?? { total: 0, takenDown: 0, yanked: 0, lastPublished: 0 };
+    const c = counts.get(pkg.name) ?? zeroCounts();
     return {
       name: pkg.name,
       scope: pkg.scope,

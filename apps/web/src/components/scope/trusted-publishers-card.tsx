@@ -8,21 +8,53 @@ import {
   SelectValue,
 } from "@brika/clay";
 import { KeyRound, Plus, X } from "lucide-react";
-import { type SyntheticEvent, useCallback, useEffect, useState } from "react";
+import { type SyntheticEvent, useState } from "react";
 import { Pill } from "@/components/clay/pill";
 import { SettingsCard } from "@/components/clay/settings-card";
-import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
-
-interface Binding {
-  provider: string;
-  repository: string;
-  workflow: string;
-}
+import { type TrustedPublisher, useTrustedPublishers } from "@/hooks/use-trusted-publishers";
+import type { ScopeCardProps } from "@/lib/scope-api";
 
 const PROVIDERS = [
   { value: "github", label: "GitHub", repoHint: "owner/repo", workflowHint: "publish.yml" },
   { value: "gitlab", label: "GitLab", repoHint: "group/project", workflowHint: ".gitlab-ci.yml" },
 ] as const;
+
+/** One trusted-publisher binding: provider pill, repo + workflow, and an admin-only remove. */
+function PublisherListItem({
+  binding,
+  isAdmin,
+  busy,
+  onRemove,
+}: Readonly<{
+  binding: TrustedPublisher;
+  isAdmin: boolean;
+  busy: boolean;
+  onRemove: () => void;
+}>) {
+  return (
+    <li className="flex items-center gap-2 text-sm">
+      <Pill tone="muted" className="rounded-md bg-muted px-2 py-0.5 capitalize">
+        {binding.provider}
+      </Pill>
+      <span className="font-mono text-foreground">{binding.repository}</span>
+      <span className="text-muted-foreground">·</span>
+      <span className="font-mono text-muted-foreground">{binding.workflow}</span>
+      {isAdmin && (
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          disabled={busy}
+          onClick={onRemove}
+          aria-label={`Remove ${binding.provider} ${binding.repository} ${binding.workflow}`}
+          className="ml-auto flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-danger"
+        >
+          <X className="size-4" />
+        </Button>
+      )}
+    </li>
+  );
+}
 
 /**
  * Trusted publishers (PUB-016): the repos + workflows authorized to publish to this scope via
@@ -33,45 +65,15 @@ export function TrustedPublishersCard({
   isAdmin,
   onError,
 }: Readonly<ScopeCardProps & { isAdmin: boolean }>) {
-  const [bindings, setBindings] = useState<Binding[] | null>(null);
+  const { bindings, busy, add, remove } = useTrustedPublishers(scope, onError);
   const [provider, setProvider] = useState("github");
   const [repository, setRepository] = useState("");
   const [workflow, setWorkflow] = useState("");
-  const [busy, setBusy] = useState(false);
   const hints = PROVIDERS.find((p) => p.value === provider) ?? PROVIDERS[0];
 
-  const load = useCallback(async () => {
-    const res = await fetch(scopePath(scope, "/trusted-publishers"));
-    if (res.ok) {
-      const data: { publishers: Binding[] } = await res.json();
-      setBindings(data.publishers);
-    }
-  }, [scope]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  async function mutate(method: "PUT" | "DELETE", body: Binding) {
-    setBusy(true);
-    const res = await fetch(scopePath(scope, "/trusted-publishers"), {
-      method,
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setBusy(false);
-    if (res.ok) {
-      await load();
-      return true;
-    }
-    onError(await readError(res));
-    return false;
-  }
-
-  async function add(event: SyntheticEvent<HTMLFormElement>) {
+  async function onAdd(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (
-      await mutate("PUT", { provider, repository: repository.trim(), workflow: workflow.trim() })
-    ) {
+    if (await add({ provider, repository: repository.trim(), workflow: workflow.trim() })) {
       setRepository("");
       setWorkflow("");
     }
@@ -89,30 +91,13 @@ export function TrustedPublishersCard({
     return (
       <ul className="flex flex-col gap-1.5">
         {bindings.map((b) => (
-          <li
+          <PublisherListItem
             key={`${b.provider} ${b.repository} ${b.workflow}`}
-            className="flex items-center gap-2 text-sm"
-          >
-            <Pill tone="muted" className="rounded-md bg-muted px-2 py-0.5 capitalize">
-              {b.provider}
-            </Pill>
-            <span className="font-mono text-foreground">{b.repository}</span>
-            <span className="text-muted-foreground">·</span>
-            <span className="font-mono text-muted-foreground">{b.workflow}</span>
-            {isAdmin && (
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                disabled={busy}
-                onClick={() => mutate("DELETE", b)}
-                aria-label={`Remove ${b.provider} ${b.repository} ${b.workflow}`}
-                className="ml-auto flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-danger"
-              >
-                <X className="size-4" />
-              </Button>
-            )}
-          </li>
+            binding={b}
+            isAdmin={isAdmin}
+            busy={busy}
+            onRemove={() => remove(b)}
+          />
         ))}
       </ul>
     );
@@ -133,7 +118,7 @@ export function TrustedPublishersCard({
         {renderBindings()}
         {isAdmin && (
           <form
-            onSubmit={add}
+            onSubmit={onAdd}
             className="flex flex-col gap-2.5 border-border border-t pt-3 sm:flex-row"
           >
             <Select value={provider} onValueChange={setProvider}>

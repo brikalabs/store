@@ -1,6 +1,6 @@
 import { inject } from "@brika/di";
 import { eq } from "drizzle-orm";
-import { Database } from "@/server/db/client";
+import { Db } from "@/server/db/client";
 import { users } from "@/server/db/schema";
 
 /**
@@ -8,7 +8,7 @@ import { users } from "@/server/db/schema";
  * - BetterAuth owns the row on sign-in - but seeds, tests, and account-derived reads do.
  */
 export class UserStore {
-  readonly #db = inject(Database);
+  readonly #db = inject(Db);
 
   /** Insert or update an account row (id + the provider-synced name/avatar). */
   async upsert(user: { id: string; name?: string; avatarUrl?: string }): Promise<void> {

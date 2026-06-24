@@ -12,6 +12,7 @@ import {
 } from "@brika/clay";
 import { Check, Flag } from "lucide-react";
 import { useState } from "react";
+import { usePluginReport } from "@/hooks/use-plugin-report";
 import { REPORT_REASON_KEYS, REPORT_REASONS, type ReportReason } from "@/lib/reports";
 
 /** The "Report plugin" trigger (subtle ghost button) plus its dialog. */
@@ -32,6 +33,41 @@ export function ReportPluginButton({ name, version }: Readonly<{ name: string; v
   );
 }
 
+/** One selectable reason: a radio-styled card with its label and description. */
+function ReportReasonOption({
+  reasonKey,
+  selected,
+  onSelect,
+}: Readonly<{ reasonKey: ReportReason; selected: boolean; onSelect: () => void }>) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors",
+        selected ? "border-brand bg-brand/10" : "border-border hover:bg-muted/50",
+      )}
+    >
+      <span
+        className={cn(
+          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
+          selected ? "border-brand bg-brand" : "border-muted-foreground/40",
+        )}
+      >
+        {selected ? <span className="size-1.5 rounded-full bg-white" /> : null}
+      </span>
+      <span className="min-w-0">
+        <span className="block font-medium text-foreground text-sm">
+          {REPORT_REASONS[reasonKey].label}
+        </span>
+        <span className="block text-muted-foreground text-xs">
+          {REPORT_REASONS[reasonKey].description}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 function ReportDialog({
   open,
   onOpenChange,
@@ -43,11 +79,9 @@ function ReportDialog({
   name: string;
   version: string;
 }>) {
+  const { submitting, error, submitted, submit, reset } = usePluginReport(name);
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
 
   function change(next: boolean) {
     if (submitting) return; // don't dismiss mid-flight
@@ -55,31 +89,14 @@ function ReportDialog({
       // Reset so the next open starts fresh (and the success panel doesn't flash).
       setReason(null);
       setDetails("");
-      setError(null);
-      setSubmitted(false);
+      reset();
     }
     onOpenChange(next);
   }
 
-  async function submit() {
+  async function onSubmit() {
     if (reason === null) return;
-    setSubmitting(true);
-    setError(null);
-    const res = await fetch(`/v1/plugins/${encodeURIComponent(name)}/reports`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ reason, details: details.trim() || undefined }),
-    });
-    setSubmitting(false);
-    if (res.status === 401) {
-      setError("Please sign in to report this plugin.");
-      return;
-    }
-    if (!res.ok) {
-      setError("Could not submit your report. Please try again.");
-      return;
-    }
-    setSubmitted(true);
+    await submit(reason, details);
   }
 
   return (
@@ -121,37 +138,14 @@ function ReportDialog({
                 What's wrong?
               </div>
               <div className="flex flex-col gap-2">
-                {REPORT_REASON_KEYS.map((key) => {
-                  const selected = reason === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setReason(key)}
-                      className={cn(
-                        "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors",
-                        selected ? "border-brand bg-brand/10" : "border-border hover:bg-muted/50",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
-                          selected ? "border-brand bg-brand" : "border-muted-foreground/40",
-                        )}
-                      >
-                        {selected ? <span className="size-1.5 rounded-full bg-white" /> : null}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block font-medium text-foreground text-sm">
-                          {REPORT_REASONS[key].label}
-                        </span>
-                        <span className="block text-muted-foreground text-xs">
-                          {REPORT_REASONS[key].description}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
+                {REPORT_REASON_KEYS.map((key) => (
+                  <ReportReasonOption
+                    key={key}
+                    reasonKey={key}
+                    selected={reason === key}
+                    onSelect={() => setReason(key)}
+                  />
+                ))}
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -178,7 +172,7 @@ function ReportDialog({
               <div className="flex gap-2">
                 <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
                 <Button
-                  onClick={submit}
+                  onClick={onSubmit}
                   disabled={reason === null || submitting}
                   className="bg-destructive text-white hover:bg-destructive/90"
                 >

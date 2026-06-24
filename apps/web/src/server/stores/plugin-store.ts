@@ -1,7 +1,7 @@
 import { inject } from "@brika/di";
 import type { PluginDetail, RatingSummary } from "@brika/registry-contract";
 import { eq, sql } from "drizzle-orm";
-import { Database } from "@/server/db/client";
+import { Db } from "@/server/db/client";
 import { plugins, reviews } from "@/server/db/schema";
 
 /**
@@ -10,7 +10,7 @@ import { plugins, reviews } from "@/server/db/schema";
  * denormalized rating fields, recomputed from the review rows whenever a review changes.
  */
 export class PluginStore {
-  readonly #db = inject(Database);
+  readonly #db = inject(Db);
 
   /** Whether a cache row already exists for this package. */
   async exists(name: string): Promise<boolean> {

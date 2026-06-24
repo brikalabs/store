@@ -21,9 +21,7 @@ function toHex(buffer: ArrayBuffer): string {
 
 async function hashToken(token: string): Promise<string> {
   const bytes = new TextEncoder().encode(token);
-  const view = new Uint8Array(bytes.byteLength);
-  view.set(bytes);
-  return toHex(await crypto.subtle.digest("SHA-256", view));
+  return toHex(await crypto.subtle.digest("SHA-256", bytes));
 }
 
 function base64Url(bytes: Uint8Array): string {

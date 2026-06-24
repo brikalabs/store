@@ -7,168 +7,49 @@ import {
   CodeBlockHeader,
   CodeBlockInfo,
 } from "@brika/clay/components/code-block";
+import { Tree, TreeItem } from "@brika/clay/components/tree";
 import type { PluginFile } from "@brika/registry-contract";
 import { Box, File as FileIcon, Folder, ShieldCheck } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Tree,
-  TreeItem,
-  TreeItemBadge,
-  TreeItemContent,
-  TreeItemLabel,
-  TreeItemRow,
-} from "@/components/clay/tree";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { usePluginFileContent, usePluginFiles } from "@/hooks/use-plugin-files";
 import { formatBytes } from "@/lib/format";
-import { assetUrl, pluginVersionUrl } from "@/lib/registry/registry-source";
+import {
+  buildTree,
+  type FileTreeNode,
+  type fileKind,
+  fileMeta,
+  langLabel,
+  shikiLang,
+  sortedChildren,
+} from "./file-tree";
 
 // npm-style file browser for a published tarball: a two-pane tree + source viewer.
 
-interface FileTreeNode {
-  name: string;
-  path: string;
-  isDir: boolean;
-  size: number;
-  fileCount: number;
-  children: Map<string, FileTreeNode>;
-}
-
-/** Insert one tarball path into the nested directory tree. */
-function insertPath(root: Map<string, FileTreeNode>, file: PluginFile): void {
-  const parts = file.path.split("/").filter(Boolean);
-  let level = root;
-  let prefix = "";
-  for (let i = 0; i < parts.length; i += 1) {
-    const part = parts[i] as string;
-    prefix = prefix ? `${prefix}/${part}` : part;
-    const isLeaf = i === parts.length - 1;
-    const existing = level.get(part);
-    const node = existing ?? {
-      name: part,
-      path: prefix,
-      isDir: !isLeaf,
-      size: isLeaf ? file.size : 0,
-      fileCount: 0,
-      children: new Map<string, FileTreeNode>(),
-    };
-    if (existing === undefined) level.set(part, node);
-    if (!isLeaf) level = node.children;
-  }
-}
-
-/** Fill each directory's leaf-file count in a single pass (so rows are cheap). */
-function computeCounts(node: FileTreeNode): number {
-  if (!node.isDir) return 1;
-  let total = 0;
-  for (const child of node.children.values()) total += computeCounts(child);
-  node.fileCount = total;
-  return total;
-}
-
-/** Build the file tree once, with per-directory counts precomputed. */
-function buildTree(files: readonly PluginFile[]): Map<string, FileTreeNode> {
-  const root = new Map<string, FileTreeNode>();
-  for (const file of files) insertPath(root, file);
-  for (const node of root.values()) computeCounts(node);
-  return root;
-}
-
-// Flatten npm's path-keyed file index; strip the wire paths' leading slash, which the
-// tree and asset URLs don't use.
-function filesFromIndex(json: unknown): PluginFile[] {
-  const map = (json as { files?: unknown }).files;
-  if (map === null || typeof map !== "object") return [];
-  return Object.values(map as Record<string, PluginFile>).map((file) => ({
-    ...file,
-    path: file.path.replace(/^\//, ""),
-  }));
-}
-
-// Cap inline previews so a large file never streams megabytes into the page.
-const MAX_PREVIEW_BYTES = 256 * 1024;
-
-/** Viewer kind, taken from the server's content metadata (no extension guessing). */
-function fileKind(file: PluginFile): "image" | "text" | "binary" {
-  if (file.contentType.startsWith("image/")) return "image";
-  return file.isBinary ? "binary" : "text";
-}
-
-/** A short uppercase language tag for a path: `src/x.ts` -> `TS`. */
-function langLabel(path: string): string {
-  const dot = path.lastIndexOf(".");
-  const ext = dot === -1 ? "" : path.slice(dot + 1).toUpperCase();
-  return ext || "FILE";
-}
-
-/** Map a file extension to a Shiki language identifier. */
-function shikiLang(path: string): string {
-  const dot = path.lastIndexOf(".");
-  const ext = dot === -1 ? "" : path.slice(dot + 1).toLowerCase();
-  const MAP: Record<string, string> = {
-    ts: "typescript",
-    tsx: "tsx",
-    js: "javascript",
-    jsx: "jsx",
-    mjs: "javascript",
-    cjs: "javascript",
-    json: "json",
-    jsonc: "json",
-    md: "markdown",
-    markdown: "markdown",
-    css: "css",
-    scss: "scss",
-    less: "less",
-    html: "html",
-    htm: "html",
-    yml: "yaml",
-    yaml: "yaml",
-    toml: "toml",
-    xml: "xml",
-    svg: "xml",
-    sh: "bash",
-    bash: "bash",
-  };
-  return MAP[ext] ?? "plaintext";
-}
-
-/** The viewer's "N lines · size" / "size" meta, from the server's line count. */
-function fileMeta(file: PluginFile, kind: ReturnType<typeof fileKind>): string {
-  return kind === "text" && file.linesCount > 0
-    ? `${file.linesCount} lines · ${formatBytes(file.size)}`
-    : formatBytes(file.size);
-}
-
-/** Sorted children: dirs first, then files, each group alphabetical. */
-function sortedChildren(level: Map<string, FileTreeNode>): FileTreeNode[] {
-  const nodes = [...level.values()];
-  const dirs = nodes.filter((n) => n.isDir).sort((a, b) => a.name.localeCompare(b.name));
-  const files = nodes.filter((n) => !n.isDir).sort((a, b) => a.name.localeCompare(b.name));
-  return [...dirs, ...files];
-}
-
-/** Recursively render a level of the file tree, using the Tree slot components. */
-function FileTreeItems({ level }: Readonly<{ level: Map<string, FileTreeNode> }>) {
+/** A file's label: the mono name plus a "manifest" pill for package.json. */
+function FileLabel({ name }: Readonly<{ name: string }>) {
   return (
-    <>
-      {sortedChildren(level).map((node) =>
-        node.isDir ? (
-          <TreeItem key={node.path} nodeId={node.path} isFolder>
-            <TreeItemRow>
-              <TreeItemLabel>{node.name}</TreeItemLabel>
-            </TreeItemRow>
-            <TreeItemContent>
-              <FileTreeItems level={node.children} />
-            </TreeItemContent>
-          </TreeItem>
-        ) : (
-          <TreeItem key={node.path} nodeId={node.path}>
-            <TreeItemRow>
-              <TreeItemLabel>{node.name}</TreeItemLabel>
-              {node.name === "package.json" ? <TreeItemBadge>manifest</TreeItemBadge> : null}
-            </TreeItemRow>
-          </TreeItem>
-        ),
-      )}
-    </>
+    <span className="flex min-w-0 items-center gap-1.5">
+      <span className="truncate font-mono text-[12.5px]">{name}</span>
+      {name === "package.json" ? (
+        <span className="shrink-0 rounded-full border border-brand/40 bg-brand/10 px-1.5 py-0.5 font-medium font-sans text-[10px] text-brand">
+          manifest
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** Recursively render a level of the file tree with Clay's Tree. A folder is a
+ *  TreeItem with nested children; a file is a leaf TreeItem. */
+function FileTreeItems({ level }: Readonly<{ level: Map<string, FileTreeNode> }>) {
+  return sortedChildren(level).map((node) =>
+    node.isDir ? (
+      <TreeItem key={node.path} nodeId={node.path} label={node.name}>
+        <FileTreeItems level={node.children} />
+      </TreeItem>
+    ) : (
+      <TreeItem key={node.path} nodeId={node.path} label={<FileLabel name={node.name} />} />
+    ),
   );
 }
 
@@ -283,35 +164,7 @@ function FileViewer({
   version,
   file,
 }: Readonly<{ name: string; version: string; file: PluginFile | undefined }>) {
-  const src = file ? assetUrl(name, version, file.path) : "";
-  const kind = file ? fileKind(file) : "binary";
-  const previewable = file !== undefined && file.size <= MAX_PREVIEW_BYTES;
-  const [text, setText] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-
-  useEffect(() => {
-    if (file === undefined || kind !== "text" || !previewable) {
-      setText(null);
-      return;
-    }
-    let active = true;
-    setStatus("loading");
-    setText(null);
-    fetch(src)
-      .then((res) => (res.ok ? res.text() : Promise.reject(new Error("load failed"))))
-      .then((body) => {
-        if (active) {
-          setText(body);
-          setStatus("idle");
-        }
-      })
-      .catch(() => {
-        if (active) setStatus("error");
-      });
-    return () => {
-      active = false;
-    };
-  }, [src, kind, previewable, file]);
+  const { src, kind, previewable, text, status } = usePluginFileContent(name, version, file);
 
   if (file === undefined) return <ViewerEmptyState />;
 
@@ -384,6 +237,7 @@ function FileBrowser({
           onExpandedChange={setExpanded}
           selectedIds={selected}
           onSelectedChange={handleSelect}
+          showLines
         >
           <FileTreeItems level={tree} />
         </Tree>
@@ -414,24 +268,7 @@ export function FilesSection({
   fileCount?: number;
   unpackedSize?: number;
 }>) {
-  const [files, setFiles] = useState<PluginFile[] | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    let active = true;
-    setFiles(null);
-    setFailed(false);
-    fetch(`${pluginVersionUrl(name, version)}/index`)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("load failed"))))
-      .then((json: unknown) => {
-        if (active) setFiles(filesFromIndex(json));
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, [name, version]);
+  const { files, failed } = usePluginFiles(name, version);
 
   return (
     <section className="flex flex-col gap-3">

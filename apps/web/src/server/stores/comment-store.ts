@@ -1,7 +1,7 @@
 import { inject } from "@brika/di";
 import { Comment } from "@brika/registry-contract";
 import { and, eq, sql } from "drizzle-orm";
-import { Database } from "@/server/db/client";
+import { Db } from "@/server/db/client";
 import { comments, commentVotes, users } from "@/server/db/schema";
 import { BlobStore } from "@/server/ports/blob-store";
 import { authorColumns, toAuthor } from "@/server/stores/author";
@@ -12,7 +12,7 @@ import { votedIds } from "@/server/stores/voted-ids";
  * contract. A deleted comment keeps its row (for thread structure) but its body reads as `[deleted]`.
  */
 export class CommentStore {
-  readonly #db = inject(Database);
+  readonly #db = inject(Db);
   readonly #blob = inject(BlobStore);
 
   /** Every comment of a plugin, oldest first, with upvote totals + the viewer's vote state. */

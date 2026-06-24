@@ -46,6 +46,16 @@ export class ManagementService {
   readonly #reader = inject(MetadataReader);
   readonly #ownership = inject(OwnershipPolicy);
 
+  /** 404 result when the version does not exist, else null. */
+  async #requireVersion(name: string, version: string): Promise<ManageResult | null> {
+    if (await this.#meta.versionExists(name, version)) return null;
+    return {
+      ok: false,
+      status: HttpStatus.NOT_FOUND,
+      message: `${name}@${version} does not exist`,
+    };
+  }
+
   /** Shared gate: the identity must own the scope and the version must exist. */
   async #authorize(
     identity: PublishIdentity,
@@ -54,14 +64,7 @@ export class ManagementService {
   ): Promise<ManageResult> {
     const owns = await this.#ownership.canPublish(identity, name);
     if (!owns.ok) return { ok: false, status: HttpStatus.FORBIDDEN, message: owns.message };
-    if (!(await this.#meta.versionExists(name, version))) {
-      return {
-        ok: false,
-        status: HttpStatus.NOT_FOUND,
-        message: `${name}@${version} does not exist`,
-      };
-    }
-    return { ok: true };
+    return (await this.#requireVersion(name, version)) ?? { ok: true };
   }
 
   async deprecate(
@@ -94,13 +97,8 @@ export class ManagementService {
    * (an admin acts against the owner) - the caller must have authorized an admin already.
    */
   async takedown(name: string, version: string, reason: string): Promise<ManageResult> {
-    if (!(await this.#meta.versionExists(name, version))) {
-      return {
-        ok: false,
-        status: HttpStatus.NOT_FOUND,
-        message: `${name}@${version} does not exist`,
-      };
-    }
+    const missing = await this.#requireVersion(name, version);
+    if (missing !== null) return missing;
     await this.#meta.setTakedown(name, version, reason.slice(0, MAX_MESSAGE));
     return { ok: true };
   }
@@ -127,13 +125,8 @@ export class ManagementService {
 
   /** Reverse a takedown, restoring the version to new installs. */
   async restore(name: string, version: string): Promise<ManageResult> {
-    if (!(await this.#meta.versionExists(name, version))) {
-      return {
-        ok: false,
-        status: HttpStatus.NOT_FOUND,
-        message: `${name}@${version} does not exist`,
-      };
-    }
+    const missing = await this.#requireVersion(name, version);
+    if (missing !== null) return missing;
     await this.#meta.setTakedown(name, version, null);
     return { ok: true };
   }
