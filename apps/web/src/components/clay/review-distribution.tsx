@@ -1,5 +1,4 @@
-import { cn } from "@brika/clay";
-import { Stars } from "./stars";
+import { cn, Rating } from "@brika/clay";
 
 /** Average score beside a 5→1 star histogram. */
 export function ReviewDistribution({
@@ -27,7 +26,7 @@ export function ReviewDistribution({
         <span className="font-bold font-heading text-4xl leading-none text-foreground">
           {average.toFixed(1)}
         </span>
-        <Stars value={average} starClassName="size-4" />
+        <Rating value={average} size="lg" color="var(--color-star)" />
         <span className="text-muted-foreground text-xs">
           {count} {count === 1 ? "review" : "reviews"}
         </span>

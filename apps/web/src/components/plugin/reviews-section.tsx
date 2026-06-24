@@ -1,10 +1,9 @@
-import { Button, Input, Textarea } from "@brika/clay";
+import { Button, Input, Rating, Textarea } from "@brika/clay";
 import type { Review } from "@brika/registry-contract";
 import { Heart, Star } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { ReviewDistribution } from "@/components/clay/review-distribution";
-import { Stars } from "@/components/clay/stars";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { usePluginReviews } from "@/hooks/use-plugin-reviews";
 import { formatDate } from "@/lib/format";
@@ -27,7 +26,7 @@ function ReviewItem({
       <div className="flex flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-foreground text-sm">{review.author.displayName}</span>
-          <Stars value={review.rating} />
+          <Rating value={review.rating} color="var(--color-star)" />
           {review.versionReviewed ? (
             <span className="font-mono text-muted-foreground text-xs">
               v{review.versionReviewed}
