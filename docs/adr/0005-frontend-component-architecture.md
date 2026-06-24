@@ -58,9 +58,9 @@ extract a hook. The `.tsx` should read as markup with a few handlers, not as a c
 
 ## Enforcement
 
-`architecture/naming.test.ts` already requires `hooks/use-*`. A follow-up guard can flag a raw `fetch(`
-under `components/**` (data access must go through a hook); it is deferred until the existing
-components are migrated, so it lands green rather than as a wall of failures.
+`architecture/naming.test.ts` requires `hooks/use-*`, and `scripts/check-no-fetch-in-components.ts`
+(in `bun run lint`) fails if any `components/**/*.tsx` calls `fetch()` directly: data access must go
+through a hook. The whole app was migrated to satisfy it, so it lands and stays green.
 
 ## Consequences
 
