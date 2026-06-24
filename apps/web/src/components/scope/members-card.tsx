@@ -13,15 +13,10 @@ import { Pill } from "@/components/clay/pill";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
-import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
+import { type Member, useScopeMembers } from "@/hooks/use-scope-members";
+import type { ScopeCardProps } from "@/lib/scope-api";
 
-export interface Member {
-  userId: string;
-  /** The account's display name + avatar, resolved server-side (membership stores only the id). */
-  displayName: string | null;
-  avatarUrl: string | null;
-  role: "admin" | "member";
-}
+export type { Member } from "@/hooks/use-scope-members";
 
 const ROLE_SELECT =
   "h-[34px] rounded-[10px] border border-input bg-muted px-3 font-semibold text-[12.5px] text-foreground";
@@ -41,25 +36,7 @@ export function MembersCard({
   onReload,
   onError,
 }: Readonly<MembersCardProps>) {
-  // Re-roling an existing member keys off their account id (already a member); the
-  // email-based invite (AddMember below) is only for adding someone new.
-  async function setRole(member: Member, role: "admin" | "member") {
-    const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(member.userId)}`), {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ role }),
-    });
-    if (res.ok) await onReload();
-    else onError(await readError(res));
-  }
-
-  async function remove(member: Member) {
-    const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(member.userId)}`), {
-      method: "DELETE",
-    });
-    if (res.ok) await onReload();
-    else onError(await readError(res));
-  }
+  const { busy, setRole, remove, add } = useScopeMembers(scope, onReload, onError);
 
   return (
     <SettingsCard className="gap-1">
@@ -72,45 +49,64 @@ export function MembersCard({
         <div className="mt-3 h-16 animate-pulse rounded-[11px] bg-muted" />
       ) : (
         <ul className="mt-2 flex flex-col">
-          {members.map((m) => {
-            const label = m.displayName ?? m.userId;
-            return (
-              <li key={m.userId} className="flex items-center gap-3 border-border border-b py-3">
-                <GradientAvatar seed={m.userId} label={label} imageUrl={m.avatarUrl} size={34} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold text-[13.5px] text-foreground">
-                    {label}
-                  </div>
-                  <div className="truncate font-mono text-muted-foreground text-xs">{m.userId}</div>
-                </div>
-                {isAdmin ? (
-                  <>
-                    <Select
-                      value={m.role}
-                      onValueChange={(value) => setRole(m, value === "admin" ? "admin" : "member")}
-                    >
-                      <SelectTrigger aria-label={`Role for ${label}`} className={ROLE_SELECT}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">admin</SelectItem>
-                        <SelectItem value="member">member</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <RemoveMember member={m} label={label} onRemove={() => remove(m)} />
-                  </>
-                ) : (
-                  <Pill tone="muted" className="capitalize">
-                    {m.role}
-                  </Pill>
-                )}
-              </li>
-            );
-          })}
+          {members.map((m) => (
+            <MemberRow
+              key={m.userId}
+              member={m}
+              isAdmin={isAdmin}
+              onRole={(role) => setRole(m, role)}
+              onRemove={() => remove(m)}
+            />
+          ))}
         </ul>
       )}
-      {isAdmin && <AddMember scope={scope} onAdded={onReload} onError={onError} />}
+      {isAdmin && <AddMember busy={busy} onAdd={add} />}
     </SettingsCard>
+  );
+}
+
+/** One member row: avatar + identity, then an admin's role select + remove, or a plain role pill. */
+function MemberRow({
+  member,
+  isAdmin,
+  onRole,
+  onRemove,
+}: Readonly<{
+  member: Member;
+  isAdmin: boolean;
+  onRole: (role: "admin" | "member") => void;
+  onRemove: () => void;
+}>) {
+  const label = member.displayName ?? member.userId;
+  return (
+    <li className="flex items-center gap-3 border-border border-b py-3">
+      <GradientAvatar seed={member.userId} label={label} imageUrl={member.avatarUrl} size={34} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-semibold text-[13.5px] text-foreground">{label}</div>
+        <div className="truncate font-mono text-muted-foreground text-xs">{member.userId}</div>
+      </div>
+      {isAdmin ? (
+        <>
+          <Select
+            value={member.role}
+            onValueChange={(value) => onRole(value === "admin" ? "admin" : "member")}
+          >
+            <SelectTrigger aria-label={`Role for ${label}`} className={ROLE_SELECT}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">admin</SelectItem>
+              <SelectItem value="member">member</SelectItem>
+            </SelectContent>
+          </Select>
+          <RemoveMember member={member} label={label} onRemove={onRemove} />
+        </>
+      ) : (
+        <Pill tone="muted" className="capitalize">
+          {member.role}
+        </Pill>
+      )}
+    </li>
   );
 }
 
@@ -154,30 +150,22 @@ function RemoveMember({
   );
 }
 
+/** Invite-by-email form: pick a role, submit, and clear the email when the add succeeds. */
 function AddMember({
-  scope,
-  onAdded,
-  onError,
-}: Readonly<ScopeCardProps & { onAdded: () => Promise<void> }>) {
+  busy,
+  onAdd,
+}: Readonly<{
+  busy: boolean;
+  onAdd: (email: string, role: "admin" | "member") => Promise<boolean>;
+}>) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "member">("member");
-  const [busy, setBusy] = useState(false);
 
-  async function submit(event: SyntheticEvent<HTMLFormElement>) {
+  function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
-    const res = await fetch(scopePath(scope, "/members"), {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), role }),
+    void onAdd(email, role).then((ok) => {
+      if (ok) setEmail("");
     });
-    setBusy(false);
-    if (res.ok) {
-      setEmail("");
-      await onAdded();
-    } else {
-      onError(await readError(res));
-    }
   }
 
   return (

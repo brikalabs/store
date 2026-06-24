@@ -2,27 +2,19 @@ import { Button, Input } from "@brika/clay";
 import { ShieldCheck } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 import { SettingsCard } from "@/components/clay/settings-card";
-import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
+import { useScopeDisplayName } from "@/hooks/use-scope-display-name";
+import type { ScopeCardProps } from "@/lib/scope-api";
 
 /** Set the scope's verified-publisher display name (overrides the manifest author). */
 export function DisplayNameCard({ scope, onError }: Readonly<ScopeCardProps>) {
+  const { busy, save } = useScopeDisplayName(scope, onError);
   const [value, setValue] = useState("");
   const [saved, setSaved] = useState(false);
-  const [busy, setBusy] = useState(false);
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
     setSaved(false);
-    const trimmed = value.trim();
-    const res = await fetch(scopePath(scope, "/display-name"), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: trimmed.length === 0 ? null : trimmed }),
-    });
-    setBusy(false);
-    if (res.ok) setSaved(true);
-    else onError(await readError(res));
+    if (await save(value)) setSaved(true);
   }
 
   let saveLabel = "Save";

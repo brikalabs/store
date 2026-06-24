@@ -4,45 +4,19 @@ import { type ChangeEvent, useRef, useState } from "react";
 import { ImageCropModal } from "@/components/clay/image-crop-modal";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
-import { readError, type ScopeCardProps, scopePath } from "@/lib/scope-api";
+import { useScopeLogo } from "@/hooks/use-scope-logo";
+import type { ScopeCardProps } from "@/lib/scope-api";
 
 /** Upload / clear the scope's logo (raster image stored in R2, shown on the public page). */
 export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
+  const { iconUrl, busy, upload, clear } = useScopeLogo(scope, onError);
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<File | null>(null);
-  const [bust, setBust] = useState(0);
-  const [busy, setBusy] = useState(false);
 
   function pick(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
     setPending(file);
-  }
-
-  async function upload(blob: Blob) {
-    setPending(null);
-    setBusy(true);
-    try {
-      const res = await fetch(scopePath(scope, "/icon"), {
-        method: "POST",
-        headers: { "content-type": "image/webp" },
-        body: blob,
-      });
-      if (res.ok) setBust((n) => n + 1);
-      else onError(await readError(res));
-    } catch {
-      onError("That image could not be processed. Try a PNG, JPEG, or WebP.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function clear() {
-    setBusy(true);
-    const res = await fetch(scopePath(scope, "/icon"), { method: "DELETE" });
-    setBusy(false);
-    if (res.ok) setBust((n) => n + 1);
-    else onError(await readError(res));
   }
 
   return (
@@ -54,10 +28,9 @@ export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
       </p>
       <div className="mt-2.5 flex items-center gap-3.5">
         <GradientAvatar
-          // Cache-buster reloads the image after upload/clear; a 404 (no logo) shows the gradient avatar.
           seed={scope}
           label={scope}
-          imageUrl={`${scopePath(scope, "/icon")}?v=${bust}`}
+          imageUrl={iconUrl}
           size={54}
           className="rounded-[14px] border border-border"
         />
@@ -88,7 +61,10 @@ export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
         title="Crop your logo"
         shape="rounded"
         onCancel={() => setPending(null)}
-        onApply={upload}
+        onApply={(blob) => {
+          setPending(null);
+          void upload(blob);
+        }}
       />
     </SettingsCard>
   );
