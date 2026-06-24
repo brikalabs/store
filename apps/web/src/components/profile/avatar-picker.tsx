@@ -3,6 +3,7 @@ import { Trash2, Upload } from "lucide-react";
 import { type ChangeEvent, useRef, useState } from "react";
 import { ImageCropModal } from "@/components/clay/image-crop-modal";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { useAccountAvatar } from "@/hooks/use-account-avatar";
 
 /**
  * Upload / clear the signed-in account's avatar. The picked image goes through a crop+zoom step
@@ -21,51 +22,20 @@ export function AvatarPicker({
   onChange: (avatarUrl: string | undefined) => void;
 }>) {
   const inputRef = useRef<HTMLInputElement>(null);
+  // The file awaiting crop is view state local to the modal flow; the upload itself lives in the hook.
   const [pending, setPending] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { busy, error, clearError, upload, remove } = useAccountAvatar(onChange);
 
   function pick(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
-    setError(null);
+    clearError();
     setPending(file);
   }
 
-  async function upload(blob: Blob) {
+  async function crop(blob: Blob) {
     setPending(null);
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/account/avatar", {
-        method: "POST",
-        headers: { "content-type": "image/webp" },
-        body: blob,
-      });
-      if (!res.ok) {
-        setError("Upload failed. Try a different image.");
-        return;
-      }
-      const data: { avatarUrl?: string } = await res.json();
-      onChange(data.avatarUrl);
-    } catch {
-      setError("That image could not be processed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function remove() {
-    setBusy(true);
-    setError(null);
-    const res = await fetch("/api/account/avatar", { method: "DELETE" });
-    setBusy(false);
-    if (res.ok) {
-      const data: { avatarUrl?: string } = await res.json();
-      onChange(data.avatarUrl);
-    } else {
-      setError("Could not remove the avatar.");
-    }
+    await upload(blob);
   }
 
   return (
@@ -106,7 +76,7 @@ export function AvatarPicker({
         title="Crop your avatar"
         shape="circle"
         onCancel={() => setPending(null)}
-        onApply={upload}
+        onApply={crop}
       />
     </div>
   );

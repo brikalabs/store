@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from "react";
 import { readError, scopePath } from "@/lib/scope-api";
 
 export interface Member {
@@ -7,6 +7,48 @@ export interface Member {
   displayName: string | null;
   avatarUrl: string | null;
   role: "admin" | "member";
+}
+
+/**
+ * The scope's member list, owned by the detail page (its result decides whether the viewer is an
+ * admin, which gates the editor cards). Loads on mount and exposes `reload` so a member mutation can
+ * refresh it; a successful load clears the page banner, a failed one shows the error (hence the raw
+ * `setError`, not a message-only sink). `leave` removes the signed-in user's own membership via the
+ * same member-DELETE endpoint and resolves to whether it succeeded so the caller can navigate away.
+ */
+export function useScopeMemberList(
+  scope: string,
+  setError: Dispatch<SetStateAction<string | null>>,
+) {
+  const [members, setMembers] = useState<Member[] | null>(null);
+
+  const reload = useCallback(async () => {
+    const res = await fetch(scopePath(scope, "/members"));
+    if (res.ok) {
+      const data: { members: Member[] } = await res.json();
+      setMembers(data.members);
+      setError(null);
+    } else {
+      setError(await readError(res));
+    }
+  }, [scope, setError]);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const leave = useCallback(
+    async (userId: string): Promise<boolean> => {
+      const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(userId)}`), {
+        method: "DELETE",
+      });
+      if (res.ok) return true;
+      setError(await readError(res));
+      return false;
+    },
+    [scope, setError],
+  );
+
+  return { members, reload, leave };
 }
 
 /**

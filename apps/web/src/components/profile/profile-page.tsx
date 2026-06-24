@@ -1,29 +1,15 @@
 import { Button } from "@brika/clay";
-import { type UserProfile, UserProfile as UserProfileSchema } from "@brika/registry-contract";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
-import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
+import { useAccountProfile } from "@/hooks/use-account-profile";
 import { ProfileEditor } from "./profile-editor";
 
 const route = getRouteApi("/dashboard/profile");
 
 export function ProfilePage() {
   const { user } = route.useRouteContext();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    fetch("/api/account/profile")
-      .then((res) => res.json())
-      .then((json: unknown) => {
-        const parsed = UserProfileSchema.safeParse(json);
-        if (active && parsed.success) setProfile(parsed.data);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { profile, setProfile } = useAccountProfile();
 
   return (
     <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="Profile">

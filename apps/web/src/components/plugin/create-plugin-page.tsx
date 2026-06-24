@@ -8,6 +8,7 @@ import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { ErrorBanner } from "@/components/layout/error-banner";
+import { useCreatePlugin } from "@/hooks/use-create-plugin";
 import { MAX_NAME, type NameCheck, useNameCheck } from "@/hooks/use-name-check";
 import { type MemberScope, useScopes } from "@/hooks/use-scopes";
 
@@ -43,14 +44,13 @@ export function CreatePluginPage() {
   const navigate = useNavigate();
   const { scopes } = useScopes();
   const adminScopes = scopes?.filter((s) => s.role === "admin") ?? [];
+  const { busy, error, create: reserve } = useCreatePlugin();
 
   const [scope, setScope] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [provider, setProvider] = useState<Provider>("github");
   const [repo, setRepo] = useState("");
   const [workflow, setWorkflow] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Default the selected scope to the first one once they load.
   const selected = scope ?? adminScopes[0]?.scope ?? null;
@@ -60,28 +60,11 @@ export function CreatePluginPage() {
 
   async function create() {
     if (selected === null || check !== "ok") return;
-    setBusy(true);
-    setError(null);
     const publisher =
       (provider === "github" || provider === "gitlab") && repo.trim() && workflow.trim()
         ? { provider, repository: repo.trim(), workflow: workflow.trim() }
         : undefined;
-    const res = await fetch("/api/plugins/create", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ scope: selected, name, publisher }),
-    });
-    if (res.ok) {
-      navigate({ to: "/dashboard/plugins" });
-      return;
-    }
-    setBusy(false);
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    setError(
-      res.status === 409
-        ? "That name is already taken in this scope."
-        : (data.error ?? "Could not create the plugin."),
-    );
+    if (await reserve(selected, name, publisher)) navigate({ to: "/dashboard/plugins" });
   }
 
   return (

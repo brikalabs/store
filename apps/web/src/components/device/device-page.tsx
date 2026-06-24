@@ -1,8 +1,9 @@
 import { getRouteApi } from "@tanstack/react-router";
 import { KeyRound } from "lucide-react";
-import { type SyntheticEvent, useCallback, useState } from "react";
+import { type SyntheticEvent, useState } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { normalizeCode, withSeparator } from "@/lib/device-code";
+import { useDeviceApproval } from "@/hooks/use-device-approval";
+import { normalizeCode } from "@/lib/device-code";
 import { DeviceBody } from "./device-body";
 
 const route = getRouteApi("/device");
@@ -10,25 +11,12 @@ const route = getRouteApi("/device");
 export function DevicePage() {
   const { code } = route.useSearch();
   const { user, loading } = useCurrentUser();
+  const { state, submitting, approve } = useDeviceApproval();
   const [value, setValue] = useState(() => normalizeCode(code ?? ""));
-  const [state, setState] = useState<"idle" | "ok" | "error">("idle");
-  const [submitting, setSubmitting] = useState(false);
-
-  const submitApprove = useCallback(async (userCode: string) => {
-    setSubmitting(true);
-    setState("idle");
-    const res = await fetch("/api/device/approve", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ user_code: withSeparator(userCode) }),
-    });
-    setSubmitting(false);
-    setState(res.ok ? "ok" : "error");
-  }, []);
 
   function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    void submitApprove(value);
+    void approve(value);
   }
 
   const returnTo = code === undefined ? "/device" : `/device?code=${code}`;

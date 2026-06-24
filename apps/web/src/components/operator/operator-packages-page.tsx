@@ -1,7 +1,7 @@
 import { Input } from "@brika/clay";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Flag, Search } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import {
@@ -11,13 +11,10 @@ import {
   OperatorHeader,
   SortSelect,
 } from "@/components/operator/operator-toolbar";
-import {
-  type OperatorPackage,
-  type PackageVersion,
-  VersionPanel,
-} from "@/components/operator/package-version-panel";
+import { type OperatorPackage, VersionPanel } from "@/components/operator/package-version-panel";
 import { TakedownControls } from "@/components/operator/takedown-controls";
 import { useOperatorList } from "@/hooks/use-operator-list";
+import { useBulkTakedown, usePackageModeration } from "@/hooks/use-operator-packages";
 import { formatCount, formatRelative } from "@/lib/format";
 import { reportReasonLabel } from "@/lib/reports";
 
@@ -37,8 +34,6 @@ export function OperatorPackagesPage() {
   const [facet, setFacet] = useState<PkgFacet>("all");
   const [sort, setSort] = useState<PkgSort>("flagged");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const facets: Facet<PkgFacet>[] = useMemo(
     () => [
@@ -77,6 +72,12 @@ export function OperatorPackagesPage() {
   );
   const allSelected = visible.length > 0 && selectedNames.length === visible.length;
 
+  // On a successful bulk takedown, drop the (now actioned) selection then refetch the window.
+  const { busy, error, setError, bulkTakedown } = useBulkTakedown(selectedNames, () => {
+    setSelected(new Set());
+    list.reload();
+  });
+
   function toggle(name: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -89,27 +90,6 @@ export function OperatorPackagesPage() {
   function toggleAll() {
     setSelected(allSelected ? new Set() : new Set(visible.map((p) => p.name)));
   }
-
-  const bulkTakedown = useCallback(
-    async (reason: string) => {
-      setBusy(true);
-      setError(null);
-      const res = await fetch("/api/operator/packages/bulk-takedown", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ names: selectedNames, reason }),
-      });
-      setBusy(false);
-      if (res.ok) {
-        setSelected(new Set());
-        list.reload();
-        return;
-      }
-      const data: { error?: string } = await res.json();
-      setError(data.error ?? "Bulk takedown failed");
-    },
-    [selectedNames, list.reload],
-  );
 
   function shownLabel(): string {
     if (list.loading) return "Loading…";
@@ -219,67 +199,18 @@ function PackageRow({
   onChanged: () => void;
 }>) {
   const [open, setOpen] = useState(false);
-  const [versions, setVersions] = useState<PackageVersion[] | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [pkgBusy, setPkgBusy] = useState(false);
-
-  const loadVersions = useCallback(async () => {
-    const res = await fetch(`/api/operator/packages/versions?name=${encodeURIComponent(pkg.name)}`);
-    if (res.ok) {
-      const data: { versions: PackageVersion[] } = await res.json();
-      setVersions(data.versions);
-    }
-  }, [pkg.name]);
+  const { versions, busy, pkgBusy, loadVersions, act, takedownPackage } = usePackageModeration(
+    pkg,
+    open,
+    onChanged,
+    onError,
+  );
 
   function expand() {
     const next = !open;
     setOpen(next);
     if (next && versions === null) void loadVersions();
   }
-
-  const act = useCallback(
-    async (version: string, path: "takedown" | "restore", reason?: string) => {
-      setBusy(version);
-      onError(null);
-      const res = await fetch(`/api/operator/packages/${path}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(
-          path === "takedown" ? { name: pkg.name, version, reason } : { name: pkg.name, version },
-        ),
-      });
-      setBusy(null);
-      if (res.ok) {
-        await loadVersions();
-        onChanged();
-        return;
-      }
-      const data: { error?: string } = await res.json();
-      onError(data.error ?? "Action failed");
-    },
-    [pkg.name, loadVersions, onChanged, onError],
-  );
-
-  const takedownPackage = useCallback(
-    async (reason: string) => {
-      setPkgBusy(true);
-      onError(null);
-      const res = await fetch("/api/operator/packages/bulk-takedown", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ names: [pkg.name], reason }),
-      });
-      setPkgBusy(false);
-      if (res.ok) {
-        if (open) await loadVersions();
-        onChanged();
-        return;
-      }
-      const data: { error?: string } = await res.json();
-      onError(data.error ?? "Take down failed");
-    },
-    [pkg.name, open, loadVersions, onChanged, onError],
-  );
 
   const liveVersions = pkg.versionCount - pkg.takenDownCount;
 

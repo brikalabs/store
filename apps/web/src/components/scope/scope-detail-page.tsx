@@ -1,7 +1,7 @@
 import { Button } from "@brika/clay";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, LogOut, Shield } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Pill } from "@/components/clay/pill";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { AdminShell } from "@/components/layout/admin-shell";
@@ -11,36 +11,23 @@ import { ErrorBanner } from "@/components/layout/error-banner";
 import { DisplayNameCard } from "@/components/scope/display-name-card";
 import { DomainsCard } from "@/components/scope/domains-card";
 import { LogoCard } from "@/components/scope/logo-card";
-import { type Member, MembersCard } from "@/components/scope/members-card";
+import { MembersCard } from "@/components/scope/members-card";
 import { ProfileCard } from "@/components/scope/profile-card";
 import { TrustedPublishersCard } from "@/components/scope/trusted-publishers-card";
-import { readError, scopePath } from "@/lib/scope-api";
+import { type Member, useScopeMemberList } from "@/hooks/use-scope-members";
 
 const route = getRouteApi("/dashboard/scopes_/$scope");
 
 /**
- * Scope management shell. Owns the one member fetch, whose result decides whether the user is
- * an admin (gating the editor cards), and delegates each concern to a card in `components/scope/*`.
+ * Scope management shell. Owns the one member list (via `useScopeMemberList`), whose result decides
+ * whether the user is an admin (gating the editor cards), and delegates each concern to a card in
+ * `components/scope/*`.
  */
 export function ScopeDetailPage() {
   const { user } = route.useRouteContext();
   const { scope } = route.useParams();
-  const [members, setMembers] = useState<Member[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const loadMembers = useCallback(async () => {
-    const res = await fetch(scopePath(scope, "/members"));
-    if (res.ok) {
-      const data: { members: Member[] } = await res.json();
-      setMembers(data.members);
-      setError(null);
-    } else {
-      setError(await readError(res));
-    }
-  }, [scope]);
-  useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
+  const { members, reload, leave } = useScopeMemberList(scope, setError);
 
   const isAdmin = members?.find((m) => m.userId === user.id)?.role === "admin";
 
@@ -86,11 +73,11 @@ export function ScopeDetailPage() {
         scope={scope}
         members={members}
         isAdmin={isAdmin}
-        onReload={loadMembers}
+        onReload={reload}
         onError={setError}
       />
       {isAdmin && (
-        <ScopeDangerZone scope={scope} userId={user.id} members={members} onError={setError} />
+        <ScopeDangerZone scope={scope} userId={user.id} members={members} onLeave={leave} />
       )}
     </AdminShell>
   );
@@ -98,34 +85,27 @@ export function ScopeDetailPage() {
 
 /**
  * Admin-only danger zone with a single "Leave scope" action: removes the signed-in user's own
- * membership via the same member-DELETE endpoint the members card uses, then sends them back to
- * the scopes list. Disabled when they are the only admin (the last-admin invariant), matching the
- * server guard so the user gets the amber hint instead of a failed request.
+ * membership via `useScopeMemberList`'s `leave`, then sends them back to the scopes list. Disabled
+ * when they are the only admin (the last-admin invariant), matching the server guard so the user
+ * gets the amber hint instead of a failed request.
  */
 function ScopeDangerZone({
   scope,
   userId,
   members,
-  onError,
+  onLeave,
 }: Readonly<{
   scope: string;
   userId: string;
   members: Member[] | null;
-  onError: (message: string) => void;
+  onLeave: (userId: string) => Promise<boolean>;
 }>) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const onlyAdmin = (members?.filter((m) => m.role === "admin").length ?? 0) <= 1;
 
   async function leave() {
-    const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(userId)}`), {
-      method: "DELETE",
-    });
-    if (res.ok) {
-      await navigate({ to: "/dashboard/scopes" });
-      return;
-    }
-    onError(await readError(res));
+    if (await onLeave(userId)) await navigate({ to: "/dashboard/scopes" });
   }
 
   return (

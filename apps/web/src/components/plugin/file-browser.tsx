@@ -9,7 +9,7 @@ import {
 } from "@brika/clay/components/code-block";
 import type { PluginFile } from "@brika/registry-contract";
 import { Box, File as FileIcon, Folder, ShieldCheck } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import {
   Tree,
   TreeItem,
@@ -18,23 +18,19 @@ import {
   TreeItemLabel,
   TreeItemRow,
 } from "@/components/clay/tree";
+import { usePluginFileContent, usePluginFiles } from "@/hooks/use-plugin-files";
 import { formatBytes } from "@/lib/format";
-import { assetUrl, pluginVersionUrl } from "@/lib/registry/registry-source";
 import {
   buildTree,
   type FileTreeNode,
-  fileKind,
+  type fileKind,
   fileMeta,
-  filesFromIndex,
   langLabel,
   shikiLang,
   sortedChildren,
 } from "./file-tree";
 
 // npm-style file browser for a published tarball: a two-pane tree + source viewer.
-
-// Cap inline previews so a large file never streams megabytes into the page.
-const MAX_PREVIEW_BYTES = 256 * 1024;
 
 /** Recursively render a level of the file tree, using the Tree slot components. */
 function FileTreeItems({ level }: Readonly<{ level: Map<string, FileTreeNode> }>) {
@@ -174,35 +170,7 @@ function FileViewer({
   version,
   file,
 }: Readonly<{ name: string; version: string; file: PluginFile | undefined }>) {
-  const src = file ? assetUrl(name, version, file.path) : "";
-  const kind = file ? fileKind(file) : "binary";
-  const previewable = file !== undefined && file.size <= MAX_PREVIEW_BYTES;
-  const [text, setText] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-
-  useEffect(() => {
-    if (file === undefined || kind !== "text" || !previewable) {
-      setText(null);
-      return;
-    }
-    let active = true;
-    setStatus("loading");
-    setText(null);
-    fetch(src)
-      .then((res) => (res.ok ? res.text() : Promise.reject(new Error("load failed"))))
-      .then((body) => {
-        if (active) {
-          setText(body);
-          setStatus("idle");
-        }
-      })
-      .catch(() => {
-        if (active) setStatus("error");
-      });
-    return () => {
-      active = false;
-    };
-  }, [src, kind, previewable, file]);
+  const { src, kind, previewable, text, status } = usePluginFileContent(name, version, file);
 
   if (file === undefined) return <ViewerEmptyState />;
 
@@ -305,24 +273,7 @@ export function FilesSection({
   fileCount?: number;
   unpackedSize?: number;
 }>) {
-  const [files, setFiles] = useState<PluginFile[] | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    let active = true;
-    setFiles(null);
-    setFailed(false);
-    fetch(`${pluginVersionUrl(name, version)}/index`)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("load failed"))))
-      .then((json: unknown) => {
-        if (active) setFiles(filesFromIndex(json));
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, [name, version]);
+  const { files, failed } = usePluginFiles(name, version);
 
   return (
     <section className="flex flex-col gap-3">

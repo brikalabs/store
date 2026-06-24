@@ -1,48 +1,17 @@
 import { Button, Card } from "@brika/clay";
 import { getRouteApi } from "@tanstack/react-router";
 import { LogOut, Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { type Token, TokenList } from "@/components/account/token-list";
+import { TokenList } from "@/components/account/token-list";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { CopyButton } from "@/components/plugin/copy-button";
+import { useAccountTokens } from "@/hooks/use-account-tokens";
 
 const route = getRouteApi("/dashboard/account/tokens");
 
 export function TokensPage() {
   const { user } = route.useRouteContext();
-  const [tokens, setTokens] = useState<Token[] | null>(null);
-  const [fresh, setFresh] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const load = useCallback(async () => {
-    const res = await fetch("/api/account/tokens");
-    if (res.ok) {
-      const data: { tokens: Token[] } = await res.json();
-      setTokens(data.tokens);
-    }
-  }, []);
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  async function create() {
-    setBusy(true);
-    const res = await fetch("/api/account/tokens", { method: "POST" });
-    setBusy(false);
-    if (res.ok) {
-      const data: { token: string } = await res.json();
-      setFresh(data.token);
-      await load();
-    }
-  }
-
-  async function revoke(hash: string) {
-    const res = await fetch(`/api/account/tokens/${encodeURIComponent(hash)}`, {
-      method: "DELETE",
-    });
-    if (res.ok) await load();
-  }
+  const { tokens, fresh, busy, create, revoke } = useAccountTokens();
 
   return (
     <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="API tokens">
