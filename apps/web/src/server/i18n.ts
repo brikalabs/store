@@ -1,6 +1,6 @@
 import { inject, token } from "@brika/di";
 import { createTranslator, type Translate } from "@brika/i18n";
-import { i18n } from "@/i18n/catalog";
+import { i18n } from "@/i18n/config";
 
 /** The request's UI locale. Bound per request in `runWeb`'s child injector. */
 export const RequestLocale = token<string>("RequestLocale");

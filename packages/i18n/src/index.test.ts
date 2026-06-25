@@ -134,8 +134,8 @@ describe("defineI18n", () => {
     dev: true,
   });
 
-  test("auto-detects locales and applies config order then alphabetical", () => {
-    expect(i18n.locales).toEqual(["en", "fr", "de", "ja"]); // en,fr from order; de,ja alphabetical
+  test("auto-detects locales (order then alphabetical) and appends cimode in dev", () => {
+    expect(i18n.locales).toEqual(["en", "fr", "de", "ja", CIMODE]); // en,fr from order; de,ja alpha; cimode last (dev)
     expect(i18n.defaultLocale).toBe("en");
     expect(i18n.cookie).toBe("brika-locale");
   });
@@ -153,8 +153,9 @@ describe("defineI18n", () => {
     expect(i18n.localeFromCookie(`brika-locale=${CIMODE}`)).toBe(CIMODE); // dev: true
   });
 
-  test("cimode is rejected when dev is off", () => {
+  test("cimode is absent and rejected when dev is off", () => {
     const prod = defineI18n({ messages, defaultLocale: "en" });
+    expect(prod.locales).not.toContain(CIMODE);
     expect(prod.localeFromCookie(`locale=${CIMODE}`)).toBeNull();
     expect(prod.cookie).toBe("locale"); // default cookie name
   });

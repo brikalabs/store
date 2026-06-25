@@ -3,7 +3,7 @@ import { createInjector, type Provider, runInInjectionContext } from "@brika/di"
 import { DomainSecret, RegistryDb, registryBindings } from "@brika/registry-runtime";
 import { getDb as getRegistryDb } from "@brika/store-db";
 import { getRequest } from "@tanstack/react-start/server";
-import { i18n } from "@/i18n/catalog";
+import { i18n } from "@/i18n/config";
 import { AssetsBucket, AssetsPublicUrl, CfR2BlobStore } from "@/server/adapters/cf-r2-blob-store";
 import { Db, getDb } from "@/server/db/client";
 import { config } from "@/server/env";

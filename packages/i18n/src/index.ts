@@ -215,11 +215,11 @@ export function defineI18n(setup: I18nSetup): I18nRuntime {
     if (ib !== -1) return 1;
     return a.localeCompare(b);
   });
+  // In dev, offer the key-inspection pseudo-locale like any other, so UIs just list `locales`.
+  if (setup.dev === true) locales.push(CIMODE);
   const localeFromCookie = (header: string | null): string | null => {
     const value = cookieValue(header, cookie);
-    if (value === undefined) return null;
-    if (setup.dev === true && value === CIMODE) return CIMODE;
-    return locales.includes(value) ? value : null;
+    return value !== undefined && locales.includes(value) ? value : null;
   };
   const localeFromHeader = (header: string | null): string =>
     resolveLocale(header, locales, setup.defaultLocale);

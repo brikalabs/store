@@ -1,4 +1,4 @@
-import { i18n } from "@/i18n/catalog";
+import { i18n } from "@/i18n/config";
 
 /** The legal/policy documents, one markdown file per locale under `<locale>/<slug>.md`. */
 export type LegalSlug = "terms" | "privacy" | "licenses" | "cookies" | "acceptable-use";

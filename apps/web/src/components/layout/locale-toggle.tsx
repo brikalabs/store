@@ -9,19 +9,30 @@ import { CIMODE } from "@brika/i18n";
 import { Check, ChevronDown, Globe } from "lucide-react";
 import { useLocalePref } from "@/hooks/use-locale-pref";
 import { useT } from "@/i18n";
-import { i18n } from "@/i18n/catalog";
+import { i18n } from "@/i18n/config";
 
 /** The language's name in its own language, capitalized: `fr` -> "Français". */
 function nativeName(code: string): string {
-  const name = new Intl.DisplayNames([code], { type: "language" }).of(code) ?? code;
-  return name.charAt(0).toUpperCase() + name.slice(1);
+  if (code === CIMODE) return "Keys";
+  // Intl.DisplayNames throws on a non-BCP-47 tag; fall back to the raw code for anything exotic.
+  try {
+    const name = new Intl.DisplayNames([code], { type: "language" }).of(code) ?? code;
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  } catch {
+    return code;
+  }
 }
 
 /** The language's name in `inLocale`, following that locale's casing: `ja` in fr -> "japonais". */
 function localizedName(code: string, inLocale: string): string {
-  // Intl.DisplayNames throws on a non-BCP-47 tag like "cimode"; fall back to a real locale.
-  const display = i18n.locales.includes(inLocale) ? inLocale : i18n.defaultLocale;
-  return new Intl.DisplayNames([display], { type: "language" }).of(code) ?? code;
+  if (code === CIMODE) return "show message keys (dev)";
+  const display =
+    inLocale !== CIMODE && i18n.locales.includes(inLocale) ? inLocale : i18n.defaultLocale;
+  try {
+    return new Intl.DisplayNames([display], { type: "language" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
 }
 
 /**
@@ -67,21 +78,6 @@ export function LocaleToggle() {
             </DropdownMenuItem>
           );
         })}
-        {import.meta.env.DEV ? (
-          <DropdownMenuItem
-            onSelect={() => setLocale(CIMODE)}
-            className={cn(
-              "flex flex-col items-start gap-0.5 rounded-xl px-2.5 py-2",
-              locale === CIMODE && "bg-muted",
-            )}
-          >
-            <span className="flex w-full items-center justify-between font-semibold text-foreground text-sm">
-              Keys
-              {locale === CIMODE ? <Check className="size-4 text-brand-ink" /> : null}
-            </span>
-            <span className="text-muted-foreground text-xs">cimode (dev only)</span>
-          </DropdownMenuItem>
-        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

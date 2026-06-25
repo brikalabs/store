@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState } from "react";
-import { i18n } from "@/i18n/catalog";
+import { i18n } from "@/i18n/config";
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 

@@ -5,7 +5,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { LocaleContext, useLocaleController } from "@/hooks/use-locale-pref";
 import { ThemeContext, themeBootScript, useThemeController } from "@/hooks/use-theme";
-import { i18n } from "@/i18n/catalog";
+import { i18n } from "@/i18n/config";
 
 const rootApi = getRouteApi("__root__");
 

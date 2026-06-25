@@ -13,6 +13,5 @@ export const i18n = defineI18n({
   }),
   defaultLocale: "en",
   cookie: "brika-locale",
-  order: ["en", "fr", "es", "de", "ja", "pt-BR"],
   dev: import.meta.env.DEV,
 });
