@@ -43,7 +43,7 @@
   "noScopeDescription": "A plugin must live under a scope you administer. Claim one to get started.",
   "claimScope": "Claim a scope",
   "discoverTitle": "Discover plugins",
-  "verifiedScopedPlugins": "{count, plural, one {# verified, scoped plugin} other {# verified, scoped plugins}}",
+  "verifiedScopedPlugins": "{count, plural, one {# verified plugin} other {# verified plugins}}",
   "filterPlugins": "Filter plugins",
   "capability": "Capability",
   "trust": "Trust",

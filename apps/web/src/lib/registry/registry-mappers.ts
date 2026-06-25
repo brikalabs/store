@@ -43,17 +43,18 @@ export function manifestToDetail(
   if (brikaEngine === undefined) return null;
   const { name, version } = manifest;
   const authorName = personName(manifest.author);
+  // Prefer the registry's verified publisher over the manifest `author`; fall back when unscoped.
+  const author =
+    options.publisher ??
+    (authorName === undefined ? undefined : { id: authorName, name: authorName, verified: false });
   const candidate = {
     name,
     displayName: manifest.displayName,
     description: manifest.description,
     version,
-    // Prefer the registry's verified publisher over the manifest `author`; fall back when unscoped.
-    author:
-      options.publisher ??
-      (authorName === undefined
-        ? undefined
-        : { id: authorName, name: authorName, verified: false }),
+    author,
+    // A plugin is "verified" exactly when its resolved publisher is (scoped + registry-verified).
+    verified: author?.verified ?? false,
     keywords: manifest.keywords ?? [],
     iconUrl: manifest.icon ? assetUrl(name, version, manifest.icon) : undefined,
     screenshots: mapScreenshots(manifest.screenshots, (path) => assetUrl(name, version, path)),

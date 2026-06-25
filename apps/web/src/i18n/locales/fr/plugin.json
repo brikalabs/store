@@ -43,7 +43,7 @@
   "noScopeDescription": "Un plugin doit appartenir à un espace que vous administrez. Réclamez-en un pour commencer.",
   "claimScope": "Réclamer un espace",
   "discoverTitle": "Découvrir des plugins",
-  "verifiedScopedPlugins": "{count, plural, one {# plugin vérifié et scopé} other {# plugins vérifiés et scopés}}",
+  "verifiedScopedPlugins": "{count, plural, one {# plugin vérifié} other {# plugins vérifiés}}",
   "filterPlugins": "Filtrer les plugins",
   "capability": "Capacité",
   "trust": "Confiance",

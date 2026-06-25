@@ -75,11 +75,14 @@ describe("manifestToDetail", () => {
       publisher: { id: "brikalabs", name: "Brika Labs", verified: true },
     });
     expect(detail?.author).toEqual({ id: "brikalabs", name: "Brika Labs", verified: true });
+    // A verified publisher makes the plugin itself verified (drives the shield + verified-only filter).
+    expect(detail?.verified).toBe(true);
   });
 
   test("falls back to the manifest author (unverified) when no publisher is given", () => {
     const detail = manifestToDetail(i18nManifest);
     expect(detail?.author?.verified).toBe(false);
+    expect(detail?.verified).toBe(false);
   });
 
   test("returns null when engines.brika is absent (not a Brika plugin)", () => {

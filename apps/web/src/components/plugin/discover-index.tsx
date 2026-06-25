@@ -2,7 +2,7 @@ import { Switch } from "@brika/clay";
 import type { PluginSummary, SearchDirection } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { Link } from "@tanstack/react-router";
-import { Filter, Search, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import { Filter, ShieldCheck, TrendingUp, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
 import { CAPABILITY_TILES } from "@/components/plugin/capability-tiles";
@@ -38,7 +38,6 @@ export function DiscoverIndex({
   title,
 }: Readonly<{ plugins: PluginSummary[]; total: number; title?: string }>) {
   const t = useT();
-  const [term, setTerm] = useState("");
   const [verifiedOnly, setVerifiedOnly] = useState(true);
   const [field, setField] = useState<SortKey>("downloads");
   const [direction, setDirection] = useState<SearchDirection>("desc");
@@ -47,17 +46,9 @@ export function DiscoverIndex({
   const onlyScope = scopes.length === 1 ? (scopes[0]?.scope ?? null) : null;
   const trending = plugins.slice(0, 5);
   const ranked = sortPlugins(plugins, field, direction);
-  const trusted = verifiedOnly ? ranked.filter((plugin) => plugin.verified) : ranked;
-  // The rail input live-filters the loaded plugins (matching its "Filter plugins" label); the global
-  // header search covers the full catalog.
-  const needle = term.trim().toLowerCase();
-  const shown = needle
-    ? trusted.filter((plugin) =>
-        `${plugin.displayName ?? ""} ${plugin.name} ${plugin.description ?? ""} ${plugin.keywords.join(" ")}`
-          .toLowerCase()
-          .includes(needle),
-      )
-    : trusted;
+  // The store lists only verified, scoped plugins; the toggle narrows to them. Full-catalog search
+  // lives in the global header, so the rail has no input of its own.
+  const shown = verifiedOnly ? ranked.filter((plugin) => plugin.verified) : ranked;
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,23 +77,15 @@ export function DiscoverIndex({
 
       <div className="grid items-start gap-6 lg:grid-cols-[206px_1fr_236px]">
         <aside className="hidden flex-col gap-6 lg:flex">
-          <div className="relative">
-            <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
-            <input
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-              placeholder={t("plugin:filterPlugins")}
-              className="h-10 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/50"
-            />
-          </div>
           <FilterGroup label={t("plugin:capability")} icon={<Filter className="size-3.5" />}>
             {CAPABILITY_TILES.map((tile) => (
               <Link
                 key={tile.key}
                 to="/plugins"
                 search={{ capabilities: [tile.key] }}
-                className="flex items-center justify-between rounded-md px-1 py-1 text-muted-foreground text-sm transition-colors hover:text-foreground"
+                className="flex items-center gap-2.5 rounded-md px-1 py-1 text-muted-foreground text-sm transition-colors hover:text-foreground"
               >
+                <tile.glyph className="size-3.5" />
                 {tile.label}
               </Link>
             ))}
@@ -124,7 +107,7 @@ export function DiscoverIndex({
           </FilterGroup>
         </aside>
 
-        <div className="grid auto-rows-min gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid auto-rows-min gap-3.5 sm:grid-cols-2">
           {shown.map((plugin) => (
             <ListingCard key={plugin.name} plugin={plugin} />
           ))}
