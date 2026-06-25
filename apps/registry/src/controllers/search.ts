@@ -1,5 +1,10 @@
 import { inject } from "@brika/di";
-import type { CatalogEntry, SortClause } from "@brika/registry-core";
+import {
+  type CatalogEntry,
+  SEARCH_CAPABILITIES,
+  SEARCH_SORTS,
+  type SortClause,
+} from "@brika/registry-core";
 import { z } from "zod";
 import { controller, route } from "../http/router";
 import { Downloads, Search } from "../services";
@@ -15,9 +20,6 @@ import { Downloads, Search } from "../services";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 250;
-
-const SORTS = ["relevance", "downloads", "recent", "name"] as const;
-const CAPABILITIES = ["tools", "blocks", "bricks", "sparks", "pages"] as const;
 
 /** A query integer coerced then clamped into `[min, max]`, falling back when absent or unparseable. */
 const clampedInt = (fallback: number, min: number, max: number) =>
@@ -41,7 +43,7 @@ function csvList<T>(raw: string | undefined, map: (value: string) => T | null): 
 function parseSort(raw: string | undefined): SortClause[] {
   return (raw ?? "").split(",").flatMap((token): SortClause[] => {
     const [name, dir] = token.split(":").map((part) => part.trim());
-    const field = SORTS.find((s) => s === name);
+    const field = SEARCH_SORTS.find((s) => s === name);
     if (field === undefined) return [];
     return [dir === "asc" || dir === "desc" ? { field, direction: dir } : { field }];
   });
@@ -63,7 +65,7 @@ const SearchParams = z.object({
   capabilities: z
     .string()
     .optional()
-    .transform((raw) => csvList(raw, (v) => CAPABILITIES.find((c) => c === v) ?? null)),
+    .transform((raw) => csvList(raw, (v) => SEARCH_CAPABILITIES.find((c) => c === v) ?? null)),
   verified: z
     .string()
     .optional()

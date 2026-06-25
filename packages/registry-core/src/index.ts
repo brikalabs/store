@@ -116,6 +116,7 @@ export {
   type ScopeServiceOptions,
   ScopeStore,
 } from "./scope";
+export { SEARCH_CAPABILITIES, SEARCH_SORTS } from "./search";
 export type {
   CatalogEntry,
   SearchCapability,

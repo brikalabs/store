@@ -21,11 +21,13 @@ export interface CatalogEntry {
   readonly downloads?: DownloadStats;
 }
 
-/** A Brika capability facet: a search can require the plugin to declare at least one. */
-export type SearchCapability = "tools" | "blocks" | "bricks" | "sparks" | "pages";
+/** The Brika capability facets a search can filter on (a plugin declaring at least one of a kind). */
+export const SEARCH_CAPABILITIES = ["tools", "blocks", "bricks", "sparks", "pages"] as const;
+export type SearchCapability = (typeof SEARCH_CAPABILITIES)[number];
 
-/** A sortable field. `relevance` needs a text query (skipped otherwise). */
-export type SearchSort = "relevance" | "downloads" | "recent" | "name";
+/** The sortable fields. `relevance` needs a text query (skipped otherwise). */
+export const SEARCH_SORTS = ["relevance", "downloads", "recent", "name"] as const;
+export type SearchSort = (typeof SEARCH_SORTS)[number];
 
 /** Result direction; absent uses the field's natural order (most/newest/best first, A→Z for name). */
 export type SearchDirection = "asc" | "desc";
