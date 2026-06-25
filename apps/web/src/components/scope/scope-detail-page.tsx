@@ -28,6 +28,7 @@ export function ScopeDetailPage() {
   const t = useT();
   const { user } = route.useRouteContext();
   const { scope } = route.useParams();
+  const info = route.useLoaderData();
   const [error, setError] = useState<string | null>(null);
   const { members, reload, leave } = useScopeMemberList(scope, setError);
 
@@ -66,7 +67,9 @@ export function ScopeDetailPage() {
 
       <ErrorBanner>{error}</ErrorBanner>
 
-      {isAdmin && <DisplayNameCard scope={scope} onError={setError} />}
+      {isAdmin && (
+        <DisplayNameCard scope={scope} current={info?.displayName ?? null} onError={setError} />
+      )}
       {isAdmin && <LogoCard scope={scope} onError={setError} />}
       {isAdmin && <ProfileCard scope={scope} onError={setError} />}
       {isAdmin && <DomainsCard scope={scope} onError={setError} />}

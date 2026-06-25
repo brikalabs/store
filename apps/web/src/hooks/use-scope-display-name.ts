@@ -2,9 +2,9 @@ import { useCallback, useState } from "react";
 import { readError, scopePath } from "@/lib/scope-api";
 
 /**
- * The verified-publisher display-name mutation for a scope: POST the trimmed name (or null to clear)
- * and report a failure through `onError`, so the card stays presentational. `save` resolves to whether
- * the call succeeded (the card flips to its "Saved" state on success).
+ * The display-name mutation for a scope: POST the trimmed name (or null to clear) and report a
+ * failure through `onError`, so the card stays presentational. `save` resolves to whether the call
+ * succeeded (the card flips to its "Saved" state on success).
  */
 export function useScopeDisplayName(scope: string, onError: (message: string) => void) {
   const [busy, setBusy] = useState(false);

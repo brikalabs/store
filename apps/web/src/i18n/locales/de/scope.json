@@ -38,7 +38,7 @@
   "saving": "Wird gespeichert…",
   "saved": "Gespeichert",
   "save": "Speichern",
-  "displayNameTitle": "Verifizierter Publisher-Name",
+  "displayNameTitle": "Anzeigename",
   "displayNameDescription": "Der vertrauenswürdige Name, der auf jedem von diesem Scope veröffentlichten Paket angezeigt wird und den Manifest-Autor überschreibt. Leer lassen, um ihn zu entfernen.",
   "displayNamePlaceholder": "z. B. Acme Inc",
   "displayNameAriaLabel": "Anzeigename des verifizierten Publishers",

@@ -38,7 +38,7 @@
   "saving": "Guardando…",
   "saved": "Guardado",
   "save": "Guardar",
-  "displayNameTitle": "Nombre de editor verificado",
+  "displayNameTitle": "Nombre para mostrar",
   "displayNameDescription": "El nombre de confianza que se muestra en cada paquete que publica este scope, anulando al autor del manifest. Déjalo en blanco para borrarlo.",
   "displayNamePlaceholder": "p. ej. Acme Inc",
   "displayNameAriaLabel": "Nombre visible del editor verificado",
