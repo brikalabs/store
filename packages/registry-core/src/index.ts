@@ -17,7 +17,7 @@ export {
   type AuditRecord,
   auditEntry,
 } from "./audit";
-export type { CatalogEntry, CatalogReader } from "./catalog";
+export type { CatalogEntry } from "./catalog";
 export {
   DeviceConfig,
   type DeviceGrant,

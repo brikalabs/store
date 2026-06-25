@@ -1,12 +1,12 @@
 import { inject } from "@brika/di";
 import type { CatalogEntry, SearchCapability, SearchSort } from "@brika/registry-core";
 import { controller, route } from "../http/router";
-import { Catalog, Downloads, Search } from "../services";
+import { Downloads, Search } from "../services";
 
 /**
- * `GET /-/v1/packages` - the bounded catalog of every published package's latest (non-yanked)
- * version, so the storefront can enumerate `@brika/*` plugins. `GET /-/v1/search` is the same
- * shape but filtered/ranked/paginated in SQL (FTS + tag/capability) for actual searches.
+ * `GET /-/v1/search` (and its `/-/v1/packages` enumerate alias): every published package's latest
+ * (non-yanked, non-taken-down) version, filtered/ranked/paginated in SQL (FTS + tag/capability) over
+ * the search index. A bare request with no query/filters returns the whole bounded catalog.
  */
 
 const DEFAULT_LIMIT = 50;
@@ -21,17 +21,6 @@ function clampInt(raw: string | null, fallback: number, min: number, max: number
   return Math.min(Math.max(value, min), max);
 }
 
-/** Free-text match over the fields a person would search by. */
-function matchesQuery(entry: CatalogEntry, query: string): boolean {
-  const manifest = entry.manifest;
-  const keywords = Array.isArray(manifest.keywords) ? manifest.keywords : [];
-  const haystack = [entry.name, manifest.displayName, manifest.description, ...keywords]
-    .filter((part): part is string => typeof part === "string")
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(query.toLowerCase());
-}
-
 /** Attach per-package install stats to a page of entries (the whole-catalog stats are never loaded). */
 async function withDownloads(entries: readonly CatalogEntry[]) {
   const stats = await inject(Downloads).statsFor(entries.map((entry) => entry.name));
@@ -40,19 +29,6 @@ async function withDownloads(entries: readonly CatalogEntry[]) {
 
 function jsonPage(packages: unknown[], total: number): Response {
   return Response.json({ packages, total }, { headers: { "cache-control": "public, max-age=60" } });
-}
-
-export async function handleCatalog(request: Request): Promise<Response> {
-  const url = new URL(request.url);
-  const limit = clampInt(url.searchParams.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, Number.MAX_SAFE_INTEGER);
-  const text = url.searchParams.get("text")?.trim();
-
-  const all = await inject(Catalog).list();
-  const filtered = text ? all.filter((entry) => matchesQuery(entry, text)) : all;
-  const page = filtered.slice(offset, offset + limit);
-
-  return jsonPage(await withDownloads(page), filtered.length);
 }
 
 /** Comma-separated `tags`, deduped and lowercased for case-insensitive AND-matching. */
@@ -95,7 +71,8 @@ export const catalogController = controller({
   name: "catalog",
   prefix: "/-/v1",
   routes: [
-    route.get({ path: "/packages", handler: ({ req }) => handleCatalog(req) }),
+    // `/packages` is the no-filter enumerate; both are served by the same SQL-backed search.
+    route.get({ path: "/packages", handler: ({ req }) => handleSearch(req) }),
     route.get({ path: "/search", handler: ({ req }) => handleSearch(req) }),
   ],
 });

@@ -1,5 +1,4 @@
 export { D1AuditLog } from "./d1-audit";
-export { D1CatalogReader } from "./d1-catalog";
 export { D1DeviceStore } from "./d1-device";
 export { D1DownloadStore, DownloadsClock } from "./d1-downloads";
 export { D1MetadataReader } from "./d1-metadata";

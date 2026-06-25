@@ -17,12 +17,3 @@ export interface CatalogEntry {
   /** Install stats, attached by the handler per page (not by the reader). */
   readonly downloads?: DownloadStats;
 }
-
-/**
- * Read port for the package catalog (npm has no list endpoint; this is our addition).
- * Returns every package's latest non-yanked version; filtering/pagination/stats are the
- * caller's concern.
- */
-export interface CatalogReader {
-  list(): Promise<CatalogEntry[]>;
-}

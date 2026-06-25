@@ -30,7 +30,7 @@ export const ResolveDisplayName =
 /** Download-counter store (registry-only). */
 export const Downloads = token<DownloadStore>("Downloads");
 
-export { Audit, Catalog, Search, Tokens } from "@brika/registry-runtime";
+export { Audit, Search, Tokens } from "@brika/registry-runtime";
 
 /** The runtime values the platform hands the registry per request (or a test supplies). */
 export interface RegistryConfig {

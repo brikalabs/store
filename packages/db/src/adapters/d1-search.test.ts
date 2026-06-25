@@ -146,6 +146,12 @@ describe("D1SearchReader index maintenance", () => {
     expect(names(await search({ tags: ["geo"] }))).toEqual(["@brika/charts"]);
   });
 
+  test("an operator takedown drops the package from search (never leaks)", async () => {
+    await writer.setTakedown("@brika/maps", "1.0.0", "dmca");
+    expect(names(await search({ q: "map" }))).toEqual([]);
+    expect(names(await search({ capability: "tools" }))).toEqual(["@brika/auth"]);
+  });
+
   test("re-publishing updates the indexed keywords and capabilities", async () => {
     await publish(
       "@brika/maps",
