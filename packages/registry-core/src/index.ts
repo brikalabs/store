@@ -66,7 +66,6 @@ export {
   buildAbbreviatedPackument,
   buildPackument,
   type Packument,
-  type PackumentDist,
   tarballPath,
   tarballUrl,
   trimTrailingSlash,

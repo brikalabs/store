@@ -26,14 +26,6 @@ export function tarballUrl(baseUrl: string, name: string, version: string): stri
   return `${trimTrailingSlash(baseUrl)}/${tarballPath(name, version)}`;
 }
 
-export interface PackumentDist {
-  readonly tarball: string;
-  readonly integrity: string;
-  readonly shasum: string;
-  /** Packed (gzipped) tarball size in bytes. */
-  readonly size?: number;
-}
-
 /** An npm-compatible packument (the document `bun add` resolves against). */
 export interface Packument {
   readonly name: string;

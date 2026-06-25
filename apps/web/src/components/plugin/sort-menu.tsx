@@ -4,7 +4,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@brika/clay";
-import type { PluginSummary, SearchDirection } from "@brika/registry-contract";
+import type { PluginSummary, SearchDirection, SearchSort } from "@brika/registry-contract";
 import {
   ArrowDownAZ,
   ArrowDownWideNarrow,
@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { type AppKey, useT } from "@/i18n";
 
-export type SortKey = "relevance" | "downloads" | "recent" | "name";
+/** The web's sort vocabulary is the contract's, named for the UI that drives it. */
+export type SortKey = SearchSort;
 
 /** Each field's natural direction: the toggle starts here, and picking a field resets to it. */
 const NATURAL: Record<SortKey, SearchDirection> = {
