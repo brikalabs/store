@@ -7,8 +7,8 @@ export type AppCatalog = typeof enBarrel;
 /** Every valid `"namespace:key"` for the app. A typo here is a compile error on the global `useT()`. */
 export type AppKey = MessageKey<AppCatalog>;
 /** Bare keys of a namespace, for typing key tables (e.g. the footer columns). */
-export type FooterKey = keyof AppCatalog["footer"] & string;
-export type NavKey = keyof AppCatalog["nav"] & string;
+export type FooterKey = keyof AppCatalog["footer"];
+export type NavKey = keyof AppCatalog["nav"];
 
 /**
  * The app's i18n surface, all from one import:

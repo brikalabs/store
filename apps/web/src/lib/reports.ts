@@ -18,7 +18,8 @@ export type ReportReason = (typeof REPORT_REASON_KEYS)[number];
 
 /** Narrow an arbitrary string to a known reason code. */
 export function isReportReason(key: string): key is ReportReason {
-  return REPORT_REASON_KEYS.some((reason) => reason === key);
+  const known: readonly string[] = REPORT_REASON_KEYS;
+  return known.includes(key);
 }
 
 /** i18n key for a reason's short label, falling back to the generic "other" label for unknown codes. */

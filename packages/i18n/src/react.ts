@@ -1,8 +1,11 @@
 import { createContext, createElement, type ReactNode, useContext, useMemo } from "react";
 import {
   type Catalog,
-  type CatalogShape,
   createTranslator,
+  type DateLike,
+  formatDate,
+  formatNumber,
+  formatRelative,
   type MessageKey,
   type Translate,
 } from "./index";
@@ -60,7 +63,7 @@ export function useLocale(): string {
 }
 
 /** Hooks bound to a catalog's KEY shape: `useT()` is fully typed, `useT("ns")` is scoped + typed. */
-export interface TypedI18n<C extends CatalogShape> {
+export interface TypedI18n<C extends Catalog> {
   useT(): Translate<MessageKey<C>>;
   useT<N extends keyof C & string>(namespace: N): Translate<keyof C[N] & string>;
   useLocale(): string;
@@ -71,63 +74,24 @@ export interface TypedI18n<C extends CatalogShape> {
  * casts: `export const { useT, useLocale } = createI18n<typeof enCatalog>()`. It is the same runtime
  * hooks, viewed through the catalog's literal-key types.
  */
-export function createI18n<C extends CatalogShape>(): TypedI18n<C> {
+export function createI18n<C extends Catalog>(): TypedI18n<C> {
   return { useT, useLocale };
 }
 
-const SHORT_DATE: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
-
-const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ["year", 31_536_000_000],
-  ["month", 2_592_000_000],
-  ["week", 604_800_000],
-  ["day", 86_400_000],
-  ["hour", 3_600_000],
-  ["minute", 60_000],
-];
-
-function timeOf(value: string | Date | undefined): number | undefined {
-  if (value === undefined) return undefined;
-  const ms = value instanceof Date ? value.getTime() : new Date(value).getTime();
-  return Number.isNaN(ms) ? undefined : ms;
-}
-
 /** A localized date formatter for the active locale. Returns "" for absent/invalid input. */
-export function useDateFormat(
-  options: Intl.DateTimeFormatOptions = SHORT_DATE,
-): (value: string | Date | undefined) => string {
+export function useDateFormat(options?: Intl.DateTimeFormatOptions): (value: DateLike) => string {
   const locale = useLocale();
-  return useMemo(() => {
-    const format = new Intl.DateTimeFormat(locale, options);
-    return (value) => {
-      const ms = timeOf(value);
-      return ms === undefined ? "" : format.format(ms);
-    };
-  }, [locale, options]);
+  return useMemo(() => (value: DateLike) => formatDate(locale, value, options), [locale, options]);
 }
 
-/** A localized coarse relative-time formatter ("2 days ago"/"now"). Returns "" for absent/invalid input. */
-export function useRelativeTime(): (value: string | Date | undefined) => string {
+/** A localized coarse relative-time formatter ("2 days ago"/"now"). Returns "" for absent/invalid. */
+export function useRelativeTime(): (value: DateLike) => string {
   const locale = useLocale();
-  return useMemo(() => {
-    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
-    return (value) => {
-      const ms = timeOf(value);
-      if (ms === undefined) return "";
-      const diff = ms - Date.now();
-      for (const [unit, step] of RELATIVE_UNITS) {
-        if (Math.abs(diff) >= step) return rtf.format(Math.round(diff / step), unit);
-      }
-      return rtf.format(0, "second");
-    };
-  }, [locale]);
+  return useMemo(() => (value: DateLike) => formatRelative(locale, value, Date.now()), [locale]);
 }
 
 /** A localized number formatter for the active locale. */
 export function useNumberFormat(options?: Intl.NumberFormatOptions): (value: number) => string {
   const locale = useLocale();
-  return useMemo(() => {
-    const format = new Intl.NumberFormat(locale, options);
-    return (value) => format.format(value);
-  }, [locale, options]);
+  return useMemo(() => (value: number) => formatNumber(locale, value, options), [locale, options]);
 }

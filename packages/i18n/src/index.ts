@@ -3,24 +3,23 @@ import { IntlMessageFormat } from "intl-messageformat";
 /** One namespace's messages: key -> ICU MessageFormat source string. */
 export type Namespace = Record<string, string>;
 
-/** The structural shape of a catalog: namespace -> its messages. */
-export type CatalogShape = Record<string, Namespace>;
-
-/** One locale's catalog: namespace -> its messages. */
-export type Catalog = CatalogShape;
+/** One locale's catalog: namespace -> its messages. Also the structural bound for typed catalogs. */
+export type Catalog = Record<string, Namespace>;
 
 /** Interpolation values for a message (`{count}`, `{name}`, ...). */
 export type Values = Record<string, string | number | Date | boolean>;
 
+/** A timestamp input: an ISO string, a `Date`, or absent. */
+export type DateLike = string | Date | undefined;
+
 /**
- * Every valid key for catalog shape `C`: each `"namespace:key"`, plus the bare keys of the default
- * namespace `D`. Derived by `tsc` from a typed (`as const`) catalog, so a typo is a compile error
- * with no codegen step. Collapses to `string` when `C` is the wide {@link CatalogShape} (e.g. the
- * package's untyped React hook), keeping unparameterized use loose.
+ * Every valid `"namespace:key"` for catalog `C`. Derived by `tsc` from a typed (`as const`) catalog,
+ * so a typo is a compile error with no codegen step. Collapses to `string` when `C` is the wide
+ * {@link Catalog} (e.g. the package's untyped React hook), keeping unparameterized use loose.
  */
-export type MessageKey<C extends CatalogShape, D extends keyof C & string = never> =
-  | { [N in keyof C & string]: `${N}:${keyof C[N] & string}` }[keyof C & string]
-  | (D extends never ? never : keyof C[D & keyof C] & string);
+export type MessageKey<C extends Catalog> = Catalog extends C
+  ? string
+  : { [N in keyof C & string]: `${N}:${keyof C[N] & string}` }[keyof C & string];
 
 /** Resolve an ICU message by key. `K` carries the literal key union when the catalog is typed. */
 export type Translate<K extends string = string> = (key: K, values?: Values) => string;
@@ -31,17 +30,16 @@ export type Translate<K extends string = string> = (key: K, values?: Values) => 
  * are visible in the UI rather than silently empty. Pass a typed (`as const`) catalog to get a
  * `Translate` whose keys are checked at compile time.
  */
-export function createTranslator<C extends CatalogShape, D extends keyof C & string = never>(
+export function createTranslator<C extends Catalog>(
   locale: string,
   catalog: C,
-  defaultNamespace?: D,
-): Translate<MessageKey<C, D>> {
-  const shape: CatalogShape = catalog;
-  const fallbackNamespace = defaultNamespace ?? "common";
+  defaultNamespace = "common",
+): Translate<MessageKey<C>> {
+  const shape: Catalog = catalog;
   const cache = new Map<string, IntlMessageFormat>();
   return (key, values) => {
     const sep = key.indexOf(":");
-    const ns = sep === -1 ? fallbackNamespace : key.slice(0, sep);
+    const ns = sep === -1 ? defaultNamespace : key.slice(0, sep);
     const id = sep === -1 ? key : key.slice(sep + 1);
     const message = shape[ns]?.[id];
     if (message === undefined) return key;
@@ -50,8 +48,7 @@ export function createTranslator<C extends CatalogShape, D extends keyof C & str
       format = new IntlMessageFormat(message, locale);
       cache.set(key, format);
     }
-    const out = format.format(values);
-    return typeof out === "string" ? out : String(out);
+    return String(format.format(values));
   };
 }
 
@@ -84,12 +81,13 @@ export function buildCatalogs(modules: Record<string, Namespace>): Record<string
   const catalogs: Record<string, Catalog> = {};
   for (const [path, messages] of Object.entries(modules)) {
     const match = /\/([^/]+)\/([^/]+)\.json$/.exec(path);
-    if (!match) continue;
-    const [, locale, namespace] = match;
-    if (!locale || !namespace) continue;
-    const catalog = catalogs[locale] ?? {};
-    catalog[namespace] = messages;
-    catalogs[locale] = catalog;
+    const locale = match?.[1];
+    const namespace = match?.[2];
+    if (locale && namespace) {
+      const catalog = catalogs[locale] ?? {};
+      catalog[namespace] = messages;
+      catalogs[locale] = catalog;
+    }
   }
   return catalogs;
 }
@@ -101,4 +99,52 @@ export function pickCatalog(
   fallback: string,
 ): Catalog {
   return catalogs[locale] ?? catalogs[fallback] ?? {};
+}
+
+const SHORT_DATE: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
+
+const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 31_536_000_000],
+  ["month", 2_592_000_000],
+  ["week", 604_800_000],
+  ["day", 86_400_000],
+  ["hour", 3_600_000],
+  ["minute", 60_000],
+];
+
+function timeOf(value: DateLike): number | undefined {
+  if (value === undefined) return undefined;
+  const ms = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isNaN(ms) ? undefined : ms;
+}
+
+/** A localized date for `value` in `locale`; "" for absent/invalid input. */
+export function formatDate(
+  locale: string,
+  value: DateLike,
+  options: Intl.DateTimeFormatOptions = SHORT_DATE,
+): string {
+  const ms = timeOf(value);
+  return ms === undefined ? "" : new Intl.DateTimeFormat(locale, options).format(ms);
+}
+
+/** A localized coarse relative time of `value` against `nowMs` ("2 days ago"/"now"); "" if absent. */
+export function formatRelative(locale: string, value: DateLike, nowMs: number): string {
+  const ms = timeOf(value);
+  if (ms === undefined) return "";
+  const diff = ms - nowMs;
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  for (const [unit, step] of RELATIVE_UNITS) {
+    if (Math.abs(diff) >= step) return rtf.format(Math.round(diff / step), unit);
+  }
+  return rtf.format(0, "second");
+}
+
+/** A localized number for `value` in `locale`. */
+export function formatNumber(
+  locale: string,
+  value: number,
+  options?: Intl.NumberFormatOptions,
+): string {
+  return new Intl.NumberFormat(locale, options).format(value);
 }
