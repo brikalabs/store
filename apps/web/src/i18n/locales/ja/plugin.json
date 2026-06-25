@@ -48,7 +48,6 @@
   "capability": "機能",
   "trust": "信頼性",
   "verifiedOnly": "認証済みのみ",
-  "inSpace": "スペース {scope}",
   "trending": "トレンド",
   "topScopes": "トップスコープ",
   "pluginCount": "{count, plural, other {# 個のプラグイン}}",

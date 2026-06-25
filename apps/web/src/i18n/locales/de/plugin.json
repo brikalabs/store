@@ -48,7 +48,6 @@
   "capability": "Fähigkeit",
   "trust": "Vertrauen",
   "verifiedOnly": "Nur verifizierte",
-  "inSpace": "Bereich {scope}",
   "trending": "Im Trend",
   "topScopes": "Top-Scopes",
   "pluginCount": "{count, plural, one {# Plugin} other {# Plugins}}",

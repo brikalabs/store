@@ -48,7 +48,6 @@
   "capability": "Capability",
   "trust": "Trust",
   "verifiedOnly": "Verified only",
-  "inSpace": "space {scope}",
   "trending": "Trending",
   "topScopes": "Popular spaces",
   "pluginCount": "{count, plural, one {# plugin} other {# plugins}}",

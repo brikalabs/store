@@ -43,7 +43,6 @@ export function DiscoverIndex({
   const [direction, setDirection] = useState<SearchDirection>("desc");
   const heading = title ?? t("plugin:discoverTitle");
   const scopes = topScopes(plugins, 5);
-  const onlyScope = scopes.length === 1 ? (scopes[0]?.scope ?? null) : null;
   const trending = plugins.slice(0, 5);
   const ranked = sortPlugins(plugins, field, direction);
   // The store lists only verified, scoped plugins; the toggle narrows to them. Full-catalog search
@@ -57,7 +56,6 @@ export function DiscoverIndex({
           <h1 className="font-bold font-heading text-3xl tracking-tight">{heading}</h1>
           <p className="mt-1 text-muted-foreground text-sm">
             {t("plugin:verifiedScopedPlugins", { count: total })}
-            {onlyScope ? ` · ${t("plugin:inSpace", { scope: onlyScope })}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-3">
