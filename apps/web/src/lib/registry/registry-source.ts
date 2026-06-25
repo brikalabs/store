@@ -88,13 +88,17 @@ export interface PluginSearchParams {
   readonly offset: number;
 }
 
+/** Serialize a repeatable filter as a comma list, or drop it when empty. */
+const csv = (values?: readonly string[]): string | undefined =>
+  values && values.length > 0 ? values.join(",") : undefined;
+
 /** Search hosted `@brika/*` plugins via the registry's SQL-backed search endpoint (FTS + filters + sort). */
 export async function searchRegistryPlugins(params: PluginSearchParams): Promise<SearchResponse> {
   return toCatalogResult(
     await registryGet("/-/v1/search", CatalogResponse, {
       text: params.q?.trim(),
-      tags: params.tags?.length ? params.tags.join(",") : undefined,
-      capabilities: params.capabilities?.length ? params.capabilities.join(",") : undefined,
+      tags: csv(params.tags),
+      capabilities: csv(params.capabilities),
       sort: params.sort,
       limit: params.limit,
       offset: params.offset,
