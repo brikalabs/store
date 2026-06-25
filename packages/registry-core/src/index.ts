@@ -115,7 +115,6 @@ export {
   type ScopeServiceOptions,
   ScopeStore,
 } from "./scope";
-export { SEARCH_CAPABILITIES, SEARCH_SORTS } from "./search";
 export type {
   CatalogEntry,
   SearchCapability,
@@ -126,6 +125,7 @@ export type {
   SearchSort,
   SortClause,
 } from "./search";
+export { SEARCH_CAPABILITIES, SEARCH_SORTS } from "./search";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export type { TokenPrincipal, TokenStore } from "./tokens";
 export {
