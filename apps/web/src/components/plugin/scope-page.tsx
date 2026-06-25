@@ -1,8 +1,9 @@
-import { Globe, ShieldCheck } from "lucide-react";
+import { Globe } from "lucide-react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { ProfileLinks } from "@/components/plugin/profile-links";
 import { PublishedPlugins } from "@/components/plugin/published-plugins";
 import { Stat } from "@/components/plugin/showcase-card";
+import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import type { ScopePage } from "@/lib/registry/registry";
@@ -13,8 +14,8 @@ import type { ScopePage } from "@/lib/registry/registry";
  */
 export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
   const t = useT();
-  const { scope, displayName, verified, description, links, hasIcon, verifiedDomains, plugins } =
-    page;
+  const { scope, displayName, description, links, hasIcon, verifiedDomains, plugins } = page;
+  const verifiedOrg = verifiedDomains.length > 0;
   const name = displayName ?? scope;
   const weekly = plugins.reduce((sum, plugin) => sum + plugin.downloadsWeekly, 0);
 
@@ -28,14 +29,9 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
           size={84}
         />
         <div className="flex-1">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <h1 className="font-bold font-heading text-3xl tracking-tight">{name}</h1>
-            {verified ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-2.5 py-1 font-semibold text-brand-ink text-xs">
-                <ShieldCheck className="size-3.5" />
-                {t("plugin:verified")}
-              </span>
-            ) : null}
+            {verifiedOrg ? <VerifiedBadge className="size-6" /> : null}
           </div>
           <p className="mt-1 font-mono text-muted-foreground text-sm">{scope}</p>
           {description !== null && description.length > 0 ? (
@@ -48,11 +44,11 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
                 <span
                   key={domain}
                   title={t("plugin:verifiedDomain")}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3 py-1 font-medium text-brand-ink text-xs"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 font-medium text-sky-600 text-xs dark:text-sky-400"
                 >
                   <Globe className="size-3.5" />
                   {domain}
-                  <ShieldCheck className="size-3.5" />
+                  <VerifiedBadge className="size-3.5" />
                 </span>
               ))}
             </div>
