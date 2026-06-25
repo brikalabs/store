@@ -23,5 +23,6 @@
   "pagerPrevious": "Précédent",
   "pagerNext": "Suivant",
   "pagerPage": "Page",
+  "pagerShort": "{current} / {total}",
   "reviewCount": "{count, plural, one {# avis} other {# avis}}"
 }

@@ -2,8 +2,8 @@ import { Checkbox } from "@brika/clay/components/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
 import { CircleCheck, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { PageNav, usePagedList } from "@/components/clay/pagination";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
-import { OperatorPager, useClientPage } from "@/components/operator/operator-pager";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import {
   BulkBar,
@@ -145,7 +145,7 @@ export function OperatorScopesPage() {
     return sorted; // "newest" keeps the server order
   }, [list.items, facet, sort]);
 
-  const { page, setPage, pageCount, pageItems } = useClientPage(visible);
+  const { pageItems, pagination, setPage } = usePagedList(visible, 20);
 
   // Scope the selection to what's on screen, so a facet/search change never takes down a scope the
   // operator can no longer see.
@@ -191,7 +191,7 @@ export function OperatorScopesPage() {
             />
           ))}
         </ul>
-        <OperatorPager page={page} pageCount={pageCount} onPage={setPage} />
+        <PageNav pagination={pagination} onPageChange={setPage} className="pt-3" />
       </>
     );
   }

@@ -2,14 +2,16 @@ import { Switch } from "@brika/clay";
 import type { PluginSummary, SearchDirection } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Filter, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import { Filter, ShieldCheck, TrendingUp, Users } from "lucide-react";
 import type { ReactNode } from "react";
+import { PageNav } from "@/components/clay/pagination";
 import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
 import { CAPABILITY_TILES } from "@/components/plugin/capability-tiles";
 import { ListingCard } from "@/components/plugin/listing-card";
 import { type SortKey, SortMenu } from "@/components/plugin/sort-menu";
 import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { useT } from "@/i18n";
+import { paginate } from "@/lib/pagination";
 
 type Scope = { scope: string; name: string; count: number; verified: boolean };
 
@@ -129,7 +131,12 @@ export function DiscoverIndex({
               <ListingCard key={plugin.name} plugin={plugin} />
             ))}
           </div>
-          {page ? <Pager page={page} /> : null}
+          {page ? (
+            <PageNav
+              pagination={paginate(page.total, { limit: page.pageSize, offset: page.offset })}
+              onPageChange={(p) => page.onChange((p - 1) * page.pageSize)}
+            />
+          ) : null}
         </div>
 
         <aside className="hidden flex-col gap-5 lg:flex">
@@ -193,30 +200,6 @@ export function DiscoverIndex({
           ) : null}
         </aside>
       </div>
-    </div>
-  );
-}
-
-/** Prev / next page controls, shown only when the catalog spills past one page. */
-function Pager({ page }: Readonly<{ page: PageControl }>) {
-  const t = useT();
-  const pages = Math.ceil(page.total / page.pageSize);
-  if (pages <= 1) return null;
-  const current = Math.floor(page.offset / page.pageSize) + 1;
-  const step = (delta: number) => page.onChange(Math.max(0, page.offset + delta * page.pageSize));
-  const btn =
-    "inline-flex size-9 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground outline-none transition-colors hover:border-brand/40 hover:text-foreground disabled:opacity-40";
-  return (
-    <div className="flex items-center justify-center gap-3">
-      <button type="button" onClick={() => step(-1)} disabled={current === 1} className={btn}>
-        <ChevronLeft className="size-4" />
-      </button>
-      <span className="text-muted-foreground text-sm tabular-nums">
-        {t("plugin:pageOf", { current, total: pages })}
-      </span>
-      <button type="button" onClick={() => step(1)} disabled={current >= pages} className={btn}>
-        <ChevronRight className="size-4" />
-      </button>
     </div>
   );
 }

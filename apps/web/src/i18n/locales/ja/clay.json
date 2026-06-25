@@ -23,5 +23,6 @@
   "pagerPrevious": "前へ",
   "pagerNext": "次へ",
   "pagerPage": "ページ",
+  "pagerShort": "{current} / {total}",
   "reviewCount": "{count, plural, other {# 件のレビュー}}"
 }

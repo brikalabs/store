@@ -4,8 +4,8 @@ import type { Translate } from "@brika/i18n";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Flag, Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
+import { PageNav, usePagedList } from "@/components/clay/pagination";
 import { PluginIcon } from "@/components/clay/plugin-icon";
-import { OperatorPager, useClientPage } from "@/components/operator/operator-pager";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import {
   BulkBar,
@@ -79,7 +79,7 @@ export function OperatorPluginsPage() {
     return rows;
   }, [list.items, facet, sort]);
 
-  const { page, setPage, pageCount, pageItems } = useClientPage(visible);
+  const { pageItems, pagination, setPage } = usePagedList(visible, 20);
 
   // Scope the selection to what's actually on screen: a facet/search change drops out-of-view picks
   // from the count and the bulk payload, so the operator only ever acts on plugins they can see.
@@ -137,7 +137,7 @@ export function OperatorPluginsPage() {
             />
           ))}
         </ul>
-        <OperatorPager page={page} pageCount={pageCount} onPage={setPage} />
+        <PageNav pagination={pagination} onPageChange={setPage} className="pt-3" />
       </>
     );
   }
