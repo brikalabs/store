@@ -1,0 +1,18 @@
+{
+  "directionLabel": "表示方向",
+  "directionSpotlight": "スポットライト",
+  "directionConsole": "コンソール",
+  "badgeCount": "{count, plural, other {# 個のプラグイン、さらに増加中}}",
+  "heroTitle": "あなたの Brika ハブのためのマーケットプレイス",
+  "heroSubtitle": "プラグインを見つけて、比較し、レビューしましょう。認証済みでスコープ付きのプラグインを厳選したレジストリです。",
+  "searchCta": "ストアを検索",
+  "browseAll": "すべて閲覧",
+  "railFeatured": "注目",
+  "railTrending": "今週のトレンド",
+  "seeAll": "すべて見る",
+  "capabilityHeading": "機能で閲覧",
+  "explore": "探す",
+  "byAuthor": "作者：{author}",
+  "noDescription": "説明はありません。",
+  "viewPlugin": "プラグインを表示"
+}

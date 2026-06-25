@@ -1,0 +1,10 @@
+{
+  "notFoundTitle": "Dieser Brick fehlt in der Wand.",
+  "notFoundMessage": "Wir haben jedes Plugin durchsucht und konnten diese Seite nicht finden. Sie wurde entweder zurückgezogen, falsch eingegeben oder nie ins Leben gemauert.",
+  "backToStore": "Zurück zum Store",
+  "searchPlugins": "Plugins durchsuchen",
+  "serverErrorTitle": "Ein Spark hat gezündet, aber daneben.",
+  "serverErrorMessage": "Etwas auf unserer Seite hat während des Renderings eine Ausnahme geworfen. Der diensthabende Maurer wurde verständigt, geben Sie ihm einen Moment und versuchen Sie es erneut.",
+  "tryAgain": "Erneut versuchen",
+  "statusPage": "Statusseite"
+}

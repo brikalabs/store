@@ -1,0 +1,15 @@
+{
+  "title": "Brika CLI を認可",
+  "subtitle": "ターミナルに表示されているコードを確認して、CLI があなたの代わりに公開できるようにします。",
+  "signInToContinue": "GitHub でサインインして続行",
+  "authorizedTitle": "デバイスが認可されました",
+  "authorizedBody": "ターミナルに戻ることができます。",
+  "codeError": "そのコードは無効か、期限切れか、すでに使用済みです。",
+  "authorizing": "認可中…",
+  "authorizeCta": "デバイスを認可",
+  "approveHintBefore": "このデバイスで",
+  "approveHintAfter": "を実行した場合にのみ承認してください。",
+  "expiryWarning": "このコードは10分で期限切れになります。誰とも共有しないでください。",
+  "signedInAs": "サインイン中",
+  "yourAccount": "あなたのアカウント"
+}

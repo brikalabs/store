@@ -1,0 +1,10 @@
+{
+  "notFoundTitle": "Este brick não está na parede.",
+  "notFoundMessage": "Vasculhamos cada plugin e não encontramos essa página. Ou ela foi despublicada, ou houve um erro de digitação, ou ela nunca foi construída.",
+  "backToStore": "Voltar à loja",
+  "searchPlugins": "Buscar plugins",
+  "serverErrorTitle": "Um spark deu defeito.",
+  "serverErrorMessage": "Algo do nosso lado lançou uma exceção durante a renderização. O pedreiro de plantão já foi acionado, aguarde um instante e tente novamente.",
+  "tryAgain": "Tentar novamente",
+  "statusPage": "Página de status"
+}

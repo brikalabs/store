@@ -2,7 +2,7 @@ import { buildCatalogs, type Catalog, pickCatalog } from "@brika/i18n";
 import { parseCookies } from "@/lib/auth/auth-cookies";
 
 /** Locales we ship UI strings for. Add one by dropping `locales/<locale>/<namespace>.json` files. */
-export const SUPPORTED_LOCALES = ["en", "fr"] as const;
+export const SUPPORTED_LOCALES = ["en", "fr", "es", "de", "ja", "pt-BR"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "en";
 

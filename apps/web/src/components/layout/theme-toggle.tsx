@@ -25,7 +25,7 @@ export function ThemeToggle({ className }: Readonly<{ className?: string }>) {
       title={label}
       onClick={() => setMode(NEXT[mode])}
       className={cn(
-        "inline-flex size-[38px] items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground",
+        "inline-flex size-[38px] items-center justify-center rounded-[10px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground",
         className,
       )}
     >

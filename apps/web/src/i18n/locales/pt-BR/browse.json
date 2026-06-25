@@ -1,0 +1,12 @@
+{
+  "plugins": "{count, plural, one {# plugin} other {# plugins}}",
+  "scopes": "{count, plural, one {# escopo} other {# escopos}}",
+  "browseHeading": "Explorar plugins",
+  "resultsFor": "Exibindo resultados para",
+  "scopesHeading": "Escopos",
+  "pluginsHeading": "Plugins",
+  "scopeBadge": "Escopo",
+  "viewScope": "Ver escopo",
+  "emptyTitle": "Nenhum plugin encontrado",
+  "emptyDescription": "Tente outra busca ou publique um no registro Brika."
+}

@@ -1,0 +1,7 @@
+{
+  "forbidden": "Você não tem permissão para fazer isso.",
+  "invalid": "A solicitação era inválida.",
+  "exists": "Isso já existe.",
+  "too_large": "Isso é grande demais.",
+  "rejected": "A solicitação foi rejeitada."
+}

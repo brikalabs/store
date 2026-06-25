@@ -35,7 +35,9 @@ export function LocaleToggle() {
         className="group inline-flex h-[38px] items-center gap-1.5 rounded-[10px] border border-border bg-card px-2.5 text-muted-foreground outline-none transition-colors hover:text-foreground"
       >
         <Globe className="size-4" />
-        <span className="font-semibold text-foreground text-sm">{locale.toUpperCase()}</span>
+        <span className="font-semibold text-foreground text-sm">
+          {(locale.split("-")[0] ?? locale).toUpperCase()}
+        </span>
         <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" sideOffset={8} className="w-64 rounded-2xl p-1.5">

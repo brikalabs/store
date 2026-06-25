@@ -1,0 +1,19 @@
+{
+  "tagline": "Der Marktplatz für Brika-Plugins. Ein schnelles, durchsuchbares Zuhause für jedes Brika-Plugin.",
+  "copyright": "© {year} Brika",
+  "product": "Produkt",
+  "developers": "Entwickler",
+  "legal": "Rechtliches",
+  "browsePlugins": "Plugins durchsuchen",
+  "trending": "Im Trend",
+  "categories": "Kategorien",
+  "publish": "Plugin veröffentlichen",
+  "documentation": "Dokumentation",
+  "apiReference": "API-Referenz",
+  "registryContract": "Registry-Vertrag",
+  "status": "Status",
+  "terms": "Nutzungsbedingungen",
+  "privacy": "Datenschutzerklärung",
+  "licenses": "Lizenzen",
+  "cookies": "Cookie-Einstellungen"
+}

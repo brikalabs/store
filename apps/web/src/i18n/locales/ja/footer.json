@@ -1,0 +1,19 @@
+{
+  "tagline": "Brika プラグインのためのマーケットプレイス。すべての Brika プラグインのための、高速で検索可能な拠点。",
+  "copyright": "© {year} Brika",
+  "product": "プロダクト",
+  "developers": "開発者",
+  "legal": "法的情報",
+  "browsePlugins": "プラグインを閲覧",
+  "trending": "トレンド",
+  "categories": "カテゴリー",
+  "publish": "プラグインを公開",
+  "documentation": "ドキュメント",
+  "apiReference": "API リファレンス",
+  "registryContract": "レジストリ契約",
+  "status": "ステータス",
+  "terms": "利用規約",
+  "privacy": "プライバシーポリシー",
+  "licenses": "ライセンス",
+  "cookies": "Cookie 設定"
+}
