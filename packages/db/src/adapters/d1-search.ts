@@ -2,11 +2,25 @@ import { inject } from "@brika/di";
 import type {
   CatalogEntry,
   SearchCapability,
+  SearchDirection,
   SearchOptions,
   SearchReader,
   SearchResult,
+  SortClause,
 } from "@brika/registry-core";
-import { and, count, desc, eq, gt, inArray, or, type SQL, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  inArray,
+  or,
+  type SQL,
+  type SQLWrapper,
+  sql,
+} from "drizzle-orm";
 import { integer, sqliteTable } from "drizzle-orm/sqlite-core";
 import { Db } from "../client";
 import {
@@ -118,19 +132,37 @@ function tagsFilter(db: Db, tags: readonly string[] | undefined): SQL | null {
 /** All-time install count, as a correlated subquery, so the `downloads` sort needs no extra join. */
 const downloadsTotal = sql`(select coalesce(sum(${regDownloads.count}), 0) from ${regDownloads} where ${regDownloads.name} = ${regSearch.name})`;
 
-function orderFor(sort: SearchOptions["sort"], hasQuery: boolean): SQL[] {
-  switch (sort) {
+function orderDir(column: SQLWrapper, direction: SearchDirection): SQL {
+  return direction === "asc" ? asc(column) : desc(column);
+}
+
+/** One ORDER BY term per requested sort field (most-significant first), in the chosen direction. */
+function clauseOrder({ field, direction }: SortClause, hasQuery: boolean): SQL[] {
+  switch (field) {
+    // bm25 is intrinsically best-first and only meaningful with a query, so it ignores direction.
     case "relevance":
-      return hasQuery
-        ? [bm25(FTS), desc(regVersions.publishedAt)]
-        : [desc(regVersions.publishedAt)];
+      return hasQuery ? [bm25(FTS)] : [];
     case "downloads":
-      return [desc(downloadsTotal), desc(regVersions.publishedAt)];
+      return [orderDir(downloadsTotal, direction ?? "desc")];
     case "name":
-      return [sql`coalesce(${regSearch.displayName}, ${regSearch.name}) collate nocase`];
+      return [
+        orderDir(
+          sql`coalesce(${regSearch.displayName}, ${regSearch.name}) collate nocase`,
+          direction ?? "asc",
+        ),
+      ];
     default:
-      return [desc(regVersions.publishedAt)];
+      return [orderDir(regVersions.publishedAt, direction ?? "desc")];
   }
+}
+
+function orderFor(clauses: readonly SortClause[], hasQuery: boolean): SQL[] {
+  const effective: readonly SortClause[] =
+    clauses.length > 0 ? clauses : [{ field: hasQuery ? "relevance" : "downloads" }];
+  const order = effective.flatMap((clause) => clauseOrder(clause, hasQuery));
+  // A deterministic tiebreak so pages don't overlap or drop rows under offset pagination.
+  order.push(asc(regSearch.name));
+  return order;
 }
 
 interface Row {

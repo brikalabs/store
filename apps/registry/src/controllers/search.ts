@@ -1,5 +1,5 @@
 import { inject } from "@brika/di";
-import type { CatalogEntry, SearchSort } from "@brika/registry-core";
+import type { CatalogEntry, SortClause } from "@brika/registry-core";
 import { controller, route } from "../http/router";
 import { Downloads, Search } from "../services";
 
@@ -46,23 +46,30 @@ function csvList<T>(raw: string | null, map: (value: string) => T | null): T[] |
   return values.size > 0 ? [...values] : undefined;
 }
 
+/** Parse `sort=field[:dir],…` into ordered clauses, dropping unknown fields (e.g. client-only `rating`). */
+function parseSort(raw: string | null): SortClause[] {
+  return (raw ?? "").split(",").flatMap((token): SortClause[] => {
+    const [name, dir] = token.split(":").map((part) => part.trim());
+    const field = SORTS.find((s) => s === name);
+    if (field === undefined) return [];
+    return [dir === "asc" || dir === "desc" ? { field, direction: dir } : { field }];
+  });
+}
+
 export async function handleSearch(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const limit = clampInt(url.searchParams.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, Number.MAX_SAFE_INTEGER);
-  const q = url.searchParams.get("text")?.trim() || undefined;
-  const sortParam = url.searchParams.get("sort");
-  const sort: SearchSort = SORTS.find((s) => s === sortParam) ?? "relevance";
 
   const { entries, total } = await inject(Search).search({
-    q,
+    q: url.searchParams.get("text")?.trim() || undefined,
     // Tags are lowercased (AND-matched, case-insensitive); capabilities keep only valid kinds (OR-matched).
     tags: csvList(url.searchParams.get("tags"), (v) => (v.length > 0 ? v.toLowerCase() : null)),
     capabilities: csvList(
       url.searchParams.get("capabilities"),
       (v) => CAPABILITIES.find((c) => c === v) ?? null,
     ),
-    sort,
+    sort: parseSort(url.searchParams.get("sort")),
     limit,
     offset,
   });

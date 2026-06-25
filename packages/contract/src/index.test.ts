@@ -27,11 +27,13 @@ test("pageSchema validates a paginated response over its item", () => {
 });
 
 test("SearchQuery coerces strings and applies defaults", () => {
-  const parsed = SearchQuery.parse({ limit: "30", offset: "10" });
+  const parsed = SearchQuery.parse({ limit: "30", offset: "10", sort: "downloads:desc,name" });
   expect(parsed.limit).toBe(30);
   expect(parsed.offset).toBe(10);
-  expect(parsed.sort).toBe("downloads");
+  // `sort` is a raw clause string the registry parses; the contract just carries it.
+  expect(parsed.sort).toBe("downloads:desc,name");
   expect(SearchQuery.parse({}).limit).toBe(20);
+  expect(SearchQuery.parse({}).sort).toBeUndefined();
 });
 
 test("SearchQuery rejects out-of-range limits", () => {

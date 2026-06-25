@@ -1,4 +1,4 @@
-import { SearchCapability, SearchSort } from "@brika/registry-contract";
+import { SearchCapability } from "@brika/registry-contract";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { BrowsePage } from "@/components/plugin/browse-page";
@@ -8,7 +8,8 @@ const browseSearch = z.object({
   q: z.string().optional(),
   capabilities: z.array(SearchCapability).optional(),
   tags: z.array(z.string()).optional(),
-  sort: SearchSort.optional(),
+  // An ordered, comma-separated `field[:dir]` list (e.g. `downloads:desc,name`); the registry validates it.
+  sort: z.string().optional(),
 });
 
 export const Route = createFileRoute("/plugins/")({

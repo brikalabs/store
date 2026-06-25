@@ -235,6 +235,10 @@ export function pageSchema<T extends z.ZodType>(item: T) {
 export const SearchSort = z.enum(["relevance", "downloads", "rating", "recent", "name"]);
 export type SearchSort = z.infer<typeof SearchSort>;
 
+/** Sort direction; absent means each sort's natural order (most/newest/best first, A→Z for name). */
+export const SearchDirection = z.enum(["asc", "desc"]);
+export type SearchDirection = z.infer<typeof SearchDirection>;
+
 /** A Brika capability a search can filter on (a plugin declaring at least one of the kind). */
 export const SearchCapability = z.enum(["tools", "blocks", "bricks", "sparks", "pages"]);
 export type SearchCapability = z.infer<typeof SearchCapability>;
@@ -253,12 +257,16 @@ function commaList<T extends z.ZodType>(item: T) {
     .default([]);
 }
 
-/** `GET /v1/search?q=&tags=&capabilities=&limit=&offset=&sort=`. `tags` is AND-matched; `capabilities` is OR-matched. */
+/**
+ * `GET /v1/search?q=&tags=&capabilities=&sort=&limit=&offset=`. `tags` is AND-matched, `capabilities`
+ * is OR-matched, and `sort` is an ordered, comma-separated list of `field[:dir]` terms (e.g.
+ * `downloads:desc,name`); unknown fields/directions are dropped by the registry.
+ */
 export const SearchQuery = PageQuery.extend({
   q: z.string().optional(),
   tags: commaList(z.string()),
   capabilities: commaList(SearchCapability),
-  sort: SearchSort.default("downloads"),
+  sort: z.string().optional(),
 });
 export type SearchQuery = z.infer<typeof SearchQuery>;
 

@@ -118,10 +118,12 @@ export {
 export type {
   CatalogEntry,
   SearchCapability,
+  SearchDirection,
   SearchOptions,
   SearchReader,
   SearchResult,
   SearchSort,
+  SortClause,
 } from "./search";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export type { TokenPrincipal, TokenStore } from "./tokens";

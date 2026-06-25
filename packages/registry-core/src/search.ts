@@ -21,8 +21,17 @@ export interface CatalogEntry {
 /** A Brika capability facet: a search can require the plugin to declare at least one. */
 export type SearchCapability = "tools" | "blocks" | "bricks" | "sparks" | "pages";
 
-/** Server-side result orders. `relevance` needs a text query (the reader falls back to `recent`). */
+/** A sortable field. `relevance` needs a text query (skipped otherwise). */
 export type SearchSort = "relevance" | "downloads" | "recent" | "name";
+
+/** Result direction; absent uses the field's natural order (most/newest/best first, A→Z for name). */
+export type SearchDirection = "asc" | "desc";
+
+/** One sort term; the engine applies a list of them in order (most significant first). */
+export interface SortClause {
+  readonly field: SearchSort;
+  readonly direction?: SearchDirection;
+}
 
 /** A search request the {@link SearchReader} resolves into one ranked, paginated page. */
 export interface SearchOptions {
@@ -32,7 +41,8 @@ export interface SearchOptions {
   readonly tags?: readonly string[];
   /** Capabilities to filter on; a plugin matches if it declares any of them (OR). */
   readonly capabilities?: readonly SearchCapability[];
-  readonly sort: SearchSort;
+  /** Ordered sort terms (e.g. downloads desc, then name asc); empty applies the default order. */
+  readonly sort: readonly SortClause[];
   readonly limit: number;
   readonly offset: number;
 }

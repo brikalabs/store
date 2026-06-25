@@ -68,7 +68,7 @@ async function publish(
 }
 
 function search(options: Partial<SearchOptions> = {}) {
-  return reader.search({ sort: "recent", limit: 20, offset: 0, ...options });
+  return reader.search({ sort: [{ field: "recent" }], limit: 20, offset: 0, ...options });
 }
 
 const names = (result: { entries: { name: string }[] }) => result.entries.map((e) => e.name).sort();
@@ -118,7 +118,7 @@ describe("D1SearchReader filters", () => {
 
 describe("D1SearchReader sort + pagination", () => {
   test("sorts by display name", async () => {
-    const result = await search({ sort: "name" });
+    const result = await search({ sort: [{ field: "name" }] });
     expect(result.entries.map((e) => e.name)).toEqual([
       "@brika/auth",
       "@brika/charts",
@@ -131,7 +131,33 @@ describe("D1SearchReader sort + pagination", () => {
       { name: "@brika/maps", day: 20_000, count: 100 },
       { name: "@brika/auth", day: 20_000, count: 10 },
     ]);
-    const result = await search({ sort: "downloads" });
+    const result = await search({ sort: [{ field: "downloads" }] });
+    expect(result.entries.map((e) => e.name)).toEqual([
+      "@brika/maps",
+      "@brika/auth",
+      "@brika/charts",
+    ]);
+  });
+
+  test("honours the sort direction", async () => {
+    const result = await search({ sort: [{ field: "name", direction: "desc" }] });
+    expect(result.entries.map((e) => e.name)).toEqual([
+      "@brika/maps",
+      "@brika/charts",
+      "@brika/auth",
+    ]);
+  });
+
+  test("applies multiple sort terms in order", async () => {
+    await db.insert(regDownloads).values([
+      { name: "@brika/maps", day: 20_000, count: 100 },
+      { name: "@brika/auth", day: 20_000, count: 10 },
+      { name: "@brika/charts", day: 20_000, count: 10 },
+    ]);
+    // downloads desc, then name asc breaks the auth/charts tie (both 10 installs).
+    const result = await search({
+      sort: [{ field: "downloads", direction: "desc" }, { field: "name" }],
+    });
     expect(result.entries.map((e) => e.name)).toEqual([
       "@brika/maps",
       "@brika/auth",
@@ -140,8 +166,8 @@ describe("D1SearchReader sort + pagination", () => {
   });
 
   test("paginates with a stable total across pages", async () => {
-    const first = await search({ sort: "name", limit: 2, offset: 0 });
-    const second = await search({ sort: "name", limit: 2, offset: 2 });
+    const first = await search({ sort: [{ field: "name" }], limit: 2, offset: 0 });
+    const second = await search({ sort: [{ field: "name" }], limit: 2, offset: 2 });
     expect(first.entries).toHaveLength(2);
     expect(second.entries).toHaveLength(1);
     expect(first.total).toBe(3);
@@ -230,24 +256,31 @@ describe("0001 migration backfill", () => {
 
     const reader = makeAdapter(db, D1SearchReader);
     expect(
-      (await reader.search({ q: "reliable", sort: "relevance", limit: 20, offset: 0 })).entries.map(
-        (e) => e.name,
-      ),
+      (
+        await reader.search({ q: "reliable", sort: [{ field: "relevance" }], limit: 20, offset: 0 })
+      ).entries.map((e) => e.name),
     ).toEqual(["@brika/legacy"]);
     // keywords were lowercased on backfill, so a lowercase tag filter matches.
     expect(
-      (await reader.search({ tags: ["stable"], sort: "recent", limit: 20, offset: 0 })).entries.map(
-        (e) => e.name,
-      ),
+      (
+        await reader.search({ tags: ["stable"], sort: [{ field: "recent" }], limit: 20, offset: 0 })
+      ).entries.map((e) => e.name),
     ).toEqual(["@brika/legacy"]);
     expect(
       (
-        await reader.search({ capability: "tools", sort: "recent", limit: 20, offset: 0 })
+        await reader.search({
+          capabilities: ["tools"],
+          sort: [{ field: "recent" }],
+          limit: 20,
+          offset: 0,
+        })
       ).entries.map((e) => e.name),
     ).toEqual(["@brika/legacy"]);
     // The yanked package never entered the index.
     expect(
-      (await reader.search({ sort: "recent", limit: 20, offset: 0 })).entries.map((e) => e.name),
+      (await reader.search({ sort: [{ field: "recent" }], limit: 20, offset: 0 })).entries.map(
+        (e) => e.name,
+      ),
     ).toEqual(["@brika/legacy"]);
   });
 });

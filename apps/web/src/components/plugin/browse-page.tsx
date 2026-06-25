@@ -5,7 +5,7 @@ import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { BrowseFilters } from "@/components/plugin/browse-filters";
 import { DiscoverIndex } from "@/components/plugin/discover-index";
 import { ListingCard } from "@/components/plugin/listing-card";
-import { SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
+import { primarySort, SortMenu } from "@/components/plugin/sort-menu";
 import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import { matchingScopes, type ScopeHit } from "@/lib/registry/matching-scopes";
@@ -19,7 +19,7 @@ export function BrowsePage() {
   const { q, capabilities, tags, sort } = route.useSearch();
   const activeCapabilities = capabilities ?? [];
   const activeTags = tags ?? [];
-  const sortKey = sort ?? "relevance";
+  const { field, direction } = primarySort(sort);
 
   // Nothing to narrow by: the dense discovery index (matches the design's Console browse).
   if (!q && activeCapabilities.length === 0 && activeTags.length === 0) {
@@ -30,8 +30,8 @@ export function BrowsePage() {
     );
   }
 
+  // The engine already returns results in the requested order (multi-key + direction); render as-is.
   const scopes = q ? matchingScopes(plugins, q) : [];
-  const sorted = sortPlugins(plugins, sortKey);
   const scopeSummary = scopes.length > 0 ? `, ${t("browse:scopes", { count: scopes.length })}` : "";
 
   return (
@@ -47,8 +47,9 @@ export function BrowsePage() {
           {t("browse:plugins", { count: total })}
         </p>
         <SortMenu
-          value={sortKey}
-          onChange={(next) => navigate({ search: (prev) => ({ ...prev, sort: next }) })}
+          field={field}
+          direction={direction}
+          onChange={(f, d) => navigate({ search: (prev) => ({ ...prev, sort: `${f}:${d}` }) })}
         />
       </div>
 
@@ -83,7 +84,7 @@ export function BrowsePage() {
             {t("browse:pluginsHeading")}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {sorted.map((plugin) => (
+            {plugins.map((plugin) => (
               <ListingCard key={plugin.name} plugin={plugin} />
             ))}
           </div>

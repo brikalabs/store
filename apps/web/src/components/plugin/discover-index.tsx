@@ -1,4 +1,4 @@
-import type { PluginSummary } from "@brika/registry-contract";
+import type { PluginSummary, SearchDirection } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { Link } from "@tanstack/react-router";
 import { Filter, Search, ShieldCheck, TrendingUp, Users } from "lucide-react";
@@ -38,11 +38,12 @@ export function DiscoverIndex({
 }: Readonly<{ plugins: PluginSummary[]; total: number; title?: string }>) {
   const t = useT();
   const [term, setTerm] = useState("");
-  const [sort, setSort] = useState<SortKey>("downloads");
+  const [field, setField] = useState<SortKey>("downloads");
+  const [direction, setDirection] = useState<SearchDirection>("desc");
   const heading = title ?? t("plugin:discoverTitle");
   const scopes = topScopes(plugins, 5);
   const trending = plugins.slice(0, 5);
-  const sorted = sortPlugins(plugins, sort);
+  const sorted = sortPlugins(plugins, field, direction);
   // The rail input live-filters the loaded plugins (matching its "Filter plugins" label); the global
   // header search covers the full catalog.
   const needle = term.trim().toLowerCase();
@@ -63,7 +64,14 @@ export function DiscoverIndex({
             {t("plugin:verifiedScopedPlugins", { count: total })}
           </p>
         </div>
-        <SortMenu value={sort} onChange={setSort} />
+        <SortMenu
+          field={field}
+          direction={direction}
+          onChange={(nextField, nextDirection) => {
+            setField(nextField);
+            setDirection(nextDirection);
+          }}
+        />
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[206px_1fr_236px]">
