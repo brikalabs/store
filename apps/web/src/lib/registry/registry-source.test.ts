@@ -72,10 +72,12 @@ describe("manifestToDetail", () => {
   test("the registry's verified publisher overrides the free-text manifest author", () => {
     // i18nManifest.author is "Brika Labs <hi@brika.dev>" (verified:false by default).
     const detail = manifestToDetail(i18nManifest, {
+      verified: true,
       publisher: { id: "brikalabs", name: "Brika Labs", verified: true },
     });
     expect(detail?.author).toEqual({ id: "brikalabs", name: "Brika Labs", verified: true });
-    // A verified publisher makes the plugin itself verified (drives the shield + verified-only filter).
+    // The publisher's `verified` is the scope's verified-organization badge (-> author.verified);
+    // the package's own "approved by Brika" flag is the separate top-level `verified`.
     expect(detail?.verified).toBe(true);
   });
 

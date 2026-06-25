@@ -8,9 +8,10 @@ import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
 import { CAPABILITY_TILES } from "@/components/plugin/capability-tiles";
 import { ListingCard } from "@/components/plugin/listing-card";
 import { type SortKey, SortMenu } from "@/components/plugin/sort-menu";
+import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { useT } from "@/i18n";
 
-type Scope = { scope: string; name: string; count: number };
+type Scope = { scope: string; name: string; count: number; verified: boolean };
 
 function topScopes(plugins: PluginSummary[], limit: number): Scope[] {
   const byScope = new Map<string, Scope>();
@@ -21,7 +22,12 @@ function topScopes(plugins: PluginSummary[], limit: number): Scope[] {
     if (existing) {
       existing.count += 1;
     } else {
-      byScope.set(scope, { scope, name: plugin.author?.name ?? scope, count: 1 });
+      byScope.set(scope, {
+        scope,
+        name: plugin.author?.name ?? scope,
+        count: 1,
+        verified: plugin.author?.verified ?? false,
+      });
     }
   }
   return [...byScope.values()].sort((a, b) => b.count - a.count).slice(0, limit);
@@ -173,8 +179,9 @@ export function DiscoverIndex({
                     size={30}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold text-foreground text-xs">
-                      {scope.name}
+                    <div className="flex items-center gap-0.5 font-semibold text-foreground text-xs">
+                      <span className="truncate">{scope.name}</span>
+                      {scope.verified ? <VerifiedBadge className="size-3.5" /> : null}
                     </div>
                     <div className="text-[10.5px] text-muted-foreground">
                       {t("plugin:pluginCount", { count: scope.count })}

@@ -71,8 +71,8 @@ describe("D1MetadataReader.getPackage", () => {
     expect(v11?.yanked).toBe(true);
     expect(v11?.provenance).toBeNull();
 
-    // The verified publisher is derived from the owning scope's display name.
-    expect(record?.publisher).toEqual({ id: "@brika", name: "Brika Labs" });
+    // The publisher is derived from the owning scope: its display name + verified-organization flag.
+    expect(record?.publisher).toEqual({ id: "@brika", name: "Brika Labs", verified: false });
   });
 
   test("coerces a malformed stored provenance to null via .catch(null)", async () => {

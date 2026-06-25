@@ -1,27 +1,28 @@
-import { Button, Input } from "@brika/clay";
+import { Button } from "@brika/clay";
 import { Ban, Undo2 } from "lucide-react";
-import { type SyntheticEvent, useState } from "react";
 import { useT } from "@/i18n";
+import { TakedownDialog } from "./takedown-dialog";
 
 /**
- * The takedown/restore control for the operator views (versions, packages, scopes). "Take down"
- * reveals an inline reason form: a deliberate two-step, so a destructive moderation action is never
- * one click. Outline buttons keep the always-visible row action quiet until the operator commits.
+ * The takedown/restore control for the operator views (versions, plugins, scopes). "Take down"
+ * opens a modal with the reason form (see {@link TakedownDialog}), so a destructive moderation
+ * action is never one click and the row never reflows. Outline button keeps the row action quiet.
  */
 export function TakedownControls({
+  subject,
   takenDown,
   busy,
   onTakedown,
   onRestore,
 }: Readonly<{
+  /** What is being taken down (plugin, scope, or version), shown in the modal. */
+  subject: string;
   takenDown: boolean;
   busy: boolean;
   onTakedown: (reason: string) => void;
   onRestore: () => void;
 }>) {
   const t = useT();
-  const [prompting, setPrompting] = useState(false);
-  const [reason, setReason] = useState("");
 
   if (takenDown) {
     return (
@@ -38,57 +39,19 @@ export function TakedownControls({
     );
   }
 
-  if (!prompting) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={busy}
-        onClick={() => setPrompting(true)}
-        className="shrink-0 gap-1.5"
-      >
-        <Ban className="size-4" />
-        {t("operator:takeDown")}
-      </Button>
-    );
-  }
-
-  function submit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = reason.trim();
-    if (trimmed.length === 0) return;
-    onTakedown(trimmed);
-  }
-
   return (
-    <form className="flex shrink-0 items-center gap-2" onSubmit={submit}>
-      <Input
-        autoFocus
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        placeholder={t("operator:reasonPlaceholder")}
-        className="h-9 w-56"
-      />
-      <Button
-        type="submit"
-        variant="destructive"
-        size="sm"
-        disabled={busy || reason.trim().length === 0}
-      >
-        {t("operator:confirm")}
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        disabled={busy}
-        onClick={() => {
-          setPrompting(false);
-          setReason("");
-        }}
-      >
-        {t("operator:cancel")}
-      </Button>
-    </form>
+    <TakedownDialog
+      trigger={
+        <Button variant="outline" size="sm" disabled={busy} className="shrink-0 gap-1.5">
+          <Ban className="size-4" />
+          {t("operator:takeDown")}
+        </Button>
+      }
+      title={t("operator:takeDown")}
+      description={<span className="font-mono text-foreground">{subject}</span>}
+      confirmLabel={t("operator:takeDown")}
+      busy={busy}
+      onConfirm={onTakedown}
+    />
   );
 }

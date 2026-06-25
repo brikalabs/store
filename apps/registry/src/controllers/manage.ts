@@ -118,6 +118,51 @@ export function restore(input: ManageContext): Promise<Response> {
   });
 }
 
+/** Admin-gated whole-package mutation: like {@link runAdmin} but with no `:version` segment. */
+async function runAdminPackage(
+  { params, req }: { readonly params: PackageParams; readonly req: Request },
+  action: string,
+  run: (svc: ManagementService, name: string) => Promise<ManageResult>,
+  detail: Record<string, unknown>,
+): Promise<Response> {
+  const name = packageName(params);
+  const identity = await requireAdmin(req);
+  const result = await run(inject(ManagementService), name);
+  await inject(Audit).record({
+    action: result.ok ? action : `${action}_rejected`,
+    packageName: name,
+    version: null, // a whole-package action is not version-specific
+    actor: identity,
+    detail: result.ok ? detail : { ...detail, status: result.status, message: result.message },
+  });
+  if (!result.ok) throw httpError(result.status, result.message);
+  return reply({ ok: true, name, ...detail }, 200);
+}
+
+/** Operator takedown of a WHOLE package (every version, current and future). */
+export function takedownPackage(input: {
+  readonly params: PackageParams;
+  readonly req: Request;
+  readonly body: z.infer<typeof TakedownBody>;
+}): Promise<Response> {
+  return runAdminPackage(
+    input,
+    "package_takedown",
+    (svc, name) => svc.takedownPackage(name, input.body.reason),
+    { takedown: input.body.reason },
+  );
+}
+
+/** Reverse a whole-package takedown. */
+export function restorePackage(input: {
+  readonly params: PackageParams;
+  readonly req: Request;
+}): Promise<Response> {
+  return runAdminPackage(input, "package_restore", (svc, name) => svc.restorePackage(name), {
+    takedown: null,
+  });
+}
+
 export const manageController = controller({
   name: "manage",
   prefix: "/-/package",
@@ -126,5 +171,7 @@ export const manageController = controller({
     route.post({ path: `/${PKG}/:version/yank`, body: YankBody, handler: yank }),
     route.post({ path: `/${PKG}/:version/takedown`, body: TakedownBody, handler: takedown }),
     route.post({ path: `/${PKG}/:version/restore`, handler: restore }),
+    route.post({ path: `/${PKG}/takedown`, body: TakedownBody, handler: takedownPackage }),
+    route.post({ path: `/${PKG}/restore`, handler: restorePackage }),
   ],
 });

@@ -145,6 +145,41 @@ describe("RegistryClient", () => {
     );
   });
 
+  test("takedownPackage posts the reason to the whole-package endpoint (no version segment)", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    const client = new RegistryClient("https://r.test", {
+      fetch: async (input, init) => {
+        calls.push({ url: String(input), body: JSON.parse(String(init?.body)) });
+        return json({ ok: true });
+      },
+    });
+    await client.takedownPackage("t", "@brika/plugin-x", "policy violation");
+    expect(calls[0]?.url).toBe("https://r.test/-/package/@brika%2Fplugin-x/takedown");
+    expect(calls[0]?.body).toEqual({ reason: "policy violation" });
+  });
+
+  test("restorePackage posts to the whole-package restore endpoint with an empty body", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    const client = new RegistryClient("https://r.test", {
+      fetch: async (input, init) => {
+        calls.push({ url: String(input), body: JSON.parse(String(init?.body)) });
+        return json({ ok: true });
+      },
+    });
+    await client.restorePackage("t", "@brika/plugin-x");
+    expect(calls[0]?.url).toBe("https://r.test/-/package/@brika%2Fplugin-x/restore");
+    expect(calls[0]?.body).toEqual({});
+  });
+
+  test("a non-operator takedownPackage is rejected as a CliError", async () => {
+    const denied = new RegistryClient("https://r.test", {
+      fetch: async () => json({ error: "Not a registry operator", code: "forbidden" }, 403),
+    });
+    await expect(denied.takedownPackage("t", "@brika/plugin-x", "x")).rejects.toBeInstanceOf(
+      CliError,
+    );
+  });
+
   test("createScope PUTs to the encoded scope endpoint and reports created", async () => {
     const calls: { url: string; method?: string }[] = [];
     const client = new RegistryClient("https://r.test", {

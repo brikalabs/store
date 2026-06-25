@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { created, json, noContent, reply, text } from "./response";
+import { created, devError, json, noContent, reply, text } from "./response";
 
 /**
  * The response constructors: status defaults, header shapes, and the cache-control
@@ -58,6 +58,21 @@ describe("text", () => {
     expect(res.headers.get("x-extra")).toBe("1");
     expect(res.headers.get("content-type")).toBe("text/plain; charset=utf-8");
     expect(await res.text()).toBe("body");
+  });
+});
+
+describe("devError", () => {
+  test("is a 500 carrying the Error message and stack lines", async () => {
+    const res = devError(new Error("boom"));
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("boom");
+    expect(body.stack[0]).toContain("boom");
+  });
+
+  test("coerces a non-Error throw into a message", async () => {
+    const body = await devError("just a string").json();
+    expect(body.error).toBe("just a string");
   });
 });
 

@@ -8,10 +8,10 @@ import { recordAudit, runOperator } from "@/server/http";
 const Body = z.object({ name: z.string().min(1), verified: z.boolean() });
 
 /**
- * `POST /api/operator/packages/verify` - toggle a package's "approved by Brika" verified badge
+ * `POST /api/operator/plugins/verify` - toggle a package's "approved by Brika" verified badge
  * (manual moderation, per-package, not domain proof). Operator-gated; audited.
  */
-export const Route = createFileRoute("/api/operator/packages/verify")({
+export const Route = createFileRoute("/api/operator/plugins/verify")({
   server: {
     handlers: {
       POST: ({ request }) =>

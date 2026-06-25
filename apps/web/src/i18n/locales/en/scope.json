@@ -41,6 +41,7 @@
   "displayNameTitle": "Display name",
   "displayNameDescription": "The name shown on every package this scope publishes, overriding the manifest author. Leave blank to clear it.",
   "displayNamePlaceholder": "e.g. Acme Inc",
+  "displayNamePreview": "Preview",
   "displayNameAriaLabel": "Verified publisher display name",
   "domainsTitle": "Verified domains",
   "domainsDescription": "Prove your scope controls a domain via a TXT record, then verify. Verified domains show a badge on your public scope page.",

@@ -11,13 +11,13 @@ import { SocialService } from "@/server/services/social-service";
 const PackagesQuery = PageQuery.extend({ q: z.string().optional() });
 
 /**
- * `GET /api/operator/packages?q=&limit=&offset=` - a page of packages with moderation counts
+ * `GET /api/operator/plugins?q=&limit=&offset=` - a page of packages with moderation counts
  * (taken-down/yanked versions) plus their install total, last-updated date, open-report count and
  * top flag reason, newest first, optionally narrowed by a name substring. Search and pagination run
  * server-side; operator-gated; includes packages the public catalog hides. The body is the standard
  * envelope: `{ items, pagination }`.
  */
-export const Route = createFileRoute("/api/operator/packages")({
+export const Route = createFileRoute("/api/operator/plugins")({
   server: {
     handlers: {
       GET: ({ request }) =>

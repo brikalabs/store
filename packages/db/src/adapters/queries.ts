@@ -16,8 +16,10 @@ import {
 export interface MemberScope {
   readonly scope: string;
   readonly role: ScopeRole;
-  /** The scope's verified display name (null falls back to the scope). */
+  /** The scope's display name (self-service; null falls back to the scope). */
   readonly displayName: string | null;
+  /** Operator-granted "verified organization" badge (manual moderation). */
+  readonly verified: boolean;
 }
 
 /** Every scope a `userId` is a member of, sorted by scope; backs the storefront's "do I own this package" check. */
@@ -27,6 +29,7 @@ export async function listScopesForMember(db: Db, userId: string): Promise<Membe
       scope: regScopeMembers.scope,
       role: regScopeMembers.role,
       displayName: regScopes.displayName,
+      verified: regScopes.verified,
     })
     .from(regScopeMembers)
     .innerJoin(regScopes, eq(regScopes.scope, regScopeMembers.scope))
@@ -36,6 +39,7 @@ export async function listScopesForMember(db: Db, userId: string): Promise<Membe
     scope: row.scope,
     role: row.role === "admin" ? "admin" : "member",
     displayName: row.displayName,
+    verified: row.verified,
   }));
 }
 
@@ -69,6 +73,8 @@ export interface OperatorPackage {
   readonly updatedAt: string | null;
   /** Operator-set "approved by Brika" verified badge. */
   readonly verified: boolean;
+  /** Whole-package operator takedown reason (null = active); withdraws every version incl. future. */
+  readonly takedown: string | null;
 }
 
 /**
@@ -94,6 +100,7 @@ export async function listAllPackages(
       scope: regPackages.scope,
       scopeDisplayName: regScopes.displayName,
       verified: regPackages.verified,
+      takedown: regPackages.takedown,
     })
     .from(regPackages)
     .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
@@ -145,6 +152,7 @@ export async function listAllPackages(
       yankedCount: c.yanked,
       updatedAt: c.lastPublished > 0 ? new Date(c.lastPublished * 1000).toISOString() : null,
       verified: pkg.verified,
+      takedown: pkg.takedown,
     };
   });
 

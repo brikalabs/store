@@ -29,6 +29,13 @@
       "when": 1781997227130,
       "tag": "0003_scope_verified",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1781997227131,
+      "tag": "0004_package_takedown",
+      "breakpoints": true
     }
   ]
 }

@@ -27,6 +27,16 @@ export function created(data: unknown): Response {
   return reply(data, 201);
 }
 
+/**
+ * A 500 response exposing a thrown value's message + stack. LOCAL-DEV ONLY: a stack leaks internals,
+ * so callers MUST gate this behind a dev check and never serve it in production. Used for the
+ * non-`HttpError` "real bug" path, where the bare message + stack is what makes the failure debuggable.
+ */
+export function devError(error: unknown): Response {
+  const err = error instanceof Error ? error : new Error(String(error));
+  return reply({ error: err.message, stack: err.stack?.split("\n") }, 500);
+}
+
 /** A plain-text response. */
 export function text(body: string, init: ResponseInit = {}): Response {
   return new Response(body, {

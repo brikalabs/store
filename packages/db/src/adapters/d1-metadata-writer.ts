@@ -102,6 +102,15 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
   }
 
   /**
+   * Take down (or restore, with null) the whole package. A flag on the package row, not the versions:
+   * the search query filters on it live and {@link D1MetadataReader} surfaces it, so this withdraws
+   * every version, current AND future, without touching the per-version takedowns or the projection.
+   */
+  async setPackageTakedown(name: string, reason: string | null): Promise<void> {
+    await this.#db.update(regPackages).set({ takedown: reason }).where(eq(regPackages.name, name));
+  }
+
+  /**
    * Permanently delete a package: its dist-tags, every version row, and the package row. The
    * children (`reg_versions`, `reg_dist_tags`) declare `onDelete: cascade`, but we delete them
    * explicitly (children first) so it is correct whether or not D1 enforces foreign keys. One

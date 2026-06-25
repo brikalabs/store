@@ -2,13 +2,13 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/compon
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TakedownControls } from "@/components/operator/takedown-controls";
-import type { OperatorPackage, PackageVersion } from "@/hooks/use-operator-packages";
+import type { OperatorPlugin, PluginVersion } from "@/hooks/use-operator-plugins";
 import { type AppKey, useDateFormat, useT } from "@/i18n";
 import { formatBytes } from "@/lib/format";
 
 type VerFacet = "all" | "active" | "deprecated" | "yanked" | "takedown";
 
-const VER_PREDICATES: Record<VerFacet, (v: PackageVersion) => boolean> = {
+const VER_PREDICATES: Record<VerFacet, (v: PluginVersion) => boolean> = {
   all: () => true,
   active: (v) => v.takedownReason === null && !v.yanked && v.deprecated === null,
   deprecated: (v) => v.deprecated !== null,
@@ -30,8 +30,8 @@ export function VersionPanel({
   busy,
   onAct,
 }: Readonly<{
-  pkg: OperatorPackage;
-  versions: PackageVersion[] | null;
+  pkg: OperatorPlugin;
+  versions: PluginVersion[] | null;
   busy: string | null;
   onAct: (version: string, path: "takedown" | "restore", reason?: string) => void;
 }>) {
@@ -125,6 +125,7 @@ export function VersionPanel({
                     {date(v.publishedAt)}
                   </span>
                   <TakedownControls
+                    subject={`${pkg.name}@${v.version}`}
                     takenDown={v.takedownReason !== null}
                     busy={busy === v.version}
                     onTakedown={(reason) => onAct(v.version, "takedown", reason)}

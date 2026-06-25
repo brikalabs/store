@@ -41,6 +41,7 @@
   "displayNameTitle": "Nom d'affichage",
   "displayNameDescription": "Le nom affiché sur chaque paquet publié par cet espace, remplaçant l'auteur du manifeste. Laissez vide pour l'effacer.",
   "displayNamePlaceholder": "par ex. Acme Inc",
+  "displayNamePreview": "Aperçu",
   "displayNameAriaLabel": "Nom d'affichage de l'éditeur vérifié",
   "domainsTitle": "Domaines vérifiés",
   "domainsDescription": "Prouvez que votre espace contrôle un domaine via un enregistrement TXT, puis vérifiez. Les domaines vérifiés affichent un badge sur la page publique de votre espace.",

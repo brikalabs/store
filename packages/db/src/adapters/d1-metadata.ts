@@ -29,7 +29,12 @@ export class D1MetadataReader implements MetadataReader {
       pkg.scope === null
         ? Promise.resolve([])
         : this.#db
-            .select({ scope: regScopes.scope, displayName: regScopes.displayName })
+            .select({
+              scope: regScopes.scope,
+              displayName: regScopes.displayName,
+              takedown: regScopes.takedown,
+              verified: regScopes.verified,
+            })
             .from(regScopes)
             .where(eq(regScopes.scope, pkg.scope))
             .limit(1),
@@ -40,7 +45,9 @@ export class D1MetadataReader implements MetadataReader {
 
     const scope = scopeRows[0];
     const publisher: ScopePublisher | null =
-      scope === undefined ? null : { id: scope.scope, name: scope.displayName ?? scope.scope };
+      scope === undefined
+        ? null
+        : { id: scope.scope, name: scope.displayName ?? scope.scope, verified: scope.verified };
 
     const versions: PackageVersion[] = versionRows.map((row) => ({
       name: row.name,
@@ -64,6 +71,8 @@ export class D1MetadataReader implements MetadataReader {
       versions,
       publisher,
       verified: pkg.verified,
+      takedown: pkg.takedown,
+      scopeTakedown: scope?.takedown ?? null,
       createdAt: new Date(pkg.createdAt * 1000).toISOString(),
     };
   }

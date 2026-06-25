@@ -2,6 +2,7 @@ import type { PluginSummary } from "@brika/registry-contract";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
+import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { useT } from "@/i18n";
 
 export function HeroCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
@@ -27,9 +28,12 @@ export function HeroCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
             {plugin.verified ? <ShieldCheck className="size-4 shrink-0 text-brand-ink" /> : null}
           </div>
           {plugin.author ? (
-            <p className="truncate text-muted-foreground text-sm">
-              {t("home:byAuthor", { author: plugin.author.id })}
-            </p>
+            <div className="flex items-center gap-0.5 text-muted-foreground text-sm">
+              <p className="truncate">
+                {t("home:byAuthor", { author: plugin.author.name ?? plugin.author.id })}
+              </p>
+              {plugin.author.verified ? <VerifiedBadge className="size-3.5" /> : null}
+            </div>
           ) : null}
         </div>
       </div>

@@ -3,6 +3,7 @@ import { scopeOf } from "@brika/registry-core";
 import { Link } from "@tanstack/react-router";
 import { Download, ShieldCheck, Star } from "lucide-react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
+import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 
@@ -44,7 +45,10 @@ export function ListingCard({ plugin }: PluginCardProps) {
             ) : null}
           </div>
           {handle ? (
-            <div className="truncate font-mono text-muted-foreground text-xs">{handle}</div>
+            <div className="flex items-center gap-0.5 text-muted-foreground text-xs">
+              <span className="truncate">{plugin.author?.name ?? handle}</span>
+              {plugin.author?.verified ? <VerifiedBadge className="size-3.5" /> : null}
+            </div>
           ) : null}
         </div>
         {plugin.rating ? (

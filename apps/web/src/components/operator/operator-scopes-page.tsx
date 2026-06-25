@@ -3,7 +3,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/compon
 import { CircleCheck, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
-import { OPERATOR_PAGE_SIZE, OperatorPager } from "@/components/operator/operator-pager";
+import { OperatorPager, useClientPage } from "@/components/operator/operator-pager";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import {
   BulkBar,
@@ -102,6 +102,7 @@ function OperatorScopeRow({
         {scope.verified ? t("operator:verified") : t("operator:verify")}
       </button>
       <TakedownControls
+        subject={scope.scope}
         takenDown={scope.takedown !== null}
         busy={busy}
         onTakedown={onTakedown}
@@ -118,7 +119,6 @@ export function OperatorScopesPage() {
   const [facet, setFacet] = useState<ScopeFacet>("all");
   const [sort, setSort] = useState<ScopeSort>("newest");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [page, setPage] = useState(0);
 
   const facets: Facet<ScopeFacet>[] = useMemo(
     () => [
@@ -145,13 +145,7 @@ export function OperatorScopesPage() {
     return sorted; // "newest" keeps the server order
   }, [list.items, facet, sort]);
 
-  // Client-paginate the filtered window; clamp so a shrunk filter never strands an empty page.
-  const pageCount = Math.max(1, Math.ceil(visible.length / OPERATOR_PAGE_SIZE));
-  const safePage = Math.min(page, pageCount - 1);
-  const pageItems = visible.slice(
-    safePage * OPERATOR_PAGE_SIZE,
-    (safePage + 1) * OPERATOR_PAGE_SIZE,
-  );
+  const { page, setPage, pageCount, pageItems } = useClientPage(visible);
 
   // Scope the selection to what's on screen, so a facet/search change never takes down a scope the
   // operator can no longer see.
@@ -197,7 +191,7 @@ export function OperatorScopesPage() {
             />
           ))}
         </ul>
-        <OperatorPager page={safePage} pageCount={pageCount} onPage={setPage} />
+        <OperatorPager page={page} pageCount={pageCount} onPage={setPage} />
       </>
     );
   }

@@ -7,8 +7,8 @@ import { readJsonBody, recordAudit, runOperator } from "@/server/http";
 
 const Body = z.object({ name: z.string().min(1), version: z.string().min(1) });
 
-/** `POST /api/operator/packages/restore` - reverse a version takedown. Operator-gated. */
-export const Route = createFileRoute("/api/operator/packages/restore")({
+/** `POST /api/operator/plugins/restore` - reverse a version takedown. Operator-gated. */
+export const Route = createFileRoute("/api/operator/plugins/restore")({
   server: {
     handlers: {
       POST: ({ request }) =>

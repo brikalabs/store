@@ -175,8 +175,10 @@ test("emits the verified publisher (id+name+verified) on the full packument only
     name: "@brika/plugin-x",
     distTags: { latest: "1.0.0" },
     createdAt: "2026-01-01T00:00:00.000Z",
-    publisher: { id: "brika", name: "Brika Labs" },
-    verified: true,
+    // publisher.verified is the scope's verified-organization badge; record.verified is the
+    // package's separate "approved by Brika" flag (surfaced top-level on the packument).
+    publisher: { id: "brika", name: "Brika Labs", verified: true },
+    verified: false,
     versions: [
       {
         name: "@brika/plugin-x",
@@ -195,6 +197,8 @@ test("emits the verified publisher (id+name+verified) on the full packument only
 
   const full = buildPackument(withPublisher, "https://registry.brika.dev");
   expect(full.publisher).toEqual({ id: "brika", name: "Brika Labs", verified: true });
+  // The package's own "approved by Brika" flag rides top-level, independent of the publisher.
+  expect(full.verified).toBe(false);
 
   // No publisher -> the field is omitted entirely (not null/undefined noise).
   expect("publisher" in buildPackument(record, "https://registry.brika.dev")).toBe(false);

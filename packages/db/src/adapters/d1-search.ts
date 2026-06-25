@@ -16,6 +16,7 @@ import {
   eq,
   gt,
   inArray,
+  isNull,
   or,
   type SQL,
   type SQLWrapper,
@@ -59,6 +60,10 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
         tagsFilter(this.#db, options.tags),
         capabilitiesFilter(options.capabilities),
         options.verified === undefined ? null : eq(regPackages.verified, options.verified),
+        // Withdraw taken-down packages and every package of a taken-down scope. The left join means
+        // a scope-less package has a NULL scope takedown, so `isNull` keeps it.
+        isNull(regPackages.takedown),
+        isNull(regScopes.takedown),
       ],
       orderFor(options.sort, match !== null),
       options,
@@ -71,6 +76,7 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
       .from(regSearch)
       .innerJoin(regSearchFts, ftsOnRowid)
       .innerJoin(regPackages, eq(regPackages.name, regSearch.name))
+      .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
       .where(where);
     return rows[0]?.value ?? 0;
   }
@@ -92,6 +98,7 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
         scope: regPackages.scope,
         scopeDisplayName: regScopes.displayName,
         verified: regPackages.verified,
+        scopeVerified: regScopes.verified,
       })
       .from(regSearch)
       .innerJoin(regSearchFts, ftsOnRowid)
@@ -179,6 +186,7 @@ interface Row {
   readonly scope: string | null;
   readonly scopeDisplayName: string | null;
   readonly verified: boolean;
+  readonly scopeVerified: boolean | null;
 }
 
 function toEntry(row: Row): CatalogEntry {
@@ -190,9 +198,14 @@ function toEntry(row: Row): CatalogEntry {
     createdAt: new Date(row.createdAt * 1000).toISOString(),
     size: row.size,
     integrity: row.integrity,
+    verified: row.verified,
     publisher:
       row.scope === null
         ? undefined
-        : { id: row.scope, name: row.scopeDisplayName ?? row.scope, verified: row.verified },
+        : {
+            id: row.scope,
+            name: row.scopeDisplayName ?? row.scope,
+            verified: row.scopeVerified ?? false,
+          },
   };
 }

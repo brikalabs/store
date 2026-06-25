@@ -16,6 +16,7 @@ import { useState } from "react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
 import { Segmented, segmentClassName } from "@/components/clay/segmented";
 import { ReportPluginButton } from "@/components/plugin/detail/report-dialog";
+import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 
@@ -135,13 +136,16 @@ export function DetailHeader({
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-muted-foreground text-sm">
           {detail.author ? (
-            <Link
-              to="/$"
-              params={{ _splat: scopeOf(detail.name) ?? detail.name }}
-              className="font-semibold text-brand-ink hover:underline"
-            >
-              {detail.author.name ?? detail.author.id}
-            </Link>
+            <span className="inline-flex items-center gap-0.5">
+              <Link
+                to="/$"
+                params={{ _splat: scopeOf(detail.name) ?? detail.name }}
+                className="font-semibold text-brand-ink hover:underline"
+              >
+                {detail.author.name ?? detail.author.id}
+              </Link>
+              {detail.author.verified ? <VerifiedBadge className="size-4" /> : null}
+            </span>
           ) : null}
           <span className="font-mono text-xs">v{detail.version}</span>
           {detail.rating ? (

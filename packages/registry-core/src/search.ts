@@ -1,4 +1,5 @@
 import type { DownloadStats } from "./downloads";
+import type { ScopePublisher } from "./types";
 
 /** One package's latest published (non-yanked, non-taken-down) version: a search/catalog result. */
 export interface CatalogEntry {
@@ -12,8 +13,10 @@ export interface CatalogEntry {
   readonly createdAt: string;
   readonly size: number;
   readonly integrity: string;
-  /** The scope's publisher (owner + display name) and whether Brika has verified the package. */
-  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: boolean };
+  /** The package's "approved by Brika" flag (operator-curated). */
+  readonly verified: boolean;
+  /** The owning scope as a publisher (display name + verified-organization flag), if scoped. */
+  readonly publisher?: ScopePublisher;
   /** Install stats, attached by the handler per page (not by the reader). */
   readonly downloads?: DownloadStats;
 }

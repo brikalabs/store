@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { SearchOptions } from "@brika/registry-core";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import type { Db } from "../client";
-import { regDistTags, regDownloads, regPackages, regVersions, schema } from "../index";
+import { regDistTags, regDownloads, regPackages, regScopes, regVersions, schema } from "../index";
 import { makeAdapter, makeDb } from "../test-harness";
 import { D1MetadataWriter } from "./d1-metadata-writer";
 import { D1SearchReader } from "./d1-search";
@@ -196,10 +196,10 @@ describe("D1SearchReader index maintenance", () => {
     expect(names(await search({ capabilities: ["tools"] }))).toEqual(["@brika/auth"]);
   });
 
-  test("reflects the operator-set verified flag on the result's publisher", async () => {
+  test("reflects the operator-set 'approved by Brika' flag on the catalog entry", async () => {
     const find = async () =>
-      (await search({ q: "map" })).entries.find((e) => e.name === "@brika/maps")?.publisher;
-    expect((await find())?.verified).toBe(false); // unverified by default
+      (await search({ q: "map" })).entries.find((e) => e.name === "@brika/maps");
+    expect((await find())?.verified).toBe(false); // unapproved by default
     await writer.setVerified("@brika/maps", true);
     expect((await find())?.verified).toBe(true);
     await writer.setVerified("@brika/maps", false);
@@ -218,6 +218,34 @@ describe("D1SearchReader index maintenance", () => {
   });
 });
 
+describe("operator takedown withdraws packages from search", () => {
+  test("a whole-package takedown drops it from results and the total", async () => {
+    await writer.setPackageTakedown("@brika/maps", "policy violation");
+    const result = await search();
+    expect(names(result)).toEqual(["@brika/auth", "@brika/charts"]);
+    expect(result.total).toBe(2);
+  });
+
+  test("clearing the package takedown returns it to search", async () => {
+    await writer.setPackageTakedown("@brika/maps", "oops");
+    await writer.setPackageTakedown("@brika/maps", null);
+    expect(names(await search())).toContain("@brika/maps");
+  });
+
+  test("a taken-down scope hides every package published under it", async () => {
+    // The seed publishes under @brika but creates no scope row (claim does); add one, taken down.
+    await db.insert(regScopes).values({ scope: "@brika", takedown: "scope squatting" });
+    const result = await search();
+    expect(names(result)).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
+  test("an ACTIVE scope row leaves its packages searchable (the left join + isNull holds)", async () => {
+    await db.insert(regScopes).values({ scope: "@brika", takedown: null });
+    expect(names(await search())).toEqual(["@brika/auth", "@brika/charts", "@brika/maps"]);
+  });
+});
+
 describe("0001 migration backfill", () => {
   const DRIZZLE_DIR = join(import.meta.dir, "../../drizzle");
   const apply = (sqlite: Database, file: string) => {
@@ -233,6 +261,8 @@ describe("0001 migration backfill", () => {
     const sqlite = new Database(":memory:");
     apply(sqlite, "0000_tough_rawhide_kid.sql");
     apply(sqlite, "0002_verified.sql"); // before the seed: drizzle inlines the verified default on insert
+    apply(sqlite, "0003_scope_verified.sql"); // the search reader joins reg_scopes.verified (the org badge)
+    apply(sqlite, "0004_package_takedown.sql"); // the current search reader filters on reg_packages.takedown
     // Seed legacy rows through Drizzle (so the manifest JSON is serialized correctly) before the
     // search migration runs, then apply it and assert the backfill projected them.
     const db = drizzle(sqlite, { schema }) as unknown as Db;

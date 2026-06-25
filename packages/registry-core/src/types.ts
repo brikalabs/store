@@ -56,6 +56,9 @@ export interface ScopePublisher {
   readonly id: string;
   /** Display name shown to users (admin-set; falls back to the org slug). */
   readonly name: string;
+  /** The scope is an operator-verified organization (the "verified organization" badge). Distinct
+   *  from {@link PackageRecord.verified}, which is the package's "approved by Brika" flag. */
+  readonly verified: boolean;
 }
 
 /** A package and all of its versions, as read from the metadata store. */
@@ -67,6 +70,12 @@ export interface PackageRecord {
   readonly publisher: ScopePublisher | null;
   /** Operator-set "approved by Brika" verified badge for the package. */
   readonly verified: boolean;
+  /** Operator takedown reason for the WHOLE package (null = active). Non-null withdraws every
+   *  version, current and future, from public resolution and search. */
+  readonly takedown: string | null;
+  /** The owning scope's takedown reason (null = active/unscoped). A taken-down scope withdraws all
+   *  of its packages, even ones not individually taken down. */
+  readonly scopeTakedown: string | null;
   /** ISO-8601 timestamp of the first publish. */
   readonly createdAt: string;
 }

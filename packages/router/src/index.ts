@@ -22,7 +22,7 @@ export {
   rateLimit,
   trustedIpKey,
 } from "./rate-limit";
-export { created, json, noContent, type ResponseInit, reply, text } from "./response";
+export { created, devError, json, noContent, type ResponseInit, reply, text } from "./response";
 export { okOrThrow, readBody, readBytes, readQuery } from "./result";
 export { type Controller, createRouter, type Middleware } from "./router";
 export { link } from "./url";

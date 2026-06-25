@@ -10,7 +10,7 @@ import {
   regScopes,
   regVersions,
 } from "@brika/store-db";
-import { D1MetadataWriter, issueToken } from "@brika/store-db/adapters";
+import { D1MetadataWriter, D1ScopeStore, issueToken } from "@brika/store-db/adapters";
 import { makeAdapter } from "@brika/store-db/test-harness";
 import { transaction } from "@brika/tx";
 import { eq } from "drizzle-orm";
@@ -37,7 +37,9 @@ mock.module("cloudflare:workers", () => ({
 }));
 
 const { publish } = await import("./publish");
-const { deprecate, yank, takedown, restore } = await import("./manage");
+const { deprecate, yank, takedown, restore, takedownPackage, restorePackage } = await import(
+  "./manage"
+);
 const {
   createScope,
   deleteMember,
@@ -582,6 +584,62 @@ describe("takedown / restore (operator-gated)", () => {
   });
 });
 
+describe("whole-package takedown / restore (operator-gated, incl. future versions)", () => {
+  const params = { pkg: "@brika/x" };
+  const asAdmin = (db: Db) => issueToken(db, "operator");
+
+  test("403 for a valid credential that is not a registry admin", async () => {
+    const { token } = await seedPackage(db, "octocat");
+    const res = statusOf(
+      run(services(db), () =>
+        takedownPackage({ params, body: { reason: "policy" }, req: post(undefined, token) }),
+      ),
+    );
+    expect(await res).toBe(403);
+  });
+
+  test("an admin whole-package takedown 404s the packument, catalog, AND tarball bytes", async () => {
+    await seedPackage(db, "octocat");
+    const ctx = services(db);
+    const token = await asAdmin(db);
+
+    const res = await run(ctx, () =>
+      takedownPackage({
+        params,
+        body: { reason: "policy violation" },
+        req: post(undefined, token),
+      }),
+    );
+    expect(res.status).toBe(200);
+
+    // The whole package is withdrawn: no packument and no tarball (stronger than a per-version yank).
+    expect(await run(ctx, () => inject(ResolveService).packument("@brika/x"))).toBeNull();
+    expect(await run(ctx, () => inject(ResolveService).tarball("@brika/x", "1.0.0"))).toBeNull();
+
+    const catalog = await (
+      await run(ctx, () => handleSearch(new Request("http://localhost/-/v1/packages")))
+    ).json();
+    expect(catalog.packages).toHaveLength(0);
+
+    // The flag lives on the package row; the version rows are untouched.
+    const pkgRow = await db.select().from(regPackages);
+    expect(pkgRow[0]?.takedown).toBe("policy violation");
+  });
+
+  test("restore re-exposes the whole package", async () => {
+    await seedPackage(db, "octocat");
+    const ctx = services(db);
+    const token = await asAdmin(db);
+
+    await run(ctx, () =>
+      takedownPackage({ params, body: { reason: "policy" }, req: post(undefined, token) }),
+    );
+    const res = await run(ctx, () => restorePackage({ params, req: post(undefined, token) }));
+    expect(res.status).toBe(200);
+    expect(await run(ctx, () => inject(ResolveService).packument("@brika/x"))).not.toBeNull();
+  });
+});
+
 describe("scope takedown / restore (operator-gated, ORG-007)", () => {
   const params = { scope: "@brika" };
   const asAdmin = (db: Db) => issueToken(db, "operator");
@@ -819,30 +877,44 @@ describe("publish atomicity (commitVersion + transaction)", () => {
 });
 
 describe("scope publisher (verified attribution)", () => {
-  test("packument + catalog expose the owning scope as the publisher with the operator verified flag", async () => {
+  test("package approval and org verification flow to packument + catalog independently", async () => {
     await seedPackage(db, "brikalabs");
     const ctx = services(db);
-    const publisherOf = async () => {
+    // The package's "approved by Brika" flag rides top-level `verified`; the scope's
+    // verified-organization badge rides `publisher.verified`. They are separate operator actions.
+    const stateOf = async () => {
       const packument = (await run(ctx, () => inject(ResolveService).packument("@brika/x"))) as {
+        verified: boolean;
         publisher?: { id: string; name: string; verified: boolean };
       };
       const catalog = await (
         await run(ctx, () => handleSearch(new Request("http://localhost/-/v1/packages")))
       ).json();
-      return { packument: packument.publisher, catalog: catalog.packages[0].publisher };
+      const entry = catalog.packages[0];
+      return {
+        packument: { verified: packument.verified, publisher: packument.publisher },
+        catalog: { verified: entry.verified, publisher: entry.publisher },
+      };
     };
 
-    // Attribution falls back to the scope; unverified until an operator approves it.
-    expect(await publisherOf()).toEqual({
-      packument: { id: "@brika", name: "@brika", verified: false },
-      catalog: { id: "@brika", name: "@brika", verified: false },
+    // Fresh: attribution falls back to the scope; neither the package nor the org is verified.
+    expect(await stateOf()).toEqual({
+      packument: { verified: false, publisher: { id: "@brika", name: "@brika", verified: false } },
+      catalog: { verified: false, publisher: { id: "@brika", name: "@brika", verified: false } },
     });
 
-    // An operator approval flows to both the packument and the catalog.
+    // Approving the PACKAGE flips top-level `verified`, leaving the publisher's org badge untouched.
     await makeAdapter(db, D1MetadataWriter).setVerified("@brika/x", true);
-    expect(await publisherOf()).toEqual({
-      packument: { id: "@brika", name: "@brika", verified: true },
-      catalog: { id: "@brika", name: "@brika", verified: true },
+    expect(await stateOf()).toEqual({
+      packument: { verified: true, publisher: { id: "@brika", name: "@brika", verified: false } },
+      catalog: { verified: true, publisher: { id: "@brika", name: "@brika", verified: false } },
+    });
+
+    // Verifying the ORG flips the publisher's `verified` (the verified-organization badge).
+    await makeAdapter(db, D1ScopeStore).setVerified("@brika", true);
+    expect(await stateOf()).toEqual({
+      packument: { verified: true, publisher: { id: "@brika", name: "@brika", verified: true } },
+      catalog: { verified: true, publisher: { id: "@brika", name: "@brika", verified: true } },
     });
   });
 

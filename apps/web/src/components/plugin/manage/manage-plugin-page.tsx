@@ -9,6 +9,7 @@ import { SettingsCard, SideRow } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { DangerRow, DangerZone } from "@/components/layout/danger-zone";
+import { TakedownBanner } from "@/components/layout/takedown-banner";
 import { StatusBadge } from "@/components/plugin/status-badge";
 import { TrustedPublishersCard } from "@/components/scope/trusted-publishers-card";
 import { usePluginDeletion } from "@/hooks/use-plugin-deletion";
@@ -26,6 +27,8 @@ export interface ManageData {
   readonly detail: PluginDetail | null;
   /** True when the name is reserved (the package row exists but nothing is published yet). */
   readonly reserved: boolean;
+  /** Operator takedown reason (whole-plugin or its scope), shown to the owner; null when active. */
+  readonly takedown: string | null;
 }
 
 const route = getRouteApi("/dashboard/plugins/$");
@@ -53,12 +56,17 @@ export function ManagePluginPage() {
       avatarUrl={user.avatarUrl}
       activeLabel={t("pluginManage:myPlugins")}
     >
-      <ManagePlugin name={data.name} detail={data.detail} reserved={data.reserved} />
+      <ManagePlugin
+        name={data.name}
+        detail={data.detail}
+        reserved={data.reserved}
+        takedown={data.takedown}
+      />
     </AdminShell>
   );
 }
 
-function ManagePlugin({ name, detail, reserved }: Readonly<ManageData>) {
+function ManagePlugin({ name, detail, reserved, takedown }: Readonly<ManageData>) {
   const t = useT();
   const scope = scopeOf(name);
   const isAdmin = useIsScopeAdmin(scope);
@@ -79,7 +87,11 @@ function ManagePlugin({ name, detail, reserved }: Readonly<ManageData>) {
         {detail ? <StatStrip detail={detail} /> : null}
       </div>
 
-      <StateBanner detail={detail} reserved={reserved} />
+      {takedown !== null ? (
+        <TakedownBanner reason={takedown} subject="plugin" />
+      ) : (
+        <StateBanner detail={detail} reserved={reserved} />
+      )}
 
       <div className="grid items-start gap-[18px] lg:grid-cols-[1.5fr_1fr] [&>*]:min-w-0">
         <VersionsCard name={name} />
@@ -125,9 +137,12 @@ function ManagePlugin({ name, detail, reserved }: Readonly<ManageData>) {
   );
 }
 
-function PluginHeader({ name, detail, reserved }: Readonly<ManageData>) {
+function PluginHeader({
+  name,
+  detail,
+  reserved,
+}: Readonly<Pick<ManageData, "name" | "detail" | "reserved">>) {
   const t = useT();
-  const title = detail?.displayName ?? name;
   const grants = detail ? Object.keys(detail.grants ?? {}) : [];
 
   return (
@@ -141,7 +156,7 @@ function PluginHeader({ name, detail, reserved }: Readonly<ManageData>) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2.5">
           <h1 className="font-bold font-heading text-[27px] text-foreground tracking-tight">
-            {title}
+            {name}
           </h1>
           {detail ? <StatusBadge status={detail.listingStatus} /> : null}
           {!detail && reserved ? <StatusBadge status="reserved" /> : null}
@@ -149,6 +164,9 @@ function PluginHeader({ name, detail, reserved }: Readonly<ManageData>) {
             <span className="font-mono text-[13px] text-muted-foreground">v{detail.version}</span>
           ) : null}
         </div>
+        {detail?.displayName && detail.displayName !== name ? (
+          <p className="mt-0.5 text-muted-foreground text-sm">{detail.displayName}</p>
+        ) : null}
         {detail?.description ? (
           <p className="mt-1.5 max-w-[620px] text-[14.5px] text-muted-foreground leading-relaxed">
             {detail.description}

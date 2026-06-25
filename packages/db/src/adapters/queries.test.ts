@@ -41,8 +41,8 @@ describe("listScopesForMember", () => {
 
     const result = await listScopesForMember(db, "alice");
     expect(result).toEqual([
-      { scope: "@acme", role: "admin", displayName: "Acme Inc" },
-      { scope: "@acme-labs", role: "member", displayName: null },
+      { scope: "@acme", role: "admin", displayName: "Acme Inc", verified: false },
+      { scope: "@acme-labs", role: "member", displayName: null, verified: false },
     ]);
   });
 

@@ -1,4 +1,4 @@
-import type { PackageRecord, PackageVersion } from "./types";
+import type { PackageRecord, PackageVersion, ScopePublisher } from "./types";
 
 /** The unscoped part of a package name: `@brika/plugin-x` -> `plugin-x`. */
 export function unscopedName(name: string): string {
@@ -41,7 +41,8 @@ export interface Packument {
   readonly versions: Record<string, Record<string, unknown>>;
   readonly time: Record<string, string>;
   readonly takedowns?: Record<string, string>;
-  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: boolean };
+  readonly verified: boolean;
+  readonly publisher?: ScopePublisher;
 }
 
 /** One version's full packument entry: its manifest plus the dist + management flags. */
@@ -93,8 +94,9 @@ export function buildPackument(record: PackageRecord, baseUrl: string): Packumen
     "dist-tags": { ...record.distTags },
     versions,
     time: { ...time, modified },
+    verified: record.verified,
     ...(Object.keys(takedowns).length > 0 ? { takedowns } : {}),
-    ...(record.publisher ? { publisher: { ...record.publisher, verified: record.verified } } : {}),
+    ...(record.publisher ? { publisher: record.publisher } : {}),
   };
 }
 

@@ -41,6 +41,7 @@
   "displayNameTitle": "Nombre para mostrar",
   "displayNameDescription": "El nombre de confianza que se muestra en cada paquete que publica este scope, anulando al autor del manifest. Déjalo en blanco para borrarlo.",
   "displayNamePlaceholder": "p. ej. Acme Inc",
+  "displayNamePreview": "Vista previa",
   "displayNameAriaLabel": "Nombre visible del editor verificado",
   "domainsTitle": "Dominios verificados",
   "domainsDescription": "Demuestra que tu scope controla un dominio mediante un registro TXT, y luego verifícalo. Los dominios verificados muestran una insignia en tu página de scope pública.",

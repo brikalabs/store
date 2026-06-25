@@ -4,6 +4,7 @@ import { NotFoundPage } from "@/components/feedback/error-pages";
 import { DETAIL_TAB_IDS, PluginDetailPage } from "@/components/plugin/detail/plugin-detail-page";
 import { ScopeView } from "@/components/plugin/scope-page";
 import { getPluginPage, getScopePage } from "@/lib/registry/registry";
+import { attachRatings } from "@/server/with-ratings";
 
 // The active tab lives in the URL (`?tab=`) so it is deep-linkable; invalid/absent -> Overview.
 const detailSearch = z.object({
@@ -27,7 +28,12 @@ export const Route = createFileRoute("/$")({
     // A bare scope (`@scope`, no `/name`) renders the scope's catalogue.
     if (!splat.includes("/")) {
       const scope = await getScopePage(splat);
-      return scope === null ? null : { kind: "scope" as const, scope };
+      if (scope === null) return null;
+      // The registry carries no ratings; join them in so ShowcaseCard shows the rating pill.
+      return {
+        kind: "scope" as const,
+        scope: { ...scope, plugins: await attachRatings(scope.plugins) },
+      };
     }
     const page = await getPluginPage(splat, deps.lang);
     return page === null ? null : { kind: "plugin" as const, page };

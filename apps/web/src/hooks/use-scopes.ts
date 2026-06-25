@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 
-/** A scope the signed-in user belongs to, with their role and the verified display name. */
+/** A scope the signed-in user belongs to, with their role, display name, and operator-verified flag. */
 export type MemberScope = {
   scope: string;
   role: "admin" | "member";
   displayName?: string | null;
+  verified?: boolean;
 };
 
 /**

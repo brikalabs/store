@@ -43,5 +43,8 @@
   "manualStep1b": ".",
   "manualStep2a": "Configúralo como un",
   "manualStep2b": "secreto (o variable de entorno) en cualquier máquina o CI.",
-  "manualStep3": "Ejecuta publish. Funciona en cualquier sitio, sin OIDC."
+  "manualStep3": "Ejecuta publish. Funciona en cualquier sitio, sin OIDC.",
+  "takedownScopeTitle": "Esta organización ha sido retirada",
+  "takedownPluginTitle": "Este plugin ha sido retirado",
+  "takedownReason": "Motivo: {reason}"
 }

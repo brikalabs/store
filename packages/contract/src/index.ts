@@ -53,7 +53,7 @@ export const PluginAuthor = z.object({
   id: z.string(),
   name: z.string().optional(),
   avatarUrl: z.url().optional(),
-  /** true when a logged-in GitHub identity matched the package repo owner */
+  /** The author's owning scope is an operator-verified organization (the blue "verified organization" badge). */
   verified: z.boolean().default(false),
 });
 export type PluginAuthor = z.infer<typeof PluginAuthor>;
@@ -106,6 +106,8 @@ export const PluginSummary = z.object({
   capabilities: PluginCapabilityCounts.optional(),
   /** the `engines.brika` semver range of the latest version */
   brikaEngine: z.string(),
+  /** The package itself is "approved by Brika" (operator-curated; the orange shield). Distinct from
+   *  {@link PluginAuthor.verified}, which marks the owning scope as a verified organization. */
   verified: z.boolean().default(false),
   featured: z.boolean().default(false),
   /** The package's listing state ({@link PluginListingStatus}); the public catalog always carries `published`. */

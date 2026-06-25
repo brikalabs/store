@@ -20,11 +20,19 @@ export const vars = defineEnv(
     // (ORG-010). REQUIRED (set per deployment): MUST match the store worker's value and stay STABLE
     // (rotating invalidates every published TXT). Security is DNS control, not the secret's secrecy.
     DOMAIN_VERIFY_SECRET: z.string().min(1),
+    // Deploy target. Defaults to `production`; local `.dev.vars` sets `development` to opt into
+    // debug aids (e.g. serving the error stack on a 500). Safe by default: prod never opts in.
+    ENVIRONMENT: z.enum(["development", "production"]).default("production"),
   },
   () => env,
 );
 
 export type Vars = ReturnType<typeof vars>;
+
+/** True only in local dev (`ENVIRONMENT=development` in `.dev.vars`); production is the default. */
+export function isDevelopment(): boolean {
+  return vars().ENVIRONMENT === "development";
+}
 
 /**
  * The operator admins allowed to perform takedown/restore, as Brika account ids

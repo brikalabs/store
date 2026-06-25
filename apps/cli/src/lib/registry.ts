@@ -281,7 +281,17 @@ export class RegistryClient {
     await this.#manage(token, name, version, "yank", { yanked });
   }
 
-  /** Shared POST to a management endpoint; throws a `CliError` on rejection. */
+  /** Operator: take down a WHOLE package - every version, current and future (not ownership-gated). */
+  async takedownPackage(token: string, name: string, reason: string): Promise<void> {
+    await this.#managePackage(token, name, "takedown", { reason });
+  }
+
+  /** Operator: reverse a whole-package takedown, returning every version to the registry. */
+  async restorePackage(token: string, name: string): Promise<void> {
+    await this.#managePackage(token, name, "restore", {});
+  }
+
+  /** Shared POST to a per-version management endpoint; throws a `CliError` on rejection. */
   async #manage(
     token: string,
     name: string,
@@ -289,7 +299,26 @@ export class RegistryClient {
     action: "deprecate" | "yank",
     body: unknown,
   ): Promise<void> {
-    const path = npmLink(`/-/package/:name/:version/${action}`, { name, version });
+    await this.#postManage(
+      npmLink(`/-/package/:name/:version/${action}`, { name, version }),
+      action,
+      body,
+      token,
+    );
+  }
+
+  /** Shared POST to a whole-package management endpoint (no `:version`); throws on rejection. */
+  async #managePackage(
+    token: string,
+    name: string,
+    action: "takedown" | "restore",
+    body: unknown,
+  ): Promise<void> {
+    await this.#postManage(npmLink(`/-/package/:name/${action}`, { name }), action, body, token);
+  }
+
+  /** POST a management mutation, returning on success and throwing a `CliError` on rejection. */
+  async #postManage(path: string, action: string, body: unknown, token: string): Promise<void> {
     const res = await this.#postJson(path, body, token);
     const parsed = await this.#parse(res, ManageResponseSchema);
     if (res.ok && parsed.ok === true) return;

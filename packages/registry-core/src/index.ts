@@ -107,6 +107,7 @@ export {
   MaxScopesPerAccount,
   type ScopeDomainRecord,
   ScopeDomains,
+  type ScopeManaged,
   type ScopePublic,
   type ScopeRecord,
   type ScopeResult,

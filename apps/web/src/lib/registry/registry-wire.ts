@@ -1,3 +1,4 @@
+import { PluginAuthor } from "@brika/registry-contract";
 import { z } from "zod";
 import { manifestFields } from "@/lib/registry/manifest-mapping";
 
@@ -46,16 +47,16 @@ export type Manifest = z.infer<typeof Manifest>;
 
 const DownloadStats = z.object({ total: z.number(), weekly: z.number() });
 
-/** The registry's verified publisher (scope owner + display name), if present. */
-const Publisher = z.object({ id: z.string(), name: z.string(), verified: z.boolean() });
-
 export const CatalogEntry = z.object({
   name: z.string(),
   version: z.string(),
   manifest: Manifest,
   publishedAt: z.string().optional(),
   createdAt: z.string().optional(),
-  publisher: Publisher.optional(),
+  /** The package's "approved by Brika" flag. */
+  verified: z.boolean().optional(),
+  /** The owning scope as a publisher; `verified` here is the scope's verified-organization badge. */
+  publisher: PluginAuthor.optional(),
   downloads: DownloadStats.optional(),
 });
 export type CatalogEntry = z.infer<typeof CatalogEntry>;
@@ -75,7 +76,10 @@ export const Packument = z.object({
   "dist-tags": z.object({ latest: z.string().optional() }).optional(),
   versions: z.record(z.string(), Manifest).optional(),
   time: z.record(z.string(), z.string()).optional(),
-  publisher: Publisher.optional(),
+  /** The package's "approved by Brika" flag. */
+  verified: z.boolean().optional(),
+  /** The owning scope as a publisher; `verified` here is the scope's verified-organization badge. */
+  publisher: PluginAuthor.optional(),
 });
 export type Packument = z.infer<typeof Packument>;
 

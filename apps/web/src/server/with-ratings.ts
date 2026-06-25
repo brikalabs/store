@@ -1,5 +1,5 @@
 import { inject } from "@brika/di";
-import type { SearchResponse } from "@brika/registry-contract";
+import type { PluginSummary, SearchResponse } from "@brika/registry-contract";
 import { createServerFn } from "@tanstack/react-start";
 import { runWeb } from "@/server/injector";
 import { PluginStore } from "@/server/stores/plugin-store";
@@ -12,12 +12,14 @@ const ratingsFor = createServerFn()
     runWeb(async () => Object.fromEntries(await inject(PluginStore).ratingSummaries(names))),
   );
 
-/** Attach store ratings to a registry search result (the registry returns none of its own). */
+/** Attach store ratings to a list of registry summaries (the registry returns none of its own). */
+export async function attachRatings(plugins: PluginSummary[]): Promise<PluginSummary[]> {
+  if (plugins.length === 0) return plugins;
+  const ratings = await ratingsFor({ data: plugins.map((plugin) => plugin.name) });
+  return plugins.map((plugin) => ({ ...plugin, rating: ratings[plugin.name] }));
+}
+
+/** Attach store ratings to a registry search result. */
 export async function withRatings(result: SearchResponse): Promise<SearchResponse> {
-  if (result.plugins.length === 0) return result;
-  const ratings = await ratingsFor({ data: result.plugins.map((plugin) => plugin.name) });
-  return {
-    ...result,
-    plugins: result.plugins.map((plugin) => ({ ...plugin, rating: ratings[plugin.name] })),
-  };
+  return { ...result, plugins: await attachRatings(result.plugins) };
 }

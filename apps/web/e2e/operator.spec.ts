@@ -69,8 +69,8 @@ test.describe
       await context.addCookies([await operatorCookie()]);
       const page = await context.newPage();
 
-      await page.goto("/operator/packages");
-      await expect(page.getByRole("heading", { name: "Packages" })).toBeVisible();
+      await page.goto("/operator/plugins");
+      await expect(page.getByRole("heading", { name: "Plugins" })).toBeVisible();
       // @brika/plugin-managed has a yanked version (seeded), so it is surfaced here even though
       // the public catalog hides yanked versions.
       await expect(page.getByText("@brika/plugin-managed").first()).toBeVisible();

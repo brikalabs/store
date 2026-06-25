@@ -41,6 +41,7 @@
   "displayNameTitle": "Anzeigename",
   "displayNameDescription": "Der vertrauenswürdige Name, der auf jedem von diesem Scope veröffentlichten Paket angezeigt wird und den Manifest-Autor überschreibt. Leer lassen, um ihn zu entfernen.",
   "displayNamePlaceholder": "z. B. Acme Inc",
+  "displayNamePreview": "Vorschau",
   "displayNameAriaLabel": "Anzeigename des verifizierten Publishers",
   "domainsTitle": "Verifizierte Domains",
   "domainsDescription": "Belegen Sie über einen TXT-Eintrag, dass Ihr Scope eine Domain kontrolliert, und verifizieren Sie sie dann. Verifizierte Domains zeigen ein Badge auf Ihrer öffentlichen Scope-Seite.",

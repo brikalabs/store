@@ -127,3 +127,9 @@ export interface ScopePublic {
   readonly verified: boolean;
   readonly verifiedDomains: string[];
 }
+
+/** The member view of a scope: the public view plus the operator takedown reason (hidden publicly). */
+export interface ScopeManaged extends ScopePublic {
+  /** Operator takedown reason, or null when active. Shown to members so they learn the scope was removed. */
+  readonly takedown: string | null;
+}

@@ -41,6 +41,7 @@
   "displayNameTitle": "Nome de exibição",
   "displayNameDescription": "O nome confiável exibido em cada pacote que este escopo publica, sobrepondo-se ao autor do manifesto. Deixe em branco para limpá-lo.",
   "displayNamePlaceholder": "ex.: Acme Inc",
+  "displayNamePreview": "Pré-visualização",
   "displayNameAriaLabel": "Nome de exibição do publicador verificado",
   "domainsTitle": "Domínios verificados",
   "domainsDescription": "Comprove que seu escopo controla um domínio por meio de um registro TXT e, em seguida, verifique. Domínios verificados exibem um selo na sua página pública de escopo.",

@@ -15,6 +15,12 @@ export const regPackages = sqliteTable("reg_packages", {
   createdAt: integer("created_at").notNull().default(epoch),
   /** Operator-set "approved by Brika" trust badge (manual moderation, not domain proof). */
   verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+  /**
+   * Operator takedown reason for the whole package. Null = active; non-null withdraws every version,
+   * current AND future, from public resolution/search (broader than a per-version {@link regVersions}
+   * takedown). Set only via the operator-admin-gated endpoint, never by the owner.
+   */
+  takedown: text("takedown"),
 });
 
 export const regVersions = sqliteTable(

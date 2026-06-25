@@ -5,7 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Flag, Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
-import { OPERATOR_PAGE_SIZE, OperatorPager } from "@/components/operator/operator-pager";
+import { OperatorPager, useClientPage } from "@/components/operator/operator-pager";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import {
   BulkBar,
@@ -14,14 +14,14 @@ import {
   OperatorHeader,
   SortSelect,
 } from "@/components/operator/operator-toolbar";
-import { VersionPanel } from "@/components/operator/package-version-panel";
+import { VersionPanel } from "@/components/operator/plugin-version-panel";
 import { TakedownControls } from "@/components/operator/takedown-controls";
 import { useOperatorList } from "@/hooks/use-operator-list";
 import {
-  type OperatorPackage,
+  type OperatorPlugin,
   useBulkTakedown,
-  usePackageModeration,
-} from "@/hooks/use-operator-packages";
+  usePluginModeration,
+} from "@/hooks/use-operator-plugins";
 import { type AppKey, useRelativeTime, useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import { reportReasonLabelKey } from "@/lib/reports";
@@ -31,38 +31,37 @@ type AppTranslate = Translate<AppKey>;
 type PkgFacet = "all" | "review" | "takedowns" | "hidden";
 type PkgSort = "flagged" | "installs" | "recent" | "name";
 
-const FACET_PREDICATES: Record<PkgFacet, (p: OperatorPackage) => boolean> = {
+const FACET_PREDICATES: Record<PkgFacet, (p: OperatorPlugin) => boolean> = {
   all: () => true,
   review: (p) => p.openReports > 0,
-  takedowns: (p) => p.takenDownCount > 0,
-  // A package whose versions all exist but none resolves as `latest` is fully hidden.
+  takedowns: (p) => p.takenDownCount > 0 || p.takedown !== null,
+  // A plugin whose versions all exist but none resolves as `latest` is fully hidden.
   hidden: (p) => p.versionCount > 0 && p.latestVersion === null,
 };
 
-export function OperatorPackagesPage() {
+export function OperatorPluginsPage() {
   const t = useT();
-  const list = useOperatorList<OperatorPackage>("/api/operator/packages");
+  const list = useOperatorList<OperatorPlugin>("/api/operator/plugins");
   const [facet, setFacet] = useState<PkgFacet>("all");
   const [sort, setSort] = useState<PkgSort>("flagged");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [page, setPage] = useState(0);
 
   const facets: Facet<PkgFacet>[] = useMemo(
     () => [
-      { key: "all", label: t("operator:packagesFacetAll"), count: list.items.length },
+      { key: "all", label: t("operator:pluginsFacetAll"), count: list.items.length },
       {
         key: "review",
-        label: t("operator:packagesFacetReview"),
+        label: t("operator:pluginsFacetReview"),
         count: list.items.filter(FACET_PREDICATES.review).length,
       },
       {
         key: "takedowns",
-        label: t("operator:packagesFacetTakedowns"),
+        label: t("operator:pluginsFacetTakedowns"),
         count: list.items.filter(FACET_PREDICATES.takedowns).length,
       },
       {
         key: "hidden",
-        label: t("operator:packagesFacetHidden"),
+        label: t("operator:pluginsFacetHidden"),
         count: list.items.filter(FACET_PREDICATES.hidden).length,
       },
     ],
@@ -80,22 +79,16 @@ export function OperatorPackagesPage() {
     return rows;
   }, [list.items, facet, sort]);
 
-  // Client-paginate the filtered window; clamp so a shrunk filter never strands an empty page.
-  const pageCount = Math.max(1, Math.ceil(visible.length / OPERATOR_PAGE_SIZE));
-  const safePage = Math.min(page, pageCount - 1);
-  const pageItems = visible.slice(
-    safePage * OPERATOR_PAGE_SIZE,
-    (safePage + 1) * OPERATOR_PAGE_SIZE,
-  );
+  const { page, setPage, pageCount, pageItems } = useClientPage(visible);
 
   // Scope the selection to what's actually on screen: a facet/search change drops out-of-view picks
-  // from the count and the bulk payload, so the operator only ever acts on packages they can see.
+  // from the count and the bulk payload, so the operator only ever acts on plugins they can see.
   const selectedNames = useMemo(
     () => visible.filter((p) => selected.has(p.name)).map((p) => p.name),
     [visible, selected],
   );
   const allSelected = visible.length > 0 && selectedNames.length === visible.length;
-  // Indeterminate when some (but not all) visible packages are selected.
+  // Indeterminate when some (but not all) visible plugins are selected.
   const someSelected = selectedNames.length > 0 && !allSelected;
 
   // On a successful bulk takedown, drop the (now actioned) selection then refetch the window.
@@ -120,21 +113,21 @@ export function OperatorPackagesPage() {
   function shownLabel(): string {
     if (list.loading) return t("operator:loading");
     if (list.capped)
-      return t("operator:packagesShowingCapped", { shown: visible.length, total: list.total });
-    return t("operator:packagesShowing", { shown: visible.length });
+      return t("operator:pluginsShowingCapped", { shown: visible.length, total: list.total });
+    return t("operator:pluginsShowing", { shown: visible.length });
   }
 
   function renderList() {
     if (list.loading)
       return <p className="px-1 text-muted-foreground text-sm">{t("operator:loading")}</p>;
     if (visible.length === 0) {
-      return <p className="px-1 text-muted-foreground text-sm">{t("operator:packagesEmpty")}</p>;
+      return <p className="px-1 text-muted-foreground text-sm">{t("operator:pluginsEmpty")}</p>;
     }
     return (
       <>
         <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           {pageItems.map((pkg) => (
-            <PackageRow
+            <PluginRow
               key={pkg.name}
               pkg={pkg}
               selected={selected.has(pkg.name)}
@@ -144,15 +137,15 @@ export function OperatorPackagesPage() {
             />
           ))}
         </ul>
-        <OperatorPager page={safePage} pageCount={pageCount} onPage={setPage} />
+        <OperatorPager page={page} pageCount={pageCount} onPage={setPage} />
       </>
     );
   }
 
   return (
-    <OperatorShell activeLabel="packages">
-      <OperatorHeader title={t("operator:packagesTitle")}>
-        {t("operator:packagesIntro")}
+    <OperatorShell activeLabel="plugins">
+      <OperatorHeader title={t("operator:pluginsTitle")}>
+        {t("operator:pluginsIntro")}
       </OperatorHeader>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -165,17 +158,17 @@ export function OperatorPackagesPage() {
           <InputGroupInput
             value={list.query}
             onChange={(e) => list.setQuery(e.target.value)}
-            placeholder={t("operator:packagesSearchPlaceholder")}
+            placeholder={t("operator:pluginsSearchPlaceholder")}
           />
         </InputGroup>
         <SortSelect
           value={sort}
           onChange={setSort}
           options={[
-            { value: "flagged", label: t("operator:packagesSortFlagged") },
-            { value: "installs", label: t("operator:packagesSortInstalls") },
-            { value: "recent", label: t("operator:packagesSortRecent") },
-            { value: "name", label: t("operator:packagesSortName") },
+            { value: "flagged", label: t("operator:pluginsSortFlagged") },
+            { value: "installs", label: t("operator:pluginsSortInstalls") },
+            { value: "recent", label: t("operator:pluginsSortRecent") },
+            { value: "name", label: t("operator:pluginsSortName") },
           ]}
         />
       </div>
@@ -184,7 +177,7 @@ export function OperatorPackagesPage() {
         <Checkbox
           checked={someSelected ? "indeterminate" : allSelected}
           onCheckedChange={toggleAll}
-          aria-label={t("operator:selectAllPackages")}
+          aria-label={t("operator:selectAllPlugins")}
         />
         <span className="text-muted-foreground text-xs">{shownLabel()}</span>
       </div>
@@ -193,7 +186,7 @@ export function OperatorPackagesPage() {
       {selectedNames.length > 0 && (
         <BulkBar
           count={selectedNames.length}
-          noun={t("operator:packageNoun")}
+          noun={t("operator:pluginNoun")}
           busy={busy}
           onTakedown={bulkTakedown}
           onClear={() => setSelected(new Set())}
@@ -206,7 +199,7 @@ export function OperatorPackagesPage() {
 }
 
 function metaLine(
-  pkg: OperatorPackage,
+  pkg: OperatorPlugin,
   relative: (value: string | Date | undefined) => string,
   t: AppTranslate,
 ): string {
@@ -220,14 +213,14 @@ function metaLine(
   return parts.join(" · ");
 }
 
-function PackageRow({
+function PluginRow({
   pkg,
   selected,
   onToggle,
   onError,
   onChanged,
 }: Readonly<{
-  pkg: OperatorPackage;
+  pkg: OperatorPlugin;
   selected: boolean;
   onToggle: () => void;
   onError: (message: string | null) => void;
@@ -236,8 +229,8 @@ function PackageRow({
   const t = useT();
   const relative = useRelativeTime();
   const [open, setOpen] = useState(false);
-  const { versions, busy, pkgBusy, loadVersions, act, takedownPackage, setVerified } =
-    usePackageModeration(pkg, open, onChanged, onError);
+  const { versions, busy, pkgBusy, loadVersions, act, takedownPlugin, restorePlugin, setVerified } =
+    usePluginModeration(pkg, open, onChanged, onError);
 
   function expand() {
     const next = !open;
@@ -245,15 +238,13 @@ function PackageRow({
     if (next && versions === null) void loadVersions();
   }
 
-  const liveVersions = pkg.versionCount - pkg.takenDownCount;
-
   return (
     <li className="flex flex-col">
       <div className="flex items-center gap-3 px-4 py-3.5">
         <Checkbox
           checked={selected}
           onCheckedChange={onToggle}
-          aria-label={t("operator:selectPackage", { name: pkg.name })}
+          aria-label={t("operator:selectPlugin", { name: pkg.name })}
           className="shrink-0"
         />
         <button
@@ -261,8 +252,8 @@ function PackageRow({
           onClick={expand}
           aria-label={
             open
-              ? t("operator:collapsePackage", { name: pkg.name })
-              : t("operator:expandPackage", { name: pkg.name })
+              ? t("operator:collapsePlugin", { name: pkg.name })
+              : t("operator:expandPlugin", { name: pkg.name })
           }
           className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-transform hover:bg-muted hover:text-foreground"
         >
@@ -281,14 +272,19 @@ function PackageRow({
               <Link
                 to="/operator/reports"
                 search={{ q: pkg.name, status: "open", page: 1 }}
-                title={t("operator:viewPackageReports")}
+                title={t("operator:viewPluginReports")}
                 className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 font-semibold text-amber-600 text-xs transition-colors hover:bg-amber-500/20 dark:text-amber-400"
               >
                 <Flag className="size-3" />
-                {t("operator:packageReports", { count: pkg.openReports })}
+                {t("operator:pluginReports", { count: pkg.openReports })}
               </Link>
             )}
-            {pkg.takenDownCount > 0 && (
+            {pkg.takedown !== null && (
+              <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 font-semibold text-destructive text-xs">
+                {t("operator:pluginTakenDownBadge")}
+              </span>
+            )}
+            {pkg.takedown === null && pkg.takenDownCount > 0 && (
               <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 font-semibold text-destructive text-xs">
                 {t("operator:versionsDownBadge", { count: pkg.takenDownCount })}
               </span>
@@ -312,18 +308,13 @@ function PackageRow({
           <ShieldCheck className="size-3.5" />
           {pkg.verified ? t("operator:verified") : t("operator:verify")}
         </button>
-        {liveVersions > 0 ? (
-          <TakedownControls
-            takenDown={false}
-            busy={pkgBusy}
-            onTakedown={takedownPackage}
-            onRestore={() => {}}
-          />
-        ) : (
-          <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground text-xs">
-            {t("operator:allVersionsDown")}
-          </span>
-        )}
+        <TakedownControls
+          subject={pkg.name}
+          takenDown={pkg.takedown !== null}
+          busy={pkgBusy}
+          onTakedown={takedownPlugin}
+          onRestore={restorePlugin}
+        />
       </div>
 
       {open && <VersionPanel pkg={pkg} versions={versions} busy={busy} onAct={act} />}
