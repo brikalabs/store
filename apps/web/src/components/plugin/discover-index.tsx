@@ -1,3 +1,4 @@
+import { Switch } from "@brika/clay";
 import type { PluginSummary, SearchDirection } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { Link } from "@tanstack/react-router";
@@ -38,22 +39,25 @@ export function DiscoverIndex({
 }: Readonly<{ plugins: PluginSummary[]; total: number; title?: string }>) {
   const t = useT();
   const [term, setTerm] = useState("");
+  const [verifiedOnly, setVerifiedOnly] = useState(true);
   const [field, setField] = useState<SortKey>("downloads");
   const [direction, setDirection] = useState<SearchDirection>("desc");
   const heading = title ?? t("plugin:discoverTitle");
   const scopes = topScopes(plugins, 5);
+  const onlyScope = scopes.length === 1 ? (scopes[0]?.scope ?? null) : null;
   const trending = plugins.slice(0, 5);
-  const sorted = sortPlugins(plugins, field, direction);
+  const ranked = sortPlugins(plugins, field, direction);
+  const trusted = verifiedOnly ? ranked.filter((plugin) => plugin.verified) : ranked;
   // The rail input live-filters the loaded plugins (matching its "Filter plugins" label); the global
   // header search covers the full catalog.
   const needle = term.trim().toLowerCase();
   const shown = needle
-    ? sorted.filter((plugin) =>
+    ? trusted.filter((plugin) =>
         `${plugin.displayName ?? ""} ${plugin.name} ${plugin.description ?? ""} ${plugin.keywords.join(" ")}`
           .toLowerCase()
           .includes(needle),
       )
-    : sorted;
+    : trusted;
 
   return (
     <div className="flex flex-col gap-6">
@@ -62,16 +66,22 @@ export function DiscoverIndex({
           <h1 className="font-bold font-heading text-3xl tracking-tight">{heading}</h1>
           <p className="mt-1 text-muted-foreground text-sm">
             {t("plugin:verifiedScopedPlugins", { count: total })}
+            {onlyScope ? ` · ${t("plugin:inSpace", { scope: onlyScope })}` : ""}
           </p>
         </div>
-        <SortMenu
-          field={field}
-          direction={direction}
-          onChange={(nextField, nextDirection) => {
-            setField(nextField);
-            setDirection(nextDirection);
-          }}
-        />
+        <div className="flex items-center gap-3">
+          <span className="font-medium text-muted-foreground text-xs uppercase tracking-[0.08em]">
+            {t("plugin:sort")}
+          </span>
+          <SortMenu
+            field={field}
+            direction={direction}
+            onChange={(nextField, nextDirection) => {
+              setField(nextField);
+              setDirection(nextDirection);
+            }}
+          />
+        </div>
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[206px_1fr_236px]">
@@ -99,10 +109,18 @@ export function DiscoverIndex({
           </FilterGroup>
           <div className="h-px bg-border" />
           <FilterGroup label={t("plugin:trust")}>
-            <span className="flex items-center gap-2 text-foreground text-sm">
-              <ShieldCheck className="size-3.5 text-brand-ink" />
-              {t("plugin:verifiedOnly")}
-            </span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-foreground text-sm">
+                <ShieldCheck className="size-3.5 text-brand-ink" />
+                {t("plugin:verifiedOnly")}
+              </span>
+              <Switch
+                checked={verifiedOnly}
+                onCheckedChange={setVerifiedOnly}
+                size="sm"
+                aria-label={t("plugin:verifiedOnly")}
+              />
+            </div>
           </FilterGroup>
         </aside>
 

@@ -1,7 +1,7 @@
 {
   "plugins": "{count, plural, one {# plugin} other {# plugins}}",
   "scopes": "{count, plural, one {# space} other {# spaces}}",
-  "browseHeading": "Browse plugins",
+  "browseHeading": "Explore plugins",
   "resultsFor": "Results for",
   "scopesHeading": "Spaces",
   "pluginsHeading": "Plugins",
