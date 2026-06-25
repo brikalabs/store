@@ -5,25 +5,29 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@brika/clay";
+import { CIMODE } from "@brika/i18n";
 import { Check, ChevronDown, Globe } from "lucide-react";
 import { useLocalePref } from "@/hooks/use-locale-pref";
 import { useT } from "@/i18n";
-import { type Locale, SUPPORTED_LOCALES } from "@/i18n/catalog";
+import { defaultLocale, locales } from "@/i18n/catalog";
 
 /** The language's name in its own language, capitalized: `fr` -> "Français". */
-function nativeName(code: Locale): string {
+function nativeName(code: string): string {
   const name = new Intl.DisplayNames([code], { type: "language" }).of(code) ?? code;
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
-/** The language's name in English: `fr` -> "French". */
-function englishName(code: Locale): string {
-  return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? code;
+/** The language's name in `inLocale`, following that locale's casing: `ja` in fr -> "japonais". */
+function localizedName(code: string, inLocale: string): string {
+  // Intl.DisplayNames throws on a non-BCP-47 tag like "cimode"; fall back to a real locale.
+  const display = locales.includes(inLocale) ? inLocale : defaultLocale;
+  return new Intl.DisplayNames([display], { type: "language" }).of(code) ?? code;
 }
 
 /**
  * Language picker: a globe + locale-code pill that opens the supported locales (native name over its
- * English name, the active one checked). The choice persists via cookie and re-renders in place.
+ * name in the current UI language, the active one checked). The choice persists via cookie. In dev it
+ * also offers `cimode`, which shows the raw message keys for inspection.
  */
 export function LocaleToggle() {
   const t = useT();
@@ -44,7 +48,7 @@ export function LocaleToggle() {
         <div className="px-2.5 py-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.06em]">
           {t("nav:language")}
         </div>
-        {SUPPORTED_LOCALES.map((code) => {
+        {locales.map((code) => {
           const active = code === locale;
           return (
             <DropdownMenuItem
@@ -59,10 +63,25 @@ export function LocaleToggle() {
                 {nativeName(code)}
                 {active ? <Check className="size-4 text-brand-ink" /> : null}
               </span>
-              <span className="text-muted-foreground text-xs">{englishName(code)}</span>
+              <span className="text-muted-foreground text-xs">{localizedName(code, locale)}</span>
             </DropdownMenuItem>
           );
         })}
+        {import.meta.env.DEV ? (
+          <DropdownMenuItem
+            onSelect={() => setLocale(CIMODE)}
+            className={cn(
+              "flex flex-col items-start gap-0.5 rounded-xl px-2.5 py-2",
+              locale === CIMODE && "bg-muted",
+            )}
+          >
+            <span className="flex w-full items-center justify-between font-semibold text-foreground text-sm">
+              Keys
+              {locale === CIMODE ? <Check className="size-4 text-brand-ink" /> : null}
+            </span>
+            <span className="text-muted-foreground text-xs">cimode (dev only)</span>
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

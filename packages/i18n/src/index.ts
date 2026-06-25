@@ -25,6 +25,13 @@ export type MessageKey<C extends Catalog> = Catalog extends C
 export type Translate<K extends string = string> = (key: K, values?: Values) => string;
 
 /**
+ * A reserved pseudo-locale that makes the translator echo each key verbatim instead of resolving it.
+ * Use it in development to see exactly which message key backs every string on screen (i18next calls
+ * this `cimode`). Never enable it in production.
+ */
+export const CIMODE = "cimode";
+
+/**
  * Build a translator for one locale. ICU messages are parsed lazily and cached per key, so repeat
  * calls (lists, re-renders) reuse the compiled format. A missing key returns the key itself, so gaps
  * are visible in the UI rather than silently empty. Pass a typed (`as const`) catalog to get a
@@ -35,6 +42,7 @@ export function createTranslator<C extends Catalog>(
   catalog: C,
   defaultNamespace = "common",
 ): Translate<MessageKey<C>> {
+  if (locale === CIMODE) return (key) => key; // dev key-inspection: show the key, not the value
   const shape: Catalog = catalog;
   const cache = new Map<string, IntlMessageFormat>();
   return (key, values) => {

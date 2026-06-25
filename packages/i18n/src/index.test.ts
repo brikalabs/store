@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildCatalogs,
   type Catalog,
+  CIMODE,
   createTranslator,
   formatDate,
   formatNumber,
@@ -52,6 +53,12 @@ describe("createTranslator", () => {
   test("honors a custom default namespace", () => {
     const t = createTranslator("en", { errors: { boom: "Boom" } }, "errors");
     expect(t("boom")).toBe("Boom");
+  });
+
+  test("CIMODE echoes the key instead of resolving it", () => {
+    const t = createTranslator(CIMODE, en);
+    expect(t("browse:plugins", { count: 5 })).toBe("browse:plugins");
+    expect(t("hello")).toBe("hello");
   });
 });
 

@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE } from "@/i18n/catalog";
+import { defaultLocale } from "@/i18n/catalog";
 
 /** The legal/policy documents, one markdown file per locale under `<locale>/<slug>.md`. */
 export type LegalSlug = "terms" | "privacy" | "licenses" | "cookies" | "acceptable-use";
@@ -24,5 +24,5 @@ for (const [path, raw] of Object.entries(files)) {
 
 /** The markdown for `slug` in `locale`, falling back to the default locale, then empty. */
 export function legalDoc(slug: LegalSlug, locale: string): string {
-  return byLocale[locale]?.[slug] ?? byLocale[DEFAULT_LOCALE]?.[slug] ?? "";
+  return byLocale[locale]?.[slug] ?? byLocale[defaultLocale]?.[slug] ?? "";
 }
