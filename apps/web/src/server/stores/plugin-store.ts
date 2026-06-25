@@ -1,6 +1,6 @@
 import { inject } from "@brika/di";
 import type { PluginDetail, RatingSummary } from "@brika/registry-contract";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { Db } from "@/server/db/client";
 import { plugins, reviews } from "@/server/db/schema";
 
@@ -67,5 +67,19 @@ export class PluginStore {
     const row = rows[0];
     if (row === undefined || row.count === 0) return undefined;
     return { average: row.average, count: row.count };
+  }
+
+  /** Rating summaries for many packages at once, keyed by name; reviewless packages are omitted. */
+  async ratingSummaries(names: readonly string[]): Promise<Map<string, RatingSummary>> {
+    if (names.length === 0) return new Map();
+    const rows = await this.#db
+      .select({ name: plugins.name, average: plugins.ratingAverage, count: plugins.ratingCount })
+      .from(plugins)
+      .where(inArray(plugins.name, [...names]));
+    return new Map(
+      rows
+        .filter((row) => row.count > 0)
+        .map((row) => [row.name, { average: row.average, count: row.count }]),
+    );
   }
 }

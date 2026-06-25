@@ -237,6 +237,21 @@ describe("submitReview + rating summary", () => {
     await seedPlugin();
     expect(await h.stores.plugins.ratingSummary("p")).toBeUndefined();
   });
+
+  test("ratingSummaries batches many packages, omitting reviewless and unknown ones", async () => {
+    await cachePlugin(h.db, "p");
+    await cachePlugin(h.db, "q");
+    await cachePlugin(h.db, "r"); // cached but never reviewed
+    await h.stores.users.upsert({ id: "u1", name: "a" });
+    await h.social.submitReview("p", "u1", { rating: 4, body: "good" });
+    await h.social.submitReview("q", "u1", { rating: 2, body: "meh" });
+
+    const map = await h.stores.plugins.ratingSummaries(["p", "q", "r", "missing"]);
+    expect(map.get("p")).toEqual({ average: 4, count: 1 });
+    expect(map.get("q")).toEqual({ average: 2, count: 1 });
+    expect(map.has("r")).toBe(false);
+    expect(map.has("missing")).toBe(false);
+  });
 });
 
 describe("comments", () => {
