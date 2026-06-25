@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState } from "react";
-import { i18nConfig } from "@/i18n/config";
+import { i18n } from "@/i18n/catalog";
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
@@ -22,7 +22,7 @@ export function useLocaleController(initial: string): LocaleApi {
       locale,
       setLocale: (next) => {
         // biome-ignore lint/suspicious/noDocumentCookie: a sync write keeps the next SSR in sync; the Cookie Store API is async and not universally supported.
-        document.cookie = `${i18nConfig.cookie}=${next}; path=/; max-age=${ONE_YEAR_SECONDS}; samesite=lax`;
+        document.cookie = `${i18n.cookie}=${next}; path=/; max-age=${ONE_YEAR_SECONDS}; samesite=lax`;
         setLocale(next);
       },
     }),

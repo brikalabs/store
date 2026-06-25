@@ -4,6 +4,7 @@ import {
   type Catalog,
   CIMODE,
   createTranslator,
+  defineI18n,
   formatDate,
   formatNumber,
   formatRelative,
@@ -115,6 +116,61 @@ describe("formatRelative", () => {
   test("returns empty for absent or invalid input", () => {
     expect(formatRelative("en", undefined, now)).toBe("");
     expect(formatRelative("en", "nope", now)).toBe("");
+  });
+});
+
+describe("defineI18n", () => {
+  const messages = {
+    "./locales/en/nav.json": { home: "Home" },
+    "./locales/fr/nav.json": { home: "Accueil" },
+    "./locales/de/nav.json": { home: "Start" },
+    "./locales/ja/nav.json": { home: "ホーム" },
+  };
+  const i18n = defineI18n({
+    messages,
+    defaultLocale: "en",
+    cookie: "brika-locale",
+    order: ["en", "fr"],
+    dev: true,
+  });
+
+  test("auto-detects locales and applies config order then alphabetical", () => {
+    expect(i18n.locales).toEqual(["en", "fr", "de", "ja"]); // en,fr from order; de,ja alphabetical
+    expect(i18n.defaultLocale).toBe("en");
+    expect(i18n.cookie).toBe("brika-locale");
+  });
+
+  test("catalogFor falls back to the default locale", () => {
+    expect(i18n.catalogFor("fr").nav?.home).toBe("Accueil");
+    expect(i18n.catalogFor("xx").nav?.home).toBe("Home");
+  });
+
+  test("localeFromCookie validates and allows cimode only in dev", () => {
+    expect(i18n.localeFromCookie(null)).toBeNull();
+    expect(i18n.localeFromCookie("other=1")).toBeNull(); // cookie not present
+    expect(i18n.localeFromCookie("flag; brika-locale=fr")).toBe("fr"); // skips the value-less part
+    expect(i18n.localeFromCookie("brika-locale=zz")).toBeNull(); // unsupported
+    expect(i18n.localeFromCookie(`brika-locale=${CIMODE}`)).toBe(CIMODE); // dev: true
+  });
+
+  test("cimode is rejected when dev is off", () => {
+    const prod = defineI18n({ messages, defaultLocale: "en" });
+    expect(prod.localeFromCookie(`locale=${CIMODE}`)).toBeNull();
+    expect(prod.cookie).toBe("locale"); // default cookie name
+  });
+
+  test("localeFromHeader picks the best supported locale", () => {
+    expect(i18n.localeFromHeader("de-DE,de;q=0.9")).toBe("de");
+    expect(i18n.localeFromHeader(null)).toBe("en");
+  });
+
+  test("localeForRequest prefers the cookie, else Accept-Language", () => {
+    const cookied = new Request("https://x/", {
+      headers: { cookie: "brika-locale=fr", "accept-language": "de" },
+    });
+    expect(i18n.localeForRequest(cookied)).toBe("fr");
+    const headerOnly = new Request("https://x/", { headers: { "accept-language": "ja,en" } });
+    expect(i18n.localeForRequest(headerOnly)).toBe("ja");
   });
 });
 

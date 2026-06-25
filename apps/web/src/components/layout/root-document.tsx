@@ -5,7 +5,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { LocaleContext, useLocaleController } from "@/hooks/use-locale-pref";
 import { ThemeContext, themeBootScript, useThemeController } from "@/hooks/use-theme";
-import { catalogFor } from "@/i18n/catalog";
+import { i18n } from "@/i18n/catalog";
 
 const rootApi = getRouteApi("__root__");
 
@@ -38,7 +38,7 @@ export function RootDocument() {
       </head>
       <body className="flex min-h-dvh flex-col bg-background font-sans text-foreground antialiased">
         <LocaleContext.Provider value={localeApi}>
-          <I18nProvider locale={localeApi.locale} catalog={catalogFor(localeApi.locale)}>
+          <I18nProvider locale={localeApi.locale} catalog={i18n.catalogFor(localeApi.locale)}>
             <ThemeContext.Provider value={api}>
               <SearchProvider>
                 <SiteHeader />

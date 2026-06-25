@@ -9,7 +9,7 @@ import { CIMODE } from "@brika/i18n";
 import { Check, ChevronDown, Globe } from "lucide-react";
 import { useLocalePref } from "@/hooks/use-locale-pref";
 import { useT } from "@/i18n";
-import { defaultLocale, locales } from "@/i18n/catalog";
+import { i18n } from "@/i18n/catalog";
 
 /** The language's name in its own language, capitalized: `fr` -> "Français". */
 function nativeName(code: string): string {
@@ -20,7 +20,7 @@ function nativeName(code: string): string {
 /** The language's name in `inLocale`, following that locale's casing: `ja` in fr -> "japonais". */
 function localizedName(code: string, inLocale: string): string {
   // Intl.DisplayNames throws on a non-BCP-47 tag like "cimode"; fall back to a real locale.
-  const display = locales.includes(inLocale) ? inLocale : defaultLocale;
+  const display = i18n.locales.includes(inLocale) ? inLocale : i18n.defaultLocale;
   return new Intl.DisplayNames([display], { type: "language" }).of(code) ?? code;
 }
 
@@ -48,7 +48,7 @@ export function LocaleToggle() {
         <div className="px-2.5 py-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.06em]">
           {t("nav:language")}
         </div>
-        {locales.map((code) => {
+        {i18n.locales.map((code) => {
           const active = code === locale;
           return (
             <DropdownMenuItem

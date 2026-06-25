@@ -156,3 +156,82 @@ export function formatNumber(
 ): string {
   return new Intl.NumberFormat(locale, options).format(value);
 }
+
+/** Read one cookie's value from a `Cookie` header (locale codes are ASCII, so no decoding needed). */
+function cookieValue(header: string | null, name: string): string | undefined {
+  if (header === null) return undefined;
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq !== -1 && part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim();
+  }
+  return undefined;
+}
+
+/** Configuration for {@link defineI18n}: the bundler glob plus a few defaults. */
+export interface I18nSetup {
+  /** Eager glob of `locales/<code>/<namespace>.json` (e.g. Vite `import.meta.glob(..., {eager:true,import:"default"})`). */
+  readonly messages: Record<string, Namespace>;
+  /** Locale used when neither the cookie nor `Accept-Language` resolves. */
+  readonly defaultLocale: string;
+  /** Cookie name holding the user's explicit choice. Defaults to `locale`. */
+  readonly cookie?: string;
+  /** Optional display order; detected locales not listed are appended alphabetically. */
+  readonly order?: readonly string[];
+  /** When true, the cookie may select {@link CIMODE} (dev key inspection). Keep off in production. */
+  readonly dev?: boolean;
+}
+
+/** The runtime returned by {@link defineI18n}: everything an app needs, derived from the glob. */
+export interface I18nRuntime {
+  /** Supported locales, auto-detected from the glob, in `order` then alphabetical. */
+  readonly locales: readonly string[];
+  readonly defaultLocale: string;
+  /** The cookie name (for the client to persist a choice). */
+  readonly cookie: string;
+  /** A locale's catalog, falling back to the default locale's then empty. */
+  catalogFor(locale: string): Catalog;
+  /** The locale chosen via the cookie, or null when unset/unsupported (`cimode` allowed when `dev`). */
+  localeFromCookie(cookieHeader: string | null): string | null;
+  /** The best-supported locale for an `Accept-Language` header (falls back to the default). */
+  localeFromHeader(header: string | null): string;
+  /** The locale for a request: the cookie choice, else the best `Accept-Language` match. */
+  localeForRequest(request: Request): string;
+}
+
+/**
+ * Assemble a complete i18n runtime from one config object: locales auto-detected from the glob,
+ * catalog lookup, and cookie/header/request resolution. The app keeps only this call (plus its locale
+ * JSON); the engine does the rest.
+ */
+export function defineI18n(setup: I18nSetup): I18nRuntime {
+  const catalogs = buildCatalogs(setup.messages);
+  const cookie = setup.cookie ?? "locale";
+  const order = setup.order ?? [];
+  const locales = Object.keys(catalogs).sort((a, b) => {
+    const ia = order.indexOf(a);
+    const ib = order.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
+  const localeFromCookie = (header: string | null): string | null => {
+    const value = cookieValue(header, cookie);
+    if (value === undefined) return null;
+    if (setup.dev === true && value === CIMODE) return CIMODE;
+    return locales.includes(value) ? value : null;
+  };
+  const localeFromHeader = (header: string | null): string =>
+    resolveLocale(header, locales, setup.defaultLocale);
+  return {
+    locales,
+    defaultLocale: setup.defaultLocale,
+    cookie,
+    catalogFor: (locale) => pickCatalog(catalogs, locale, setup.defaultLocale),
+    localeFromCookie,
+    localeFromHeader,
+    localeForRequest: (request) =>
+      localeFromCookie(request.headers.get("cookie")) ??
+      localeFromHeader(request.headers.get("accept-language")),
+  };
+}

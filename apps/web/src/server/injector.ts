@@ -3,11 +3,11 @@ import { createInjector, type Provider, runInInjectionContext } from "@brika/di"
 import { DomainSecret, RegistryDb, registryBindings } from "@brika/registry-runtime";
 import { getDb as getRegistryDb } from "@brika/store-db";
 import { getRequest } from "@tanstack/react-start/server";
+import { i18n } from "@/i18n/catalog";
 import { AssetsBucket, AssetsPublicUrl, CfR2BlobStore } from "@/server/adapters/cf-r2-blob-store";
 import { Db, getDb } from "@/server/db/client";
 import { config } from "@/server/env";
 import { RequestLocale } from "@/server/i18n";
-import { localeForRequest } from "@/server/locale";
 import { BlobStore } from "@/server/ports/blob-store";
 
 /** The web app's composition root: the runtime values its DI graph needs. */
@@ -35,7 +35,7 @@ const appInjector = createInjector(webProviders);
  */
 export function runWeb<R>(fn: () => R): R {
   const requestInjector = createInjector(
-    [{ provide: RequestLocale, useFactory: () => localeForRequest(getRequest()) }],
+    [{ provide: RequestLocale, useFactory: () => i18n.localeForRequest(getRequest()) }],
     appInjector,
   );
   return runInInjectionContext(requestInjector, fn);
