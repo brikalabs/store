@@ -1,8 +1,9 @@
 import { Checkbox } from "@brika/clay/components/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
-import { BadgeCheck, Search } from "lucide-react";
+import { CircleCheck, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { OPERATOR_PAGE_SIZE, OperatorPager } from "@/components/operator/operator-pager";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import {
   BulkBar,
@@ -93,11 +94,11 @@ function OperatorScopeRow({
         title={scope.verified ? t("operator:verified") : t("operator:verify")}
         className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold text-xs transition-colors disabled:opacity-50 ${
           scope.verified
-            ? "bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 dark:text-sky-400"
-            : "border border-border text-muted-foreground hover:border-sky-500/40 hover:text-foreground"
+            ? "bg-brand/10 text-brand-ink hover:bg-brand/20"
+            : "border border-border text-muted-foreground hover:border-brand/40 hover:text-foreground"
         }`}
       >
-        <BadgeCheck className="size-3.5" />
+        <CircleCheck className="size-3.5" />
         {scope.verified ? t("operator:verified") : t("operator:verify")}
       </button>
       <TakedownControls
@@ -117,6 +118,7 @@ export function OperatorScopesPage() {
   const [facet, setFacet] = useState<ScopeFacet>("all");
   const [sort, setSort] = useState<ScopeSort>("newest");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(0);
 
   const facets: Facet<ScopeFacet>[] = useMemo(
     () => [
@@ -142,6 +144,14 @@ export function OperatorScopesPage() {
       sorted.sort((a, b) => b.openReports - a.openReports || a.scope.localeCompare(b.scope));
     return sorted; // "newest" keeps the server order
   }, [list.items, facet, sort]);
+
+  // Client-paginate the filtered window; clamp so a shrunk filter never strands an empty page.
+  const pageCount = Math.max(1, Math.ceil(visible.length / OPERATOR_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageItems = visible.slice(
+    safePage * OPERATOR_PAGE_SIZE,
+    (safePage + 1) * OPERATOR_PAGE_SIZE,
+  );
 
   // Scope the selection to what's on screen, so a facet/search change never takes down a scope the
   // operator can no longer see.
@@ -172,20 +182,23 @@ export function OperatorScopesPage() {
       return <p className="text-muted-foreground text-sm">{t("operator:scopesEmpty")}</p>;
     }
     return (
-      <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
-        {visible.map((scope) => (
-          <OperatorScopeRow
-            key={scope.scope}
-            scope={scope}
-            selected={selected.has(scope.scope)}
-            busy={busy === scope.scope}
-            onToggle={() => toggle(scope.scope)}
-            onTakedown={(reason) => act(scope.scope, "takedown", { reason })}
-            onRestore={() => act(scope.scope, "restore")}
-            onVerify={(verified) => act(scope.scope, "verify", { verified })}
-          />
-        ))}
-      </ul>
+      <>
+        <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
+          {pageItems.map((scope) => (
+            <OperatorScopeRow
+              key={scope.scope}
+              scope={scope}
+              selected={selected.has(scope.scope)}
+              busy={busy === scope.scope}
+              onToggle={() => toggle(scope.scope)}
+              onTakedown={(reason) => act(scope.scope, "takedown", { reason })}
+              onRestore={() => act(scope.scope, "restore")}
+              onVerify={(verified) => act(scope.scope, "verify", { verified })}
+            />
+          ))}
+        </ul>
+        <OperatorPager page={safePage} pageCount={pageCount} onPage={setPage} />
+      </>
     );
   }
 

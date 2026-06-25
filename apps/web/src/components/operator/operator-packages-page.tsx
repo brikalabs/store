@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Flag, Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
+import { OPERATOR_PAGE_SIZE, OperatorPager } from "@/components/operator/operator-pager";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import {
   BulkBar,
@@ -44,6 +45,7 @@ export function OperatorPackagesPage() {
   const [facet, setFacet] = useState<PkgFacet>("all");
   const [sort, setSort] = useState<PkgSort>("flagged");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(0);
 
   const facets: Facet<PkgFacet>[] = useMemo(
     () => [
@@ -77,6 +79,14 @@ export function OperatorPackagesPage() {
     });
     return rows;
   }, [list.items, facet, sort]);
+
+  // Client-paginate the filtered window; clamp so a shrunk filter never strands an empty page.
+  const pageCount = Math.max(1, Math.ceil(visible.length / OPERATOR_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageItems = visible.slice(
+    safePage * OPERATOR_PAGE_SIZE,
+    (safePage + 1) * OPERATOR_PAGE_SIZE,
+  );
 
   // Scope the selection to what's actually on screen: a facet/search change drops out-of-view picks
   // from the count and the bulk payload, so the operator only ever acts on packages they can see.
@@ -121,18 +131,21 @@ export function OperatorPackagesPage() {
       return <p className="px-1 text-muted-foreground text-sm">{t("operator:packagesEmpty")}</p>;
     }
     return (
-      <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        {visible.map((pkg) => (
-          <PackageRow
-            key={pkg.name}
-            pkg={pkg}
-            selected={selected.has(pkg.name)}
-            onToggle={() => toggle(pkg.name)}
-            onError={setError}
-            onChanged={list.reload}
-          />
-        ))}
-      </ul>
+      <>
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          {pageItems.map((pkg) => (
+            <PackageRow
+              key={pkg.name}
+              pkg={pkg}
+              selected={selected.has(pkg.name)}
+              onToggle={() => toggle(pkg.name)}
+              onError={setError}
+              onChanged={list.reload}
+            />
+          ))}
+        </ul>
+        <OperatorPager page={safePage} pageCount={pageCount} onPage={setPage} />
+      </>
     );
   }
 

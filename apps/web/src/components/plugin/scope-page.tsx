@@ -44,7 +44,7 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
                 <span
                   key={domain}
                   title={t("plugin:verifiedDomain")}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 font-medium text-sky-600 text-xs dark:text-sky-400"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3 py-1 font-medium text-brand-ink text-xs"
                 >
                   <Globe className="size-3.5" />
                   {domain}
