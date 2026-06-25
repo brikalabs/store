@@ -232,12 +232,27 @@ export function pageSchema<T extends z.ZodType>(item: T) {
   });
 }
 
-export const SearchSort = z.enum(["downloads", "rating", "recent", "name"]);
+export const SearchSort = z.enum(["relevance", "downloads", "rating", "recent", "name"]);
 export type SearchSort = z.infer<typeof SearchSort>;
 
-/** `GET /v1/search?q=&limit=&offset=&sort=` */
+/** A Brika capability a search can require the plugin to declare at least one of. */
+export const SearchCapability = z.enum(["tools", "blocks", "bricks", "sparks", "pages"]);
+export type SearchCapability = z.infer<typeof SearchCapability>;
+
+/**
+ * `GET /v1/search?q=&tags=&capability=&limit=&offset=&sort=`. `tags` is AND-matched and accepts
+ * either a comma-separated string (raw query strings) or a string array, so a handler can hand the
+ * whole `URLSearchParams` straight in.
+ */
 export const SearchQuery = PageQuery.extend({
   q: z.string().optional(),
+  tags: z
+    .preprocess(
+      (value) => (typeof value === "string" ? value.split(",").filter((t) => t.length > 0) : value),
+      z.array(z.string()),
+    )
+    .default([]),
+  capability: SearchCapability.optional(),
   sort: SearchSort.default("downloads"),
 });
 export type SearchQuery = z.infer<typeof SearchQuery>;

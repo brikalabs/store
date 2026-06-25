@@ -1,6 +1,7 @@
 import type { PluginListingStatus, PluginSummary } from "@brika/registry-contract";
 import { type MetadataReader, type PackageVersion, scopeOf } from "@brika/registry-core";
-import { Manifest, manifestToSummary } from "@/lib/registry/registry-source";
+import { manifestToSummary } from "@/lib/registry/registry-mappers";
+import { Manifest } from "@/lib/registry/registry-wire";
 
 /** Sort published/deprecated (still live) ahead of the hidden states. */
 const STATUS_RANK: Record<PluginListingStatus, number> = {

@@ -1,4 +1,4 @@
-import type { PluginSummary } from "@brika/registry-contract";
+import type { PluginSummary, SearchCapability } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -21,7 +21,12 @@ import { ListingCard } from "@/components/plugin/listing-card";
 import { type SortKey, SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
 import { useT } from "@/i18n";
 
-export type CapabilityTile = { key: string; label: string; glyph: LucideIcon; gradient: Gradient };
+export type CapabilityTile = {
+  key: SearchCapability;
+  label: string;
+  glyph: LucideIcon;
+  gradient: Gradient;
+};
 
 export const CAPABILITY_TILES: CapabilityTile[] = [
   { key: "tools", label: "Tools", glyph: Code, gradient: ["#FF8A5B", "#F2542D"] },
@@ -101,7 +106,7 @@ export function DiscoverIndex({
               <Link
                 key={tile.key}
                 to="/plugins"
-                search={{ q: tile.key }}
+                search={{ capability: tile.key }}
                 className="flex items-center justify-between rounded-md px-1 py-1 text-muted-foreground text-sm transition-colors hover:text-foreground"
               >
                 {tile.label}

@@ -2,7 +2,7 @@ import { inject } from "@brika/di";
 import { notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { getRegistryFileList } from "@/lib/registry/registry-assets";
-import { isRegistryName } from "@/lib/registry/registry-source";
+import { isRegistryName } from "@/lib/registry/registry-http";
 import { publicJson, runHandler } from "@/server/http";
 import { BlobStore } from "@/server/ports/blob-store";
 

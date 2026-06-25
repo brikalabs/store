@@ -18,7 +18,7 @@ import { TarballBucket } from "../adapters/r2-tarball";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
 import { provideRegistry } from "../services";
 import { fakeR2, makeDb, seedExamplePackage } from "../test-harness";
-import { handleCatalog } from "./catalog";
+import { handleCatalog, handleSearch } from "./catalog";
 import { handleDownloads } from "./stats";
 
 /**
@@ -665,6 +665,55 @@ describe("handleCatalog", () => {
     );
     expect(res.status).toBe(200);
     expect((await res.json()).total).toBe(1);
+  });
+});
+
+describe("handleSearch (SQL index: FTS + tag/capability)", () => {
+  // Publish through the real writer so the `reg_search` projection is built (seedExamplePackage
+  // inserts rows directly and does not, which is exactly why this path needs the writer).
+  const publishSearchable = (db: Db) =>
+    makeAdapter(db, D1MetadataWriter).commitVersion({
+      scope: "@brika",
+      tag: "latest",
+      version: {
+        name: "@brika/x",
+        version: "1.0.0",
+        manifest: {
+          name: "@brika/x",
+          version: "1.0.0",
+          displayName: "Mapbox",
+          description: "interactive maps",
+          keywords: ["maps", "geo"],
+          tools: [{}],
+          engines: { brika: "^1.0.0" },
+        },
+        integrity: "sha512-x",
+        shasum: "abc",
+        size: 10,
+        publishedAt: "2026-06-16T00:00:00.000Z",
+        deprecated: null,
+        yanked: false,
+        provenance: null,
+      },
+    });
+
+  test("matches on full-text query plus a capability filter", async () => {
+    await publishSearchable(db);
+    const res = await run(services(db), () =>
+      handleSearch(new Request("http://localhost/-/v1/search?text=map&capability=tools")),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.total).toBe(1);
+    expect(body.packages[0].name).toBe("@brika/x");
+  });
+
+  test("excludes packages that lack the requested tag", async () => {
+    await publishSearchable(db);
+    const res = await run(services(db), () =>
+      handleSearch(new Request("http://localhost/-/v1/search?tags=geo,unrelated")),
+    );
+    expect((await res.json()).total).toBe(0);
   });
 });
 

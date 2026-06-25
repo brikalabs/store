@@ -116,6 +116,13 @@ export {
   type ScopeServiceOptions,
   ScopeStore,
 } from "./scope";
+export type {
+  SearchCapability,
+  SearchOptions,
+  SearchReader,
+  SearchResult,
+  SearchSort,
+} from "./search";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export type { TokenPrincipal, TokenStore } from "./tokens";
 export {

@@ -39,6 +39,13 @@ test("SearchQuery rejects out-of-range limits", () => {
   expect(SearchQuery.safeParse({ limit: "1000" }).success).toBe(false);
 });
 
+test("SearchQuery accepts tags as a comma string or an array, defaulting to none", () => {
+  expect(SearchQuery.parse({ tags: "geo,maps" }).tags).toEqual(["geo", "maps"]);
+  expect(SearchQuery.parse({ tags: ["geo"] }).tags).toEqual(["geo"]);
+  expect(SearchQuery.parse({ tags: "geo,," }).tags).toEqual(["geo"]);
+  expect(SearchQuery.parse({}).tags).toEqual([]);
+});
+
 test("PluginSummary applies sensible defaults", () => {
   const plugin = PluginSummary.parse({ name: "@brika/x", version: "1.0.0", brikaEngine: "^0.3.0" });
   expect(plugin.keywords).toEqual([]);

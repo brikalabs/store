@@ -22,6 +22,7 @@ import {
   D1ScopeDomains,
   D1ScopeMembers,
   D1ScopeStore,
+  D1SearchReader,
   D1TokenStore,
   D1TrustedPublishers,
   HmacDomainChallenge,
@@ -55,6 +56,8 @@ export const registryBindings: Provider[] = [
 export const Audit = token("Audit", () => new D1AuditLog());
 export const Tokens = token("Tokens", () => new D1TokenStore());
 export const Catalog = token("Catalog", () => new D1CatalogReader());
+/** Catalog search (FTS + tag/capability filter, sort, pagination), pushed down to SQL. */
+export const Search = token("Search", () => new D1SearchReader());
 /** Install counts (all-time + trailing week), keyed by package name. */
 export const Downloads = token("Downloads", () => new D1DownloadStore());
 

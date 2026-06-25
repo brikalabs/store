@@ -1,300 +1,23 @@
-import {
-  type PluginDetail,
-  PluginDetail as PluginDetailSchema,
-  type PluginSummary,
-  PluginSummary as PluginSummarySchema,
-  type PluginVersion,
-  PluginVersion as PluginVersionSchema,
-} from "@brika/registry-contract";
-import { readTarGzEntries, tarballPath } from "@brika/registry-core";
+import type { PluginSummary } from "@brika/registry-contract";
+import { tarballPath } from "@brika/registry-core";
 import { npmLink } from "@brika/router/npm";
-import { StoreLocaleSchema } from "@brika/schema/store";
-import { z } from "zod";
+import { REGISTRY_ORIGIN, registryFetch, registryGet } from "@/lib/registry/registry-http";
+import { mapCatalogPackages } from "@/lib/registry/registry-mappers";
 import {
-  capabilityCounts,
-  docLocales,
-  manifestFields,
-  mapScreenshots,
-  personName,
-  pickDocPath,
-  repoUrl,
-} from "@/lib/registry/manifest-mapping";
-
-export { docLocales, pickDocPath } from "@/lib/registry/manifest-mapping";
+  CatalogResponse,
+  DownloadsResponse,
+  Packument,
+  ScopeInfo,
+} from "@/lib/registry/registry-wire";
 
 /**
- * Reads `@brika/*` plugins from our own registry (registry.brika.dev) through its npm-compatible
- * HTTP surface (packument + tarball + `/-/v1/packages` catalog), mapping each manifest into the
- * same `/v1` contract shapes the npm path produces. Import-safe on the client: the registry origin
- * is a build-time constant, so the same code runs in the SSR worker and during client navigation.
+ * The registry read surface: each function GETs one resource over the npm-compatible HTTP API
+ * (packument, tarball, downloads, scope, catalog, search) and maps it into the store's read model,
+ * degrading to an empty fallback when the registry is unreachable or returns an unexpected shape.
  */
 
-/** Scope hosted on our registry; everything else federates from npm. */
-export const REGISTRY_SCOPE = "@brika/";
-
-/** Public origin of the registry. Overridable for local dev via Vite env. */
-export const REGISTRY_ORIGIN: string = new URL(
-  (import.meta.env?.VITE_REGISTRY_URL as string | undefined) ?? "https://registry.brika.dev",
-).origin;
-
-/** True for names hosted on our registry (the `@brika` scope). */
-export function isRegistryName(name: string): boolean {
-  return name.startsWith(REGISTRY_SCOPE);
-}
-
-// Manifest asset kinds served from tarballs; images need an exact type so browsers render them.
-// Arbitrary published files derive their type from their bytes instead.
-const CONTENT_TYPES: Record<string, string> = {
-  svg: "image/svg+xml",
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  gif: "image/gif",
-  webp: "image/webp",
-  avif: "image/avif",
-  json: "application/json; charset=utf-8",
-  md: "text/markdown; charset=utf-8",
-  txt: "text/plain; charset=utf-8",
-};
-
-/** Content-type for a bundled asset path, defaulting to octet-stream. */
-export function contentTypeFor(path: string): string {
-  const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
-  return CONTENT_TYPES[ext] ?? "application/octet-stream";
-}
-
-/** Reject empty/absolute paths and parent traversal before touching storage. */
-export function isSafeAssetPath(path: string): boolean {
-  if (path.length === 0 || path.startsWith("/")) return false;
-  return !path.split(/[/\\]/).includes("..");
-}
-
-export const Manifest = z
-  .object({
-    name: z.string(),
-    ...manifestFields,
-    unpackedSize: z.number().optional(),
-    fileCount: z.number().optional(),
-    // Present on packument version entries (the registry computes it), absent on
-    // the raw package.json the catalog stores.
-    dist: z
-      .object({
-        tarball: z.string().optional(),
-        integrity: z.string().optional(),
-        shasum: z.string().optional(),
-        size: z.number().optional(),
-      })
-      .optional(),
-    provenance: z
-      .object({
-        repository: z.string(),
-        sha: z.string().optional(),
-        ref: z.string().optional(),
-        workflowRef: z.string().optional(),
-        runId: z.string().optional(),
-        transparencyLog: z
-          .object({
-            provider: z.string(),
-            logUrl: z.string(),
-            logIndex: z.string().optional(),
-            integrity: z.string(),
-          })
-          .optional(),
-      })
-      .optional(),
-  })
-  .loose();
-export type Manifest = z.infer<typeof Manifest>;
-
-const DownloadStats = z.object({ total: z.number(), weekly: z.number() });
-
-/** The registry's verified publisher (scope owner + display name), if present. */
-const Publisher = z.object({ id: z.string(), name: z.string(), verified: z.boolean() });
-
-const CatalogEntry = z.object({
-  name: z.string(),
-  version: z.string(),
-  manifest: Manifest,
-  publishedAt: z.string().optional(),
-  createdAt: z.string().optional(),
-  publisher: Publisher.optional(),
-  downloads: DownloadStats.optional(),
-});
-
-const CatalogResponse = z.object({ packages: z.array(CatalogEntry), total: z.number() });
-
-const DownloadsResponse = z.object({
-  name: z.string(),
-  total: z.number(),
-  weekly: z.number(),
-  series: z.array(z.number()).optional(),
-});
-
-const Packument = z.object({
-  name: z.string(),
-  "dist-tags": z.object({ latest: z.string().optional() }).optional(),
-  versions: z.record(z.string(), Manifest).optional(),
-  time: z.record(z.string(), z.string()).optional(),
-  publisher: Publisher.optional(),
-});
-export type Packument = z.infer<typeof Packument>;
-
-/** URL the store serves a tarball-bundled file from: version-pinned `/v1/plugins/<name>/v/<version>/files/<path>`. */
-export function assetUrl(name: string, version: string, path: string): string {
-  const clean = path.replace(/^\.?\//, "");
-  const encodedPath = clean.split("/").map(encodeURIComponent).join("/");
-  return `${pluginVersionUrl(name, version)}/files/${encodedPath}`;
-}
-
-/** The npm-style `/v1/plugins/<name>/v/<version>` base for a published version. */
-export function pluginVersionUrl(name: string, version: string): string {
-  return `/v1/plugins/${encodeURIComponent(name)}/v/${encodeURIComponent(version)}`;
-}
-
-export interface MapOptions {
-  readonly publishedAt?: string;
-  readonly updatedAt?: string;
-  /** All-time installs from the registry's download stats. */
-  readonly installs?: number;
-  /** Trailing-week installs. */
-  readonly downloadsWeekly?: number;
-  /** SRI of the latest tarball (`sha512-...`). */
-  readonly integrity?: string;
-  readonly shasum?: string;
-  /** The registry's verified publisher: the trusted "published by", overriding the manifest `author`. */
-  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: boolean };
-}
-
-/** Map a registry manifest to a `PluginDetail`; null when it is not a Brika plugin (no `engines.brika`). */
-export function manifestToDetail(
-  manifest: Manifest,
-  options: MapOptions = {},
-): PluginDetail | null {
-  const brikaEngine = manifest.engines?.brika;
-  if (brikaEngine === undefined) return null;
-  const { name, version } = manifest;
-  const authorName = personName(manifest.author);
-  const candidate = {
-    name,
-    displayName: manifest.displayName,
-    description: manifest.description,
-    version,
-    // Prefer the registry's verified publisher over the manifest `author`; fall back when unscoped.
-    author:
-      options.publisher ??
-      (authorName === undefined
-        ? undefined
-        : { id: authorName, name: authorName, verified: false }),
-    keywords: manifest.keywords ?? [],
-    iconUrl: manifest.icon ? assetUrl(name, version, manifest.icon) : undefined,
-    screenshots: mapScreenshots(manifest.screenshots, (path) => assetUrl(name, version, path)),
-    downloadsWeekly: options.downloadsWeekly ?? 0,
-    installs: options.installs,
-    brikaEngine,
-    repository: repoUrl(manifest.repository),
-    homepage: manifest.homepage,
-    license: manifest.license,
-    capabilities: capabilityCounts(manifest),
-    grants: manifest.grants ?? {},
-    integrity: options.integrity ?? manifest.dist?.integrity,
-    shasum: options.shasum ?? manifest.dist?.shasum,
-    provenance: manifest.provenance,
-    dependencies: manifest.dependencies,
-    peerDependencies: manifest.peerDependencies,
-    devDependencies: manifest.devDependencies,
-    devDependencyCount: manifest.devDependencies
-      ? Object.keys(manifest.devDependencies).length
-      : undefined,
-    size: manifest.dist?.size,
-    unpackedSize: manifest.unpackedSize,
-    fileCount: manifest.fileCount,
-    tarballUrl: manifest.dist?.tarball,
-    publishedAt: options.publishedAt,
-    updatedAt: options.updatedAt,
-  };
-  const parsed = PluginDetailSchema.safeParse(candidate);
-  return parsed.success ? parsed.data : null;
-}
-
-export function manifestToSummary(
-  manifest: Manifest,
-  options: MapOptions = {},
-): PluginSummary | null {
-  const detail = manifestToDetail(manifest, options);
-  return detail === null ? null : PluginSummarySchema.parse(detail);
-}
-
-function parseSemver(version: string): { nums: number[]; pre: string } {
-  const dash = version.indexOf("-");
-  const core = dash === -1 ? version : version.slice(0, dash);
-  const pre = dash === -1 ? "" : version.slice(dash + 1);
-  return { nums: core.split(".").map((n) => Number.parseInt(n, 10) || 0), pre };
-}
-
-/** Newest-first semver comparator (2.0.0 > 1.0.0 > 1.0.0-rc.1): orders by version, not publish
- * time, since versions published in the same second tie on the timestamp. */
-export function compareVersionsDesc(a: string, b: string): number {
-  const pa = parseSemver(a);
-  const pb = parseSemver(b);
-  for (let i = 0; i < 3; i += 1) {
-    const diff = (pb.nums[i] ?? 0) - (pa.nums[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  // A release outranks any prerelease of the same core version.
-  if (pa.pre === "" && pb.pre !== "") return -1;
-  if (pa.pre !== "" && pb.pre === "") return 1;
-  return pb.pre.localeCompare(pa.pre);
-}
-
-/** Build the release list (newest first) from a registry packument. */
-export function versionsFromPackument(pkg: Packument): PluginVersion[] {
-  const versions = pkg.versions ?? {};
-  const time = pkg.time ?? {};
-  const list = Object.entries(versions).map(([version, manifest]) =>
-    PluginVersionSchema.parse({
-      version,
-      publishedAt: time[version],
-      brikaEngine: manifest.engines?.brika,
-      deprecated: manifest.deprecated,
-    }),
-  );
-  list.sort(
-    (a, b) =>
-      compareVersionsDesc(a.version, b.version) ||
-      (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""),
-  );
-  return list;
-}
-
-// ---------------------------------------------------------------------------
-// Network (registry HTTP surface).
-// ---------------------------------------------------------------------------
-
-/**
- * Fetch from the registry, returning `null` instead of throwing when it is
- * unreachable (a network error / "connection lost"). The store is a read model
- * over the registry's HTTP surface, so a registry outage should degrade a read
- * to its empty fallback rather than crash the page with an unhandled 500. A
- * reached-but-non-2xx response is returned for the caller to branch on.
- */
-export async function registryFetch(
-  input: string | URL,
-  init?: RequestInit,
-): Promise<Response | null> {
-  try {
-    return await fetch(input, init);
-  } catch {
-    return null;
-  }
-}
-
-export async function getRegistryPackument(name: string): Promise<Packument | null> {
-  const res = await registryFetch(`${REGISTRY_ORIGIN}${npmLink("/:name", { name })}`, {
-    headers: { accept: "application/json" },
-  });
-  if (!res?.ok) return null;
-  const parsed = Packument.safeParse(await res.json());
-  return parsed.success ? parsed.data : null;
+export function getRegistryPackument(name: string): Promise<Packument | null> {
+  return registryGet(npmLink("/:name", { name }), Packument);
 }
 
 export interface RegistryDownloads {
@@ -308,20 +31,10 @@ const NO_DOWNLOADS: RegistryDownloads = { total: 0, weekly: 0, series: [] };
 
 /** Install stats for a package (all-time + trailing week + series); zero on failure. */
 export async function getRegistryDownloads(name: string): Promise<RegistryDownloads> {
-  const res = await registryFetch(
-    `${REGISTRY_ORIGIN}${npmLink("/-/v1/downloads/:name", { name })}`,
-    {
-      headers: { accept: "application/json" },
-    },
-  );
-  if (!res?.ok) return NO_DOWNLOADS;
-  const parsed = DownloadsResponse.safeParse(await res.json());
-  if (!parsed.success) return NO_DOWNLOADS;
-  return {
-    total: parsed.data.total,
-    weekly: parsed.data.weekly,
-    series: parsed.data.series ?? [],
-  };
+  const data = await registryGet(npmLink("/-/v1/downloads/:name", { name }), DownloadsResponse);
+  return data === null
+    ? NO_DOWNLOADS
+    : { total: data.total, weekly: data.weekly, series: data.series ?? [] };
 }
 
 export async function fetchRegistryTarball(
@@ -332,116 +45,6 @@ export async function fetchRegistryTarball(
   if (!res?.ok) return null;
   return new Uint8Array(await res.arrayBuffer());
 }
-
-function entryText(
-  entries: Awaited<ReturnType<typeof readTarGzEntries>>,
-  path: string,
-): string | null {
-  const clean = path.replace(/^\.?\//, "");
-  const entry = entries.find((candidate) => candidate.path === clean);
-  return entry === undefined ? null : new TextDecoder().decode(entry.data);
-}
-
-/** The localized `store.json` for a locale: requested -> `en` -> first declared. */
-function resolveStoreLocale(
-  entries: Awaited<ReturnType<typeof readTarGzEntries>>,
-  locale: string | undefined,
-): z.infer<typeof StoreLocaleSchema> | null {
-  const order = [locale, "en"].filter((tag): tag is string => tag !== undefined);
-  const candidates = entries.filter((entry) => /^locales\/[^/]+\/store\.json$/.test(entry.path));
-  const byLocale = (tag: string) =>
-    candidates.find((entry) => entry.path === `locales/${tag}/store.json`);
-  const chosen = order.map(byLocale).find((entry) => entry !== undefined) ?? candidates[0];
-  if (chosen === undefined) return null;
-  const parsed = StoreLocaleSchema.safeParse(JSON.parse(new TextDecoder().decode(chosen.data)));
-  return parsed.success ? parsed.data : null;
-}
-
-/** Overlay localized store copy (title/description/captions) onto a detail. */
-function applyStoreLocale(
-  detail: PluginDetail,
-  locale: z.infer<typeof StoreLocaleSchema> | null,
-): PluginDetail {
-  if (locale === null) return detail;
-  const screenshots = detail.screenshots.map((shot, index) => {
-    const caption = locale.screenshotCaptions?.[index];
-    return caption === undefined ? shot : { ...shot, caption };
-  });
-  return { ...detail, displayName: locale.title, description: locale.description, screenshots };
-}
-
-export interface RegistryPluginPage {
-  readonly detail: PluginDetail;
-  readonly readme: string | null;
-  readonly changelog: string | null;
-  readonly readmeLocales: string[];
-  readonly versions: PluginVersion[];
-  /** Trailing 30-day install counts for the sidebar sparkline (empty for none). */
-  readonly downloadsSeries: number[];
-}
-
-/** Build the full plugin-detail page for an `@brika/*` plugin (detail + localized readme/changelog
- * + release list); null when unknown or not a Brika plugin. Isomorphic (tarball over HTTP + Web Streams). */
-export async function getRegistryPluginPage(
-  name: string,
-  locale?: string,
-): Promise<RegistryPluginPage | null> {
-  const pkg = await getRegistryPackument(name);
-  const latest = pkg?.["dist-tags"]?.latest;
-  if (pkg === null || latest === undefined) return null;
-  const manifest = pkg.versions?.[latest];
-  if (manifest === undefined) return null;
-
-  const downloads = await getRegistryDownloads(name);
-  const detail = manifestToDetail(manifest, {
-    publishedAt: pkg.time?.created,
-    updatedAt: pkg.time?.[latest],
-    installs: downloads.total,
-    downloadsWeekly: downloads.weekly,
-    publisher: pkg.publisher,
-  });
-  if (detail === null) return null;
-
-  const tarball = await fetchRegistryTarball(name, latest);
-  const entries = tarball === null ? [] : await readTarGzEntries(tarball);
-
-  const readmePath = pickDocPath(manifest.readme, locale);
-  const changelogPath = pickDocPath(manifest.changelog, locale);
-  const readme = readmePath === undefined ? null : entryText(entries, readmePath);
-  const changelog = changelogPath === undefined ? null : entryText(entries, changelogPath);
-  const localized = applyStoreLocale(detail, resolveStoreLocale(entries, locale));
-
-  // Unpacked size/count come from the tarball we just unpacked. The full file list is not shipped
-  // here; the file browser fetches it lazily, so a large package keeps the detail payload lean.
-  const withMeta: PluginDetail =
-    entries.length > 0
-      ? {
-          ...localized,
-          fileCount: entries.length,
-          unpackedSize: entries.reduce((sum, entry) => sum + entry.data.length, 0),
-        }
-      : localized;
-
-  return {
-    detail: withMeta,
-    readme,
-    changelog,
-    readmeLocales: docLocales(manifest.readme),
-    versions: versionsFromPackument(pkg).slice(0, 5),
-    downloadsSeries: downloads.series,
-  };
-}
-
-const ScopeLinkWire = z.object({ label: z.string(), url: z.string() });
-const ScopeInfo = z.object({
-  ok: z.literal(true),
-  scope: z.string(),
-  displayName: z.string().nullable(),
-  description: z.string().nullable().default(null),
-  links: z.array(ScopeLinkWire).default([]),
-  iconKey: z.string().nullable().default(null),
-  verifiedDomains: z.array(z.string()).default([]),
-});
 
 /** A scope's public info: scope, display name, profile, verified domains. */
 export interface RegistryScope {
@@ -456,45 +59,65 @@ export interface RegistryScope {
 /** Fetch a public scope's info (`GET /-/scope/:scope`), or null when it does not exist or is taken down.
  * The scope is URL-encoded as a single segment (`@brika` -> `%40brika`). */
 export async function getRegistryScope(scope: string): Promise<RegistryScope | null> {
-  const res = await registryFetch(`${REGISTRY_ORIGIN}/-/scope/${encodeURIComponent(scope)}`, {
-    headers: { accept: "application/json" },
-  });
-  if (!res?.ok) return null;
-  const parsed = ScopeInfo.safeParse(await res.json());
-  if (!parsed.success) return null;
+  const data = await registryGet(`/-/scope/${encodeURIComponent(scope)}`, ScopeInfo);
+  if (data === null) return null;
   return {
-    scope: parsed.data.scope,
-    displayName: parsed.data.displayName,
-    description: parsed.data.description,
-    links: parsed.data.links,
-    hasIcon: parsed.data.iconKey !== null,
-    verifiedDomains: parsed.data.verifiedDomains,
+    scope: data.scope,
+    displayName: data.displayName,
+    description: data.description,
+    links: data.links,
+    hasIcon: data.iconKey !== null,
+    verifiedDomains: data.verifiedDomains,
   };
 }
 
-/** Enumerate published `@brika/*` plugins via the registry catalog endpoint. */
+/** Shape a catalog response (or a failed read) into the `{ plugins, total }` the store consumes. */
+function toCatalogResult(data: CatalogResponse | null): {
+  plugins: PluginSummary[];
+  total: number;
+} {
+  return data === null
+    ? { plugins: [], total: 0 }
+    : { plugins: mapCatalogPackages(data.packages), total: data.total };
+}
+
+/** Enumerate published `@brika/*` plugins via the registry catalog endpoint (the bounded full list). */
 export async function listRegistryPlugins(
   query: string | undefined,
   limit: number,
   offset: number,
 ): Promise<{ plugins: PluginSummary[]; total: number }> {
-  const url = new URL(`${REGISTRY_ORIGIN}/-/v1/packages`);
-  if (query && query.trim().length > 0) url.searchParams.set("text", query.trim());
-  url.searchParams.set("limit", String(limit));
-  url.searchParams.set("offset", String(offset));
-  const res = await registryFetch(url, { headers: { accept: "application/json" } });
-  if (!res?.ok) return { plugins: [], total: 0 };
-  const parsed = CatalogResponse.safeParse(await res.json());
-  if (!parsed.success) return { plugins: [], total: 0 };
-  const plugins = parsed.data.packages.flatMap((entry) => {
-    const summary = manifestToSummary(entry.manifest, {
-      publishedAt: entry.createdAt,
-      updatedAt: entry.publishedAt,
-      installs: entry.downloads?.total,
-      downloadsWeekly: entry.downloads?.weekly,
-      publisher: entry.publisher,
-    });
-    return summary === null ? [] : [summary];
-  });
-  return { plugins, total: parsed.data.total };
+  return toCatalogResult(
+    await registryGet("/-/v1/packages", CatalogResponse, {
+      text: query?.trim(),
+      limit,
+      offset,
+    }),
+  );
+}
+
+/** A search over hosted plugins: free-text plus tag (AND) and capability filters, sort and pagination. */
+export interface PluginSearchParams {
+  readonly q?: string;
+  readonly tags?: readonly string[];
+  readonly capability?: string;
+  readonly sort?: string;
+  readonly limit: number;
+  readonly offset: number;
+}
+
+/** Search hosted `@brika/*` plugins via the registry's SQL-backed search endpoint (FTS + filters + sort). */
+export async function searchRegistryPlugins(
+  params: PluginSearchParams,
+): Promise<{ plugins: PluginSummary[]; total: number }> {
+  return toCatalogResult(
+    await registryGet("/-/v1/search", CatalogResponse, {
+      text: params.q?.trim(),
+      tags: params.tags?.length ? params.tags.join(",") : undefined,
+      capability: params.capability,
+      sort: params.sort,
+      limit: params.limit,
+      offset: params.offset,
+    }),
+  );
 }

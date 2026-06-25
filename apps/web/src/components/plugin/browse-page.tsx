@@ -3,6 +3,7 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { Box, ChevronRight, Folder, PackageSearch, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { BrowseFilters } from "@/components/plugin/browse-filters";
 import { DiscoverIndex } from "@/components/plugin/discover-index";
 import { ListingCard } from "@/components/plugin/listing-card";
 import { type SortKey, SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
@@ -15,11 +16,12 @@ const route = getRouteApi("/plugins/");
 export function BrowsePage() {
   const t = useT();
   const { plugins, total } = route.useLoaderData();
-  const { q } = route.useSearch();
+  const { q, capability, tags } = route.useSearch();
+  const activeTags = tags ?? [];
   const [sort, setSort] = useState<SortKey>("relevance");
 
-  // No query: the dense discovery index (matches the design's Console browse).
-  if (!q) {
+  // Nothing to narrow by: the dense discovery index (matches the design's Console browse).
+  if (!q && capability === undefined && activeTags.length === 0) {
     return (
       <main className="mx-auto max-w-7xl px-6 py-10">
         <DiscoverIndex plugins={plugins} total={total} title={t("browse:browseHeading")} />
@@ -27,7 +29,7 @@ export function BrowsePage() {
     );
   }
 
-  const scopes = matchingScopes(plugins, q);
+  const scopes = q ? matchingScopes(plugins, q) : [];
   const sorted = sortPlugins(plugins, sort);
   const scopeSummary = scopes.length > 0 ? `, ${t("browse:scopes", { count: scopes.length })}` : "";
 
@@ -35,11 +37,18 @@ export function BrowsePage() {
     <main className="mx-auto flex max-w-5xl flex-col gap-7 px-6 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
-          {t("browse:resultsFor")} <span className="font-semibold text-foreground">"{q}"</span>
-          {scopeSummary} · {t("browse:plugins", { count: total })}
+          {q ? (
+            <>
+              {t("browse:resultsFor")} <span className="font-semibold text-foreground">"{q}"</span>
+              {scopeSummary} ·{" "}
+            </>
+          ) : null}
+          {t("browse:plugins", { count: total })}
         </p>
         <SortMenu value={sort} onChange={setSort} />
       </div>
+
+      <BrowseFilters capability={capability} tags={activeTags} />
 
       {scopes.length > 0 ? (
         <section className="flex flex-col gap-3">
