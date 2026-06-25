@@ -1,4 +1,6 @@
 {
+  "verified": "Verified",
+  "verify": "Verify",
   "privilegedBadge": "Privileged · registry moderation",
   "sortLabel": "Sort",
   "bulkSelected": "{count, plural, one {# {noun} selected} other {# {noun}s selected}}",

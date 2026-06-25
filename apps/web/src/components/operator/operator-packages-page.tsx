@@ -2,7 +2,7 @@ import { Checkbox } from "@brika/clay/components/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
 import type { Translate } from "@brika/i18n";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, Flag, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Flag, Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
 import { OperatorShell } from "@/components/operator/operator-shell";
@@ -223,12 +223,8 @@ function PackageRow({
   const t = useT();
   const relative = useRelativeTime();
   const [open, setOpen] = useState(false);
-  const { versions, busy, pkgBusy, loadVersions, act, takedownPackage } = usePackageModeration(
-    pkg,
-    open,
-    onChanged,
-    onError,
-  );
+  const { versions, busy, pkgBusy, loadVersions, act, takedownPackage, setVerified } =
+    usePackageModeration(pkg, open, onChanged, onError);
 
   function expand() {
     const next = !open;
@@ -289,6 +285,20 @@ function PackageRow({
             {metaLine(pkg, relative, t)}
           </div>
         </div>
+        <button
+          type="button"
+          disabled={pkgBusy}
+          onClick={() => setVerified(!pkg.verified)}
+          title={pkg.verified ? t("operator:verified") : t("operator:verify")}
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold text-xs transition-colors disabled:opacity-50 ${
+            pkg.verified
+              ? "bg-brand/10 text-brand-ink hover:bg-brand/20"
+              : "border border-border text-muted-foreground hover:border-brand/40 hover:text-foreground"
+          }`}
+        >
+          <ShieldCheck className="size-3.5" />
+          {pkg.verified ? t("operator:verified") : t("operator:verify")}
+        </button>
         {liveVersions > 0 ? (
           <TakedownControls
             takenDown={false}

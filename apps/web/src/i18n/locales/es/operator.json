@@ -1,4 +1,6 @@
 {
+  "verified": "Verificado",
+  "verify": "Verificar",
   "privilegedBadge": "Privilegiado · moderación del registry",
   "sortLabel": "Ordenar",
   "bulkSelected": "{count, plural, one {# {noun} seleccionado} other {# {noun}s seleccionados}}",

@@ -1,4 +1,6 @@
 {
+  "verified": "承認済み",
+  "verify": "承認",
   "privilegedBadge": "特権 · レジストリモデレーション",
   "sortLabel": "並べ替え",
   "bulkSelected": "{count, plural, other {# 個の{noun}を選択中}}",

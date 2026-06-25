@@ -13,6 +13,7 @@ export interface OperatorPackage {
   installs: number;
   flagReason: string | null;
   openReports: number;
+  verified: boolean;
 }
 
 /** One published version of a package, as the moderation panel lists it. */
@@ -126,5 +127,25 @@ export function usePackageModeration(
     [pkg.name, open, loadVersions, onChanged, onError],
   );
 
-  return { versions, busy, pkgBusy, loadVersions, act, takedownPackage };
+  const setVerified = useCallback(
+    async (verified: boolean) => {
+      setPkgBusy(true);
+      onError(null);
+      const res = await fetch("/api/operator/packages/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: pkg.name, verified }),
+      });
+      setPkgBusy(false);
+      if (res.ok) {
+        onChanged();
+        return;
+      }
+      const data: { error?: string } = await res.json();
+      onError(data.error ?? "Verify failed");
+    },
+    [pkg.name, onChanged, onError],
+  );
+
+  return { versions, busy, pkgBusy, loadVersions, act, takedownPackage, setVerified };
 }

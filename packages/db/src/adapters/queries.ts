@@ -67,6 +67,8 @@ export interface OperatorPackage {
   readonly yankedCount: number;
   /** ISO timestamp of the most recently published version, or null when the package has none. */
   readonly updatedAt: string | null;
+  /** Operator-set "approved by Brika" verified badge. */
+  readonly verified: boolean;
 }
 
 /**
@@ -91,6 +93,7 @@ export async function listAllPackages(
       name: regPackages.name,
       scope: regPackages.scope,
       scopeDisplayName: regScopes.displayName,
+      verified: regPackages.verified,
     })
     .from(regPackages)
     .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
@@ -141,6 +144,7 @@ export async function listAllPackages(
       takenDownCount: c.takenDown,
       yankedCount: c.yanked,
       updatedAt: c.lastPublished > 0 ? new Date(c.lastPublished * 1000).toISOString() : null,
+      verified: pkg.verified,
     };
   });
 
