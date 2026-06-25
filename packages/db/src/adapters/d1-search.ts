@@ -35,7 +35,7 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
     return runSearch(
       this,
       [
-        match !== null ? ftsMatches(FTS, match) : null,
+        match === null ? null : ftsMatches(FTS, match),
         tagsFilter(this.#db, options.tags),
         options.capability ? gt(regSearch[options.capability], 0) : null,
       ],
