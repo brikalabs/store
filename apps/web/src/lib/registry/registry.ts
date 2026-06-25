@@ -9,7 +9,6 @@ import {
 import {
   getRegistryPackument,
   getRegistryScope,
-  listRegistryPlugins,
   type PluginSearchParams,
   searchRegistryPlugins,
 } from "@/lib/registry/registry-source";
@@ -67,7 +66,7 @@ export interface ScopePage {
 export async function getScopePage(scope: string): Promise<ScopePage | null> {
   const [entity, { plugins: all }] = await Promise.all([
     getRegistryScope(scope),
-    listRegistryPlugins(undefined, CATALOG_SCAN, 0),
+    searchRegistryPlugins({ limit: CATALOG_SCAN, offset: 0 }),
   ]);
   const plugins = all.filter((plugin) => scopeOf(plugin.name) === scope);
   // 404 only when the scope neither exists as an entity nor hosts a listed plugin.

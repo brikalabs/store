@@ -78,21 +78,6 @@ function toCatalogResult(data: CatalogResponse | null): SearchResponse {
     : { plugins: mapCatalogPackages(data.packages), total: data.total };
 }
 
-/** Enumerate published `@brika/*` plugins via the registry catalog endpoint (the bounded full list). */
-export async function listRegistryPlugins(
-  query: string | undefined,
-  limit: number,
-  offset: number,
-): Promise<SearchResponse> {
-  return toCatalogResult(
-    await registryGet("/-/v1/packages", CatalogResponse, {
-      text: query?.trim(),
-      limit,
-      offset,
-    }),
-  );
-}
-
 /** A search over hosted plugins: free-text plus tag (AND) and capability filters, sort and pagination. */
 export interface PluginSearchParams {
   readonly q?: string;

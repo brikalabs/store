@@ -27,8 +27,8 @@ export interface SearchResult {
 
 /**
  * Read port that searches the catalog: a full-text query, tag/capability filters, sort and
- * pagination are pushed into the search index (an FTS5 table over a denormalized projection),
- * unlike {@link CatalogReader} which returns the whole bounded catalog for the caller to slice.
+ * pagination are all pushed into the search index (an FTS5 table over a denormalized projection),
+ * returning one ranked page rather than the whole catalog.
  */
 export interface SearchReader {
   search(options: SearchOptions): Promise<SearchResult>;
