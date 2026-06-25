@@ -22,6 +22,8 @@ export interface VersionManager {
   setYanked(name: string, version: string, yanked: boolean): Promise<void>;
   /** Set the operator takedown reason, or null to restore. */
   setTakedown(name: string, version: string, reason: string | null): Promise<void>;
+  /** Set the package-wide "approved by Brika" verified badge. */
+  setVerified(name: string, verified: boolean): Promise<void>;
   /** Permanently remove a package and all its versions + dist-tags. Irreversible. */
   deletePackage(name: string): Promise<void>;
 }
@@ -128,6 +130,18 @@ export class ManagementService {
     const missing = await this.#requireVersion(name, version);
     if (missing !== null) return missing;
     await this.#meta.setTakedown(name, version, null);
+    return { ok: true };
+  }
+
+  /**
+   * Operator toggle of a package's "approved by Brika" badge. NOT ownership-gated (an admin grants
+   * trust); the caller must have authorized an admin already. 404 when the package does not exist.
+   */
+  async setVerified(name: string, verified: boolean): Promise<ManageResult> {
+    if (!(await this.#meta.packageExists(name))) {
+      return { ok: false, status: HttpStatus.NOT_FOUND, message: `package ${name} does not exist` };
+    }
+    await this.#meta.setVerified(name, verified);
     return { ok: true };
   }
 

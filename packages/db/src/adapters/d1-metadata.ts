@@ -63,6 +63,7 @@ export class D1MetadataReader implements MetadataReader {
       distTags,
       versions,
       publisher,
+      verified: pkg.verified,
       createdAt: new Date(pkg.createdAt * 1000).toISOString(),
     };
   }

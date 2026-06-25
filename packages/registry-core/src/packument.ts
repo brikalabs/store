@@ -1,4 +1,4 @@
-import type { PackageRecord } from "./types";
+import type { PackageRecord, PackageVersion } from "./types";
 
 /** The unscoped part of a package name: `@brika/plugin-x` -> `plugin-x`. */
 export function unscopedName(name: string): string {
@@ -40,15 +40,30 @@ export interface Packument {
   readonly "dist-tags": Record<string, string>;
   readonly versions: Record<string, Record<string, unknown>>;
   readonly time: Record<string, string>;
-  /** Versions removed by an operator takedown, mapped to their public reason (non-standard field;
-   *  the versions themselves are absent from `versions`). */
   readonly takedowns?: Record<string, string>;
-  /**
-   * The verified publisher (scope owner + display name), rendered as the trusted "published by"
-   * over the free-text manifest `author`. `verified` means "ownership-proven" (you cannot publish
-   * to a scope you do not own), NOT editorial/team vetting.
-   */
-  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: true };
+  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: boolean };
+}
+
+/** One version's full packument entry: its manifest plus the dist + management flags. */
+function versionEntry(
+  name: string,
+  version: PackageVersion,
+  baseUrl: string,
+): Record<string, unknown> {
+  const entry: Record<string, unknown> = {
+    ...version.manifest,
+    name,
+    version: version.version,
+    dist: {
+      tarball: tarballUrl(baseUrl, name, version.version),
+      integrity: version.integrity,
+      shasum: version.shasum,
+      size: version.size,
+    },
+  };
+  if (version.deprecated !== null) entry.deprecated = version.deprecated;
+  if (version.provenance !== null) entry.provenance = version.provenance;
+  return entry;
 }
 
 /**
@@ -68,23 +83,7 @@ export function buildPackument(record: PackageRecord, baseUrl: string): Packumen
       continue;
     }
     if (version.yanked) continue;
-
-    const dist: PackumentDist = {
-      tarball: tarballUrl(baseUrl, record.name, version.version),
-      integrity: version.integrity,
-      shasum: version.shasum,
-      size: version.size,
-    };
-    const entry: Record<string, unknown> = {
-      ...version.manifest,
-      name: record.name,
-      version: version.version,
-      dist,
-    };
-    if (version.deprecated !== null) entry.deprecated = version.deprecated;
-    if (version.provenance !== null) entry.provenance = version.provenance;
-
-    versions[version.version] = entry;
+    versions[version.version] = versionEntry(record.name, version, baseUrl);
     time[version.version] = version.publishedAt;
     if (version.publishedAt > modified) modified = version.publishedAt;
   }
@@ -95,9 +94,7 @@ export function buildPackument(record: PackageRecord, baseUrl: string): Packumen
     versions,
     time: { ...time, modified },
     ...(Object.keys(takedowns).length > 0 ? { takedowns } : {}),
-    ...(record.publisher
-      ? { publisher: { id: record.publisher.id, name: record.publisher.name, verified: true } }
-      : {}),
+    ...(record.publisher ? { publisher: { ...record.publisher, verified: record.verified } } : {}),
   };
 }
 
@@ -134,6 +131,30 @@ function hasInstallScript(manifest: Record<string, unknown>): boolean {
   return ["install", "preinstall", "postinstall"].some((name) => name in scripts);
 }
 
+/** One version's abbreviated entry: only the manifest fields bun needs to resolve + install. */
+function abbreviatedEntry(
+  name: string,
+  version: PackageVersion,
+  baseUrl: string,
+): Record<string, unknown> {
+  const entry: Record<string, unknown> = {
+    name,
+    version: version.version,
+    dist: {
+      tarball: tarballUrl(baseUrl, name, version.version),
+      integrity: version.integrity,
+      shasum: version.shasum,
+    },
+  };
+  for (const key of ABBREVIATED_KEYS) {
+    const value = version.manifest[key];
+    if (value !== undefined) entry[key] = value;
+  }
+  if (hasInstallScript(version.manifest)) entry.hasInstallScript = true;
+  if (version.deprecated !== null) entry.deprecated = version.deprecated;
+  return entry;
+}
+
 /** Build the abbreviated install packument: only the fields bun needs, dropping readme/scripts/bulk. */
 export function buildAbbreviatedPackument(
   record: PackageRecord,
@@ -144,24 +165,7 @@ export function buildAbbreviatedPackument(
 
   for (const version of record.versions) {
     if (version.yanked || version.takedownReason) continue;
-
-    const entry: Record<string, unknown> = {
-      name: record.name,
-      version: version.version,
-      dist: {
-        tarball: tarballUrl(baseUrl, record.name, version.version),
-        integrity: version.integrity,
-        shasum: version.shasum,
-      },
-    };
-    for (const key of ABBREVIATED_KEYS) {
-      const value = version.manifest[key];
-      if (value !== undefined) entry[key] = value;
-    }
-    if (hasInstallScript(version.manifest)) entry.hasInstallScript = true;
-    if (version.deprecated !== null) entry.deprecated = version.deprecated;
-
-    versions[version.version] = entry;
+    versions[version.version] = abbreviatedEntry(record.name, version, baseUrl);
     if (version.publishedAt > modified) modified = version.publishedAt;
   }
 

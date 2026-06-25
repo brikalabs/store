@@ -188,6 +188,16 @@ describe("D1SearchReader index maintenance", () => {
     expect(names(await search({ capabilities: ["tools"] }))).toEqual(["@brika/auth"]);
   });
 
+  test("reflects the operator-set verified flag on the result's publisher", async () => {
+    const find = async () =>
+      (await search({ q: "map" })).entries.find((e) => e.name === "@brika/maps")?.publisher;
+    expect((await find())?.verified).toBe(false); // unverified by default
+    await writer.setVerified("@brika/maps", true);
+    expect((await find())?.verified).toBe(true);
+    await writer.setVerified("@brika/maps", false);
+    expect((await find())?.verified).toBe(false);
+  });
+
   test("re-publishing updates the indexed keywords and capabilities", async () => {
     await publish(
       "@brika/maps",
@@ -214,6 +224,7 @@ describe("0001 migration backfill", () => {
   test("projects pre-existing latest versions into the search index", async () => {
     const sqlite = new Database(":memory:");
     apply(sqlite, "0000_tough_rawhide_kid.sql");
+    apply(sqlite, "0002_verified.sql"); // before the seed: drizzle inlines the verified default on insert
     // Seed legacy rows through Drizzle (so the manifest JSON is serialized correctly) before the
     // search migration runs, then apply it and assert the backfill projected them.
     const db = drizzle(sqlite, { schema }) as unknown as Db;

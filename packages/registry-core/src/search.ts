@@ -12,8 +12,8 @@ export interface CatalogEntry {
   readonly createdAt: string;
   readonly size: number;
   readonly integrity: string;
-  /** The scope's verified publisher (owner + display name), absent if unscoped. */
-  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: true };
+  /** The scope's publisher (owner + display name) and whether Brika has verified the package. */
+  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: boolean };
   /** Install stats, attached by the handler per page (not by the reader). */
   readonly downloads?: DownloadStats;
 }

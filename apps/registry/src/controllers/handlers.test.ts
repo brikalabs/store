@@ -819,23 +819,30 @@ describe("publish atomicity (commitVersion + transaction)", () => {
 });
 
 describe("scope publisher (verified attribution)", () => {
-  test("packument + catalog expose the owning scope as the verified publisher", async () => {
+  test("packument + catalog expose the owning scope as the publisher with the operator verified flag", async () => {
     await seedPackage(db, "brikalabs");
     const ctx = services(db);
-
-    const packument = (await run(ctx, () => inject(ResolveService).packument("@brika/x"))) as {
-      publisher?: { id: string; name: string; verified: boolean };
+    const publisherOf = async () => {
+      const packument = (await run(ctx, () => inject(ResolveService).packument("@brika/x"))) as {
+        publisher?: { id: string; name: string; verified: boolean };
+      };
+      const catalog = await (
+        await run(ctx, () => handleSearch(new Request("http://localhost/-/v1/packages")))
+      ).json();
+      return { packument: packument.publisher, catalog: catalog.packages[0].publisher };
     };
-    // No display name yet -> falls back to the scope.
-    expect(packument.publisher).toEqual({ id: "@brika", name: "@brika", verified: true });
 
-    const catalog = await (
-      await run(ctx, () => handleSearch(new Request("http://localhost/-/v1/packages")))
-    ).json();
-    expect(catalog.packages[0].publisher).toEqual({
-      id: "@brika",
-      name: "@brika",
-      verified: true,
+    // Attribution falls back to the scope; unverified until an operator approves it.
+    expect(await publisherOf()).toEqual({
+      packument: { id: "@brika", name: "@brika", verified: false },
+      catalog: { id: "@brika", name: "@brika", verified: false },
+    });
+
+    // An operator approval flows to both the packument and the catalog.
+    await makeAdapter(db, D1MetadataWriter).setVerified("@brika/x", true);
+    expect(await publisherOf()).toEqual({
+      packument: { id: "@brika", name: "@brika", verified: true },
+      catalog: { id: "@brika", name: "@brika", verified: true },
     });
   });
 
@@ -855,7 +862,8 @@ describe("scope publisher (verified attribution)", () => {
     const packument = (await run(ctx, () => inject(ResolveService).packument("@brika/x"))) as {
       publisher?: { id: string; name: string; verified: boolean };
     };
-    expect(packument.publisher).toEqual({ id: "@brika", name: "Brika Labs", verified: true });
+    // The display name becomes the attribution; verified stays false until an operator approves.
+    expect(packument.publisher).toEqual({ id: "@brika", name: "Brika Labs", verified: false });
   });
 
   test("a non-admin cannot set the display name (403)", async () => {

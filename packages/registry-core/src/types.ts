@@ -63,8 +63,10 @@ export interface PackageRecord {
   readonly name: string;
   readonly distTags: Readonly<Record<string, string>>;
   readonly versions: readonly PackageVersion[];
-  /** The scope's verified publisher, or null for an unclaimed/unscoped package. */
+  /** The scope's publisher (owner + display name), or null for an unclaimed/unscoped package. */
   readonly publisher: ScopePublisher | null;
+  /** Operator-set "approved by Brika" verified badge for the package. */
+  readonly verified: boolean;
   /** ISO-8601 timestamp of the first publish. */
   readonly createdAt: string;
 }

@@ -76,6 +76,7 @@ import { Route as ApiScopesScopeDomainsRouteImport } from './routes/api/scopes/$
 import { Route as ApiScopesScopeDisplayNameRouteImport } from './routes/api/scopes/$scope/display-name'
 import { Route as ApiOperatorReportsUpdateRouteImport } from './routes/api/operator/reports/update'
 import { Route as ApiOperatorPackagesVersionsRouteImport } from './routes/api/operator/packages/versions'
+import { Route as ApiOperatorPackagesVerifyRouteImport } from './routes/api/operator/packages/verify'
 import { Route as ApiOperatorPackagesTakedownRouteImport } from './routes/api/operator/packages/takedown'
 import { Route as ApiOperatorPackagesRestoreRouteImport } from './routes/api/operator/packages/restore'
 import { Route as ApiOperatorPackagesBulkTakedownRouteImport } from './routes/api/operator/packages/bulk-takedown'
@@ -427,6 +428,12 @@ const ApiOperatorPackagesVersionsRoute =
     path: '/versions',
     getParentRoute: () => ApiOperatorPackagesRoute,
   } as any)
+const ApiOperatorPackagesVerifyRoute =
+  ApiOperatorPackagesVerifyRouteImport.update({
+    id: '/verify',
+    path: '/verify',
+    getParentRoute: () => ApiOperatorPackagesRoute,
+  } as any)
 const ApiOperatorPackagesTakedownRoute =
   ApiOperatorPackagesTakedownRouteImport.update({
     id: '/takedown',
@@ -552,6 +559,7 @@ export interface FileRoutesByFullPath {
   '/api/operator/packages/bulk-takedown': typeof ApiOperatorPackagesBulkTakedownRoute
   '/api/operator/packages/restore': typeof ApiOperatorPackagesRestoreRoute
   '/api/operator/packages/takedown': typeof ApiOperatorPackagesTakedownRoute
+  '/api/operator/packages/verify': typeof ApiOperatorPackagesVerifyRoute
   '/api/operator/packages/versions': typeof ApiOperatorPackagesVersionsRoute
   '/api/operator/reports/update': typeof ApiOperatorReportsUpdateRoute
   '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
@@ -630,6 +638,7 @@ export interface FileRoutesByTo {
   '/api/operator/packages/bulk-takedown': typeof ApiOperatorPackagesBulkTakedownRoute
   '/api/operator/packages/restore': typeof ApiOperatorPackagesRestoreRoute
   '/api/operator/packages/takedown': typeof ApiOperatorPackagesTakedownRoute
+  '/api/operator/packages/verify': typeof ApiOperatorPackagesVerifyRoute
   '/api/operator/packages/versions': typeof ApiOperatorPackagesVersionsRoute
   '/api/operator/reports/update': typeof ApiOperatorReportsUpdateRoute
   '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
@@ -711,6 +720,7 @@ export interface FileRoutesById {
   '/api/operator/packages/bulk-takedown': typeof ApiOperatorPackagesBulkTakedownRoute
   '/api/operator/packages/restore': typeof ApiOperatorPackagesRestoreRoute
   '/api/operator/packages/takedown': typeof ApiOperatorPackagesTakedownRoute
+  '/api/operator/packages/verify': typeof ApiOperatorPackagesVerifyRoute
   '/api/operator/packages/versions': typeof ApiOperatorPackagesVersionsRoute
   '/api/operator/reports/update': typeof ApiOperatorReportsUpdateRoute
   '/api/scopes/$scope/display-name': typeof ApiScopesScopeDisplayNameRoute
@@ -793,6 +803,7 @@ export interface FileRouteTypes {
     | '/api/operator/packages/bulk-takedown'
     | '/api/operator/packages/restore'
     | '/api/operator/packages/takedown'
+    | '/api/operator/packages/verify'
     | '/api/operator/packages/versions'
     | '/api/operator/reports/update'
     | '/api/scopes/$scope/display-name'
@@ -871,6 +882,7 @@ export interface FileRouteTypes {
     | '/api/operator/packages/bulk-takedown'
     | '/api/operator/packages/restore'
     | '/api/operator/packages/takedown'
+    | '/api/operator/packages/verify'
     | '/api/operator/packages/versions'
     | '/api/operator/reports/update'
     | '/api/scopes/$scope/display-name'
@@ -951,6 +963,7 @@ export interface FileRouteTypes {
     | '/api/operator/packages/bulk-takedown'
     | '/api/operator/packages/restore'
     | '/api/operator/packages/takedown'
+    | '/api/operator/packages/verify'
     | '/api/operator/packages/versions'
     | '/api/operator/reports/update'
     | '/api/scopes/$scope/display-name'
@@ -1486,6 +1499,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOperatorPackagesVersionsRouteImport
       parentRoute: typeof ApiOperatorPackagesRoute
     }
+    '/api/operator/packages/verify': {
+      id: '/api/operator/packages/verify'
+      path: '/verify'
+      fullPath: '/api/operator/packages/verify'
+      preLoaderRoute: typeof ApiOperatorPackagesVerifyRouteImport
+      parentRoute: typeof ApiOperatorPackagesRoute
+    }
     '/api/operator/packages/takedown': {
       id: '/api/operator/packages/takedown'
       path: '/takedown'
@@ -1676,6 +1696,7 @@ interface ApiOperatorPackagesRouteChildren {
   ApiOperatorPackagesBulkTakedownRoute: typeof ApiOperatorPackagesBulkTakedownRoute
   ApiOperatorPackagesRestoreRoute: typeof ApiOperatorPackagesRestoreRoute
   ApiOperatorPackagesTakedownRoute: typeof ApiOperatorPackagesTakedownRoute
+  ApiOperatorPackagesVerifyRoute: typeof ApiOperatorPackagesVerifyRoute
   ApiOperatorPackagesVersionsRoute: typeof ApiOperatorPackagesVersionsRoute
 }
 
@@ -1683,6 +1704,7 @@ const ApiOperatorPackagesRouteChildren: ApiOperatorPackagesRouteChildren = {
   ApiOperatorPackagesBulkTakedownRoute: ApiOperatorPackagesBulkTakedownRoute,
   ApiOperatorPackagesRestoreRoute: ApiOperatorPackagesRestoreRoute,
   ApiOperatorPackagesTakedownRoute: ApiOperatorPackagesTakedownRoute,
+  ApiOperatorPackagesVerifyRoute: ApiOperatorPackagesVerifyRoute,
   ApiOperatorPackagesVersionsRoute: ApiOperatorPackagesVersionsRoute,
 }
 

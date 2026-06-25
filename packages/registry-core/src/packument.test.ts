@@ -19,6 +19,7 @@ const record: PackageRecord = {
   distTags: { latest: "1.1.0" },
   createdAt: "2026-01-01T00:00:00.000Z",
   publisher: null,
+  verified: false,
   versions: [
     {
       name: "@brika/plugin-x",
@@ -175,6 +176,7 @@ test("emits the verified publisher (id+name+verified) on the full packument only
     distTags: { latest: "1.0.0" },
     createdAt: "2026-01-01T00:00:00.000Z",
     publisher: { id: "brika", name: "Brika Labs" },
+    verified: true,
     versions: [
       {
         name: "@brika/plugin-x",

@@ -97,6 +97,10 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
     await this.#refreshLatestTag(name);
   }
 
+  async setVerified(name: string, verified: boolean): Promise<void> {
+    await this.#db.update(regPackages).set({ verified }).where(eq(regPackages.name, name));
+  }
+
   /**
    * Permanently delete a package: its dist-tags, every version row, and the package row. The
    * children (`reg_versions`, `reg_dist_tags`) declare `onDelete: cascade`, but we delete them

@@ -89,6 +89,7 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
         integrity: regVersions.integrity,
         scope: regPackages.scope,
         scopeDisplayName: regScopes.displayName,
+        verified: regPackages.verified,
       })
       .from(regSearch)
       .innerJoin(regSearchFts, ftsOnRowid)
@@ -175,6 +176,7 @@ interface Row {
   readonly integrity: string;
   readonly scope: string | null;
   readonly scopeDisplayName: string | null;
+  readonly verified: boolean;
 }
 
 function toEntry(row: Row): CatalogEntry {
@@ -189,6 +191,6 @@ function toEntry(row: Row): CatalogEntry {
     publisher:
       row.scope === null
         ? undefined
-        : { id: row.scope, name: row.scopeDisplayName ?? row.scope, verified: true as const },
+        : { id: row.scope, name: row.scopeDisplayName ?? row.scope, verified: row.verified },
   };
 }

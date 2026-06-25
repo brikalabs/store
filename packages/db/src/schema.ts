@@ -13,6 +13,8 @@ export const regPackages = sqliteTable("reg_packages", {
   name: text("name").primaryKey(),
   scope: text("scope"),
   createdAt: integer("created_at").notNull().default(epoch),
+  /** Operator-set "approved by Brika" trust badge (manual moderation, not domain proof). */
+  verified: integer("verified", { mode: "boolean" }).notNull().default(false),
 });
 
 export const regVersions = sqliteTable(
