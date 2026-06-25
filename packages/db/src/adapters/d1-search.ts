@@ -1,6 +1,12 @@
 import { inject } from "@brika/di";
-import type { CatalogEntry, SearchOptions, SearchReader, SearchResult } from "@brika/registry-core";
-import { and, count, desc, eq, gt, inArray, type SQL, sql } from "drizzle-orm";
+import type {
+  CatalogEntry,
+  SearchCapability,
+  SearchOptions,
+  SearchReader,
+  SearchResult,
+} from "@brika/registry-core";
+import { and, count, desc, eq, gt, inArray, or, type SQL, sql } from "drizzle-orm";
 import { integer, sqliteTable } from "drizzle-orm/sqlite-core";
 import { Db } from "../client";
 import {
@@ -37,7 +43,7 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
       [
         match === null ? null : ftsMatches(FTS, match),
         tagsFilter(this.#db, options.tags),
-        options.capability ? gt(regSearch[options.capability], 0) : null,
+        capabilitiesFilter(options.capabilities),
       ],
       orderFor(options.sort, match !== null),
       options,
@@ -84,6 +90,12 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
       .offset(page.offset);
     return rows.map(toEntry);
   }
+}
+
+/** Match a plugin declaring at least one of the requested capabilities (OR across them). */
+function capabilitiesFilter(capabilities: readonly SearchCapability[] | undefined): SQL | null {
+  if (capabilities === undefined || capabilities.length === 0) return null;
+  return or(...capabilities.map((capability) => gt(regSearch[capability], 0))) ?? null;
 }
 
 /** Require the package to carry every requested keyword (lowercased, since the index stores them so). */

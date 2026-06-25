@@ -1,12 +1,11 @@
 import { EmptyState, EmptyStateDescription, EmptyStateIcon, EmptyStateTitle } from "@brika/clay";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Box, ChevronRight, Folder, PackageSearch, ShieldCheck } from "lucide-react";
-import { useState } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { BrowseFilters } from "@/components/plugin/browse-filters";
 import { DiscoverIndex } from "@/components/plugin/discover-index";
 import { ListingCard } from "@/components/plugin/listing-card";
-import { type SortKey, SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
+import { SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
 import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import { matchingScopes, type ScopeHit } from "@/lib/registry/matching-scopes";
@@ -15,13 +14,15 @@ const route = getRouteApi("/plugins/");
 
 export function BrowsePage() {
   const t = useT();
+  const navigate = route.useNavigate();
   const { plugins, total } = route.useLoaderData();
-  const { q, capability, tags } = route.useSearch();
+  const { q, capabilities, tags, sort } = route.useSearch();
+  const activeCapabilities = capabilities ?? [];
   const activeTags = tags ?? [];
-  const [sort, setSort] = useState<SortKey>("relevance");
+  const sortKey = sort ?? "relevance";
 
   // Nothing to narrow by: the dense discovery index (matches the design's Console browse).
-  if (!q && capability === undefined && activeTags.length === 0) {
+  if (!q && activeCapabilities.length === 0 && activeTags.length === 0) {
     return (
       <main className="mx-auto max-w-7xl px-6 py-10">
         <DiscoverIndex plugins={plugins} total={total} title={t("browse:browseHeading")} />
@@ -30,7 +31,7 @@ export function BrowsePage() {
   }
 
   const scopes = q ? matchingScopes(plugins, q) : [];
-  const sorted = sortPlugins(plugins, sort);
+  const sorted = sortPlugins(plugins, sortKey);
   const scopeSummary = scopes.length > 0 ? `, ${t("browse:scopes", { count: scopes.length })}` : "";
 
   return (
@@ -45,10 +46,13 @@ export function BrowsePage() {
           ) : null}
           {t("browse:plugins", { count: total })}
         </p>
-        <SortMenu value={sort} onChange={setSort} />
+        <SortMenu
+          value={sortKey}
+          onChange={(next) => navigate({ search: (prev) => ({ ...prev, sort: next }) })}
+        />
       </div>
 
-      <BrowseFilters capability={capability} tags={activeTags} />
+      <BrowseFilters capabilities={activeCapabilities} tags={activeTags} />
 
       {scopes.length > 0 ? (
         <section className="flex flex-col gap-3">

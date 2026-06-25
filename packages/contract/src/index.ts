@@ -235,24 +235,29 @@ export function pageSchema<T extends z.ZodType>(item: T) {
 export const SearchSort = z.enum(["relevance", "downloads", "rating", "recent", "name"]);
 export type SearchSort = z.infer<typeof SearchSort>;
 
-/** A Brika capability a search can require the plugin to declare at least one of. */
+/** A Brika capability a search can filter on (a plugin declaring at least one of the kind). */
 export const SearchCapability = z.enum(["tools", "blocks", "bricks", "sparks", "pages"]);
 export type SearchCapability = z.infer<typeof SearchCapability>;
 
 /**
- * `GET /v1/search?q=&tags=&capability=&limit=&offset=&sort=`. `tags` is AND-matched and accepts
- * either a comma-separated string (raw query strings) or a string array, so a handler can hand the
- * whole `URLSearchParams` straight in.
+ * A repeatable filter that accepts either a comma-separated string (raw query strings like
+ * `?tags=a,b`) or an array, so a handler can pass the whole `URLSearchParams` straight in. Empty
+ * by default.
  */
+function commaList<T extends z.ZodType>(item: T) {
+  return z
+    .preprocess(
+      (value) => (typeof value === "string" ? value.split(",").filter((v) => v.length > 0) : value),
+      z.array(item),
+    )
+    .default([]);
+}
+
+/** `GET /v1/search?q=&tags=&capabilities=&limit=&offset=&sort=`. `tags` is AND-matched; `capabilities` is OR-matched. */
 export const SearchQuery = PageQuery.extend({
   q: z.string().optional(),
-  tags: z
-    .preprocess(
-      (value) => (typeof value === "string" ? value.split(",").filter((t) => t.length > 0) : value),
-      z.array(z.string()),
-    )
-    .default([]),
-  capability: SearchCapability.optional(),
+  tags: commaList(z.string()),
+  capabilities: commaList(SearchCapability),
   sort: SearchSort.default("downloads"),
 });
 export type SearchQuery = z.infer<typeof SearchQuery>;

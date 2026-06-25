@@ -78,11 +78,11 @@ function toCatalogResult(data: CatalogResponse | null): SearchResponse {
     : { plugins: mapCatalogPackages(data.packages), total: data.total };
 }
 
-/** A search over hosted plugins: free-text plus tag (AND) and capability filters, sort and pagination. */
+/** A search over hosted plugins: free-text plus tag (AND) and capability (OR) filters, sort and pagination. */
 export interface PluginSearchParams {
   readonly q?: string;
   readonly tags?: readonly string[];
-  readonly capability?: string;
+  readonly capabilities?: readonly string[];
   readonly sort?: string;
   readonly limit: number;
   readonly offset: number;
@@ -94,7 +94,7 @@ export async function searchRegistryPlugins(params: PluginSearchParams): Promise
     await registryGet("/-/v1/search", CatalogResponse, {
       text: params.q?.trim(),
       tags: params.tags?.length ? params.tags.join(",") : undefined,
-      capability: params.capability,
+      capabilities: params.capabilities?.length ? params.capabilities.join(",") : undefined,
       sort: params.sort,
       limit: params.limit,
       offset: params.offset,

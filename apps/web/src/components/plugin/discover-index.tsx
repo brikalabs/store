@@ -1,40 +1,13 @@
-import type { PluginSummary, SearchCapability } from "@brika/registry-contract";
+import type { PluginSummary } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
-import { Link, useNavigate } from "@tanstack/react-router";
-import {
-  Box,
-  Code,
-  FileText,
-  Filter,
-  Layers,
-  type LucideIcon,
-  Search,
-  ShieldCheck,
-  TrendingUp,
-  Users,
-  Zap,
-} from "lucide-react";
-import { type ReactNode, type SyntheticEvent, useState } from "react";
-import type { Gradient } from "@/components/clay/gradients";
+import { Link } from "@tanstack/react-router";
+import { Filter, Search, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
+import { CAPABILITY_TILES } from "@/components/plugin/capability-tiles";
 import { ListingCard } from "@/components/plugin/listing-card";
 import { type SortKey, SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
 import { useT } from "@/i18n";
-
-export type CapabilityTile = {
-  key: SearchCapability;
-  label: string;
-  glyph: LucideIcon;
-  gradient: Gradient;
-};
-
-export const CAPABILITY_TILES: CapabilityTile[] = [
-  { key: "tools", label: "Tools", glyph: Code, gradient: ["#FF8A5B", "#F2542D"] },
-  { key: "blocks", label: "Blocks", glyph: Layers, gradient: ["#5B8DEF", "#3A5BD9"] },
-  { key: "bricks", label: "Bricks", glyph: Box, gradient: ["#19C39C", "#0E8C6F"] },
-  { key: "sparks", label: "Sparks", glyph: Zap, gradient: ["#A66BFF", "#6D34C9"] },
-  { key: "pages", label: "Pages", glyph: FileText, gradient: ["#7C8696", "#525C6B"] },
-];
 
 type Scope = { scope: string; name: string; count: number };
 
@@ -64,19 +37,22 @@ export function DiscoverIndex({
   title,
 }: Readonly<{ plugins: PluginSummary[]; total: number; title?: string }>) {
   const t = useT();
-  const navigate = useNavigate();
   const [term, setTerm] = useState("");
   const [sort, setSort] = useState<SortKey>("downloads");
   const heading = title ?? t("plugin:discoverTitle");
   const scopes = topScopes(plugins, 5);
   const trending = plugins.slice(0, 5);
   const sorted = sortPlugins(plugins, sort);
-
-  function submitFilter(event: SyntheticEvent) {
-    event.preventDefault();
-    const next = term.trim();
-    navigate({ to: "/plugins", search: next.length > 0 ? { q: next } : {} });
-  }
+  // The rail input live-filters the loaded plugins (matching its "Filter plugins" label); the global
+  // header search covers the full catalog.
+  const needle = term.trim().toLowerCase();
+  const shown = needle
+    ? sorted.filter((plugin) =>
+        `${plugin.displayName ?? ""} ${plugin.name} ${plugin.description ?? ""} ${plugin.keywords.join(" ")}`
+          .toLowerCase()
+          .includes(needle),
+      )
+    : sorted;
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,9 +66,9 @@ export function DiscoverIndex({
         <SortMenu value={sort} onChange={setSort} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[206px_1fr_236px]">
+      <div className="grid items-start gap-6 lg:grid-cols-[206px_1fr_236px]">
         <aside className="hidden flex-col gap-6 lg:flex">
-          <form onSubmit={submitFilter} className="relative">
+          <div className="relative">
             <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
             <input
               value={term}
@@ -100,13 +76,13 @@ export function DiscoverIndex({
               placeholder={t("plugin:filterPlugins")}
               className="h-10 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/50"
             />
-          </form>
+          </div>
           <FilterGroup label={t("plugin:capability")} icon={<Filter className="size-3.5" />}>
             {CAPABILITY_TILES.map((tile) => (
               <Link
                 key={tile.key}
                 to="/plugins"
-                search={{ capability: tile.key }}
+                search={{ capabilities: [tile.key] }}
                 className="flex items-center justify-between rounded-md px-1 py-1 text-muted-foreground text-sm transition-colors hover:text-foreground"
               >
                 {tile.label}
@@ -122,8 +98,8 @@ export function DiscoverIndex({
           </FilterGroup>
         </aside>
 
-        <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
-          {sorted.map((plugin) => (
+        <div className="grid auto-rows-min gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+          {shown.map((plugin) => (
             <ListingCard key={plugin.name} plugin={plugin} />
           ))}
         </div>

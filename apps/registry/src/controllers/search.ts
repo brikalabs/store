@@ -45,6 +45,15 @@ function parseTags(raw: string | null): string[] | undefined {
   return tags.length > 0 ? tags : undefined;
 }
 
+/** Comma-separated `capabilities`, keeping only valid capability kinds (OR-matched downstream). */
+function parseCapabilities(raw: string | null): SearchCapability[] | undefined {
+  if (raw === null) return undefined;
+  const valid = [...new Set(raw.split(",").map((c) => c.trim()))].filter(
+    (c): c is SearchCapability => CAPABILITIES.some((cap) => cap === c),
+  );
+  return valid.length > 0 ? valid : undefined;
+}
+
 export async function handleSearch(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const limit = clampInt(url.searchParams.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT);
@@ -52,13 +61,11 @@ export async function handleSearch(request: Request): Promise<Response> {
   const q = url.searchParams.get("text")?.trim() || undefined;
   const sortParam = url.searchParams.get("sort");
   const sort: SearchSort = SORTS.find((s) => s === sortParam) ?? "relevance";
-  const capParam = url.searchParams.get("capability");
-  const capability: SearchCapability | undefined = CAPABILITIES.find((c) => c === capParam);
 
   const { entries, total } = await inject(Search).search({
     q,
     tags: parseTags(url.searchParams.get("tags")),
-    capability,
+    capabilities: parseCapabilities(url.searchParams.get("capabilities")),
     sort,
     limit,
     offset,

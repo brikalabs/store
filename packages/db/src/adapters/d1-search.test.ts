@@ -101,8 +101,18 @@ describe("D1SearchReader filters", () => {
   });
 
   test("a capability filter keeps only packages declaring at least one", async () => {
-    expect(names(await search({ capability: "tools" }))).toEqual(["@brika/auth", "@brika/maps"]);
-    expect(names(await search({ capability: "blocks" }))).toEqual(["@brika/charts"]);
+    expect(names(await search({ capabilities: ["tools"] }))).toEqual([
+      "@brika/auth",
+      "@brika/maps",
+    ]);
+    expect(names(await search({ capabilities: ["blocks"] }))).toEqual(["@brika/charts"]);
+  });
+
+  test("multiple capabilities are OR-matched", async () => {
+    expect(names(await search({ capabilities: ["blocks", "pages"] }))).toEqual([
+      "@brika/charts",
+      "@brika/maps",
+    ]);
   });
 });
 
@@ -149,7 +159,7 @@ describe("D1SearchReader index maintenance", () => {
   test("an operator takedown drops the package from search (never leaks)", async () => {
     await writer.setTakedown("@brika/maps", "1.0.0", "dmca");
     expect(names(await search({ q: "map" }))).toEqual([]);
-    expect(names(await search({ capability: "tools" }))).toEqual(["@brika/auth"]);
+    expect(names(await search({ capabilities: ["tools"] }))).toEqual(["@brika/auth"]);
   });
 
   test("re-publishing updates the indexed keywords and capabilities", async () => {
@@ -160,7 +170,7 @@ describe("D1SearchReader index maintenance", () => {
     );
     expect(names(await search({ tags: ["maps"] }))).toEqual([]);
     expect(names(await search({ tags: ["cartography"] }))).toEqual(["@brika/maps"]);
-    expect(names(await search({ capability: "tools" }))).toEqual(["@brika/auth"]);
+    expect(names(await search({ capabilities: ["tools"] }))).toEqual(["@brika/auth"]);
   });
 });
 

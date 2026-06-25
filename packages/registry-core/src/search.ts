@@ -30,8 +30,8 @@ export interface SearchOptions {
   readonly q?: string;
   /** Every keyword the plugin must carry (AND). */
   readonly tags?: readonly string[];
-  /** Capability the plugin must declare at least one of. */
-  readonly capability?: SearchCapability;
+  /** Capabilities to filter on; a plugin matches if it declares any of them (OR). */
+  readonly capabilities?: readonly SearchCapability[];
   readonly sort: SearchSort;
   readonly limit: number;
   readonly offset: number;

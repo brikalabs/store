@@ -700,7 +700,7 @@ describe("handleSearch (SQL index: FTS + tag/capability)", () => {
   test("matches on full-text query plus a capability filter", async () => {
     await publishSearchable(db);
     const res = await run(services(db), () =>
-      handleSearch(new Request("http://localhost/-/v1/search?text=map&capability=tools")),
+      handleSearch(new Request("http://localhost/-/v1/search?text=map&capabilities=tools,pages")),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
