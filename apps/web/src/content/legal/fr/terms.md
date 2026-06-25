@@ -1,9 +1,8 @@
-<!-- Machine-translated from English. Pending legal/human review before relying on it. -->
-
 # Conditions d'utilisation
 
 > **Brouillon, pas encore en vigueur.** Ces conditions constituent un document de
 > travail en attente de relecture juridique. Voir l'[aperçu juridique](/legal).
+> Traduction automatique depuis l'anglais : en cas de divergence, la version anglaise fait foi.
 
 **Last updated:** 2026-06-15
 

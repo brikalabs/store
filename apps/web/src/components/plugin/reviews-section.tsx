@@ -1,9 +1,10 @@
-import { Button, Input, Rating, Textarea } from "@brika/clay";
+import { Input, Rating, Textarea } from "@brika/clay";
 import type { Review } from "@brika/registry-contract";
 import { Heart, Star } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { ReviewDistribution } from "@/components/clay/review-distribution";
+import { SignInToParticipate, SubmitRow } from "@/components/plugin/participation";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { usePluginReviews } from "@/hooks/use-plugin-reviews";
 import { useDateFormat, useT } from "@/i18n";
@@ -132,20 +133,15 @@ export function ReviewsSection({ pluginName, fallback = [] }: Props) {
             onChange={(event) => setBody(event.target.value)}
             rows={3}
           />
-          {error ? <p className="text-destructive text-sm">{error}</p> : null}
-          <div className="flex justify-end">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? t("plugin:reviewSubmitting") : t("plugin:reviewSubmit")}
-            </Button>
-          </div>
+          <SubmitRow
+            error={error}
+            submitting={submitting}
+            busyLabel={t("plugin:reviewSubmitting")}
+            submitLabel={t("plugin:reviewSubmit")}
+          />
         </form>
       ) : (
-        <a
-          href="/auth/github"
-          className="rounded-2xl border border-border border-dashed p-4 text-center text-muted-foreground text-sm hover:text-foreground"
-        >
-          {t("plugin:reviewSignIn")}
-        </a>
+        <SignInToParticipate>{t("plugin:reviewSignIn")}</SignInToParticipate>
       )}
 
       <div className="flex flex-col gap-5">

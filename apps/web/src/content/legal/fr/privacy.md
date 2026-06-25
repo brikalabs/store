@@ -1,9 +1,8 @@
-<!-- Machine-translated from English. Pending legal/human review before relying on it. -->
-
 # Politique de confidentialité
 
 > **Brouillon, pas encore en vigueur.** En attente de relecture juridique. Voir
 > l'[aperçu juridique](/legal).
+> Traduction automatique depuis l'anglais : en cas de divergence, la version anglaise fait foi.
 
 **Last updated:** 2026-06-15
 

@@ -1,8 +1,9 @@
-import { Button, Textarea } from "@brika/clay";
+import { Textarea } from "@brika/clay";
 import type { Comment } from "@brika/registry-contract";
 import { ChevronUp } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { SignInToParticipate, SubmitRow } from "@/components/plugin/participation";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { usePluginComments } from "@/hooks/use-plugin-comments";
 import { useDateFormat, useT } from "@/i18n";
@@ -64,20 +65,15 @@ export function CommentsSection({ pluginName, fallback = [] }: Props) {
             onChange={(event) => setBody(event.target.value)}
             rows={3}
           />
-          {error ? <p className="text-destructive text-sm">{error}</p> : null}
-          <div className="flex justify-end">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? t("plugin:commentPosting") : t("plugin:commentPost")}
-            </Button>
-          </div>
+          <SubmitRow
+            error={error}
+            submitting={submitting}
+            busyLabel={t("plugin:commentPosting")}
+            submitLabel={t("plugin:commentPost")}
+          />
         </form>
       ) : (
-        <a
-          href="/auth/github"
-          className="rounded-2xl border border-border border-dashed p-4 text-center text-muted-foreground text-sm hover:text-foreground"
-        >
-          {t("plugin:commentSignIn")}
-        </a>
+        <SignInToParticipate>{t("plugin:commentSignIn")}</SignInToParticipate>
       )}
 
       <div className="flex flex-col gap-5">
