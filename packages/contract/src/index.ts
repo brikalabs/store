@@ -232,7 +232,8 @@ export function pageSchema<T extends z.ZodType>(item: T) {
   });
 }
 
-export const SearchSort = z.enum(["relevance", "downloads", "rating", "recent", "name"]);
+/** Sortable fields for `sort=field[:dir]` (`relevance` requires a text query). */
+export const SearchSort = z.enum(["relevance", "downloads", "recent", "name"]);
 export type SearchSort = z.infer<typeof SearchSort>;
 
 /** Sort direction; absent means each sort's natural order (most/newest/best first, A→Z for name). */
