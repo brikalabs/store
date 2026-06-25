@@ -72,6 +72,7 @@
   "installsFromRegistry": "Installations depuis le registre",
   "installsCount": "{installs} installations",
   "capabilitiesCount": "{count, plural, one {# capacité} other {# capacités}}",
+  "capsCount": "{count} caps",
   "searchPlaceholder": "Rechercher par nom ou par paquet…",
   "filterByStatus": "Filtrer par statut",
   "filterAll": "Tous",

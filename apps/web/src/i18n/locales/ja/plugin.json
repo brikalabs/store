@@ -72,6 +72,7 @@
   "installsFromRegistry": "レジストリからインストール",
   "installsCount": "{installs} 回インストール",
   "capabilitiesCount": "{count, plural, other {# 個の機能}}",
+  "capsCount": "{count} 機能",
   "searchPlaceholder": "名前またはパッケージで検索…",
   "filterByStatus": "ステータスで絞り込み",
   "filterAll": "すべて",

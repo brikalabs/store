@@ -46,11 +46,16 @@ export function BrowsePage() {
           ) : null}
           {t("browse:plugins", { count: total })}
         </p>
-        <SortMenu
-          field={field}
-          direction={direction}
-          onChange={(f, d) => navigate({ search: (prev) => ({ ...prev, sort: `${f}:${d}` }) })}
-        />
+        <div className="flex items-center gap-3">
+          <span className="font-medium text-muted-foreground text-xs uppercase tracking-[0.08em]">
+            {t("plugin:sort")}
+          </span>
+          <SortMenu
+            field={field}
+            direction={direction}
+            onChange={(f, d) => navigate({ search: (prev) => ({ ...prev, sort: `${f}:${d}` }) })}
+          />
+        </div>
       </div>
 
       <BrowseFilters capabilities={activeCapabilities} tags={activeTags} />
@@ -112,7 +117,7 @@ function ScopeHitRow({ hit }: Readonly<{ hit: ScopeHit }>) {
         <div className="flex items-center gap-2">
           <span className="font-bold font-heading text-foreground">{hit.name}</span>
           {hit.verified ? <ShieldCheck className="size-4 text-brand-ink" /> : null}
-          <span className="rounded-full bg-muted px-2 py-0.5 font-semibold text-[11px] text-muted-foreground">
+          <span className="rounded-full bg-brand/10 px-2 py-0.5 font-semibold text-[11px] text-brand-ink">
             {t("browse:scopeBadge")}
           </span>
         </div>

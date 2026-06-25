@@ -87,7 +87,7 @@ export function SortMenu({
     <div className={`inline-flex items-center gap-1.5 ${className ?? ""}`}>
       <DropdownMenu>
         <DropdownMenuTrigger className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-sm outline-none transition-colors hover:border-brand/40">
-          <span className="text-muted-foreground">{t("plugin:sort")}</span>
+          {current ? <current.icon className="size-4 text-brand-ink" /> : null}
           <span className="font-semibold text-foreground">
             {current ? t(current.labelKey) : ""}
           </span>
@@ -112,7 +112,7 @@ export function SortMenu({
           type="button"
           aria-label={t("plugin:sort")}
           onClick={() => onChange(field, direction === "asc" ? "desc" : "asc")}
-          className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground outline-none transition-colors hover:border-brand/40 hover:text-foreground"
+          className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-card text-brand-ink outline-none transition-colors hover:border-brand/40"
         >
           {direction === "asc" ? (
             <ArrowUpNarrowWide className="size-4" />
