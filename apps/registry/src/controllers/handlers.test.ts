@@ -18,7 +18,7 @@ import { TarballBucket } from "../adapters/r2-tarball";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
 import { provideRegistry } from "../services";
 import { fakeR2, makeDb, seedExamplePackage } from "../test-harness";
-import { handleSearch } from "./catalog";
+import { handleSearch } from "./search";
 import { handleDownloads } from "./stats";
 
 /**

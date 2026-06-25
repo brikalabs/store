@@ -17,7 +17,6 @@ export {
   type AuditRecord,
   auditEntry,
 } from "./audit";
-export type { CatalogEntry } from "./catalog";
 export {
   DeviceConfig,
   type DeviceGrant,
@@ -117,6 +116,7 @@ export {
   ScopeStore,
 } from "./scope";
 export type {
+  CatalogEntry,
   SearchCapability,
   SearchOptions,
   SearchReader,

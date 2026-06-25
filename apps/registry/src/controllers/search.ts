@@ -67,8 +67,8 @@ export async function handleSearch(request: Request): Promise<Response> {
   return jsonPage(await withDownloads(entries), total);
 }
 
-export const catalogController = controller({
-  name: "catalog",
+export const searchController = controller({
+  name: "search",
   prefix: "/-/v1",
   routes: [
     // `/packages` is the no-filter enumerate; both are served by the same SQL-backed search.
