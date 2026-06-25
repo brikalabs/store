@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Download, ShieldCheck } from "lucide-react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
 import { useIconPalette } from "@/hooks/use-icon-palette";
+import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 
 /** Total declared capabilities across a plugin's families (0 when none). */
@@ -24,6 +25,7 @@ export function Stat({ value, label }: Readonly<{ value: string; label: string }
 
 /** A plugin tile (gradient banner, icon, name, description, install/rating/capability footer). */
 export function ShowcaseCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
+  const t = useT();
   // Banner accent comes from the plugin's own icon when it has one, else a hash gradient.
   const gradient = useIconPalette(plugin.iconUrl, plugin.name);
   const caps = capabilityTotal(plugin);
@@ -53,7 +55,7 @@ export function ShowcaseCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
           {plugin.verified ? <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" /> : null}
         </div>
         <p className="line-clamp-2 min-h-[2.3rem] text-muted-foreground text-sm leading-relaxed">
-          {plugin.description ?? "No description provided."}
+          {plugin.description ?? t("plugin:noDescription")}
         </p>
         <div className="flex items-center gap-3.5 border-border border-t pt-2.5 font-mono text-muted-foreground text-xs">
           {plugin.downloadsWeekly > 0 ? (
@@ -68,7 +70,7 @@ export function ShowcaseCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
               {plugin.rating.average.toFixed(1)}
             </span>
           ) : null}
-          {caps > 0 ? <span>{caps} capabilities</span> : null}
+          {caps > 0 ? <span>{t("plugin:capabilitiesCount", { count: caps })}</span> : null}
         </div>
       </div>
     </Link>

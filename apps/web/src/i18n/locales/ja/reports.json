@@ -1,0 +1,14 @@
+{
+  "securityLabel": "マルウェアまたはセキュリティリスク",
+  "securityDescription": "データを盗む、予期しないコードを実行する、または既知の脆弱性を含んでいます。",
+  "spamLabel": "スパムまたはタイポスクワッティング",
+  "spamDescription": "誤解を招く名前、別のパッケージへのなりすまし、または低品質のスパムです。",
+  "impersonationLabel": "なりすましまたは商標侵害",
+  "impersonationDescription": "権利のないブランドや作者の identity を使用しています。",
+  "brokenLabel": "壊れているまたは誤解を招く動作",
+  "brokenDescription": "主張している内容と実質的に異なる動作をします。",
+  "dmcaLabel": "著作権 / DMCA",
+  "dmcaDescription": "著作権を侵害するコードやアセットを含んでいます。",
+  "otherLabel": "その他",
+  "otherDescription": "上記のカテゴリーに当てはまらないもの。"
+}

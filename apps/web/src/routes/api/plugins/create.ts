@@ -6,10 +6,10 @@ import {
   trustedPublisherSchema,
 } from "@brika/registry-core";
 import { MetadataReader } from "@brika/registry-runtime";
-import { okOrThrow, readBody, reply } from "@brika/router";
+import { okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { recordAudit, runAuthed } from "@/server/http";
+import { readJsonBody, recordAudit, runAuthed } from "@/server/http";
 
 const Body = z.object({
   scope: z.string().min(1),
@@ -39,10 +39,10 @@ export const Route = createFileRoute("/api/plugins/create")({
         }),
       POST: ({ request }) =>
         runAuthed(request, async (a) => {
-          const { scope, name, publisher } = await readBody(
+          const { scope, name, publisher } = await readJsonBody(
             request,
             Body,
-            "Invalid create request",
+            "api:invalidCreateRequest",
           );
           const fullName = `${scope}/${name}`;
 

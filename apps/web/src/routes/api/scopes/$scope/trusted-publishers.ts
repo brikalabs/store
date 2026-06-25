@@ -1,8 +1,8 @@
 import { inject } from "@brika/di";
 import { ScopeService, trustedPublisherSchema } from "@brika/registry-core";
-import { okOrThrow, readBody, reply } from "@brika/router";
+import { okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { recordAudit, runAuthed } from "@/server/http";
+import { readJsonBody, recordAudit, runAuthed } from "@/server/http";
 
 /**
  * Trusted-publisher bindings for a scope (PUB-016), admin-gated: GET lists, PUT adds, DELETE removes
@@ -20,10 +20,10 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
         }),
       PUT: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const binding = await readBody(
+          const binding = await readJsonBody(
             request,
             trustedPublisherSchema,
-            "Invalid trusted publisher",
+            "api:invalidTrustedPublisher",
           );
           const { publisher } = okOrThrow(
             await inject(ScopeService).addTrustedPublisher(a.identity, params.scope, binding),
@@ -37,10 +37,10 @@ export const Route = createFileRoute("/api/scopes/$scope/trusted-publishers")({
         }),
       DELETE: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const binding = await readBody(
+          const binding = await readJsonBody(
             request,
             trustedPublisherSchema,
-            "Invalid trusted publisher",
+            "api:invalidTrustedPublisher",
           );
           const { removed } = okOrThrow(
             await inject(ScopeService).removeTrustedPublisher(a.identity, params.scope, binding),

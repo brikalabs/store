@@ -1,14 +1,16 @@
 import { Card } from "@brika/clay";
 import { Ban } from "lucide-react";
 import type { ReactNode } from "react";
+import { useT } from "@/i18n";
 
 /** The red "Danger zone" card shell: a heading over one or more {@link DangerRow}s (and any error). */
 export function DangerZone({ children }: Readonly<{ children: ReactNode }>) {
+  const t = useT();
   return (
     <Card className="flex flex-col gap-3.5 rounded-[20px] border-danger-border bg-danger-tint p-[22px] shadow-none">
       <h2 className="flex items-center gap-2.5 font-bold font-heading text-foreground text-lg tracking-tight">
         <Ban className="size-[18px] text-danger" />
-        Danger zone
+        {t("layout:dangerZone")}
       </h2>
       {children}
     </Card>

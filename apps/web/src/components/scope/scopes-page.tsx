@@ -8,6 +8,7 @@ import { SettingsCard } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { useClaimScope } from "@/hooks/use-claim-scope";
 import { type MemberScope, useScopes } from "@/hooks/use-scopes";
+import { useT } from "@/i18n";
 
 /** Normalize the claim input to a canonical `@name` scope (lowercase, single leading `@`). */
 function normalizeScope(input: string): string {
@@ -18,6 +19,7 @@ function normalizeScope(input: string): string {
 const route = getRouteApi("/dashboard/scopes");
 
 export function ScopesPage() {
+  const t = useT();
   const { user } = route.useRouteContext();
   const { scopes, reload } = useScopes();
   const { busy, claim } = useClaimScope(reload);
@@ -36,19 +38,19 @@ export function ScopesPage() {
     <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="Scopes">
       <header className="flex flex-col gap-1.5">
         <h1 className="font-bold font-heading text-[30px] text-foreground tracking-tight">
-          Scopes
+          {t("scope:pageHeading")}
         </h1>
         <p className="max-w-[620px] text-muted-foreground text-sm">
-          A scope (like <span className="font-mono text-foreground">@acme</span>) is your npm
-          namespace and your account: it owns its members, profile, and published packages. Claiming
-          one makes you its first admin.
+          {t("scope:introPrefix")}
+          <span className="font-mono text-foreground">@acme</span>
+          {t("scope:introSuffix")}
         </p>
       </header>
 
       <SettingsCard className="block rounded-[20px]">
         <form onSubmit={onClaim} className="contents">
           <h2 className="mb-3.5 font-bold font-heading text-foreground text-lg tracking-tight">
-            Claim a scope
+            {t("scope:claimHeading")}
           </h2>
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
@@ -58,8 +60,8 @@ export function ScopesPage() {
               <Input
                 value={name}
                 onChange={(event) => setName(normalizeScope(event.target.value))}
-                placeholder="your-scope"
-                aria-label="Scope"
+                placeholder={t("scope:claimPlaceholder")}
+                aria-label={t("scope:claimAriaLabel")}
                 className="h-[46px] pl-7 font-mono"
               />
             </div>
@@ -69,7 +71,7 @@ export function ScopesPage() {
               className="inline-flex h-[46px] items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-foreground text-sm hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="size-4" />
-              {busy ? "Claiming…" : "Claim"}
+              {busy ? t("scope:claiming") : t("scope:claim")}
             </button>
           </div>
           {error !== null && <p className="mt-3 text-danger text-sm">{error}</p>}
@@ -78,7 +80,7 @@ export function ScopesPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="font-bold font-heading text-foreground text-lg tracking-tight">
-          Your scopes
+          {t("scope:yourScopes")}
         </h2>
         <ScopeList scopes={scopes} />
       </section>
@@ -87,13 +89,14 @@ export function ScopesPage() {
 }
 
 function ScopeList({ scopes }: Readonly<{ scopes: MemberScope[] | null }>) {
+  const t = useT();
   if (scopes === null) {
     return <div className="h-20 animate-pulse rounded-[18px] bg-muted" />;
   }
   if (scopes.length === 0) {
     return (
       <p className="rounded-[18px] border border-border border-dashed bg-card/50 p-6 text-center text-muted-foreground text-sm">
-        You don't own any scope yet. Claim one above to get started.
+        {t("scope:noScopes")}
       </p>
     );
   }

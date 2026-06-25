@@ -2,6 +2,7 @@ import { cn } from "@brika/clay";
 import { Image, ImageFallback } from "@brika/clay/components/image";
 import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { useState } from "react";
+import { useT } from "@/i18n";
 import { gradientFor as gradientForSeed } from "./gradients";
 
 const MAX_THUMBS = 5;
@@ -39,6 +40,7 @@ export function ScreenshotPanels({
   seed,
   className,
 }: Readonly<{ images: string[]; seed: string; className?: string }>) {
+  const t = useT();
   const urls = images;
   const [active, setActive] = useState(0);
   if (urls.length === 0) return null;
@@ -54,7 +56,7 @@ export function ScreenshotPanels({
         <Image
           key={urls[safeActive]}
           src={urls[safeActive] as string}
-          alt={`Screenshot ${safeActive + 1}`}
+          alt={t("clay:screenshotAlt", { index: safeActive + 1 })}
           loading="eager"
           timeoutMs={12000}
           className="size-full"
@@ -83,7 +85,9 @@ export function ScreenshotPanels({
               type="button"
               onClick={() => setActive(index)}
               aria-label={
-                isOverflowTile ? `Show ${overflow + 1} more screenshots` : `Screenshot ${index + 1}`
+                isOverflowTile
+                  ? t("clay:screenshotShowMore", { count: overflow + 1 })
+                  : t("clay:screenshotAlt", { index: index + 1 })
               }
               className={cn(
                 "relative h-16 overflow-hidden rounded-lg border-2 transition-colors",
@@ -109,11 +113,12 @@ export function ScreenshotPanels({
 }
 
 function NavButton({ side, onClick }: Readonly<{ side: "left" | "right"; onClick: () => void }>) {
+  const t = useT();
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={side === "left" ? "Previous screenshot" : "Next screenshot"}
+      aria-label={side === "left" ? t("clay:screenshotPrev") : t("clay:screenshotNext")}
       className={cn(
         "absolute top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/65 group-hover:opacity-100",
         side === "left" ? "left-3" : "right-3",

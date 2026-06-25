@@ -1,0 +1,18 @@
+{
+  "directionLabel": "Direção",
+  "directionSpotlight": "Destaque",
+  "directionConsole": "Console",
+  "badgeCount": "{count, plural, one {# plugin e contando} other {# plugins e contando}}",
+  "heroTitle": "O marketplace para o seu hub Brika",
+  "heroSubtitle": "Descubra, compare e avalie plugins. Um registro curado de plugins verificados e com escopo.",
+  "searchCta": "Pesquisar na loja",
+  "browseAll": "Ver todos",
+  "railFeatured": "Em destaque",
+  "railTrending": "Em alta esta semana",
+  "seeAll": "Ver todos",
+  "capabilityHeading": "Explorar por capacidade",
+  "explore": "Explorar",
+  "byAuthor": "por {author}",
+  "noDescription": "Nenhuma descrição fornecida.",
+  "viewPlugin": "Ver plugin"
+}

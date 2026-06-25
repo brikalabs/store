@@ -2,8 +2,10 @@ import type { PluginSummary } from "@brika/registry-contract";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
+import { useT } from "@/i18n";
 
 export function HeroCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
+  const t = useT();
   return (
     <Link
       to="/$"
@@ -25,19 +27,21 @@ export function HeroCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
             {plugin.verified ? <ShieldCheck className="size-4 shrink-0 text-brand-ink" /> : null}
           </div>
           {plugin.author ? (
-            <p className="truncate text-muted-foreground text-sm">by {plugin.author.id}</p>
+            <p className="truncate text-muted-foreground text-sm">
+              {t("home:byAuthor", { author: plugin.author.id })}
+            </p>
           ) : null}
         </div>
       </div>
       <p className="line-clamp-3 text-muted-foreground text-sm leading-relaxed">
-        {plugin.description ?? "No description provided."}
+        {plugin.description ?? t("home:noDescription")}
       </p>
       <div className="flex items-center justify-between pt-1">
         <span className="rounded-md border border-border bg-muted px-2 py-1 font-mono text-muted-foreground text-xs">
           v{plugin.version}
         </span>
         <span className="inline-flex items-center gap-1.5 font-semibold text-brand-ink text-sm">
-          View plugin
+          {t("home:viewPlugin")}
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
         </span>
       </div>

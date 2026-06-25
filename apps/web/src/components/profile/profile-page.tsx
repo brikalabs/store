@@ -3,11 +3,13 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { useAccountProfile } from "@/hooks/use-account-profile";
+import { useT } from "@/i18n";
 import { ProfileEditor } from "./profile-editor";
 
 const route = getRouteApi("/dashboard/profile");
 
 export function ProfilePage() {
+  const t = useT();
   const { user } = route.useRouteContext();
   const { profile, setProfile } = useAccountProfile();
 
@@ -16,11 +18,9 @@ export function ProfilePage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-bold font-heading text-[30px] text-foreground tracking-tight">
-            Profile
+            {t("profile:pageTitle")}
           </h1>
-          <p className="mt-1.5 text-[15px] text-muted-foreground">
-            How you appear on your public account page.
-          </p>
+          <p className="mt-1.5 text-[15px] text-muted-foreground">{t("profile:pageSubtitle")}</p>
         </div>
         <Button
           asChild
@@ -29,7 +29,7 @@ export function ProfilePage() {
         >
           <Link to="/u/$id" params={{ id: user.id }}>
             <ExternalLink className="size-4 text-muted-foreground" />
-            View public profile
+            {t("profile:viewPublicProfile")}
           </Link>
         </Button>
       </div>

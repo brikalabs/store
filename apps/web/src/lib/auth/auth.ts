@@ -1,6 +1,7 @@
 import { inject } from "@brika/di";
 import { safeReturnPath } from "@/lib/auth/auth-cookies";
 import { Auth } from "@/server/auth";
+import { ServerT } from "@/server/i18n";
 
 /** The session identity used everywhere downstream; `id` (the Brika account id) is the only identity. */
 export interface SessionUser {
@@ -55,7 +56,7 @@ export async function githubSignIn(request: Request): Promise<Response> {
   });
   const location = headers.get("location") ?? response?.url;
   if (location === undefined || location === null) {
-    return new Response("Could not initiate GitHub sign-in", { status: 502 });
+    return new Response(inject(ServerT).t("api:githubSignInFailed"), { status: 502 });
   }
   return redirect(location, headers);
 }

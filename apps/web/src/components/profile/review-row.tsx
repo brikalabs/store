@@ -2,9 +2,11 @@ import { Rating } from "@brika/clay";
 import type { Review } from "@brika/registry-contract";
 import { Link } from "@tanstack/react-router";
 import { MessageSquare, Star } from "lucide-react";
+import { useT } from "@/i18n";
 
 /** A single authored review on the profile page: plugin link, stars, and body. */
 export function ReviewRow({ review }: Readonly<{ review: Review }>) {
+  const t = useT();
   return (
     <article className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -21,7 +23,7 @@ export function ReviewRow({ review }: Readonly<{ review: Review }>) {
         {review.helpfulCount > 0 ? (
           <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
             <MessageSquare className="size-3.5" />
-            {review.helpfulCount} found helpful
+            {t("profile:reviewHelpful", { count: review.helpfulCount })}
           </span>
         ) : null}
       </div>

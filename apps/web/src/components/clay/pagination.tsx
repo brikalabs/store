@@ -1,6 +1,7 @@
 import { Button } from "@brika/clay";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useT } from "@/i18n";
 import { type Pagination, paginate } from "@/lib/pagination";
 
 /**
@@ -46,14 +47,15 @@ export function Pager({
   pagination: Pagination;
   onPageChange: (page: number) => void;
 }>) {
+  const t = useT();
   const { page, totalPages, from, to, total, hasPrev, hasNext } = pagination;
   if (total === 0) return null;
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <span className="text-muted-foreground text-sm">
-        Showing <span className="font-semibold text-foreground">{from}</span>
+        {t("clay:pagerShowing")} <span className="font-semibold text-foreground">{from}</span>
         {"–"}
-        <span className="font-semibold text-foreground">{to}</span> of{" "}
+        <span className="font-semibold text-foreground">{to}</span> {t("clay:pagerOf")}{" "}
         <span className="font-semibold text-foreground">{total}</span>
       </span>
       <div className="flex items-center gap-2">
@@ -66,10 +68,11 @@ export function Pager({
           onClick={() => onPageChange(page - 1)}
         >
           <ChevronLeft className="size-4" />
-          Previous
+          {t("clay:pagerPrevious")}
         </Button>
         <span className="px-1.5 text-muted-foreground text-sm">
-          Page <span className="font-bold text-foreground">{page}</span> / {totalPages}
+          {t("clay:pagerPage")} <span className="font-bold text-foreground">{page}</span> /{" "}
+          {totalPages}
         </span>
         <Button
           type="button"
@@ -79,7 +82,7 @@ export function Pager({
           disabled={!hasNext}
           onClick={() => onPageChange(page + 1)}
         >
-          Next
+          {t("clay:pagerNext")}
           <ChevronRight className="size-4" />
         </Button>
       </div>

@@ -1,44 +1,35 @@
 import { cn } from "@brika/clay";
 import { type LucideIcon, Monitor, Moon, Sun } from "lucide-react";
 import { type ThemeMode, useTheme } from "@/hooks/use-theme";
+import { type AppKey, useT } from "@/i18n";
 
-const MODES: { value: ThemeMode; label: string; icon: LucideIcon }[] = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
-];
+const ICON: Record<ThemeMode, LucideIcon> = { light: Sun, dark: Moon, system: Monitor };
+const LABEL_KEY: Record<ThemeMode, AppKey> = {
+  light: "layout:themeLight",
+  dark: "layout:themeDark",
+  system: "layout:themeSystem",
+};
+// Clicking cycles to the next state: light -> dark -> system -> light.
+const NEXT: Record<ThemeMode, ThemeMode> = { light: "dark", dark: "system", system: "light" };
 
-/** Light / dark / system theme toggle: a three-segment control with the active mode highlighted. */
+/** A single tri-state toggle that cycles light -> dark -> system, showing the current mode's icon. */
 export function ThemeToggle({ className }: Readonly<{ className?: string }>) {
+  const t = useT();
   const { mode, setMode } = useTheme();
+  const Icon = ICON[mode];
+  const label = t(LABEL_KEY[mode]);
   return (
-    <div
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={() => setMode(NEXT[mode])}
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5",
+        "inline-flex size-[38px] items-center justify-center rounded-[10px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground",
         className,
       )}
     >
-      {MODES.map((option) => {
-        const active = option.value === mode;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={active}
-            aria-label={option.label}
-            title={option.label}
-            onClick={() => setMode(option.value)}
-            className={cn(
-              "inline-flex size-7 items-center justify-center rounded-md transition-colors",
-              active
-                ? "bg-background text-brand-ink shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <option.icon className="size-4" />
-          </button>
-        );
-      })}
-    </div>
+      <Icon className="size-4" />
+    </button>
   );
 }

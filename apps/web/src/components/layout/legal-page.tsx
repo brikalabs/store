@@ -3,19 +3,20 @@ import { ShieldCheck } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { type LegalSlug, legalDoc } from "@/content/legal";
+import { type AppKey, useDateFormat, useLocale, useT } from "@/i18n";
 
 /**
- * Long-form legal/policy page with a sticky table of contents. Title, last-updated line, and
- * draft disclaimer are parsed out of the policy markdown so chrome and prose never drift.
+ * Long-form legal/policy page with a sticky table of contents. The markdown is resolved per locale
+ * (with English fallback); title, last-updated line, and draft disclaimer are parsed out of it so
+ * chrome and prose never drift.
  */
 
-export type LegalSlug = "terms" | "privacy" | "licenses" | "cookies" | "acceptable-use";
-
-const TABS: { slug: LegalSlug; label: string; to: string }[] = [
-  { slug: "terms", label: "Terms", to: "/legal/terms" },
-  { slug: "privacy", label: "Privacy", to: "/legal/privacy" },
-  { slug: "licenses", label: "Licenses", to: "/legal/licenses" },
-  { slug: "cookies", label: "Cookies", to: "/legal/cookies" },
+const TABS: { slug: LegalSlug; labelKey: AppKey; to: string }[] = [
+  { slug: "terms", labelKey: "legal:tabTerms", to: "/legal/terms" },
+  { slug: "privacy", labelKey: "legal:tabPrivacy", to: "/legal/privacy" },
+  { slug: "licenses", labelKey: "legal:tabLicenses", to: "/legal/licenses" },
+  { slug: "cookies", labelKey: "legal:tabCookies", to: "/legal/cookies" },
 ];
 
 function slugify(text: string): string {
@@ -85,18 +86,6 @@ function tableOfContents(body: string): { id: string; text: string }[] {
     }
   }
   return items;
-}
-
-function formatDate(iso: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
-  const date = new Date(`${iso}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return iso;
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(date);
 }
 
 /** Highlight the table-of-contents entry for the section nearest the top. */
@@ -189,8 +178,16 @@ const COMPONENTS: Components = {
   hr: () => <hr className="my-6 border-border" />,
 };
 
-export function LegalPage({ slug, content }: Readonly<{ slug: LegalSlug; content: string }>) {
-  const { title, lastUpdated, disclaimer, body } = parseLegalDoc(content);
+export function LegalPage({ slug }: Readonly<{ slug: LegalSlug }>) {
+  const t = useT();
+  const locale = useLocale();
+  const formatDate = useDateFormat({
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  const { title, lastUpdated, disclaimer, body } = parseLegalDoc(legalDoc(slug, locale));
   const toc = tableOfContents(body);
   const active = useActiveHeading(toc.map((item) => item.id).join("|"));
 
@@ -198,13 +195,15 @@ export function LegalPage({ slug, content }: Readonly<{ slug: LegalSlug; content
     <main className="mx-auto max-w-[1000px] px-6 pt-9 pb-16 sm:px-7">
       <div className="flex flex-col gap-2.5">
         <span className="self-start rounded-full border border-brand/30 bg-brand/10 px-2.5 py-1 font-mono font-semibold text-brand-ink text-xs uppercase tracking-[0.05em]">
-          Legal
+          {t("legal:badge")}
         </span>
         <h1 className="font-bold font-heading text-[32px] text-foreground tracking-[-0.025em] sm:text-[34px]">
           {title}
         </h1>
         <p className="text-muted-foreground text-sm">
-          {lastUpdated ? `Last updated ${formatDate(lastUpdated)} · Draft` : "Draft"}
+          {lastUpdated
+            ? t("legal:lastUpdated", { date: formatDate(lastUpdated) })
+            : t("legal:draft")}
         </p>
       </div>
 
@@ -221,7 +220,7 @@ export function LegalPage({ slug, content }: Readonly<{ slug: LegalSlug; content
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </Link>
           );
         })}
@@ -231,7 +230,7 @@ export function LegalPage({ slug, content }: Readonly<{ slug: LegalSlug; content
         {toc.length > 0 ? (
           <aside className="sticky top-24 hidden flex-col gap-0.5 lg:flex">
             <div className="pb-2 font-semibold text-[11.5px] text-muted-foreground uppercase tracking-[0.05em]">
-              On this page
+              {t("legal:onThisPage")}
             </div>
             {toc.map((item) => (
               <a

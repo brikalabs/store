@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pill } from "@/components/clay/pill";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { type ScopeDomain, useScopeDomains } from "@/hooks/use-scope-domains";
+import { useT } from "@/i18n";
 import type { ScopeCardProps } from "@/lib/scope-api";
 
 /** A bordered TXT-row with a label, a mono value, and a copy button (shows a check briefly). */
@@ -13,6 +14,7 @@ function TxtRow({
   copyable,
   last,
 }: Readonly<{ label: string; value: string; copyable?: boolean; last?: boolean }>) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   return (
     <div
@@ -29,7 +31,7 @@ function TxtRow({
           type="button"
           size="icon-sm"
           variant="outline"
-          title="Copy"
+          title={t("scope:copy")}
           onClick={() => {
             void navigator.clipboard.writeText(value);
             setCopied(true);
@@ -58,6 +60,7 @@ function DomainListItem({
   onVerify: () => void;
   onRemove: () => void;
 }>) {
+  const t = useT();
   if (domain.verified) {
     return (
       <li className="flex items-center gap-2.5 rounded-[11px] border border-border bg-muted px-3.5 py-2.5">
@@ -67,13 +70,13 @@ function DomainListItem({
         </span>
         <Pill tone="success" className="gap-1 py-[3px] font-bold text-[11.5px] [&>svg]:size-3.5">
           <Check className="size-3.5" />
-          Verified
+          {t("scope:domainVerified")}
         </Pill>
         <Button
           type="button"
           size="icon"
           variant="ghost"
-          aria-label={`Remove ${domain.domain}`}
+          aria-label={t("scope:removeDomainAriaLabel", { domain: domain.domain })}
           disabled={busy}
           onClick={onRemove}
           className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-danger"
@@ -91,13 +94,13 @@ function DomainListItem({
           {domain.domain}
         </span>
         <Pill tone="warning" dot className="bg-card py-[3px] font-bold text-[11.5px]">
-          Pending
+          {t("scope:domainPending")}
         </Pill>
         <Button
           type="button"
           size="icon"
           variant="ghost"
-          aria-label={`Remove ${domain.domain}`}
+          aria-label={t("scope:removeDomainAriaLabel", { domain: domain.domain })}
           disabled={busy}
           onClick={onRemove}
           className="flex size-7 items-center justify-center rounded-lg text-warning hover:bg-card"
@@ -107,13 +110,14 @@ function DomainListItem({
       </div>
       <div className="bg-card p-3.5">
         <p className="mb-2.5 text-muted-foreground text-xs leading-relaxed">
-          Add this <span className="font-mono text-foreground">TXT</span> record at your DNS
-          provider, then verify. Propagation can take a few minutes.
+          {t("scope:txtInstructionsPrefix")}
+          <span className="font-mono text-foreground">TXT</span>
+          {t("scope:txtInstructionsSuffix")}
         </p>
         <div className="overflow-hidden rounded-[11px] border border-border bg-muted">
-          <TxtRow label="Type" value="TXT" />
-          <TxtRow label="Name" value={domain.host} copyable />
-          <TxtRow label="Value" value={domain.txt} copyable last />
+          <TxtRow label={t("scope:txtTypeLabel")} value="TXT" />
+          <TxtRow label={t("scope:txtNameLabel")} value={domain.host} copyable />
+          <TxtRow label={t("scope:txtValueLabel")} value={domain.txt} copyable last />
         </div>
         <div className="mt-3 flex gap-2.5">
           <Button
@@ -123,7 +127,7 @@ function DomainListItem({
             className="inline-flex h-[38px] items-center gap-1.5 rounded-[10px] bg-brand px-4 font-bold text-brand-foreground text-sm hover:bg-brand hover:brightness-105 disabled:opacity-60"
           >
             <ShieldCheck className="size-3.5" />
-            Verify
+            {t("scope:verify")}
           </Button>
         </div>
       </div>
@@ -133,15 +137,15 @@ function DomainListItem({
 
 /** Claim + DNS-verify domains (ORG-010): add, show the TXT challenge, verify, remove. */
 export function DomainsCard({ scope, onError }: Readonly<ScopeCardProps>) {
+  const t = useT();
   const { domains, busy, add, verify, remove } = useScopeDomains(scope, onError);
   const [input, setInput] = useState("");
 
   return (
     <SettingsCard className="gap-1.5">
-      <h2 className="font-bold text-base text-foreground">Verified domains</h2>
+      <h2 className="font-bold text-base text-foreground">{t("scope:domainsTitle")}</h2>
       <p className="text-[12.5px] text-muted-foreground leading-relaxed">
-        Prove your scope controls a domain via a TXT record, then verify. Verified domains show a
-        badge on your public scope page.
+        {t("scope:domainsDescription")}
       </p>
       {domains === null ? (
         <div className="mt-2 h-12 animate-pulse rounded-[11px] bg-muted" />
@@ -170,8 +174,8 @@ export function DomainsCard({ scope, onError }: Readonly<ScopeCardProps>) {
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value.toLowerCase())}
-          placeholder="add-a-domain.com"
-          aria-label="Domain to claim"
+          placeholder={t("scope:domainPlaceholder")}
+          aria-label={t("scope:domainAriaLabel")}
           className="flex-1 rounded-[10px] border-input bg-muted font-mono"
         />
         <Button
@@ -181,7 +185,7 @@ export function DomainsCard({ scope, onError }: Readonly<ScopeCardProps>) {
           className="h-10 rounded-[10px] border border-input bg-card px-4 font-semibold text-foreground shadow-none hover:border-brand-border hover:bg-card hover:brightness-100"
         >
           <Plus className="size-4" />
-          Add
+          {t("scope:add")}
         </Button>
       </form>
     </SettingsCard>

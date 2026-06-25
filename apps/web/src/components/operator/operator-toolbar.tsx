@@ -9,17 +9,19 @@ import {
 } from "@brika/clay";
 import { ShieldAlert } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { useT } from "@/i18n";
 
 /** The amber "Privileged · registry moderation" banner plus the screen's title and description. */
 export function OperatorHeader({
   title,
   children,
 }: Readonly<{ title: string; children: ReactNode }>) {
+  const t = useT();
   return (
     <header className="flex flex-col gap-3">
       <span className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 font-semibold text-amber-600 text-xs dark:text-amber-400">
         <ShieldAlert className="size-3.5" />
-        Privileged · registry moderation
+        {t("operator:privilegedBadge")}
       </span>
       <div className="flex flex-col gap-1">
         <h1 className="font-bold font-heading text-2xl tracking-tight">{title}</h1>
@@ -70,16 +72,18 @@ export function SortSelect<K extends string>({
   value,
   options,
   onChange,
-  label = "Sort",
+  label,
 }: Readonly<{
   value: K;
   options: { value: K; label: string }[];
   onChange: (key: K) => void;
   label?: string;
 }>) {
+  const t = useT();
+  const resolvedLabel = label ?? t("operator:sortLabel");
   return (
     <div className="inline-flex items-center gap-2 text-muted-foreground text-xs">
-      <span>{label}</span>
+      <span>{resolvedLabel}</span>
       <Select
         value={value}
         onValueChange={(next) => {
@@ -87,7 +91,11 @@ export function SortSelect<K extends string>({
           if (match) onChange(match.value);
         }}
       >
-        <SelectTrigger aria-label={label} size="sm" className="w-auto gap-1.5 font-medium text-xs">
+        <SelectTrigger
+          aria-label={resolvedLabel}
+          size="sm"
+          className="w-auto gap-1.5 font-medium text-xs"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -120,17 +128,18 @@ export function BulkBar({
   onTakedown: (reason: string) => void;
   onClear: () => void;
 }>) {
+  const t = useT();
   const [reason, setReason] = useState("");
   const armed = reason.trim().length > 0;
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3">
       <span className="font-semibold text-brand-ink text-sm">
-        {count} {count === 1 ? noun : `${noun}s`} selected
+        {t("operator:bulkSelected", { count, noun })}
       </span>
       <Input
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        placeholder="Reason (recorded in the audit log)"
+        placeholder={t("operator:reasonPlaceholder")}
         className="h-9 max-w-xs flex-1"
       />
       <Button
@@ -138,10 +147,10 @@ export function BulkBar({
         disabled={busy || !armed}
         onClick={() => armed && onTakedown(reason.trim())}
       >
-        Take down selected
+        {t("operator:takeDownSelected")}
       </Button>
       <Button variant="ghost" disabled={busy} onClick={onClear}>
-        Clear
+        {t("operator:clear")}
       </Button>
     </div>
   );

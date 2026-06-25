@@ -6,12 +6,14 @@ import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { DiscoverIndex } from "@/components/plugin/discover-index";
 import { ListingCard } from "@/components/plugin/listing-card";
 import { type SortKey, SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
+import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import { matchingScopes, type ScopeHit } from "@/lib/registry/matching-scopes";
 
 const route = getRouteApi("/plugins/");
 
 export function BrowsePage() {
+  const t = useT();
   const { plugins, total } = route.useLoaderData();
   const { q } = route.useSearch();
   const [sort, setSort] = useState<SortKey>("relevance");
@@ -20,22 +22,21 @@ export function BrowsePage() {
   if (!q) {
     return (
       <main className="mx-auto max-w-7xl px-6 py-10">
-        <DiscoverIndex plugins={plugins} total={total} title="Browse plugins" />
+        <DiscoverIndex plugins={plugins} total={total} title={t("browse:browseHeading")} />
       </main>
     );
   }
 
   const scopes = matchingScopes(plugins, q);
   const sorted = sortPlugins(plugins, sort);
-  const scopeNoun = scopes.length === 1 ? "scope" : "scopes";
-  const scopeSummary = scopes.length > 0 ? `, ${scopes.length} ${scopeNoun}` : "";
+  const scopeSummary = scopes.length > 0 ? `, ${t("browse:scopes", { count: scopes.length })}` : "";
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-7 px-6 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
-          Showing results for <span className="font-semibold text-foreground">"{q}"</span>
-          {scopeSummary} · {total} {total === 1 ? "plugin" : "plugins"}
+          {t("browse:resultsFor")} <span className="font-semibold text-foreground">"{q}"</span>
+          {scopeSummary} · {t("browse:plugins", { count: total })}
         </p>
         <SortMenu value={sort} onChange={setSort} />
       </div>
@@ -44,7 +45,7 @@ export function BrowsePage() {
         <section className="flex flex-col gap-3">
           <h2 className="flex items-center gap-2 font-heading font-semibold text-muted-foreground text-sm uppercase tracking-[0.05em]">
             <Folder className="size-4" />
-            Scopes
+            {t("browse:scopesHeading")}
           </h2>
           <div className="flex flex-col gap-3">
             {scopes.map((hit) => (
@@ -59,16 +60,14 @@ export function BrowsePage() {
           <EmptyStateIcon>
             <PackageSearch />
           </EmptyStateIcon>
-          <EmptyStateTitle>No plugins found</EmptyStateTitle>
-          <EmptyStateDescription>
-            Try a different search, or publish one to the Brika registry.
-          </EmptyStateDescription>
+          <EmptyStateTitle>{t("browse:emptyTitle")}</EmptyStateTitle>
+          <EmptyStateDescription>{t("browse:emptyDescription")}</EmptyStateDescription>
         </EmptyState>
       ) : (
         <section className="flex flex-col gap-3">
           <h2 className="flex items-center gap-2 font-heading font-semibold text-muted-foreground text-sm uppercase tracking-[0.05em]">
             <Box className="size-4" />
-            Plugins
+            {t("browse:pluginsHeading")}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sorted.map((plugin) => (
@@ -82,6 +81,7 @@ export function BrowsePage() {
 }
 
 function ScopeHitRow({ hit }: Readonly<{ hit: ScopeHit }>) {
+  const t = useT();
   return (
     <Link
       to="/$"
@@ -99,16 +99,13 @@ function ScopeHitRow({ hit }: Readonly<{ hit: ScopeHit }>) {
           <span className="font-bold font-heading text-foreground">{hit.name}</span>
           {hit.verified ? <ShieldCheck className="size-4 text-brand-ink" /> : null}
           <span className="rounded-full bg-muted px-2 py-0.5 font-semibold text-[11px] text-muted-foreground">
-            Scope
+            {t("browse:scopeBadge")}
           </span>
         </div>
         <div className="font-mono text-muted-foreground text-xs">{hit.scope}</div>
       </div>
       <div className="flex items-center gap-5 font-mono text-muted-foreground text-xs">
-        <span>
-          <span className="font-semibold text-foreground">{hit.count}</span>{" "}
-          {hit.count === 1 ? "plugin" : "plugins"}
-        </span>
+        <span>{t("browse:plugins", { count: hit.count })}</span>
         {hit.weekly > 0 ? (
           <span>
             <span className="font-semibold text-foreground">{formatCount(hit.weekly)}</span>
@@ -117,7 +114,7 @@ function ScopeHitRow({ hit }: Readonly<{ hit: ScopeHit }>) {
         ) : null}
       </div>
       <span className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 font-semibold text-foreground text-sm transition-colors group-hover:border-brand group-hover:text-brand-ink">
-        View scope
+        {t("browse:viewScope")}
         <ChevronRight className="size-4" />
       </span>
     </Link>

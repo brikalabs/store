@@ -13,7 +13,8 @@ import { StatusBadge } from "@/components/plugin/status-badge";
 import { TrustedPublishersCard } from "@/components/scope/trusted-publishers-card";
 import { usePluginDeletion } from "@/hooks/use-plugin-deletion";
 import { useIsScopeAdmin } from "@/hooks/use-scopes";
-import { formatCount, formatDate } from "@/lib/format";
+import { useDateFormat, useT } from "@/i18n";
+import { formatCount } from "@/lib/format";
 import { VersionsCard } from "./versions-card";
 
 export interface ManageData {
@@ -30,6 +31,7 @@ export interface ManageData {
 const route = getRouteApi("/dashboard/plugins/$");
 
 export function ManagePluginPage() {
+  const t = useT();
   const data = route.useLoaderData();
   const { user } = route.useRouteContext();
 
@@ -37,23 +39,27 @@ export function ManagePluginPage() {
     return (
       <main className="mx-auto max-w-md px-6 py-24 text-center">
         <h1 className="font-bold font-heading text-[30px] text-foreground tracking-tight">
-          Listing not found
+          {t("pluginManage:listingNotFound")}
         </h1>
-        <p className="mt-2 text-muted-foreground">
-          That package isn't published to the Brika registry.
-        </p>
+        <p className="mt-2 text-muted-foreground">{t("pluginManage:notPublished")}</p>
       </main>
     );
   }
 
   return (
-    <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="My plugins">
+    <AdminShell
+      id={user.id}
+      name={user.name}
+      avatarUrl={user.avatarUrl}
+      activeLabel={t("pluginManage:myPlugins")}
+    >
       <ManagePlugin name={data.name} detail={data.detail} reserved={data.reserved} />
     </AdminShell>
   );
 }
 
 function ManagePlugin({ name, detail, reserved }: Readonly<ManageData>) {
+  const t = useT();
   const scope = scopeOf(name);
   const isAdmin = useIsScopeAdmin(scope);
 
@@ -62,7 +68,7 @@ function ManagePlugin({ name, detail, reserved }: Readonly<ManageData>) {
       <div>
         <div className="flex items-center gap-1.5 font-mono text-[12.5px] text-muted-foreground">
           <Link to="/dashboard/plugins" className="transition-colors hover:text-brand-ink">
-            My plugins
+            {t("pluginManage:myPlugins")}
           </Link>
           <span>/</span>
           <span className="text-foreground">{name}</span>
@@ -82,26 +88,31 @@ function ManagePlugin({ name, detail, reserved }: Readonly<ManageData>) {
           {detail ? (
             <SettingsCard>
               <span className="font-bold text-[11px] text-muted-foreground uppercase tracking-[0.06em]">
-                Synced from the registry
+                {t("pluginManage:syncedFromRegistry")}
               </span>
               <div className="flex flex-col">
-                <SideRow label="Latest" value={detail.version} mono />
-                {detail.license ? <SideRow label="License" value={detail.license} mono /> : null}
-                <SideRow label="Brika engine" value={detail.brikaEngine} mono />
+                <SideRow label={t("pluginManage:sideLatest")} value={detail.version} mono />
+                {detail.license ? (
+                  <SideRow label={t("pluginManage:sideLicense")} value={detail.license} mono />
+                ) : null}
+                <SideRow
+                  label={t("pluginManage:sideBrikaEngine")}
+                  value={detail.brikaEngine}
+                  mono
+                />
               </div>
               <p className="rounded-[11px] bg-muted px-3 py-2.5 text-muted-foreground text-xs leading-relaxed">
-                Code &amp; versions come from the published package and can't be edited here.
+                {t("pluginManage:codeNotEditable")}
               </p>
             </SettingsCard>
           ) : null}
 
           <SettingsCard className="gap-2.5">
             <span className="font-bold text-[11px] text-muted-foreground uppercase tracking-[0.06em]">
-              Version management
+              {t("pluginManage:versionManagement")}
             </span>
             <p className="text-muted-foreground text-xs leading-relaxed">
-              Deprecate or yank individual published versions. Yanked versions stay installable for
-              existing lockfiles but are hidden from new installs.
+              {t("pluginManage:versionManagementDescription")}
             </p>
           </SettingsCard>
         </aside>
@@ -115,6 +126,7 @@ function ManagePlugin({ name, detail, reserved }: Readonly<ManageData>) {
 }
 
 function PluginHeader({ name, detail, reserved }: Readonly<ManageData>) {
+  const t = useT();
   const title = detail?.displayName ?? name;
   const grants = detail ? Object.keys(detail.grants ?? {}) : [];
 
@@ -148,7 +160,7 @@ function PluginHeader({ name, detail, reserved }: Readonly<ManageData>) {
         <Button asChild variant="outline" className="shrink-0">
           <a href={`/${name}`}>
             <ExternalLink className="size-4" />
-            View listing
+            {t("pluginManage:viewListing")}
           </a>
         </Button>
       )}
@@ -173,19 +185,21 @@ function GrantChips({ grants }: Readonly<{ grants: readonly string[] }>) {
 }
 
 function StatStrip({ detail }: Readonly<{ detail: PluginDetail }>) {
+  const t = useT();
+  const date = useDateFormat();
   return (
     <div className="mt-[18px] grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-border bg-border shadow-sm sm:grid-cols-4">
       <Stat
-        label="Weekly downloads"
+        label={t("pluginManage:statWeeklyDownloads")}
         value={detail.downloadsWeekly > 0 ? formatCount(detail.downloadsWeekly) : "·"}
       />
       <Stat
-        label="Rating"
+        label={t("pluginManage:statRating")}
         value={detail.rating ? detail.rating.average.toFixed(1) : "·"}
         star={detail.rating !== undefined}
       />
-      <Stat label="License" value={detail.license ?? "·"} mono />
-      <Stat label="Updated" value={formatDate(detail.updatedAt) || "·"} />
+      <Stat label={t("pluginManage:statLicense")} value={detail.license ?? "·"} mono />
+      <Stat label={t("pluginManage:statUpdated")} value={date(detail.updatedAt) || "·"} />
     </div>
   );
 }
@@ -194,20 +208,18 @@ function StateBanner({
   detail,
   reserved,
 }: Readonly<{ detail: PluginDetail | null; reserved: boolean }>) {
+  const t = useT();
   if (detail !== null) return null;
   if (reserved) {
     return (
       <p className="rounded-[14px] border border-border bg-muted px-4 py-3 text-muted-foreground text-sm leading-relaxed">
-        This name is <strong className="font-semibold text-foreground">reserved</strong>. Publish
-        your first version from CI or the CLI to make it live; until then it stays hidden from the
-        store. Set up a trusted publisher below to publish without a token.
+        {t("pluginManage:reservedBanner")}
       </p>
     );
   }
   return (
     <p className="rounded-[14px] border border-warning-border bg-warning-tint px-4 py-3 text-sm text-warning">
-      This package has no installable version right now, so it's hidden from the storefront and new
-      installs. It stays here for you to manage - un-yank a version below to relist it.
+      {t("pluginManage:noInstallableBanner")}
     </p>
   );
 }
@@ -258,6 +270,7 @@ function PluginTrustedPublishers({
 
 /** Irreversible per-plugin actions. Permanently deletes the package after a typed confirmation. */
 function PluginDangerZone({ name }: Readonly<{ name: string }>) {
+  const t = useT();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { error, remove } = usePluginDeletion(name);
@@ -271,8 +284,8 @@ function PluginDangerZone({ name }: Readonly<{ name: string }>) {
     <DangerZone>
       {error !== null && <p className="text-danger text-xs">{error}</p>}
       <DangerRow
-        title="Delete this plugin"
-        description="Permanently removes the listing and every published version. Install ids stop resolving for everyone. This cannot be undone."
+        title={t("pluginManage:deletePluginTitle")}
+        description={t("pluginManage:deletePluginDescription")}
         action={
           <Button
             type="button"
@@ -281,22 +294,22 @@ function PluginDangerZone({ name }: Readonly<{ name: string }>) {
             className="border-danger text-danger hover:bg-danger hover:text-white"
           >
             <Trash2 className="size-4" />
-            Delete plugin
+            {t("pluginManage:deletePlugin")}
           </Button>
         }
       />
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title="Delete this plugin"
+        title={t("pluginManage:deletePluginTitle")}
         description={
           <>
-            This permanently removes <span className="font-mono text-foreground">{name}</span> and
-            every published version; install ids stop resolving for everyone. This cannot be undone.
-            Type the package name to confirm.
+            {t("pluginManage:deleteConfirmBefore")}{" "}
+            <span className="font-mono text-foreground">{name}</span>{" "}
+            {t("pluginManage:deleteConfirmAfter")}
           </>
         }
-        confirmLabel="Delete plugin"
+        confirmLabel={t("pluginManage:deletePlugin")}
         confirmWord={name}
         onConfirm={confirmDelete}
       />

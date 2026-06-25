@@ -5,6 +5,7 @@ import { gradientCss } from "@/components/clay/gradients";
 import { useSearch } from "@/components/layout/search-context";
 import { CAPABILITY_TILES } from "@/components/plugin/discover-index";
 import { ListingCard } from "@/components/plugin/listing-card";
+import { useT } from "@/i18n";
 import { HeroCard } from "./hero-card";
 import { Rail } from "./rail";
 
@@ -12,6 +13,7 @@ export type DirectionProps = Readonly<{ plugins: PluginSummary[]; total: number 
 
 export function DirectionSpotlight({ plugins, total }: DirectionProps) {
   const { focusSearch } = useSearch();
+  const t = useT();
   const hero = plugins[0];
   const featured = plugins.slice(0, 4);
   const trending = plugins.slice(4, 8);
@@ -23,13 +25,13 @@ export function DirectionSpotlight({ plugins, total }: DirectionProps) {
           <div className="flex flex-col gap-5">
             <span className="inline-flex w-fit items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1.5 font-semibold text-brand-ink text-xs">
               <Sparkles className="size-3.5" />
-              {total} plugins and counting
+              {t("home:badgeCount", { count: total })}
             </span>
             <h1 className="text-balance font-bold font-heading text-5xl leading-[1.02] tracking-tight sm:text-6xl">
-              The marketplace for your Brika hub
+              {t("home:heroTitle")}
             </h1>
             <p className="max-w-md text-lg text-muted-foreground leading-relaxed">
-              Discover, compare, and review plugins. A curated registry of verified, scoped plugins.
+              {t("home:heroSubtitle")}
             </p>
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
@@ -38,13 +40,13 @@ export function DirectionSpotlight({ plugins, total }: DirectionProps) {
                 className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3 font-semibold text-brand-foreground shadow-[0_8px_20px_-8px_rgba(242,84,45,0.6)] transition-opacity hover:opacity-90"
               >
                 <Search className="size-4" />
-                Search the store
+                {t("home:searchCta")}
               </button>
               <Link
                 to="/plugins"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-5 py-3 font-semibold transition-colors hover:bg-muted"
               >
-                Browse all
+                {t("home:browseAll")}
                 <ArrowRight className="size-4" />
               </Link>
             </div>
@@ -54,7 +56,7 @@ export function DirectionSpotlight({ plugins, total }: DirectionProps) {
       </section>
 
       {featured.length > 0 ? (
-        <Rail title="Featured">
+        <Rail title={t("home:railFeatured")}>
           {featured.map((plugin) => (
             <ListingCard key={plugin.name} plugin={plugin} />
           ))}
@@ -63,7 +65,7 @@ export function DirectionSpotlight({ plugins, total }: DirectionProps) {
 
       {trending.length > 0 ? (
         <Rail
-          title="Trending this week"
+          title={t("home:railTrending")}
           icon={<TrendingUp className="size-5 text-brand-ink" />}
           seeAll
         >
@@ -74,7 +76,9 @@ export function DirectionSpotlight({ plugins, total }: DirectionProps) {
       ) : null}
 
       <section className="flex flex-col gap-4">
-        <h2 className="font-bold font-heading text-2xl tracking-tight">Browse by capability</h2>
+        <h2 className="font-bold font-heading text-2xl tracking-tight">
+          {t("home:capabilityHeading")}
+        </h2>
         <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {CAPABILITY_TILES.map((tile) => (
             <Link
@@ -93,7 +97,7 @@ export function DirectionSpotlight({ plugins, total }: DirectionProps) {
                 <span className="font-heading font-semibold text-foreground text-sm">
                   {tile.label}
                 </span>
-                <span className="text-muted-foreground text-xs">Explore</span>
+                <span className="text-muted-foreground text-xs">{t("home:explore")}</span>
               </div>
             </Link>
           ))}

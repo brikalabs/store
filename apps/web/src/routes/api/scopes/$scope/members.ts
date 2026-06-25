@@ -1,9 +1,10 @@
 import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
-import { notFound, okOrThrow, readBody, reply } from "@brika/router";
+import { notFound, okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { recordAudit, runAuthed } from "@/server/http";
+import { readJsonBody, recordAudit, runAuthed } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 import { SocialService } from "@/server/services/social-service";
 
 // Invited by account email (the account id is opaque), resolved to a `users.id` before the write.
@@ -41,10 +42,10 @@ export const Route = createFileRoute("/api/scopes/$scope/members")({
         }),
       PUT: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const parsed = await readBody(request, PutBody, "Invalid email or role");
+          const parsed = await readJsonBody(request, PutBody, "api:invalidEmailOrRole");
           const userId = await inject(SocialService).findUserIdByEmail(parsed.email);
           if (userId === null) {
-            throw notFound(`No Brika account for ${parsed.email}; they must sign in once first`);
+            throw notFound(inject(ServerT).t("api:noAccountForEmail", { email: parsed.email }));
           }
           const result = okOrThrow(
             await inject(ScopeService).setMember(a.identity, params.scope, userId, parsed.role),

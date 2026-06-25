@@ -6,6 +6,7 @@ import { CommentsSection } from "@/components/plugin/comments-section";
 import { InstallCommand } from "@/components/plugin/install-command";
 import { ReviewsSection } from "@/components/plugin/reviews-section";
 import { useSocialCounts } from "@/hooks/use-social-counts";
+import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import type { RegistryPluginPage } from "@/lib/registry/registry-source";
 import { DetailBreadcrumb, DetailHeader } from "./detail-header";
@@ -15,12 +16,12 @@ import { PermissionsPanel } from "./permissions-panel";
 import { SupplyChainPanel } from "./supply-chain-panel";
 
 export const DETAIL_TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "permissions", label: "Permissions" },
-  { id: "supply-chain", label: "Supply chain" },
-  { id: "versions", label: "Versions" },
-  { id: "reviews", label: "Reviews" },
-  { id: "discussion", label: "Discussion" },
+  { id: "overview", labelKey: "pluginDetail:tabOverview" },
+  { id: "permissions", labelKey: "pluginDetail:tabPermissions" },
+  { id: "supply-chain", labelKey: "pluginDetail:tabSupplyChain" },
+  { id: "versions", labelKey: "pluginDetail:tabVersions" },
+  { id: "reviews", labelKey: "pluginDetail:tabReviews" },
+  { id: "discussion", labelKey: "pluginDetail:tabDiscussion" },
 ] as const;
 export type DetailTab = (typeof DETAIL_TABS)[number]["id"];
 export const DETAIL_TAB_IDS = DETAIL_TABS.map((t) => t.id) as [DetailTab, ...DetailTab[]];
@@ -28,6 +29,7 @@ export const DETAIL_TAB_IDS = DETAIL_TABS.map((t) => t.id) as [DetailTab, ...Det
 const route = getRouteApi("/$");
 
 export function PluginDetailPage({ page }: Readonly<{ page: RegistryPluginPage }>) {
+  const t = useT();
   const { lang, tab } = route.useSearch();
   const navigate = route.useNavigate();
   const activeTab: DetailTab = tab ?? "overview";
@@ -64,11 +66,11 @@ export function PluginDetailPage({ page }: Readonly<{ page: RegistryPluginPage }
 
       <Tabs value={activeTab} onValueChange={onTab}>
         <TabsList variant="line">
-          {DETAIL_TABS.map(({ id, label }) => {
+          {DETAIL_TABS.map(({ id, labelKey }) => {
             const count = tabCounts[id];
             return (
               <TabsTrigger key={id} value={id}>
-                {label}
+                {t(labelKey)}
                 {count ? (
                   <span className="ml-1.5 font-mono text-[11px] text-muted-foreground/70">
                     {formatCount(count)}
@@ -92,12 +94,14 @@ export function PluginDetailPage({ page }: Readonly<{ page: RegistryPluginPage }
               <section className="flex flex-col gap-3">
                 <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
                   <Clock className="size-4 text-muted-foreground" />
-                  Changelog
+                  {t("pluginDetail:changelogHeading")}
                 </h2>
                 {versions.length > 0 ? (
                   <Changelog versions={versions} />
                 ) : (
-                  <p className="text-muted-foreground text-sm">No release history yet.</p>
+                  <p className="text-muted-foreground text-sm">
+                    {t("pluginDetail:noReleaseHistory")}
+                  </p>
                 )}
               </section>
             </TabsContent>

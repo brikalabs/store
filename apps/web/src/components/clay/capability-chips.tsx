@@ -1,17 +1,26 @@
 import { cn } from "@brika/clay";
 import { Box, Code, FileText, Layers, type LucideIcon, Zap } from "lucide-react";
+import { useT } from "@/i18n";
 import { type Gradient, gradientCss } from "./gradients";
 import type { CapabilityCounts } from "./plugin-icon";
 
-type CapabilityMeta = { label: string; glyph: LucideIcon; gradient: Gradient };
+type CapabilityMeta = { glyph: LucideIcon; gradient: Gradient };
 
 const CAPABILITY_META: Record<keyof CapabilityCounts, CapabilityMeta> = {
-  tools: { label: "tools", glyph: Code, gradient: ["#FF8A5B", "#F2542D"] },
-  blocks: { label: "blocks", glyph: Layers, gradient: ["#5B8DEF", "#3A5BD9"] },
-  bricks: { label: "bricks", glyph: Box, gradient: ["#19C39C", "#0E8C6F"] },
-  sparks: { label: "sparks", glyph: Zap, gradient: ["#A66BFF", "#6D34C9"] },
-  pages: { label: "pages", glyph: FileText, gradient: ["#7C8696", "#525C6B"] },
+  tools: { glyph: Code, gradient: ["#FF8A5B", "#F2542D"] },
+  blocks: { glyph: Layers, gradient: ["#5B8DEF", "#3A5BD9"] },
+  bricks: { glyph: Box, gradient: ["#19C39C", "#0E8C6F"] },
+  sparks: { glyph: Zap, gradient: ["#A66BFF", "#6D34C9"] },
+  pages: { glyph: FileText, gradient: ["#7C8696", "#525C6B"] },
 };
+
+const CAPABILITY_KEY = {
+  tools: "clay:capabilityTools",
+  blocks: "clay:capabilityBlocks",
+  bricks: "clay:capabilityBricks",
+  sparks: "clay:capabilitySparks",
+  pages: "clay:capabilityPages",
+} as const;
 
 const ORDER: (keyof CapabilityCounts)[] = ["bricks", "tools", "blocks", "sparks", "pages"];
 
@@ -20,6 +29,7 @@ export function CapabilityChips({
   capabilities,
   className,
 }: Readonly<{ capabilities?: CapabilityCounts; className?: string }>) {
+  const t = useT();
   if (!capabilities) return null;
   const present = ORDER.filter((key) => capabilities[key] > 0);
   if (present.length === 0) return null;
@@ -40,7 +50,7 @@ export function CapabilityChips({
             >
               <Glyph className="size-3.5" />
             </span>
-            {capabilities[key]} {meta.label}
+            {t(CAPABILITY_KEY[key], { count: capabilities[key] })}
           </span>
         );
       })}

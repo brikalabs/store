@@ -1,12 +1,13 @@
-import { Button, Input, Rating, Textarea } from "@brika/clay";
+import { Input, Rating, Textarea } from "@brika/clay";
 import type { Review } from "@brika/registry-contract";
 import { Heart, Star } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { ReviewDistribution } from "@/components/clay/review-distribution";
+import { SignInToParticipate, SubmitRow } from "@/components/plugin/participation";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { usePluginReviews } from "@/hooks/use-plugin-reviews";
-import { formatDate } from "@/lib/format";
+import { useDateFormat, useT } from "@/i18n";
 
 /** One review: the author, their stars, the body, and a helpful-vote toggle. */
 function ReviewItem({
@@ -14,6 +15,8 @@ function ReviewItem({
   canVote,
   onVote,
 }: Readonly<{ review: Review; canVote: boolean; onVote: () => void }>) {
+  const t = useT();
+  const date = useDateFormat();
   return (
     <article className="flex gap-3">
       <GradientAvatar
@@ -32,7 +35,7 @@ function ReviewItem({
               v{review.versionReviewed}
             </span>
           ) : (
-            <span className="text-muted-foreground text-xs">{formatDate(review.createdAt)}</span>
+            <span className="text-muted-foreground text-xs">{date(review.createdAt)}</span>
           )}
         </div>
         {review.title ? (
@@ -55,7 +58,9 @@ function ReviewItem({
             }
           >
             <Heart className={review.viewerVotedHelpful ? "size-3.5 fill-rose-500" : "size-3.5"} />
-            {review.helpfulCount > 0 ? `${review.helpfulCount} found this helpful` : "Helpful"}
+            {review.helpfulCount > 0
+              ? t("plugin:helpfulCount", { count: review.helpfulCount })
+              : t("plugin:helpful")}
           </button>
         </div>
       </div>
@@ -66,6 +71,7 @@ function ReviewItem({
 type Props = Readonly<{ pluginName: string; fallback?: Review[] }>;
 
 export function ReviewsSection({ pluginName, fallback = [] }: Props) {
+  const t = useT();
   const { user } = useCurrentUser();
   const { reviews, average, distribution, submitting, error, vote, submit } = usePluginReviews(
     pluginName,
@@ -87,7 +93,7 @@ export function ReviewsSection({ pluginName, fallback = [] }: Props) {
 
   return (
     <section id="reviews" className="flex flex-col gap-4 scroll-mt-20">
-      <h2 className="font-bold font-heading text-xl tracking-tight">Reviews</h2>
+      <h2 className="font-bold font-heading text-xl tracking-tight">{t("plugin:reviews")}</h2>
 
       {reviews.length > 0 ? (
         <ReviewDistribution average={average} count={reviews.length} distribution={distribution} />
@@ -100,7 +106,12 @@ export function ReviewsSection({ pluginName, fallback = [] }: Props) {
         >
           <div className="flex items-center gap-1.5">
             {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} type="button" onClick={() => setRating(n)} aria-label={`${n} stars`}>
+              <button
+                key={n}
+                type="button"
+                onClick={() => setRating(n)}
+                aria-label={t("plugin:starsLabel", { count: n })}
+              >
                 <Star
                   className={
                     n <= rating
@@ -112,35 +123,30 @@ export function ReviewsSection({ pluginName, fallback = [] }: Props) {
             ))}
           </div>
           <Input
-            placeholder="Title (optional)"
+            placeholder={t("plugin:reviewTitlePlaceholder")}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
           />
           <Textarea
-            placeholder="Share how this plugin works for you"
+            placeholder={t("plugin:reviewBodyPlaceholder")}
             value={body}
             onChange={(event) => setBody(event.target.value)}
             rows={3}
           />
-          {error ? <p className="text-destructive text-sm">{error}</p> : null}
-          <div className="flex justify-end">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Submitting..." : "Submit review"}
-            </Button>
-          </div>
+          <SubmitRow
+            error={error}
+            submitting={submitting}
+            busyLabel={t("plugin:reviewSubmitting")}
+            submitLabel={t("plugin:reviewSubmit")}
+          />
         </form>
       ) : (
-        <a
-          href="/auth/github"
-          className="rounded-2xl border border-border border-dashed p-4 text-center text-muted-foreground text-sm hover:text-foreground"
-        >
-          Sign in with GitHub to write a review
-        </a>
+        <SignInToParticipate>{t("plugin:reviewSignIn")}</SignInToParticipate>
       )}
 
       <div className="flex flex-col gap-5">
         {reviews.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No reviews yet. Be the first to review.</p>
+          <p className="text-muted-foreground text-sm">{t("plugin:noReviews")}</p>
         ) : null}
         {reviews.map((review) => (
           <ReviewItem

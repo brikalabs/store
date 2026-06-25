@@ -1,0 +1,12 @@
+{
+  "plugins": "{count, plural, other {# プラグイン}}",
+  "scopes": "{count, plural, other {# スコープ}}",
+  "browseHeading": "プラグインを閲覧",
+  "resultsFor": "検索結果",
+  "scopesHeading": "スコープ",
+  "pluginsHeading": "プラグイン",
+  "scopeBadge": "スコープ",
+  "viewScope": "スコープを表示",
+  "emptyTitle": "プラグインが見つかりません",
+  "emptyDescription": "別のキーワードで検索するか、Brika レジストリに公開してください。"
+}

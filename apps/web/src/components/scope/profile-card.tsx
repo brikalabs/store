@@ -5,6 +5,7 @@ import { LinkIcon } from "@/components/clay/link-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
 import type { EditLink, ProfileLink } from "@/hooks/use-links";
 import { useScopeProfile } from "@/hooks/use-scope-profile";
+import { useT } from "@/i18n";
 import type { ScopeCardProps } from "@/lib/scope-api";
 
 /** One editable link row (icon preview + label + URL + remove). */
@@ -19,6 +20,7 @@ function LinkRow({
   onChange: (patch: Partial<ProfileLink>) => void;
   onRemove: () => void;
 }>) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
       <span className="flex size-[38px] shrink-0 items-center justify-center rounded-[10px] border border-input bg-muted text-muted-foreground">
@@ -27,22 +29,22 @@ function LinkRow({
       <Input
         value={link.label}
         onChange={(e) => onChange({ label: e.target.value })}
-        placeholder="Label (e.g. X, LinkedIn, npm)"
-        aria-label={`Link ${index + 1} label`}
+        placeholder={t("scope:linkLabelPlaceholder")}
+        aria-label={t("scope:linkLabelAriaLabel", { index: index + 1 })}
         className="rounded-[11px] border-input bg-muted sm:max-w-[180px]"
       />
       <Input
         value={link.url}
         onChange={(e) => onChange({ url: e.target.value })}
-        placeholder="https://…"
-        aria-label={`Link ${index + 1} URL`}
+        placeholder={t("scope:linkUrlPlaceholder")}
+        aria-label={t("scope:linkUrlAriaLabel", { index: index + 1 })}
         className="flex-1 rounded-[11px] border-input bg-muted font-mono"
       />
       <Button
         type="button"
         size="icon"
         variant="ghost"
-        aria-label={`Remove link ${index + 1}`}
+        aria-label={t("scope:removeLinkAriaLabel", { index: index + 1 })}
         onClick={onRemove}
         className="flex size-[38px] shrink-0 items-center justify-center rounded-[10px] border border-input bg-card text-muted-foreground hover:border-danger-border hover:bg-card hover:text-danger"
       >
@@ -54,6 +56,7 @@ function LinkRow({
 
 /** Edit the scope's description + arbitrary labelled links (hydrated from the public record). */
 export function ProfileCard({ scope, onError }: Readonly<ScopeCardProps>) {
+  const t = useT();
   const { description, setDescription, links, addLink, updateLink, removeLink, saved, busy, save } =
     useScopeProfile(scope, onError);
 
@@ -62,25 +65,25 @@ export function ProfileCard({ scope, onError }: Readonly<ScopeCardProps>) {
     void save();
   }
 
-  let saveLabel = "Save profile";
-  if (busy) saveLabel = "Saving…";
-  else if (saved) saveLabel = "Saved";
+  let saveLabel = t("scope:saveProfile");
+  if (busy) saveLabel = t("scope:saving");
+  else if (saved) saveLabel = t("scope:saved");
 
   return (
     <SettingsCard className="gap-3">
       <form onSubmit={onSubmit} className="contents">
-        <h2 className="font-bold text-base text-foreground">Profile</h2>
+        <h2 className="font-bold text-base text-foreground">{t("scope:profileTitle")}</h2>
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="What does this scope build?"
-          aria-label="Scope description"
+          placeholder={t("scope:profileDescriptionPlaceholder")}
+          aria-label={t("scope:profileDescriptionAriaLabel")}
           rows={3}
           maxLength={500}
           className="rounded-[11px] border-input bg-muted"
         />
         <div className="flex flex-col gap-2.5">
-          <span className="font-semibold text-muted-foreground text-sm">Links</span>
+          <span className="font-semibold text-muted-foreground text-sm">{t("scope:links")}</span>
           {links.map((link, index) => (
             <LinkRow
               key={link.id}
@@ -97,7 +100,7 @@ export function ProfileCard({ scope, onError }: Readonly<ScopeCardProps>) {
             className="inline-flex h-[38px] w-fit items-center gap-2 rounded-[10px] border border-input border-dashed px-3.5 font-semibold text-muted-foreground text-sm shadow-none hover:border-brand-border hover:bg-transparent hover:text-foreground"
           >
             <Link2 className="size-4" />
-            Add link
+            {t("scope:addLink")}
           </Button>
         </div>
         <Button

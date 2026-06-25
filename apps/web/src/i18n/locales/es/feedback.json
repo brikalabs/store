@@ -1,0 +1,10 @@
+{
+  "notFoundTitle": "Este brick no está en el muro.",
+  "notFoundMessage": "Rebuscamos en cada plugin y no encontramos esa página. O fue despublicada, mal escrita, o nunca llegó a colocarse en el muro.",
+  "backToStore": "Volver al store",
+  "searchPlugins": "Buscar plugins",
+  "serverErrorTitle": "Una spark falló.",
+  "serverErrorMessage": "Algo en nuestro lado lanzó una excepción a mitad del renderizado. El brick-layer de guardia ya ha sido avisado, dale un momento y vuelve a intentarlo.",
+  "tryAgain": "Reintentar",
+  "statusPage": "Página de estado"
+}

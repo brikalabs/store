@@ -1,0 +1,15 @@
+{
+  "title": "Autoriser la CLI Brika",
+  "subtitle": "Confirmez le code affiché dans votre terminal pour autoriser la CLI à publier en votre nom.",
+  "signInToContinue": "Se connecter avec GitHub pour continuer",
+  "authorizedTitle": "Appareil autorisé",
+  "authorizedBody": "Vous pouvez revenir à votre terminal.",
+  "codeError": "Ce code est invalide, expiré ou déjà utilisé.",
+  "authorizing": "Autorisation…",
+  "authorizeCta": "Autoriser l'appareil",
+  "approveHintBefore": "N'approuvez que si vous venez de lancer",
+  "approveHintAfter": "sur cet appareil.",
+  "expiryWarning": "Ce code expire dans 10 minutes. Ne le partagez jamais avec personne.",
+  "signedInAs": "Connecté en tant que",
+  "yourAccount": "votre compte"
+}

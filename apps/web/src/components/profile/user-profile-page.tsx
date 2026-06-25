@@ -5,6 +5,7 @@ import { ProfileLinks } from "@/components/plugin/profile-links";
 import { PublishedPlugins } from "@/components/plugin/published-plugins";
 import { Stat } from "@/components/plugin/showcase-card";
 import { ReviewRow } from "@/components/profile/review-row";
+import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import type { UserPage } from "@/lib/registry/user-page";
 
@@ -17,6 +18,7 @@ export function UserProfilePage() {
 }
 
 function UserProfileView({ page }: Readonly<{ page: UserPage }>) {
+  const t = useT();
   const { profile, plugins, reviews } = page;
   const name = profile.displayName;
   const weekly = plugins.reduce((sum, plugin) => sum + plugin.downloadsWeekly, 0);
@@ -40,15 +42,25 @@ function UserProfileView({ page }: Readonly<{ page: UserPage }>) {
             links={[
               ...(profile.website === undefined
                 ? []
-                : [{ label: "Website", url: profile.website }]),
+                : [{ label: t("profile:websiteLabel"), url: profile.website }]),
               ...profile.links,
             ]}
           />
         </div>
         <div className="flex gap-2.5">
-          <Stat value={String(plugins.length)} label="plugins" />
-          {reviews.length > 0 ? <Stat value={String(reviews.length)} label="reviews" /> : null}
-          {weekly > 0 ? <Stat value={formatCount(weekly)} label="installs / week" /> : null}
+          <Stat
+            value={String(plugins.length)}
+            label={t("profile:statPlugins", { count: plugins.length })}
+          />
+          {reviews.length > 0 ? (
+            <Stat
+              value={String(reviews.length)}
+              label={t("profile:statReviews", { count: reviews.length })}
+            />
+          ) : null}
+          {weekly > 0 ? (
+            <Stat value={formatCount(weekly)} label={t("profile:statInstallsWeekly")} />
+          ) : null}
         </div>
       </header>
 
@@ -59,7 +71,8 @@ function UserProfileView({ page }: Readonly<{ page: UserPage }>) {
       {reviews.length > 0 ? (
         <section className="flex flex-col gap-4">
           <h2 className="font-bold font-heading text-xl tracking-tight">
-            Reviews <span className="font-medium text-muted-foreground">{reviews.length}</span>
+            {t("profile:reviewsHeading")}{" "}
+            <span className="font-medium text-muted-foreground">{reviews.length}</span>
           </h2>
           <div className="flex flex-col gap-3">
             {reviews.map((review) => (

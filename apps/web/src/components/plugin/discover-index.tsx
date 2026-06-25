@@ -19,6 +19,7 @@ import type { Gradient } from "@/components/clay/gradients";
 import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
 import { ListingCard } from "@/components/plugin/listing-card";
 import { type SortKey, SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
+import { useT } from "@/i18n";
 
 export type CapabilityTile = { key: string; label: string; glyph: LucideIcon; gradient: Gradient };
 
@@ -55,11 +56,13 @@ function topScopes(plugins: PluginSummary[], limit: number): Scope[] {
 export function DiscoverIndex({
   plugins,
   total,
-  title = "Discover plugins",
+  title,
 }: Readonly<{ plugins: PluginSummary[]; total: number; title?: string }>) {
+  const t = useT();
   const navigate = useNavigate();
   const [term, setTerm] = useState("");
   const [sort, setSort] = useState<SortKey>("downloads");
+  const heading = title ?? t("plugin:discoverTitle");
   const scopes = topScopes(plugins, 5);
   const trending = plugins.slice(0, 5);
   const sorted = sortPlugins(plugins, sort);
@@ -74,8 +77,10 @@ export function DiscoverIndex({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-bold font-heading text-3xl tracking-tight">{title}</h1>
-          <p className="mt-1 text-muted-foreground text-sm">{total} verified, scoped plugins</p>
+          <h1 className="font-bold font-heading text-3xl tracking-tight">{heading}</h1>
+          <p className="mt-1 text-muted-foreground text-sm">
+            {t("plugin:verifiedScopedPlugins", { count: total })}
+          </p>
         </div>
         <SortMenu value={sort} onChange={setSort} />
       </div>
@@ -87,11 +92,11 @@ export function DiscoverIndex({
             <input
               value={term}
               onChange={(event) => setTerm(event.target.value)}
-              placeholder="Filter plugins"
+              placeholder={t("plugin:filterPlugins")}
               className="h-10 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/50"
             />
           </form>
-          <FilterGroup label="Capability" icon={<Filter className="size-3.5" />}>
+          <FilterGroup label={t("plugin:capability")} icon={<Filter className="size-3.5" />}>
             {CAPABILITY_TILES.map((tile) => (
               <Link
                 key={tile.key}
@@ -104,10 +109,10 @@ export function DiscoverIndex({
             ))}
           </FilterGroup>
           <div className="h-px bg-border" />
-          <FilterGroup label="Trust">
+          <FilterGroup label={t("plugin:trust")}>
             <span className="flex items-center gap-2 text-foreground text-sm">
               <ShieldCheck className="size-3.5 text-brand-ink" />
-              Verified only
+              {t("plugin:verifiedOnly")}
             </span>
           </FilterGroup>
         </aside>
@@ -119,7 +124,10 @@ export function DiscoverIndex({
         </div>
 
         <aside className="hidden flex-col gap-5 lg:flex">
-          <RailCard title="Trending" icon={<TrendingUp className="size-4 text-brand-ink" />}>
+          <RailCard
+            title={t("plugin:trending")}
+            icon={<TrendingUp className="size-4 text-brand-ink" />}
+          >
             {trending.map((plugin, index) => (
               <Link
                 key={plugin.name}
@@ -144,7 +152,10 @@ export function DiscoverIndex({
           </RailCard>
 
           {scopes.length > 0 ? (
-            <RailCard title="Top scopes" icon={<Users className="size-4 text-brand-ink" />}>
+            <RailCard
+              title={t("plugin:topScopes")}
+              icon={<Users className="size-4 text-brand-ink" />}
+            >
               {scopes.map((scope) => (
                 <Link
                   key={scope.scope}
@@ -163,7 +174,7 @@ export function DiscoverIndex({
                       {scope.name}
                     </div>
                     <div className="text-[10.5px] text-muted-foreground">
-                      {scope.count} {scope.count === 1 ? "plugin" : "plugins"}
+                      {t("plugin:pluginCount", { count: scope.count })}
                     </div>
                   </div>
                 </Link>

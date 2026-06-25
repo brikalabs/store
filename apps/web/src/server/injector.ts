@@ -2,9 +2,12 @@ import { env } from "cloudflare:workers";
 import { createInjector, type Provider, runInInjectionContext } from "@brika/di";
 import { DomainSecret, RegistryDb, registryBindings } from "@brika/registry-runtime";
 import { getDb as getRegistryDb } from "@brika/store-db";
+import { getRequest } from "@tanstack/react-start/server";
+import { i18n } from "@/i18n/config";
 import { AssetsBucket, AssetsPublicUrl, CfR2BlobStore } from "@/server/adapters/cf-r2-blob-store";
 import { Db, getDb } from "@/server/db/client";
 import { config } from "@/server/env";
+import { RequestLocale } from "@/server/i18n";
 import { BlobStore } from "@/server/ports/blob-store";
 
 /** The web app's composition root: the runtime values its DI graph needs. */
@@ -24,7 +27,16 @@ const webProviders: readonly Provider[] = [
  */
 const appInjector = createInjector(webProviders);
 
-/** Run `fn` in the app's injection context, so handler bodies just `inject(...)`. */
+/**
+ * Run `fn` in the app's injection context, so handler bodies just `inject(...)`. Each request runs in
+ * a thin child injector that binds {@link RequestLocale} (lazily, via `useFactory`); app-wide
+ * singletons still resolve and cache in the shared parent. This is what makes `inject(ServerT)` yield
+ * a translator for the current request's locale.
+ */
 export function runWeb<R>(fn: () => R): R {
-  return runInInjectionContext(appInjector, fn);
+  const requestInjector = createInjector(
+    [{ provide: RequestLocale, useFactory: () => i18n.localeForRequest(getRequest()) }],
+    appInjector,
+  );
+  return runInInjectionContext(requestInjector, fn);
 }

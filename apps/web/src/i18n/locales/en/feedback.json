@@ -1,0 +1,10 @@
+{
+  "notFoundTitle": "This brick isn't in the wall.",
+  "notFoundMessage": "We dug through every plugin and couldn't find that page. It was either unpublished, mistyped, or never bricked into existence.",
+  "backToStore": "Back to store",
+  "searchPlugins": "Search plugins",
+  "serverErrorTitle": "A spark misfired.",
+  "serverErrorMessage": "Something on our side threw an exception mid-render. The on-call brick-layer has been paged, give it a moment and try again.",
+  "tryAgain": "Try again",
+  "statusPage": "Status page"
+}

@@ -1,10 +1,10 @@
 import { inject } from "@brika/di";
 import { ManagementService, tarballPath } from "@brika/registry-core";
 import { MetadataReader } from "@brika/registry-runtime";
-import { okOrThrow, readBody, reply } from "@brika/router";
+import { okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { recordAudit, runAuthed } from "@/server/http";
+import { readJsonBody, recordAudit, runAuthed } from "@/server/http";
 import { BlobStore } from "@/server/ports/blob-store";
 
 const Body = z.object({ name: z.string().min(1) });
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/api/plugins/delete")({
     handlers: {
       POST: ({ request }) =>
         runAuthed(request, async (a) => {
-          const { name } = await readBody(request, Body, "Invalid delete request");
+          const { name } = await readJsonBody(request, Body, "api:invalidDeleteRequest");
 
           const record = await inject(MetadataReader).getPackage(name);
           const versions = record?.versions.map((v) => v.version) ?? [];

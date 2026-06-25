@@ -1,0 +1,14 @@
+{
+  "securityLabel": "Malware oder Sicherheitsrisiko",
+  "securityDescription": "Stiehlt Daten, führt unerwarteten Code aus oder enthält eine bekannte Schwachstelle.",
+  "spamLabel": "Spam oder Typosquatting",
+  "spamDescription": "Irreführender Name, gibt sich als ein anderes Paket aus oder minderwertiger Spam.",
+  "impersonationLabel": "Identitätsmissbrauch oder Markenrecht",
+  "impersonationDescription": "Verwendet eine Marken- oder Autorenidentität, auf die kein Recht besteht.",
+  "brokenLabel": "Fehlerhaftes oder irreführendes Verhalten",
+  "brokenDescription": "Tut etwas wesentlich anderes als das, was es vorgibt.",
+  "dmcaLabel": "Urheberrecht / DMCA",
+  "dmcaDescription": "Enthält Code oder Assets, die das Urheberrecht verletzen.",
+  "otherLabel": "Etwas anderes",
+  "otherDescription": "Alles, was die oben genannten Kategorien nicht abdecken."
+}

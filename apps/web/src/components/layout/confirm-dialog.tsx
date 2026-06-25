@@ -11,6 +11,7 @@ import {
 } from "@brika/clay";
 import { Loader2 } from "lucide-react";
 import { type MouseEvent, type ReactNode, useState } from "react";
+import { useT } from "@/i18n";
 
 /**
  * A reusable confirm dialog for destructive actions (delete scope, revoke token, remove member).
@@ -26,7 +27,7 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirm",
+  confirmLabel,
   confirmWord,
   destructive = true,
   onConfirm,
@@ -40,6 +41,7 @@ export function ConfirmDialog({
   destructive?: boolean;
   onConfirm: () => void | Promise<void>;
 }>) {
+  const t = useT();
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const armed = confirmWord === undefined || typed.trim() === confirmWord;
@@ -76,13 +78,13 @@ export function ConfirmDialog({
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             placeholder={confirmWord}
-            aria-label={`Type ${confirmWord} to confirm`}
+            aria-label={t("layout:confirmTypeToConfirm", { word: confirmWord })}
             className="font-mono"
             autoComplete="off"
           />
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={busy}>{t("layout:cancel")}</AlertDialogCancel>
           <AlertDialogAction
             disabled={!armed || busy}
             onClick={confirm}
@@ -91,7 +93,7 @@ export function ConfirmDialog({
             }
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-            {confirmLabel}
+            {confirmLabel ?? t("layout:confirm")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

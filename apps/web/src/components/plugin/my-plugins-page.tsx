@@ -17,6 +17,7 @@ import { SegmentedControl } from "@/components/clay/segmented";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { StatusBadge } from "@/components/plugin/status-badge";
 import { useOwnedPlugins } from "@/hooks/use-owned-plugins";
+import { type AppKey, useT } from "@/i18n";
 import { paginate } from "@/lib/pagination";
 
 const route = getRouteApi("/dashboard/plugins/");
@@ -24,14 +25,15 @@ const PAGE_SIZE = 8;
 
 /** The status segments. `taken_down` is folded under "Yanked" so the filter stays simple. */
 type StatusFilter = "all" | "published" | "deprecated" | "yanked";
-const STATUS_FILTERS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "published", label: "Published" },
-  { value: "deprecated", label: "Deprecated" },
-  { value: "yanked", label: "Yanked" },
+const STATUS_FILTERS: ReadonlyArray<{ value: StatusFilter; labelKey: AppKey }> = [
+  { value: "all", labelKey: "plugin:filterAll" },
+  { value: "published", labelKey: "plugin:filterPublished" },
+  { value: "deprecated", labelKey: "plugin:filterDeprecated" },
+  { value: "yanked", labelKey: "plugin:filterYanked" },
 ];
 
 export function MyPluginsPage() {
+  const t = useT();
   const { user } = route.useRouteContext();
 
   const [query, setQuery] = useState("");
@@ -63,6 +65,10 @@ export function MyPluginsPage() {
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
   });
+  const statusOptions = STATUS_FILTERS.map((filter) => ({
+    value: filter.value,
+    label: t(filter.labelKey),
+  }));
 
   return (
     <AdminShell id={user.id} name={user.name} avatarUrl={user.avatarUrl} activeLabel="My plugins">
@@ -70,17 +76,14 @@ export function MyPluginsPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="font-bold font-heading text-[30px] text-foreground tracking-tight">
-              My plugins
+              {t("plugin:myPlugins")}
             </h1>
-            <p className="mt-1.5 text-[15px] text-muted-foreground">
-              Plugins published under scopes you own. Code &amp; versions come from the published
-              package.
-            </p>
+            <p className="mt-1.5 text-[15px] text-muted-foreground">{t("plugin:myPluginsIntro")}</p>
           </div>
           <Button asChild>
             <Link to="/dashboard/plugins/create">
               <Rocket className="size-4" />
-              Create plugin
+              {t("plugin:createCta")}
             </Link>
           </Button>
         </div>
@@ -94,25 +97,25 @@ export function MyPluginsPage() {
             <InputGroupInput
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name or package…"
+              placeholder={t("plugin:searchPlaceholder")}
             />
           </InputGroup>
           <SegmentedControl
-            options={STATUS_FILTERS}
+            options={statusOptions}
             value={status}
             onChange={(next) => {
               setStatus(next);
               setPage(1);
             }}
             fill={false}
-            ariaLabel="Filter by status"
+            ariaLabel={t("plugin:filterByStatus")}
           />
         </div>
 
         {/* scope chips (facet counts over the full owned set, from the server) */}
         <div className="flex flex-wrap items-center gap-2">
           <ScopeChip
-            label="All"
+            label={t("plugin:filterAll")}
             count={data?.stats.total ?? 0}
             active={scope === null}
             onClick={() => {
@@ -138,9 +141,9 @@ export function MyPluginsPage() {
         {/* table */}
         <Card className="overflow-hidden rounded-[20px] p-0 shadow-sm">
           <div className="grid grid-cols-[1fr_130px_130px_52px] items-center gap-3.5 border-border border-b bg-muted px-5 py-3 font-bold text-[11px] text-muted-foreground uppercase tracking-[0.06em]">
-            <div>Plugin</div>
-            <div>Status</div>
-            <div>Capabilities</div>
+            <div>{t("plugin:columnPlugin")}</div>
+            <div>{t("plugin:columnStatus")}</div>
+            <div>{t("plugin:columnCapabilities")}</div>
             <div />
           </div>
           {items.length === 0 ? (
@@ -148,10 +151,8 @@ export function MyPluginsPage() {
               <EmptyStateIcon>
                 <Box />
               </EmptyStateIcon>
-              <EmptyStateTitle>No plugins match your search</EmptyStateTitle>
-              <EmptyStateDescription>
-                Try a different name, package, or status.
-              </EmptyStateDescription>
+              <EmptyStateTitle>{t("plugin:noPluginsMatchTitle")}</EmptyStateTitle>
+              <EmptyStateDescription>{t("plugin:noPluginsMatchDescription")}</EmptyStateDescription>
             </EmptyState>
           ) : (
             items.map((plugin) => <PluginRow key={plugin.name} plugin={plugin} />)
@@ -197,6 +198,7 @@ function ScopeChip({
 }
 
 function PluginRow({ plugin }: Readonly<{ plugin: PluginSummary }>) {
+  const t = useT();
   const caps = plugin.capabilities
     ? plugin.capabilities.tools +
       plugin.capabilities.blocks +
@@ -208,7 +210,7 @@ function PluginRow({ plugin }: Readonly<{ plugin: PluginSummary }>) {
     <Link
       to="/dashboard/plugins/$"
       params={{ _splat: plugin.name }}
-      aria-label={`Edit ${plugin.name}`}
+      aria-label={t("plugin:editPlugin", { name: plugin.name })}
       className="grid grid-cols-[1fr_130px_130px_52px] items-center gap-3.5 border-border border-b px-5 py-[15px] text-left transition-colors last:border-b-0 hover:bg-muted"
     >
       <div className="flex min-w-0 items-center gap-3.5">
@@ -235,7 +237,7 @@ function PluginRow({ plugin }: Readonly<{ plugin: PluginSummary }>) {
         <StatusBadge status={plugin.listingStatus} />
       </div>
       <div className="text-[13px] text-muted-foreground">
-        {caps > 0 ? `${caps} capabilities` : "·"}
+        {caps > 0 ? t("plugin:capabilitiesCount", { count: caps }) : "·"}
       </div>
       <div className="flex justify-end">
         <span className="flex size-8 items-center justify-center rounded-[9px] border border-input text-muted-foreground">

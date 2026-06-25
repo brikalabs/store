@@ -3,6 +3,7 @@ import type { PluginSummary } from "@brika/registry-contract";
 import { Link } from "@tanstack/react-router";
 import { Download, ShieldCheck } from "lucide-react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
+import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 
 type PluginCardProps = Readonly<{ plugin: PluginSummary }>;
@@ -15,6 +16,7 @@ function capabilityTotal(plugin: PluginSummary): number {
 
 /** Install count from the registry, falling back to weekly downloads, else nothing. */
 function InstallsBadge({ plugin }: PluginCardProps) {
+  const t = useT();
   if (plugin.installs === undefined) {
     if (plugin.downloadsWeekly > 0) {
       return (
@@ -27,9 +29,9 @@ function InstallsBadge({ plugin }: PluginCardProps) {
     return null;
   }
   return (
-    <span className="inline-flex items-center gap-1" title="Installs from the registry">
+    <span className="inline-flex items-center gap-1" title={t("plugin:installsFromRegistry")}>
       <Download className="size-3" />
-      {formatCount(plugin.installs)} installs
+      {t("plugin:installsCount", { installs: formatCount(plugin.installs) })}
     </span>
   );
 }
@@ -39,6 +41,7 @@ function PluginMeta({
   plugin,
   capabilities,
 }: Readonly<{ plugin: PluginSummary; capabilities: number }>) {
+  const t = useT();
   if (plugin.rating) {
     return (
       <span className="inline-flex items-center gap-1 text-amber-500">
@@ -47,11 +50,13 @@ function PluginMeta({
       </span>
     );
   }
-  if (capabilities > 0) return <span>{capabilities} capabilities</span>;
+  if (capabilities > 0)
+    return <span>{t("plugin:capabilitiesCount", { count: capabilities })}</span>;
   return null;
 }
 
 export function ListingCard({ plugin }: PluginCardProps) {
+  const t = useT();
   const capabilities = capabilityTotal(plugin);
   return (
     <Link
@@ -71,12 +76,15 @@ export function ListingCard({ plugin }: PluginCardProps) {
             {plugin.displayName ?? plugin.name}
           </span>
           {plugin.verified ? (
-            <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" aria-label="Verified" />
+            <ShieldCheck
+              className="size-3.5 shrink-0 text-brand-ink"
+              aria-label={t("plugin:verified")}
+            />
           ) : null}
         </div>
       </div>
       <p className="line-clamp-2 min-h-[2.4rem] flex-1 text-muted-foreground text-sm leading-relaxed">
-        {plugin.description ?? "No description provided."}
+        {plugin.description ?? t("plugin:noDescription")}
       </p>
       <div className="mt-auto flex flex-wrap items-center gap-3 font-mono text-muted-foreground text-xs">
         <span className="rounded-md border border-border bg-muted px-2 py-1">

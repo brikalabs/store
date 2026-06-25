@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { useT } from "@/i18n";
 
 export function Rail({
   title,
@@ -13,6 +14,7 @@ export function Rail({
   seeAll?: boolean;
   children: ReactNode;
 }>) {
+  const t = useT();
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -25,7 +27,7 @@ export function Rail({
             to="/plugins"
             className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground"
           >
-            See all
+            {t("home:seeAll")}
             <ChevronRight className="size-4" />
           </Link>
         ) : null}

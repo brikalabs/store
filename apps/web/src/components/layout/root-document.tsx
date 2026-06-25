@@ -1,8 +1,11 @@
+import { I18nProvider } from "@brika/i18n/react";
 import { getRouteApi, HeadContent, Outlet, Scripts, useRouterState } from "@tanstack/react-router";
 import { SearchProvider } from "@/components/layout/search-context";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { LocaleContext, useLocaleController } from "@/hooks/use-locale-pref";
 import { ThemeContext, themeBootScript, useThemeController } from "@/hooks/use-theme";
+import { i18n } from "@/i18n/config";
 
 const rootApi = getRouteApi("__root__");
 
@@ -15,12 +18,13 @@ export function RootDocument() {
   // The footer belongs on the public browsing pages, not the admin/login app.
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const showFooter = !pathname.startsWith("/dashboard");
-  const initial = rootApi.useLoaderData();
+  const { theme: initial, locale: initialLocale } = rootApi.useLoaderData();
   const { theme, api } = useThemeController(initial);
+  const localeApi = useLocaleController(initialLocale);
 
   return (
     <html
-      lang="en"
+      lang={localeApi.locale}
       data-mode={theme}
       className={theme === "dark" ? "dark" : undefined}
       suppressHydrationWarning={initial === "system" || initial === null}
@@ -33,15 +37,19 @@ export function RootDocument() {
         <HeadContent />
       </head>
       <body className="flex min-h-dvh flex-col bg-background font-sans text-foreground antialiased">
-        <ThemeContext.Provider value={api}>
-          <SearchProvider>
-            <SiteHeader />
-            <div className="flex-1">
-              <Outlet />
-            </div>
-            {showFooter ? <SiteFooter /> : null}
-          </SearchProvider>
-        </ThemeContext.Provider>
+        <LocaleContext.Provider value={localeApi}>
+          <I18nProvider locale={localeApi.locale} catalog={i18n.catalogFor(localeApi.locale)}>
+            <ThemeContext.Provider value={api}>
+              <SearchProvider>
+                <SiteHeader />
+                <div className="flex-1">
+                  <Outlet />
+                </div>
+                {showFooter ? <SiteFooter /> : null}
+              </SearchProvider>
+            </ThemeContext.Provider>
+          </I18nProvider>
+        </LocaleContext.Provider>
         <Scripts />
       </body>
     </html>

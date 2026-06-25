@@ -1,8 +1,8 @@
 import { inject } from "@brika/di";
 import { domainChallengeHost, ScopeService } from "@brika/registry-core";
-import { okOrThrow, readBody, reply } from "@brika/router";
+import { okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
-import { DomainBody, shapeDomains } from "@/lib/scope-domains";
+import { readDomainBody, shapeDomains } from "@/lib/scope-domains";
 import { recordAudit, runAuthed } from "@/server/http";
 
 /**
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
       PUT: ({ request, params }) =>
         runAuthed(request, async (a) => {
           const scopes = inject(ScopeService);
-          const { domain } = await readBody(request, DomainBody, "Invalid domain");
+          const { domain } = await readDomainBody(request);
           const result = okOrThrow(await scopes.addDomain(a.identity, params.scope, domain));
           await recordAudit(a, {
             action: "scope_domain_add",
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
       POST: ({ request, params }) =>
         runAuthed(request, async (a) => {
           const scopes = inject(ScopeService);
-          const { domain } = await readBody(request, DomainBody, "Invalid domain");
+          const { domain } = await readDomainBody(request);
           const result = okOrThrow(await scopes.verifyDomain(a.identity, params.scope, domain));
           if (result.verified) {
             await recordAudit(a, {
@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/scopes/$scope/domains")({
       DELETE: ({ request, params }) =>
         runAuthed(request, async (a) => {
           const scopes = inject(ScopeService);
-          const parsed = await readBody(request, DomainBody, "Invalid domain");
+          const parsed = await readDomainBody(request);
           okOrThrow(await scopes.removeDomain(a.identity, params.scope, parsed.domain));
           await recordAudit(a, {
             action: "scope_domain_remove",

@@ -16,6 +16,7 @@ import { useState } from "react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
 import { Segmented, segmentClassName } from "@/components/clay/segmented";
 import { ReportPluginButton } from "@/components/plugin/detail/report-dialog";
+import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 
 /** Breadcrumb plus the locale switcher (only shown when there's more than one locale). */
@@ -24,11 +25,12 @@ export function DetailBreadcrumb({
   readmeLocales,
   activeLocale,
 }: Readonly<{ name: string; readmeLocales: string[]; activeLocale: string }>) {
+  const t = useT();
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
         <Link to="/plugins" className="hover:text-foreground">
-          Browse
+          {t("pluginDetail:breadcrumbBrowse")}
         </Link>
         <ChevronRight className="size-3" />
         <span className="text-foreground">{name}</span>
@@ -37,7 +39,7 @@ export function DetailBreadcrumb({
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
             <Globe className="size-3.5" />
-            Viewing in
+            {t("pluginDetail:viewingIn")}
           </span>
           <Segmented>
             {readmeLocales.map((loc) => (
@@ -60,12 +62,13 @@ export function DetailBreadcrumb({
 
 /** All-time installs from the registry, falling back to the trailing-week count, else nothing. */
 function HeaderInstalls({ detail }: Readonly<{ detail: PluginDetail }>) {
+  const t = useT();
   if (detail.installs === undefined) {
     if (detail.downloadsWeekly > 0) {
       return (
         <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
           <Download className="size-3.5" />
-          {formatCount(detail.downloadsWeekly)} installs / week
+          {t("pluginDetail:installsWeekly", { count: formatCount(detail.downloadsWeekly) })}
         </span>
       );
     }
@@ -74,12 +77,13 @@ function HeaderInstalls({ detail }: Readonly<{ detail: PluginDetail }>) {
   return (
     <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
       <Download className="size-3.5" />
-      {formatCount(detail.installs)} installs
+      {t("pluginDetail:installs", { count: formatCount(detail.installs) })}
     </span>
   );
 }
 
 function AddToHubButton({ command }: Readonly<{ command: string }>) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   async function add() {
     await navigator.clipboard.writeText(command);
@@ -93,7 +97,7 @@ function AddToHubButton({ command }: Readonly<{ command: string }>) {
       className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 font-semibold text-brand-foreground shadow-[0_8px_20px_-8px_rgba(242,84,45,0.55)] transition-opacity hover:opacity-90"
     >
       {copied ? <Check className="size-4" /> : <Plus className="size-4" />}
-      {copied ? "Copied install" : "Add to hub"}
+      {copied ? t("pluginDetail:copiedInstall") : t("pluginDetail:addToHub")}
     </button>
   );
 }
@@ -103,6 +107,7 @@ export function DetailHeader({
   detail,
   displayLocales,
 }: Readonly<{ detail: PluginDetail; displayLocales: string[] }>) {
+  const t = useT();
   const title = detail.displayName ?? detail.name;
   return (
     <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
@@ -118,13 +123,13 @@ export function DetailHeader({
           {detail.verified ? (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-2.5 py-1 font-semibold text-brand-ink text-xs">
               <ShieldCheck className="size-3.5" />
-              Verified
+              {t("pluginDetail:verified")}
             </span>
           ) : null}
           {detail.featured ? (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-600 text-xs dark:text-amber-400">
               <Sparkles className="size-3.5" />
-              Featured
+              {t("pluginDetail:featured")}
             </span>
           ) : null}
         </div>
@@ -151,16 +156,18 @@ export function DetailHeader({
               {detail.license}
             </span>
           ) : null}
-          <span className="font-mono text-xs">requires brika {detail.brikaEngine}</span>
+          <span className="font-mono text-xs">
+            {t("pluginDetail:requiresBrika", { version: detail.brikaEngine })}
+          </span>
           {displayLocales.length > 0 ? (
             <span className="inline-flex items-center gap-1.5">
               <Globe className="size-3.5" />
-              {displayLocales.length} languages
+              {t("pluginDetail:languagesMeta", { count: displayLocales.length })}
             </span>
           ) : null}
         </div>
         <p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-          {detail.description ?? "No description provided."}
+          {detail.description ?? t("pluginDetail:noDescription")}
         </p>
       </div>
       <div className="flex flex-col items-end gap-2">

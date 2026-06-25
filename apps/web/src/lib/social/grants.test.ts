@@ -21,7 +21,8 @@ test("groupGrants groups net hosts and flags wildcards", () => {
     "dev.brika.net.fetch": { allow: ["*.stripe.com", "api.stripe.com"] },
   });
   const net = byId(families, "net");
-  expect(net.label).toBe("Network");
+  // `label` is the title-cased fallback; the displayed name is localized in the UI by family id.
+  expect(net.label).toBe("Net");
   expect(net.risk).toBe("standard");
   expect(net.verbs).toEqual(["fetch"]);
   expect(net.scope).toEqual({
@@ -65,7 +66,7 @@ test("groupGrants splits fs paths into read and write by verb", () => {
 test("groupGrants reads netLocal loopback ports", () => {
   const families = groupGrants({ "dev.brika.netLocal.fetch": { ports: [11434] } });
   const local = byId(families, "netLocal");
-  expect(local.label).toBe("Local network");
+  expect(local.label).toBe("Net Local");
   expect(local.scope).toEqual({ kind: "ports", ports: ["11434"] });
 });
 

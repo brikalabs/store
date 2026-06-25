@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
 import { useSearch } from "@/components/layout/search-context";
 import { usePluginSearch } from "@/hooks/use-plugin-search";
+import { useT } from "@/i18n";
 
 /**
  * Header search: a live text field with a keyboard-navigable results dropdown (Clay's cmdk),
@@ -23,6 +24,7 @@ import { usePluginSearch } from "@/hooks/use-plugin-search";
  * ⌘K focuses it; the first row is highlighted so a plain Enter goes to the full results page.
  */
 export function HeaderSearch() {
+  const t = useT();
   const { inputRef } = useSearch();
   const navigate = useNavigate();
   const [value, setValue] = useState("");
@@ -59,7 +61,7 @@ export function HeaderSearch() {
   return (
     // shouldFilter is off because usePluginSearch already filtered server-side.
     <Command
-      label="Search plugins and scopes"
+      label={t("layout:searchLabel")}
       shouldFilter={false}
       loop
       className="relative hidden max-w-md flex-1 overflow-visible sm:block"
@@ -90,7 +92,7 @@ export function HeaderSearch() {
               if (!root?.querySelector('[aria-selected="true"]')) goSearch();
             }
           }}
-          placeholder="Search plugins and scopes…"
+          placeholder={t("layout:searchPlaceholder")}
         />
         <InputGroupAddon align="inline-end">
           <KbdGroup>
@@ -108,11 +110,13 @@ export function HeaderSearch() {
             className="gap-2.5 px-2 py-2 text-muted-foreground"
           >
             <Search className="size-4" />
-            <span className="truncate text-foreground">Search for “{value.trim()}”</span>
+            <span className="truncate text-foreground">
+              {t("layout:searchForQuery", { query: value.trim() })}
+            </span>
           </CommandItem>
 
           {plugins.length > 0 ? (
-            <CommandGroup heading="Plugins">
+            <CommandGroup heading={t("layout:searchPlugins")}>
               {plugins.slice(0, 6).map((plugin) => (
                 <CommandItem
                   key={plugin.name}
@@ -136,7 +140,7 @@ export function HeaderSearch() {
           ) : null}
 
           {scopes.length > 0 ? (
-            <CommandGroup heading="Scopes">
+            <CommandGroup heading={t("layout:searchScopes")}>
               {scopes.map((scope) => (
                 <CommandItem
                   key={scope.scope}

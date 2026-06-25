@@ -12,6 +12,7 @@ import { type SyntheticEvent, useState } from "react";
 import { Pill } from "@/components/clay/pill";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { type TrustedPublisher, useTrustedPublishers } from "@/hooks/use-trusted-publishers";
+import { useT } from "@/i18n";
 import type { ScopeCardProps } from "@/lib/scope-api";
 
 const PROVIDERS = [
@@ -31,6 +32,7 @@ function PublisherListItem({
   busy: boolean;
   onRemove: () => void;
 }>) {
+  const t = useT();
   return (
     <li className="flex items-center gap-2 text-sm">
       <Pill tone="muted" className="rounded-md bg-muted px-2 py-0.5 capitalize">
@@ -46,7 +48,11 @@ function PublisherListItem({
           variant="ghost"
           disabled={busy}
           onClick={onRemove}
-          aria-label={`Remove ${binding.provider} ${binding.repository} ${binding.workflow}`}
+          aria-label={t("scope:removePublisherAriaLabel", {
+            provider: binding.provider,
+            repository: binding.repository,
+            workflow: binding.workflow,
+          })}
           className="ml-auto flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-danger"
         >
           <X className="size-4" />
@@ -65,6 +71,7 @@ export function TrustedPublishersCard({
   isAdmin,
   onError,
 }: Readonly<ScopeCardProps & { isAdmin: boolean }>) {
+  const t = useT();
   const { bindings, busy, add, remove } = useTrustedPublishers(scope, onError);
   const [provider, setProvider] = useState("github");
   const [repository, setRepository] = useState("");
@@ -82,11 +89,7 @@ export function TrustedPublishersCard({
   function renderBindings() {
     if (bindings === null) return <div className="h-8 animate-pulse rounded-[10px] bg-muted" />;
     if (bindings.length === 0) {
-      return (
-        <p className="text-muted-foreground text-xs">
-          No trusted publishers. CI publishes to this scope are refused until you add one.
-        </p>
-      );
+      return <p className="text-muted-foreground text-xs">{t("scope:publishersEmpty")}</p>;
     }
     return (
       <ul className="flex flex-col gap-1.5">
@@ -107,11 +110,10 @@ export function TrustedPublishersCard({
     <SettingsCard className="gap-1.5">
       <h2 className="flex items-center gap-2 font-bold text-base text-foreground">
         <KeyRound className="size-[18px] text-brand-ink" />
-        Trusted publishers
+        {t("scope:publishersTitle")}
       </h2>
       <p className="text-[12.5px] text-muted-foreground leading-relaxed">
-        Authorize a GitHub repo + workflow to publish to this scope from CI with no token (OIDC). A
-        release running that workflow publishes to Brika; a publish from anywhere else is refused.
+        {t("scope:publishersDescription")}
       </p>
       <div className="mt-2 flex flex-col gap-3 rounded-[13px] border border-border bg-muted p-4">
         <span className="font-mono font-semibold text-foreground text-sm">{scope}</span>
@@ -123,7 +125,7 @@ export function TrustedPublishersCard({
           >
             <Select value={provider} onValueChange={setProvider}>
               <SelectTrigger
-                aria-label="OIDC provider"
+                aria-label={t("scope:providerAriaLabel")}
                 className="h-[38px] rounded-[10px] border border-input bg-card px-3 font-semibold text-foreground text-sm"
               >
                 <SelectValue />
@@ -140,14 +142,14 @@ export function TrustedPublishersCard({
               value={repository}
               onChange={(e) => setRepository(e.target.value)}
               placeholder={hints.repoHint}
-              aria-label="Repository"
+              aria-label={t("scope:repositoryAriaLabel")}
               className="flex-1 rounded-[10px] border-input bg-card font-mono"
             />
             <Input
               value={workflow}
               onChange={(e) => setWorkflow(e.target.value)}
               placeholder={hints.workflowHint}
-              aria-label="Workflow filename"
+              aria-label={t("scope:workflowAriaLabel")}
               className="rounded-[10px] border-input bg-card font-mono sm:max-w-[12rem]"
             />
             <Button
@@ -157,7 +159,7 @@ export function TrustedPublishersCard({
               className="h-[38px] rounded-[10px] border border-input bg-card px-3.5 font-semibold text-foreground shadow-none hover:border-brand-border hover:bg-card hover:brightness-100"
             >
               <Plus className="size-4" />
-              Add
+              {t("scope:add")}
             </Button>
           </form>
         )}

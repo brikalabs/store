@@ -1,8 +1,9 @@
 import { inject } from "@brika/di";
-import { notFound, readBody, reply } from "@brika/router";
+import { notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { recordAudit, runOperator } from "@/server/http";
+import { readJsonBody, recordAudit, runOperator } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 import { SocialService } from "@/server/services/social-service";
 
 const Body = z.object({
@@ -19,9 +20,13 @@ export const Route = createFileRoute("/api/operator/reports/update")({
     handlers: {
       POST: ({ request }) =>
         runOperator(request, async (a) => {
-          const { id, status } = await readBody(request, Body, "id and status are required");
+          const { id, status } = await readJsonBody(
+            request,
+            Body,
+            "api:reportUpdateFieldsRequired",
+          );
           const pluginName = await inject(SocialService).setReportStatus(id, status);
-          if (pluginName === null) throw notFound("Report not found or already handled");
+          if (pluginName === null) throw notFound(inject(ServerT).t("api:reportNotFound"));
           await recordAudit(a, {
             action: `report_${status}`,
             packageName: pluginName,

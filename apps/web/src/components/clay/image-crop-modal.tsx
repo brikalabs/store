@@ -27,6 +27,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { useT } from "@/i18n";
 
 /**
  * A reposition/zoom/rotate/flip cropper for avatars and logos, composed from Clay's
@@ -46,6 +47,7 @@ export function ImageCropModal({
   onCancel: () => void;
   onApply: (blob: Blob) => void;
 }>) {
+  const t = useT();
   return (
     <Cropper image={file} shape={shape}>
       <Dialog
@@ -57,7 +59,7 @@ export function ImageCropModal({
         <DialogContent className="w-[380px] max-w-[calc(100vw-2rem)] gap-4">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>Drag to reposition, scroll or slide to zoom</DialogDescription>
+            <DialogDescription>{t("clay:cropHint")}</DialogDescription>
           </DialogHeader>
 
           <div className="flex justify-center">
@@ -71,29 +73,37 @@ export function ImageCropModal({
           </div>
 
           <div className="flex items-center gap-2">
-            <CropperRotate direction="left" aria-label="Rotate left" className="flex-1">
+            <CropperRotate
+              direction="left"
+              aria-label={t("clay:cropRotateLeft")}
+              className="flex-1"
+            >
               <RotateCcw className="size-4" />
             </CropperRotate>
-            <CropperRotate direction="right" aria-label="Rotate right" className="flex-1">
+            <CropperRotate
+              direction="right"
+              aria-label={t("clay:cropRotateRight")}
+              className="flex-1"
+            >
               <RotateCw className="size-4" />
             </CropperRotate>
-            <CropperFlip axis="h" aria-label="Flip horizontal" className="flex-1">
+            <CropperFlip axis="h" aria-label={t("clay:cropFlipHorizontal")} className="flex-1">
               <FlipHorizontal2 className="size-4" />
             </CropperFlip>
-            <CropperFlip axis="v" aria-label="Flip vertical" className="flex-1">
+            <CropperFlip axis="v" aria-label={t("clay:cropFlipVertical")} className="flex-1">
               <FlipVertical2 className="size-4" />
             </CropperFlip>
-            <CropperReset aria-label="Reset" className="flex-1">
+            <CropperReset aria-label={t("clay:cropReset")} className="flex-1">
               <RotateCcwSquare className="size-4" />
             </CropperReset>
           </div>
 
           <DialogFooter>
             <CropperCancel onCancel={onCancel} className="flex-1">
-              Cancel
+              {t("clay:cropCancel")}
             </CropperCancel>
             <CropperApply onCrop={onApply} className="flex-1">
-              Apply
+              {t("clay:cropApply")}
             </CropperApply>
           </DialogFooter>
         </DialogContent>

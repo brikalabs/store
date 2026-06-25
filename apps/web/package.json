@@ -30,6 +30,7 @@
     "@brika/clay": "^0.4.0",
     "@brika/di": "workspace:*",
     "@brika/env": "workspace:*",
+    "@brika/i18n": "workspace:*",
     "@brika/registry-contract": "workspace:*",
     "@brika/registry-core": "workspace:*",
     "@brika/registry-runtime": "workspace:*",

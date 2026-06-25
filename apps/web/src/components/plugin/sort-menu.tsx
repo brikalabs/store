@@ -15,15 +15,16 @@ import {
   Sparkles,
   Star,
 } from "lucide-react";
+import { type AppKey, useT } from "@/i18n";
 
 export type SortKey = "relevance" | "downloads" | "rating" | "recent" | "name";
 
-const OPTIONS: { value: SortKey; label: string; icon: LucideIcon }[] = [
-  { value: "relevance", label: "Relevance", icon: Sparkles },
-  { value: "downloads", label: "Most downloaded", icon: Download },
-  { value: "rating", label: "Top rated", icon: Star },
-  { value: "recent", label: "Recently updated", icon: Clock },
-  { value: "name", label: "Name", icon: ArrowDownAZ },
+const OPTIONS: { value: SortKey; labelKey: AppKey; icon: LucideIcon }[] = [
+  { value: "relevance", labelKey: "plugin:sortRelevance", icon: Sparkles },
+  { value: "downloads", labelKey: "plugin:sortDownloads", icon: Download },
+  { value: "rating", labelKey: "plugin:sortRating", icon: Star },
+  { value: "recent", labelKey: "plugin:sortRecent", icon: Clock },
+  { value: "name", labelKey: "plugin:sortName", icon: ArrowDownAZ },
 ];
 
 /** Sort a plugin list by the chosen key (relevance keeps the source order). */
@@ -49,14 +50,15 @@ export function SortMenu({
   onChange,
   className,
 }: Readonly<{ value: SortKey; onChange: (next: SortKey) => void; className?: string }>) {
+  const t = useT();
   const current = OPTIONS.find((option) => option.value === value) ?? OPTIONS[0];
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         className={`inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-sm outline-none transition-colors hover:border-brand/40 ${className ?? ""}`}
       >
-        <span className="text-muted-foreground">Sort</span>
-        <span className="font-semibold text-foreground">{current?.label}</span>
+        <span className="text-muted-foreground">{t("plugin:sort")}</span>
+        <span className="font-semibold text-foreground">{current ? t(current.labelKey) : ""}</span>
         <ChevronDown className="size-4 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-48">
@@ -67,7 +69,7 @@ export function SortMenu({
             className="gap-2"
           >
             <option.icon className="size-4 text-muted-foreground" />
-            {option.label}
+            {t(option.labelKey)}
             {option.value === value ? <Check className="ml-auto size-4 text-brand-ink" /> : null}
           </DropdownMenuItem>
         ))}

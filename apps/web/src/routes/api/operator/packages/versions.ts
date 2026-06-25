@@ -3,6 +3,7 @@ import { MetadataReader } from "@brika/registry-runtime";
 import { badRequest, notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { runOperator } from "@/server/http";
+import { ServerT } from "@/server/i18n";
 
 /**
  * `GET /api/operator/packages/versions?name=@scope/pkg` - every version of a package with
@@ -15,7 +16,8 @@ export const Route = createFileRoute("/api/operator/packages/versions")({
       GET: ({ request }) =>
         runOperator(request, async () => {
           const name = new URL(request.url).searchParams.get("name");
-          if (name === null || name.length === 0) throw badRequest("A package name is required");
+          if (name === null || name.length === 0)
+            throw badRequest(inject(ServerT).t("api:packageNameRequired"));
           const pkg = await inject(MetadataReader).getPackage(name);
           if (pkg === null) throw notFound();
           const versions = pkg.versions

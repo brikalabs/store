@@ -1,5 +1,6 @@
 import { Box, Layers, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
+import { useT } from "@/i18n";
 
 /** An uppercase group label row inside the dependencies card. */
 function DepGroupLabel({ children }: Readonly<{ children: ReactNode }>) {
@@ -18,6 +19,7 @@ function DepRow({
   muted,
   hubPeer,
 }: Readonly<{ name: string; range: string; brand?: boolean; muted?: boolean; hubPeer?: boolean }>) {
+  const t = useT();
   return (
     <div className="flex items-center justify-between gap-3 border-border border-b px-4 py-2.5">
       <span
@@ -28,7 +30,7 @@ function DepRow({
         {brand ? <ShieldCheck className="size-3 shrink-0 text-brand" /> : null}
         {hubPeer ? (
           <span className="shrink-0 rounded-full border border-border bg-muted px-1.5 py-0.5 font-medium font-sans text-[10px] text-muted-foreground">
-            provided by hub
+            {t("pluginDetail:providedByHub")}
           </span>
         ) : null}
       </span>
@@ -56,6 +58,7 @@ export function DependenciesSection({
   devDependencies?: Record<string, string>;
   brikaEngine: string;
 }>) {
+  const t = useT();
   const deps = Object.entries(dependencies ?? {});
   const peers: [string, string][] = [
     ["brika", brikaEngine],
@@ -71,40 +74,43 @@ export function DependenciesSection({
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 font-bold font-heading text-lg tracking-tight">
           <Layers className="size-4 text-muted-foreground" />
-          Dependencies
+          {t("pluginDetail:dependenciesHeading")}
         </h2>
-        <span className="text-muted-foreground text-xs">declared in package.json</span>
+        <span className="text-muted-foreground text-xs">
+          {t("pluginDetail:declaredInPackageJson")}
+        </span>
       </div>
       <div className="flex items-center gap-4 text-muted-foreground text-xs">
         <span>
-          <strong className="text-foreground">{deps.length}</strong> runtime
+          <strong className="text-foreground">{deps.length}</strong>{" "}
+          {t("pluginDetail:runtimeCount")}
         </span>
         <span>
-          <strong className="text-foreground">{peers.length}</strong> peer
+          <strong className="text-foreground">{peers.length}</strong> {t("pluginDetail:peerCount")}
         </span>
         <span>
-          <strong className="text-foreground">{dev.length}</strong> dev
+          <strong className="text-foreground">{dev.length}</strong> {t("pluginDetail:devCount")}
         </span>
       </div>
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         {deps.length > 0 ? (
           <>
-            <DepGroupLabel>Dependencies</DepGroupLabel>
+            <DepGroupLabel>{t("pluginDetail:depGroupDependencies")}</DepGroupLabel>
             {deps.map(([name, range]) => (
               <DepRow key={name} name={name} range={range} brand={name.startsWith("@brika/")} />
             ))}
           </>
         ) : null}
-        <DepGroupLabel>Peer dependencies</DepGroupLabel>
+        <DepGroupLabel>{t("pluginDetail:depGroupPeer")}</DepGroupLabel>
         {peers.map(([name, range]) => (
           <DepRow key={name} name={name} range={range} hubPeer />
         ))}
         {dev.length > 0 ? (
           <>
             <DepGroupLabel>
-              Dev dependencies{" "}
+              {t("pluginDetail:depGroupDev")}{" "}
               <span className="font-normal text-muted-foreground/60 normal-case">
-                · build &amp; test only
+                · {t("pluginDetail:depGroupDevNote")}
               </span>
             </DepGroupLabel>
             {devShown.map(([name, range]) => (
@@ -112,7 +118,7 @@ export function DependenciesSection({
             ))}
             {devMore > 0 ? (
               <div className="px-4 py-2.5 text-muted-foreground text-xs">
-                +{devMore} more dev dependencies
+                {t("pluginDetail:moreDevDependencies", { count: devMore })}
               </div>
             ) : null}
           </>
@@ -120,8 +126,7 @@ export function DependenciesSection({
       </div>
       <div className="flex items-start gap-2 text-muted-foreground text-xs leading-relaxed">
         <Box className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/70" />
-        Version ranges as declared by the author. The exact versions a hub installs are resolved at
-        install time, then pinned by the package integrity hash.
+        {t("pluginDetail:dependenciesFootnote")}
       </div>
     </section>
   );

@@ -1,0 +1,15 @@
+{
+  "title": "Brika CLI autorisieren",
+  "subtitle": "Bestätigen Sie den in Ihrem Terminal angezeigten Code, damit die CLI in Ihrem Namen veröffentlichen kann.",
+  "signInToContinue": "Mit GitHub anmelden, um fortzufahren",
+  "authorizedTitle": "Gerät autorisiert",
+  "authorizedBody": "Sie können zu Ihrem Terminal zurückkehren.",
+  "codeError": "Dieser Code ist ungültig, abgelaufen oder bereits verwendet.",
+  "authorizing": "Wird autorisiert…",
+  "authorizeCta": "Gerät autorisieren",
+  "approveHintBefore": "Nur genehmigen, wenn Sie gerade",
+  "approveHintAfter": "auf diesem Gerät ausgeführt haben.",
+  "expiryWarning": "Dieser Code läuft in 10 Minuten ab. Teilen Sie ihn niemals mit anderen.",
+  "signedInAs": "Angemeldet als",
+  "yourAccount": "Ihr Konto"
+}

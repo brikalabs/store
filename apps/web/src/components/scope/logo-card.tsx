@@ -5,10 +5,12 @@ import { ImageCropModal } from "@/components/clay/image-crop-modal";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { useScopeLogo } from "@/hooks/use-scope-logo";
+import { useT } from "@/i18n";
 import type { ScopeCardProps } from "@/lib/scope-api";
 
 /** Upload / clear the scope's logo (raster image stored in R2, shown on the public page). */
 export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
+  const t = useT();
   const { iconUrl, busy, upload, clear } = useScopeLogo(scope, onError);
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<File | null>(null);
@@ -21,10 +23,9 @@ export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
 
   return (
     <SettingsCard className="gap-1.5">
-      <h2 className="font-bold text-base text-foreground">Logo</h2>
+      <h2 className="font-bold text-base text-foreground">{t("scope:logoTitle")}</h2>
       <p className="text-[12.5px] text-muted-foreground leading-relaxed">
-        Shown on your public scope page. Cropped and converted to WebP in your browser before
-        upload.
+        {t("scope:logoDescription")}
       </p>
       <div className="mt-2.5 flex items-center gap-3.5">
         <GradientAvatar
@@ -42,7 +43,7 @@ export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
           className="inline-flex h-[38px] items-center gap-1.5 rounded-[10px] border border-input bg-card px-3.5 font-semibold text-foreground text-sm shadow-none transition-colors hover:border-brand-border hover:bg-card hover:text-foreground disabled:opacity-60"
         >
           <Upload className="size-4" />
-          {busy ? "Uploading…" : "Upload"}
+          {busy ? t("scope:uploading") : t("scope:upload")}
         </Button>
         <Button
           type="button"
@@ -52,13 +53,13 @@ export function LogoCard({ scope, onError }: Readonly<ScopeCardProps>) {
           className="inline-flex h-[38px] items-center gap-1.5 rounded-[10px] border border-input bg-card px-3.5 font-semibold text-muted-foreground text-sm shadow-none transition-colors hover:border-danger-border hover:bg-card hover:text-danger disabled:opacity-60"
         >
           <Trash2 className="size-4" />
-          Remove
+          {t("scope:remove")}
         </Button>
       </div>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={pick} />
       <ImageCropModal
         file={pending}
-        title="Crop your logo"
+        title={t("scope:cropLogo")}
         shape="rounded"
         onCancel={() => setPending(null)}
         onApply={(blob) => {

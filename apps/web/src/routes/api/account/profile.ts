@@ -1,8 +1,8 @@
 import { inject } from "@brika/di";
-import { notFound, readBody } from "@brika/router";
+import { notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { publicJson, runUser } from "@/server/http";
+import { publicJson, readJsonBody, runUser } from "@/server/http";
 import { SocialService } from "@/server/services/social-service";
 
 const ProfileInput = z.object({
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/api/account/profile")({
         }),
       PUT: ({ request }) =>
         runUser(request, async (userId) => {
-          const parsed = await readBody(request, ProfileInput, "Invalid profile");
+          const parsed = await readJsonBody(request, ProfileInput, "api:invalidAccountProfile");
           const social = inject(SocialService);
           await social.updateUserProfile(userId, parsed);
           const profile = await social.getUserProfile(userId);
