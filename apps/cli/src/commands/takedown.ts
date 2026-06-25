@@ -1,7 +1,7 @@
 import { CliError, defineCommand } from "@brika/cli-kit";
-import * as p from "@brika/cli-kit/prompts";
-import { loadConfig } from "../lib/config";
+import { requireAuth } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
+import { withSpinner } from "../lib/spinner";
 
 export const takedown = defineCommand({
   name: "takedown",
@@ -29,32 +29,22 @@ export const takedown = defineCommand({
       throw new CliError("usage: brika takedown <pkg> <reason>  (or --undo to restore)");
     }
 
-    const { token, registry } = await loadConfig();
-    if (token === undefined) {
-      throw new CliError("not logged in - run `brika login` (or set BRIKA_TOKEN)");
-    }
-
+    const { token, registry } = await requireAuth();
     const client = new RegistryClient(registry);
-    const spin = p.spinner();
 
     if (values.undo) {
-      spin.start("Restoring");
-      await client.restorePackage(token, pkg).catch((error: unknown) => {
-        spin.stop("Failed");
-        throw error;
+      return withSpinner("Restoring", async () => {
+        await client.restorePackage(token, pkg);
+        return `Restored ${pkg}`;
       });
-      spin.stop(`Restored ${pkg}`);
-      return;
     }
 
     if (reason === undefined || reason.trim() === "") {
       throw new CliError("a takedown needs a reason: brika takedown <pkg> <reason>");
     }
-    spin.start("Taking down");
-    await client.takedownPackage(token, pkg, reason).catch((error: unknown) => {
-      spin.stop("Failed");
-      throw error;
+    await withSpinner("Taking down", async () => {
+      await client.takedownPackage(token, pkg, reason);
+      return `Took down ${pkg}`;
     });
-    spin.stop(`Took down ${pkg}`);
   },
 });

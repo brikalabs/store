@@ -1,7 +1,7 @@
 import { CliError, defineCommand } from "@brika/cli-kit";
-import * as p from "@brika/cli-kit/prompts";
-import { loadConfig } from "../lib/config";
+import { requireAuth } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
+import { withSpinner } from "../lib/spinner";
 
 export const deprecate = defineCommand({
   name: "deprecate",
@@ -27,22 +27,13 @@ export const deprecate = defineCommand({
       throw new CliError("a deprecation message is required (or pass --undo to clear)");
     }
 
-    const { token, registry } = await loadConfig();
-    if (token === undefined) {
-      throw new CliError("not logged in - run `brika login` (or set BRIKA_TOKEN)");
-    }
-
+    const { token, registry } = await requireAuth();
     const next = values.undo ? null : (message ?? null);
-    const spin = p.spinner();
-    spin.start(values.undo ? "Clearing deprecation" : "Deprecating");
-    await new RegistryClient(registry)
-      .deprecate(token, pkg, version, next)
-      .catch((error: unknown) => {
-        spin.stop("Failed");
-        throw error;
-      });
-    spin.stop(
-      values.undo ? `Cleared deprecation on ${pkg}@${version}` : `Deprecated ${pkg}@${version}`,
-    );
+    await withSpinner(values.undo ? "Clearing deprecation" : "Deprecating", async () => {
+      await new RegistryClient(registry).deprecate(token, pkg, version, next);
+      return values.undo
+        ? `Cleared deprecation on ${pkg}@${version}`
+        : `Deprecated ${pkg}@${version}`;
+    });
   },
 });
