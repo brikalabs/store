@@ -371,9 +371,8 @@ export class ScopeService {
    * 404 when the scope does not exist.
    */
   async setVerified(scope: string, verified: boolean): Promise<ScopeResult<{ verified: boolean }>> {
-    if ((await this.#scopes.get(scope)) === null) {
-      return refuse(HttpStatus.NOT_FOUND, `scope ${scope} does not exist`);
-    }
+    const missing = await this.#requireScope(scope);
+    if (missing !== null) return missing;
     await this.#scopes.setVerified(scope, verified);
     return { ok: true, verified };
   }
@@ -450,11 +449,16 @@ export class ScopeService {
     scope: string,
     reason: string | null,
   ): Promise<ScopeResult<{ scope: string }>> {
-    if ((await this.#scopes.get(scope)) === null) {
-      return refuse(HttpStatus.NOT_FOUND, `scope ${scope} does not exist`);
-    }
+    const missing = await this.#requireScope(scope);
+    if (missing !== null) return missing;
     await this.#scopes.setTakedown(scope, reason);
     return { ok: true, scope };
+  }
+
+  /** 404 result when the scope does not exist, else null. */
+  async #requireScope(scope: string): Promise<{ ok: false; status: number; message: string } | null> {
+    if ((await this.#scopes.get(scope)) !== null) return null;
+    return refuse(HttpStatus.NOT_FOUND, `scope ${scope} does not exist`);
   }
 
   /** Idempotent re-claim: success when the caller is already a member, else a conflict. */

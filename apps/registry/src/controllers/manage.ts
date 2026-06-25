@@ -19,24 +19,21 @@ const DeprecateBody = z.object({ message: z.string().max(1024).nullable() });
 const YankBody = z.object({ yanked: z.boolean() });
 const TakedownBody = z.object({ reason: z.string().min(1).max(1024) });
 
-/** Typed params + the request, shared by the management handlers. */
-interface ManageContext {
-  readonly params: PackageParams & { readonly version: string };
-  readonly req: Request;
-}
-
-/**
- * Audit the outcome and turn it into the HTTP response: a rejection is audited as
- * `${action}_rejected` and thrown as its mapped status; success is audited and returned.
- */
-async function auditAndRespond(
+/** A management mutation: authenticate the actor, run it, audit the outcome, and serialize it. The
+ *  `auth` seam is the only difference between an owner-gated and an operator-admin-gated action; a
+ *  package-wide action omits `version` (it is not version-specific). */
+async function manage(
+  params: PackageParams & { readonly version?: string },
+  req: Request,
   action: string,
-  name: string,
-  version: string,
-  identity: PublishIdentity,
-  result: ManageResult,
+  auth: (req: Request) => Promise<PublishIdentity>,
+  run: (svc: ManagementService, actor: PublishIdentity, name: string) => Promise<ManageResult>,
   detail: Record<string, unknown>,
 ): Promise<Response> {
+  const name = packageName(params);
+  const version = params.version ?? null;
+  const identity = await auth(req);
+  const result = await run(inject(ManagementService), identity, name);
   await inject(Audit).record({
     action: result.ok ? action : `${action}_rejected`,
     packageName: name,
@@ -45,122 +42,59 @@ async function auditAndRespond(
     detail: result.ok ? detail : { ...detail, status: result.status, message: result.message },
   });
   if (!result.ok) throw httpError(result.status, result.message);
-  return reply({ ok: true, name, version, ...detail }, 200);
+  return reply({ ok: true, name, ...(version === null ? {} : { version }), ...detail }, 200);
 }
 
-/** Authenticate the scope owner, run the mutation, and audit the outcome. */
-async function runManaged(
-  { params, req }: ManageContext,
-  action: string,
-  run: (svc: ManagementService, actor: PublishIdentity, name: string) => Promise<ManageResult>,
-  detail: Record<string, unknown>,
-): Promise<Response> {
-  const name = packageName(params);
-  const identity = await requireWrite(req);
-  const result = await run(inject(ManagementService), identity, name);
-  return auditAndRespond(action, name, params.version, identity, result, detail);
+/** Typed params (with `:version`) + the request, shared by the version-scoped handlers. */
+interface ManageContext {
+  readonly params: PackageParams & { readonly version: string };
+  readonly req: Request;
 }
 
 export function deprecate(
   input: ManageContext & { readonly body: z.infer<typeof DeprecateBody> },
 ): Promise<Response> {
   const { params, body } = input;
-  return runManaged(
-    input,
-    "deprecate",
-    (svc, actor, name) => svc.deprecate(actor, name, params.version, body.message),
-    { deprecated: body.message },
-  );
+  return manage(params, input.req, "deprecate", requireWrite, (svc, actor, name) =>
+    svc.deprecate(actor, name, params.version, body.message), { deprecated: body.message });
 }
 
 export function yank(
   input: ManageContext & { readonly body: z.infer<typeof YankBody> },
 ): Promise<Response> {
   const { params, body } = input;
-  return runManaged(
-    input,
-    "yank",
-    (svc, actor, name) => svc.setYanked(actor, name, params.version, body.yanked),
-    { yanked: body.yanked },
-  );
-}
-
-/** Like {@link runManaged}, but authenticates an ADMIN (not the scope owner) for an identity-free mutation. */
-async function runAdmin(
-  { params, req }: ManageContext,
-  action: string,
-  run: (svc: ManagementService, name: string) => Promise<ManageResult>,
-  detail: Record<string, unknown>,
-): Promise<Response> {
-  const name = packageName(params);
-  const identity = await requireAdmin(req);
-  const result = await run(inject(ManagementService), name);
-  return auditAndRespond(action, name, params.version, identity, result, detail);
+  return manage(params, input.req, "yank", requireWrite, (svc, actor, name) =>
+    svc.setYanked(actor, name, params.version, body.yanked), { yanked: body.yanked });
 }
 
 export function takedown(
   input: ManageContext & { readonly body: z.infer<typeof TakedownBody> },
 ): Promise<Response> {
   const { params, body } = input;
-  return runAdmin(
-    input,
-    "takedown",
-    (svc, name) => svc.takedown(name, params.version, body.reason),
-    {
-      takedown: body.reason,
-    },
-  );
+  return manage(params, input.req, "takedown", requireAdmin, (svc, _actor, name) =>
+    svc.takedown(name, params.version, body.reason), { takedown: body.reason });
 }
 
 export function restore(input: ManageContext): Promise<Response> {
-  return runAdmin(input, "restore", (svc, name) => svc.restore(name, input.params.version), {
-    takedown: null,
-  });
-}
-
-/** Admin-gated whole-package mutation: like {@link runAdmin} but with no `:version` segment. */
-async function runAdminPackage(
-  { params, req }: { readonly params: PackageParams; readonly req: Request },
-  action: string,
-  run: (svc: ManagementService, name: string) => Promise<ManageResult>,
-  detail: Record<string, unknown>,
-): Promise<Response> {
-  const name = packageName(params);
-  const identity = await requireAdmin(req);
-  const result = await run(inject(ManagementService), name);
-  await inject(Audit).record({
-    action: result.ok ? action : `${action}_rejected`,
-    packageName: name,
-    version: null, // a whole-package action is not version-specific
-    actor: identity,
-    detail: result.ok ? detail : { ...detail, status: result.status, message: result.message },
-  });
-  if (!result.ok) throw httpError(result.status, result.message);
-  return reply({ ok: true, name, ...detail }, 200);
+  const { params } = input;
+  return manage(params, input.req, "restore", requireAdmin, (svc, _actor, name) =>
+    svc.restore(name, params.version), { takedown: null });
 }
 
 /** Operator takedown of a WHOLE package (every version, current and future). */
-export function takedownPackage(input: {
-  readonly params: PackageParams;
-  readonly req: Request;
-  readonly body: z.infer<typeof TakedownBody>;
-}): Promise<Response> {
-  return runAdminPackage(
-    input,
-    "package_takedown",
-    (svc, name) => svc.takedownPackage(name, input.body.reason),
-    { takedown: input.body.reason },
-  );
+export function takedownPackage(
+  input: { readonly params: PackageParams; readonly req: Request; readonly body: z.infer<typeof TakedownBody> },
+): Promise<Response> {
+  return manage(input.params, input.req, "package_takedown", requireAdmin, (svc, _actor, name) =>
+    svc.takedownPackage(name, input.body.reason), { takedown: input.body.reason });
 }
 
 /** Reverse a whole-package takedown. */
-export function restorePackage(input: {
-  readonly params: PackageParams;
-  readonly req: Request;
-}): Promise<Response> {
-  return runAdminPackage(input, "package_restore", (svc, name) => svc.restorePackage(name), {
-    takedown: null,
-  });
+export function restorePackage(
+  input: { readonly params: PackageParams; readonly req: Request },
+): Promise<Response> {
+  return manage(input.params, input.req, "package_restore", requireAdmin, (svc, _actor, name) =>
+    svc.restorePackage(name), { takedown: null });
 }
 
 export const manageController = controller({

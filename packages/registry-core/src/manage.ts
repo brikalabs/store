@@ -53,6 +53,12 @@ export class ManagementService {
     };
   }
 
+  /** 404 result when the package does not exist, else null. */
+  async #requirePackage(name: string): Promise<ManageResult | null> {
+    if (await this.#meta.packageExists(name)) return null;
+    return { ok: false, status: HttpStatus.NOT_FOUND, message: `package ${name} does not exist` };
+  }
+
   /** Shared gate: the identity must own the scope and the version must exist. */
   async #authorize(
     identity: PublishIdentity,
@@ -106,18 +112,16 @@ export class ManagementService {
    * version). Not ownership-gated (an admin acts against the owner). 404 when the package is unknown.
    */
   async takedownPackage(name: string, reason: string): Promise<ManageResult> {
-    if (!(await this.#meta.packageExists(name))) {
-      return { ok: false, status: HttpStatus.NOT_FOUND, message: `package ${name} does not exist` };
-    }
+    const missing = await this.#requirePackage(name);
+    if (missing !== null) return missing;
     await this.#meta.setPackageTakedown(name, reason.slice(0, MAX_MESSAGE));
     return { ok: true };
   }
 
   /** Reverse a whole-package takedown, returning every version to public listings. */
   async restorePackage(name: string): Promise<ManageResult> {
-    if (!(await this.#meta.packageExists(name))) {
-      return { ok: false, status: HttpStatus.NOT_FOUND, message: `package ${name} does not exist` };
-    }
+    const missing = await this.#requirePackage(name);
+    if (missing !== null) return missing;
     await this.#meta.setPackageTakedown(name, null);
     return { ok: true };
   }
@@ -135,9 +139,8 @@ export class ManagementService {
    * trust); the caller must have authorized an admin already. 404 when the package does not exist.
    */
   async setVerified(name: string, verified: boolean): Promise<ManageResult> {
-    if (!(await this.#meta.packageExists(name))) {
-      return { ok: false, status: HttpStatus.NOT_FOUND, message: `package ${name} does not exist` };
-    }
+    const missing = await this.#requirePackage(name);
+    if (missing !== null) return missing;
     await this.#meta.setVerified(name, verified);
     return { ok: true };
   }
