@@ -8,7 +8,7 @@ import { ListingCard } from "@/components/plugin/listing-card";
 import { primarySort, SortMenu } from "@/components/plugin/sort-menu";
 import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
-import { matchingScopes, type ScopeHit } from "@/lib/registry/matching-scopes";
+import { matchingScopes, type ScopeAggregate } from "@/lib/registry/matching-scopes";
 
 /** Grid page size, shared with the `/plugins` loader's query limit. */
 export const PAGE_SIZE = 12;
@@ -123,7 +123,7 @@ export function BrowsePage() {
   );
 }
 
-function ScopeHitRow({ hit }: Readonly<{ hit: ScopeHit }>) {
+function ScopeHitRow({ hit }: Readonly<{ hit: ScopeAggregate }>) {
   const t = useT();
   return (
     <Link

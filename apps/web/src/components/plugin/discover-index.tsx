@@ -1,6 +1,5 @@
 import { Switch } from "@brika/clay";
 import type { PluginSummary, SearchDirection } from "@brika/registry-contract";
-import { scopeOf } from "@brika/registry-core";
 import { Link } from "@tanstack/react-router";
 import { Filter, ShieldCheck, TrendingUp, Users } from "lucide-react";
 import type { ReactNode } from "react";
@@ -12,28 +11,7 @@ import { type SortKey, SortMenu } from "@/components/plugin/sort-menu";
 import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { useT } from "@/i18n";
 import { paginate } from "@/lib/pagination";
-
-type Scope = { scope: string; name: string; count: number; verified: boolean };
-
-function topScopes(plugins: PluginSummary[], limit: number): Scope[] {
-  const byScope = new Map<string, Scope>();
-  for (const plugin of plugins) {
-    const scope = scopeOf(plugin.name);
-    if (scope === null) continue;
-    const existing = byScope.get(scope);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      byScope.set(scope, {
-        scope,
-        name: plugin.author?.name ?? scope,
-        count: 1,
-        verified: plugin.author?.verified ?? false,
-      });
-    }
-  }
-  return [...byScope.values()].sort((a, b) => b.count - a.count).slice(0, limit);
-}
+import { topScopes } from "@/lib/registry/matching-scopes";
 
 /** Server-paginated grid (the host owns offset/total and re-queries on change). */
 export interface PageControl {
