@@ -1,11 +1,14 @@
 import { inject } from "@brika/di";
 import { scopeOf } from "@brika/registry-core";
 import { MetadataReader } from "@brika/registry-runtime";
-import { badRequest, notFound, reply } from "@brika/router";
+import { notFound, readQuery, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { runAuthed } from "@/server/http";
 import { ServerT } from "@/server/i18n";
 import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
+
+const NameQuery = z.object({ name: z.string().min(1) });
 
 /**
  * `GET /api/plugins/versions?name=<encoded>` - a package's versions with their management flags,
@@ -17,9 +20,11 @@ export const Route = createFileRoute("/api/plugins/versions")({
     handlers: {
       GET: ({ request }) =>
         runAuthed(request, async (a) => {
-          const name = new URL(request.url).searchParams.get("name");
-          if (name === null || name === "")
-            throw badRequest(inject(ServerT).t("api:missingPackageName"));
+          const { name } = readQuery(
+            request,
+            NameQuery,
+            inject(ServerT).t("api:missingPackageName"),
+          );
 
           const record = await inject(MetadataReader).getPackage(name);
           if (record === null) throw notFound();

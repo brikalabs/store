@@ -6,7 +6,7 @@ import {
   trustedPublisherSchema,
 } from "@brika/registry-core";
 import { MetadataReader } from "@brika/registry-runtime";
-import { okOrThrow, reply } from "@brika/router";
+import { okOrThrow, readQuery, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { readJsonBody, recordAudit, runAuthed } from "@/server/http";
@@ -17,6 +17,9 @@ const Body = z.object({
   // Optional: authorize a CI repo now so the first publish works tokenlessly (OIDC).
   publisher: trustedPublisherSchema.optional(),
 });
+
+// The live name-check GET takes `?scope=&name=`, both optional (an empty form field is just blank).
+const NameCheckQuery = z.object({ scope: z.string().default(""), name: z.string().default("") });
 
 /**
  * `POST /api/plugins/create` - reserve a plugin name in one of your scopes. Creates the package
@@ -31,8 +34,8 @@ export const Route = createFileRoute("/api/plugins/create")({
       // Live name check for the create form: is `@scope/name` a valid, still-available name?
       GET: ({ request }) =>
         runAuthed(request, async () => {
-          const url = new URL(request.url);
-          const fullName = `${url.searchParams.get("scope") ?? ""}/${url.searchParams.get("name") ?? ""}`;
+          const { scope, name } = readQuery(request, NameCheckQuery);
+          const fullName = `${scope}/${name}`;
           if (!isCanonicalName(fullName)) return reply({ valid: false, available: false });
           const record = await inject(MetadataReader).getPackage(fullName);
           return reply({ valid: true, available: record === null });

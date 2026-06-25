@@ -1,11 +1,14 @@
 import { inject } from "@brika/di";
 import { PageQuery } from "@brika/registry-contract";
 import { Downloads, Packages } from "@brika/registry-runtime";
-import { reply } from "@brika/router";
+import { readQuery, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { paginated } from "@/lib/pagination";
 import { runOperator } from "@/server/http";
 import { SocialService } from "@/server/services/social-service";
+
+const PackagesQuery = PageQuery.extend({ q: z.string().optional() });
 
 /**
  * `GET /api/operator/packages?q=&limit=&offset=` - a page of packages with moderation counts
@@ -19,12 +22,7 @@ export const Route = createFileRoute("/api/operator/packages")({
     handlers: {
       GET: ({ request }) =>
         runOperator(request, async () => {
-          const url = new URL(request.url);
-          const { limit, offset } = PageQuery.parse({
-            limit: url.searchParams.get("limit") ?? undefined,
-            offset: url.searchParams.get("offset") ?? undefined,
-          });
-          const q = url.searchParams.get("q") ?? undefined;
+          const { q, limit, offset } = readQuery(request, PackagesQuery);
           const page = await inject(Packages).list({ q, limit, offset });
           const names = page.items.map((p) => p.name);
           const social = inject(SocialService);
