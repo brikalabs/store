@@ -1,8 +1,8 @@
 import { inject } from "@brika/di";
-import { notFound, readBody, reply } from "@brika/router";
+import { notFound, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { recordAudit, runOperator } from "@/server/http";
+import { readJsonBody, recordAudit, runOperator } from "@/server/http";
 import { ServerT } from "@/server/i18n";
 import { SocialService } from "@/server/services/social-service";
 
@@ -20,10 +20,10 @@ export const Route = createFileRoute("/api/operator/reports/update")({
     handlers: {
       POST: ({ request }) =>
         runOperator(request, async (a) => {
-          const { id, status } = await readBody(
+          const { id, status } = await readJsonBody(
             request,
             Body,
-            inject(ServerT).t("api:reportUpdateFieldsRequired"),
+            "api:reportUpdateFieldsRequired",
           );
           const pluginName = await inject(SocialService).setReportStatus(id, status);
           if (pluginName === null) throw notFound(inject(ServerT).t("api:reportNotFound"));

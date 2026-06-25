@@ -1,10 +1,22 @@
 import { inject } from "@brika/di";
 import { auditEntry, isOperator, type PublishIdentity } from "@brika/registry-core";
 import { Audit } from "@brika/registry-runtime";
-import { forbidden, HttpError, json, reply, unauthorized } from "@brika/router";
+import { forbidden, HttpError, json, readBody, reply, unauthorized } from "@brika/router";
+import type { z } from "zod";
+import type { AppKey } from "@/i18n";
 import { getCurrentUser, getSessionUserId, type SessionUser } from "@/lib/auth/auth";
 import { operatorAdmins } from "@/server/env";
+import { ServerT } from "@/server/i18n";
 import { sessionIdentity } from "@/server/registry-identity";
+
+/** Read + validate a JSON request body, with a locale-aware error message resolved from `messageKey`. */
+export function readJsonBody<T>(
+  request: Request,
+  schema: z.ZodType<T>,
+  messageKey: AppKey,
+): Promise<T> {
+  return readBody(request, schema, inject(ServerT).t(messageKey));
+}
 
 /**
  * The TanStack-Start side of the shared HTTP toolkit: a handler runner that turns a thrown

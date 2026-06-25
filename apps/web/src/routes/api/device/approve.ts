@@ -1,9 +1,9 @@
 import { inject } from "@brika/di";
-import { badRequest, readBody, unauthorized } from "@brika/router";
+import { badRequest, unauthorized } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/auth";
-import { publicJson, runHandler } from "@/server/http";
+import { publicJson, readJsonBody, runHandler } from "@/server/http";
 import { ServerT } from "@/server/i18n";
 import { enforceLimit } from "@/server/rate-limit";
 import { DeviceApprovalStore } from "@/server/stores/device-approval-store";
@@ -24,11 +24,7 @@ export const Route = createFileRoute("/api/device/approve")({
 
           // Cap approvals per user to throttle abuse of the device-binding endpoint.
           await enforceLimit("WRITE_LIMITER", `device-approve:${user.id}`);
-          const parsed = await readBody(
-            request,
-            ApproveInput,
-            inject(ServerT).t("api:invalidRequest"),
-          );
+          const parsed = await readJsonBody(request, ApproveInput, "api:invalidRequest");
 
           const code = parsed.user_code.trim().toUpperCase();
           if (!(await inject(DeviceApprovalStore).approve(code, user.id))) {

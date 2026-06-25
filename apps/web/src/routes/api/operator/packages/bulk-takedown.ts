@@ -1,10 +1,9 @@
 import { inject } from "@brika/di";
 import { ManagementService } from "@brika/registry-core";
-import { readBody, reply } from "@brika/router";
+import { reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { recordAudit, runOperator } from "@/server/http";
-import { ServerT } from "@/server/i18n";
+import { readJsonBody, recordAudit, runOperator } from "@/server/http";
 
 const Body = z.object({
   names: z.array(z.string().min(1)).min(1).max(100),
@@ -21,10 +20,10 @@ export const Route = createFileRoute("/api/operator/packages/bulk-takedown")({
     handlers: {
       POST: ({ request }) =>
         runOperator(request, async (a) => {
-          const { names, reason } = await readBody(
+          const { names, reason } = await readJsonBody(
             request,
             Body,
-            inject(ServerT).t("api:bulkTakedownFieldsRequired"),
+            "api:bulkTakedownFieldsRequired",
           );
           const mgmt = inject(ManagementService);
           let packages = 0;

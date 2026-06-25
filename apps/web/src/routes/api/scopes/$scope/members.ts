@@ -1,9 +1,9 @@
 import { inject } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
-import { notFound, okOrThrow, readBody, reply } from "@brika/router";
+import { notFound, okOrThrow, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { recordAudit, runAuthed } from "@/server/http";
+import { readJsonBody, recordAudit, runAuthed } from "@/server/http";
 import { ServerT } from "@/server/i18n";
 import { SocialService } from "@/server/services/social-service";
 
@@ -42,11 +42,7 @@ export const Route = createFileRoute("/api/scopes/$scope/members")({
         }),
       PUT: ({ request, params }) =>
         runAuthed(request, async (a) => {
-          const parsed = await readBody(
-            request,
-            PutBody,
-            inject(ServerT).t("api:invalidEmailOrRole"),
-          );
+          const parsed = await readJsonBody(request, PutBody, "api:invalidEmailOrRole");
           const userId = await inject(SocialService).findUserIdByEmail(parsed.email);
           if (userId === null) {
             throw notFound(inject(ServerT).t("api:noAccountForEmail", { email: parsed.email }));
