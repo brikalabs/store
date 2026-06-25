@@ -16,12 +16,14 @@ import {
 } from "@/components/operator/operator-toolbar";
 import { VersionPanel } from "@/components/operator/plugin-version-panel";
 import { TakedownControls } from "@/components/operator/takedown-controls";
+import { VerifyToggle } from "@/components/operator/verify-toggle";
 import { useOperatorList } from "@/hooks/use-operator-list";
 import {
   type OperatorPlugin,
   useBulkTakedown,
   usePluginModeration,
 } from "@/hooks/use-operator-plugins";
+import { useSelection } from "@/hooks/use-selection";
 import { type AppKey, useRelativeTime, useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import { reportReasonLabelKey } from "@/lib/reports";
@@ -44,7 +46,7 @@ export function OperatorPluginsPage() {
   const list = useOperatorList<OperatorPlugin>("/api/operator/plugins");
   const [facet, setFacet] = useState<PkgFacet>("all");
   const [sort, setSort] = useState<PkgSort>("flagged");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const { selected, toggle, clear, replace } = useSelection();
 
   const facets: Facet<PkgFacet>[] = useMemo(
     () => [
@@ -93,21 +95,12 @@ export function OperatorPluginsPage() {
 
   // On a successful bulk takedown, drop the (now actioned) selection then refetch the window.
   const { busy, error, setError, bulkTakedown } = useBulkTakedown(selectedNames, () => {
-    setSelected(new Set());
+    clear();
     list.reload();
   });
 
-  function toggle(name: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
-  }
-
   function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(visible.map((p) => p.name)));
+    replace(allSelected ? new Set() : new Set(visible.map((p) => p.name)));
   }
 
   function shownLabel(): string {
@@ -189,7 +182,7 @@ export function OperatorPluginsPage() {
           noun={t("operator:pluginNoun")}
           busy={busy}
           onTakedown={bulkTakedown}
-          onClear={() => setSelected(new Set())}
+          onClear={clear}
         />
       )}
 
@@ -294,20 +287,12 @@ function PluginRow({
             {metaLine(pkg, relative, t)}
           </div>
         </div>
-        <button
-          type="button"
-          disabled={pkgBusy}
-          onClick={() => setVerified(!pkg.verified)}
-          title={pkg.verified ? t("operator:verified") : t("operator:verify")}
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold text-xs transition-colors disabled:opacity-50 ${
-            pkg.verified
-              ? "bg-brand/10 text-brand-ink hover:bg-brand/20"
-              : "border border-border text-muted-foreground hover:border-brand/40 hover:text-foreground"
-          }`}
-        >
-          <ShieldCheck className="size-3.5" />
-          {pkg.verified ? t("operator:verified") : t("operator:verify")}
-        </button>
+        <VerifyToggle
+          verified={pkg.verified}
+          busy={pkgBusy}
+          icon={ShieldCheck}
+          onToggle={setVerified}
+        />
         <TakedownControls
           subject={pkg.name}
           takenDown={pkg.takedown !== null}

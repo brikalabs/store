@@ -13,8 +13,10 @@ import {
   SortSelect,
 } from "@/components/operator/operator-toolbar";
 import { TakedownControls } from "@/components/operator/takedown-controls";
+import { VerifyToggle } from "@/components/operator/verify-toggle";
 import { useOperatorList } from "@/hooks/use-operator-list";
 import { useOperatorScopeModeration } from "@/hooks/use-operator-scope-moderation";
+import { useSelection } from "@/hooks/use-selection";
 import { useT } from "@/i18n";
 
 interface OperatorScope {
@@ -87,20 +89,7 @@ function OperatorScopeRow({
             : t("operator:scopeReason", { reason: scope.takedown })}
         </div>
       </div>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => onVerify(!scope.verified)}
-        title={scope.verified ? t("operator:verified") : t("operator:verify")}
-        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold text-xs transition-colors disabled:opacity-50 ${
-          scope.verified
-            ? "bg-brand/10 text-brand-ink hover:bg-brand/20"
-            : "border border-border text-muted-foreground hover:border-brand/40 hover:text-foreground"
-        }`}
-      >
-        <CircleCheck className="size-3.5" />
-        {scope.verified ? t("operator:verified") : t("operator:verify")}
-      </button>
+      <VerifyToggle verified={scope.verified} busy={busy} icon={CircleCheck} onToggle={onVerify} />
       <TakedownControls
         subject={scope.scope}
         takenDown={scope.takedown !== null}
@@ -118,7 +107,7 @@ export function OperatorScopesPage() {
   const { busy, bulkBusy, error, act, bulkTakedown } = useOperatorScopeModeration(list.reload);
   const [facet, setFacet] = useState<ScopeFacet>("all");
   const [sort, setSort] = useState<ScopeSort>("newest");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const { selected, toggle, clear } = useSelection();
 
   const facets: Facet<ScopeFacet>[] = useMemo(
     () => [
@@ -154,19 +143,10 @@ export function OperatorScopesPage() {
     [visible, selected],
   );
 
-  function toggle(scope: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(scope)) next.delete(scope);
-      else next.add(scope);
-      return next;
-    });
-  }
-
   // Clear the selection once the bulk run settles, matching the pre-hook ordering (the selection
   // stays highlighted while the takedowns are in flight).
   function runBulkTakedown(reason: string) {
-    void bulkTakedown(selectedScopes, reason).then(() => setSelected(new Set()));
+    void bulkTakedown(selectedScopes, reason).then(clear);
   }
 
   function renderBody() {
@@ -240,7 +220,7 @@ export function OperatorScopesPage() {
           noun={t("operator:scopeNoun")}
           busy={bulkBusy}
           onTakedown={runBulkTakedown}
-          onClear={() => setSelected(new Set())}
+          onClear={clear}
         />
       )}
 
