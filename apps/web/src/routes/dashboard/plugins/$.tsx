@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { type ManageData, ManagePluginPage } from "@/components/plugin/manage/manage-plugin-page";
 import { getPluginPage } from "@/lib/registry/registry";
-import { isRegistryName } from "@/lib/registry/registry-source";
+import { isRegistryName } from "@/lib/registry/registry-http";
 import { runWeb } from "@/server/injector";
 import { requireUser } from "@/server/require-user";
 

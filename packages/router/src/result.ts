@@ -33,6 +33,22 @@ export async function readBody<T>(
 }
 
 /**
+ * Read AND validate a request's URL query string against a schema, throwing a 400 on bad input.
+ * Repeated keys collapse to their last value; a schema field can `z.preprocess` a delimited value
+ * (e.g. a comma-separated `tags`) into an array, so the whole query maps to one typed object.
+ */
+export function readQuery<T>(
+  request: Request,
+  schema: z.ZodType<T>,
+  message = "Invalid query parameters",
+): T {
+  const params = new URL(request.url).searchParams;
+  const parsed = schema.safeParse(Object.fromEntries(params));
+  if (!parsed.success) throw badRequest(message);
+  return parsed.data;
+}
+
+/**
  * Read a binary upload body, bounded by `maxBytes`. Rejects an oversize body (413) by declared
  * `Content-Length` BEFORE buffering, so a huge upload is not pulled into worker memory first, then
  * re-checks the actual size since `Content-Length` is client-supplied and may be absent or a lie.

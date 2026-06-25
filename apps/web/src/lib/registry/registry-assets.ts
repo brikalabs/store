@@ -1,6 +1,7 @@
 import { readTarGzEntries, tarballPath } from "@brika/registry-core";
 import { cacheJson } from "@/lib/blob-cache";
-import { contentTypeFor, REGISTRY_ORIGIN, registryFetch } from "@/lib/registry/registry-source";
+import { REGISTRY_ORIGIN, registryFetch } from "@/lib/registry/registry-http";
+import { contentTypeFor } from "@/lib/registry/registry-paths";
 import type { BlobStore } from "@/server/ports/blob-store";
 
 /**

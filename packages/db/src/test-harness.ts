@@ -4,7 +4,15 @@ import { join } from "node:path";
 import { type Provider, type ProviderToken, provide, testBed } from "@brika/di";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { Db } from "./client";
-import { regDistTags, regPackages, regScopeMembers, regScopes, regVersions, schema } from "./index";
+import {
+  regDistTags,
+  regPackages,
+  regScopeMembers,
+  regScopes,
+  regSearch,
+  regVersions,
+  schema,
+} from "./index";
 
 /**
  * Shared in-memory test harness for the `reg_*` schema: a real bun:sqlite database with the
@@ -53,4 +61,6 @@ export async function seedExamplePackage(db: Db, owner: string): Promise<void> {
     size: 1,
   });
   await db.insert(regDistTags).values({ name: "@brika/x", tag: "latest", version: "1.0.0" });
+  // Mirror the search projection a real publish would build, so engine-backed reads see the seed.
+  await db.insert(regSearch).values({ name: "@brika/x", version: "1.0.0" });
 }

@@ -12,7 +12,11 @@ Status of the platform and the precise next steps. Legend: ✅ done and verified
 | Store: social (GitHub OAuth, reviews, comments, helpful/upvote grading) | ✅ |
 | Store: media (icon, localized readme/changelog, screenshots via jsDelivr) | ✅ |
 | Store: developer console (profile, your packages by ownership, publish setup) | ✅ |
-| Auth/identity: BetterAuth multi-provider sign-in + account linking + first-class account, public `/u/:id` profile (AUTH-010..013, USER-001..005) | ⬜ |
+| Auth/identity: BetterAuth multi-provider sign-in + account linking + first-class account, public `/u/:id` profile (AUTH-010..013, USER-001..005) | ✅ |
+| Store: i18n (en/fr) typed `@brika/i18n` engine, server-resolved locale, localized content (INTL-001) | ✅ |
+| Store: light/dark/system theme, no-flash SSR (THEME-001) | ✅ |
+| Store: plugin abuse reports + operator moderation console (REPORT-001/002, OPERATOR-001..004) | ✅ |
+| Store: dashboard account-activity feed (CONSOLE-015), legal/policy pages (STORE-017) | ✅ |
 | Scope model: scope is the ownership account (members on the scope), public `/@scope` page | ✅ |
 | Scope model: anti-squat claim rate limit + per-account cap (ORG-004/005) | ✅ |
 | Scope model: profile (description, links, logo upload) + verified domains (ORG-009/010) | ✅ |
@@ -55,21 +59,27 @@ Largely built. Remaining:
   "organisation owns scopes" model (`ORG-001`/`002`/`003`/`008`) was collapsed back into
   the scope and those specs are retired to `gone` (see
   [ADR 0001](./adr/0001-organisation-1n-model.md)).
-- ⬜ **Auth + identity rework**: adopt **BetterAuth** for console sign-in -
-  provider-agnostic social sign-in (GitHub now, Google/GitLab/etc. pluggable),
-  account linking, and DB-backed sessions via its Drizzle/D1 adapter on Workers
-  (`AUTH-010`..`AUTH-013`), replacing the hand-rolled GitHub-only OAuth + stateless
-  signed-cookie session (`AUTH-001`/`002`/`003`, kept `done` until BetterAuth ships).
-  The **account** becomes the first-class identity (`USER-001`; drop the `developers`
-  table and stored `pluginCount`), with a user-authored profile - never npm-derived
-  (`USER-005`) - editable in the console (`CONSOLE-012`/`USER-003`), link/unlink in
-  `USER-004`, and a public page at `store.brika.dev/u/:id` (`USER-002`) that replaces
-  the gone npm-maintainer `/developers/:id` page (`STORE-004`). The registry CLI
-  device-auth (`AUTH-008`) and token/OIDC publish path (`PUB-016`) are unchanged. See
-  [ADR 0003](./adr/0003-betterauth-and-user-profiles.md).
-- ⬜ **Console slices still to build**: review responses + comment moderation.
-  (Editable per-plugin listing overrides were dropped: the listing is the
-  published manifest; the per-plugin page is version management only.)
+- ✅ **Auth + identity rework**: **BetterAuth** powers console sign-in:
+  provider-agnostic social sign-in (GitHub + GitLab, more pluggable), account linking,
+  and DB-backed sessions via its D1 adapter on Workers (`AUTH-010`..`AUTH-013`),
+  replacing the hand-rolled GitHub-only OAuth + signed-cookie session (`AUTH-001`/`002`/
+  `003`, now `gone`). The **account** is the first-class identity (`USER-001`; the
+  `developers` table and stored `pluginCount` are gone), with a user-authored profile,
+  never npm-derived (`USER-005`), editable in the console (`CONSOLE-012`/`USER-003`),
+  link/unlink (`USER-004`), and a public page at `store.brika.dev/u/:id` (`USER-002`).
+  The registry CLI device-auth (`AUTH-008`) and token/OIDC publish path (`PUB-016`) are
+  unchanged. See [ADR 0003](./adr/0003-betterauth-and-user-profiles.md).
+- ✅ **Operator moderation console**: a hidden `/operator` surface (404 to non-operators,
+  `REGISTRY_ADMINS` allowlist) for package takedown/restore + bulk takedown, scope
+  takedown/restore, the audit-log viewer, and the report queue (`OPERATOR-001`..`004`).
+- ✅ **Plugin abuse reports**: a session-gated report flow (reason taxonomy + details,
+  per-user rate limit) feeding the operator triage queue (`REPORT-001`/`002`).
+- ✅ **i18n + theme**: full en/fr localization via the typed `@brika/i18n` engine with a
+  server-resolved locale (`INTL-001`), and a light/dark/system theme with no-flash SSR
+  (`THEME-001`).
+- ⬜ **Console slices still to build**: author responses to reviews (`SOCIAL-010`) and
+  comment moderation (`SOCIAL-011`). (Editable per-plugin listing overrides were dropped:
+  the listing is the published manifest; the per-plugin page is version management only.)
 - ⬜ **Verified-list signing**: the Ed25519 `/v1/verified` signing key (today the
   verified list is empty). The store is registry-only, so there is no npm catalog
   to sync.
@@ -117,7 +127,8 @@ Largely built. Remaining:
   publish pipeline (after immutability, before integrity/write) so a real scanner
   drops in without touching the orchestration; allow-all today (`NoopTarballScanner`),
   a refused scan surfaces as a `rejected` code (422) and is audited. Remaining:
-  R2 + D1 backups. Plan: [`m6-hardening-plan.md`](./m6-hardening-plan.md).
+  a real scanner behind the hook (`PUB-015`) and scheduled R2 + D1 backups
+  (`HARDEN-013`). Plan: [`m6-hardening-plan.md`](./m6-hardening-plan.md).
 
 ## Brika repo (separate)
 
@@ -160,13 +171,15 @@ The publish/resolve/store-integration core is shipped (registry M1, M2, M4 and t
    is the missing piece that exercises the whole pipeline end to end.
 2. **Registry M3 hub install**: ship the `@brika:registry` scoped-registry config and
    verify an `@brika` plugin installs into a hub from the registry. Closes the loop.
-3. **M6 hardening remainder**: malware-scan hook on publish + R2/D1 backups (origin
+3. **M6 hardening remainder**: a real malware scanner behind the shipped hook
+   (`PUB-015`) + scheduled R2/D1 backups (`HARDEN-013`). The scan-hook seam, origin
    pinning, path-traversal guard, CORS, ownership gates, audit log, rate limits, and
-   operator takedown/restore are already done).
-4. **Pick the store design direction** (Spotlight vs Console), finish the redesign
-   across browse/detail/scope/dashboard, then build the remaining console slices
-   (review responses, comment moderation). Scope claiming +
-   management already shipped (ORG-004/005/007/009/010).
+   operator takedown/restore (incl. the web operator console, `OPERATOR-001`..`004`)
+   are already done.
+4. **Pick the store design direction** (Spotlight vs Console, `STORE-012`), finish the
+   redesign across browse/detail/scope/dashboard, then build the remaining console
+   slices: author responses to reviews (`SOCIAL-010`) and comment moderation
+   (`SOCIAL-011`). Scope claiming + management already shipped (ORG-004/005/007/009/010).
 5. **Identity-tied claiming (ORG-006)**: implement a real `ClaimVerifier` behind the
    seam so a name can only be claimed by an identity that provably controls it.
 6. **Verified-list signing**: the Ed25519 `/v1/verified` signing key (today the

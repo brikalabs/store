@@ -101,7 +101,8 @@ const json = (body: unknown, status = 200) =>
 function stubAll() {
   globalThis.fetch = ((input: string | URL | Request) => {
     const url = typeof input === "string" ? input : input.toString();
-    if (url.includes("/-/v1/packages")) return Promise.resolve(json(catalog));
+    if (url.includes("/-/v1/packages") || url.includes("/-/v1/search"))
+      return Promise.resolve(json(catalog));
     if (url.includes("/-/v1/downloads")) {
       return Promise.resolve(
         json({ name: "@brika/plugin-i18n", total: 1234, weekly: 42, series: [1, 0, 3, 5] }),

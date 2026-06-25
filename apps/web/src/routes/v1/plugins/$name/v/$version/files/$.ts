@@ -2,7 +2,8 @@ import { inject } from "@brika/di";
 import { badRequest, notFound } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
 import { getRegistryAsset } from "@/lib/registry/registry-assets";
-import { isRegistryName, isSafeAssetPath } from "@/lib/registry/registry-source";
+import { isRegistryName } from "@/lib/registry/registry-http";
+import { isSafeAssetPath } from "@/lib/registry/registry-paths";
 import { runHandler } from "@/server/http";
 import { BlobStore } from "@/server/ports/blob-store";
 

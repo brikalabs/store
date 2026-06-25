@@ -1,13 +1,16 @@
-import type { PluginSummary, PluginVersion } from "@brika/registry-contract";
+import type { PluginSummary, PluginVersion, SearchResponse } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
+import { isRegistryName } from "@/lib/registry/registry-http";
+import { versionsFromPackument } from "@/lib/registry/registry-mappers";
+import {
+  getRegistryPluginPage,
+  type RegistryPluginPage,
+} from "@/lib/registry/registry-plugin-page";
 import {
   getRegistryPackument,
-  getRegistryPluginPage,
   getRegistryScope,
-  isRegistryName,
-  listRegistryPlugins,
-  type RegistryPluginPage,
-  versionsFromPackument,
+  type PluginSearchParams,
+  searchRegistryPlugins,
 } from "@/lib/registry/registry-source";
 
 /**
@@ -20,12 +23,18 @@ const BROWSE_LIMIT = 12;
 // The hosted catalog is bounded (REGISTRY_LIMITS.maxPackagesPerScope), so one capped read covers every scope.
 const CATALOG_SCAN = 200;
 
-export async function searchPlugins(
+/**
+ * Search the catalog through the registry's SQL search: free-text (FTS) plus optional tag/capability
+ * filters and sort, all pushed down with pagination. A bare call (no query, no filters) returns the
+ * whole bounded catalog, ranked by the default sort.
+ */
+export function searchPlugins(
   query: string | undefined,
   limit = BROWSE_LIMIT,
   offset = 0,
-): Promise<{ plugins: PluginSummary[]; total: number }> {
-  return listRegistryPlugins(query, limit, offset);
+  filters: Omit<PluginSearchParams, "q" | "limit" | "offset"> = {},
+): Promise<SearchResponse> {
+  return searchRegistryPlugins({ q: query, ...filters, limit, offset });
 }
 
 /** The full plugin-detail page for a hosted `@brika/*` plugin; null for any name not hosted here (route 404s). */
@@ -57,7 +66,7 @@ export interface ScopePage {
 export async function getScopePage(scope: string): Promise<ScopePage | null> {
   const [entity, { plugins: all }] = await Promise.all([
     getRegistryScope(scope),
-    listRegistryPlugins(undefined, CATALOG_SCAN, 0),
+    searchRegistryPlugins({ limit: CATALOG_SCAN, offset: 0 }),
   ]);
   const plugins = all.filter((plugin) => scopeOf(plugin.name) === scope);
   // 404 only when the scope neither exists as an entity nor hosts a listed plugin.

@@ -17,7 +17,6 @@ export {
   type AuditRecord,
   auditEntry,
 } from "./audit";
-export type { CatalogEntry, CatalogReader } from "./catalog";
 export {
   DeviceConfig,
   type DeviceGrant,
@@ -116,6 +115,14 @@ export {
   type ScopeServiceOptions,
   ScopeStore,
 } from "./scope";
+export type {
+  CatalogEntry,
+  SearchCapability,
+  SearchOptions,
+  SearchReader,
+  SearchResult,
+  SearchSort,
+} from "./search";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export type { TokenPrincipal, TokenStore } from "./tokens";
 export {

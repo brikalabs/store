@@ -8,7 +8,7 @@ import { ReviewsSection } from "@/components/plugin/reviews-section";
 import { useSocialCounts } from "@/hooks/use-social-counts";
 import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
-import type { RegistryPluginPage } from "@/lib/registry/registry-source";
+import type { RegistryPluginPage } from "@/lib/registry/registry-plugin-page";
 import { DetailBreadcrumb, DetailHeader } from "./detail-header";
 import { DetailSidebar } from "./detail-sidebar";
 import { OverviewPanel } from "./overview-panel";

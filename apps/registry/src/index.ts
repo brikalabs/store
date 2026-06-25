@@ -5,12 +5,12 @@ import { jsonLogger } from "@brika/router";
 import { getDb } from "@brika/store-db";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { catalogController } from "./controllers/catalog";
 import { deviceController } from "./controllers/device";
 import { manageController } from "./controllers/manage";
 import { packagesController } from "./controllers/packages";
 import { publishController } from "./controllers/publish";
 import { scopeController } from "./controllers/scope";
+import { searchController } from "./controllers/search";
 import { statsController } from "./controllers/stats";
 import { registryAdmins, vars } from "./env";
 import { logRoutes, mount, type RegistryEnv } from "./http/router";
@@ -49,7 +49,7 @@ app.use("/*", cors({ origin: "*", allowMethods: ["GET", "HEAD", "OPTIONS"] }));
 app.get("/", (c) => c.json({ name: "Brika registry", protocol: "npm" }));
 
 const controllers = [
-  catalogController,
+  searchController,
   statsController,
   publishController,
   deviceController,

@@ -1,7 +1,7 @@
 import type { PluginFile } from "@brika/registry-contract";
 import { useEffect, useState } from "react";
 import { fileKind, filesFromIndex } from "@/components/plugin/file-tree";
-import { assetUrl, pluginVersionUrl } from "@/lib/registry/registry-source";
+import { assetUrl, pluginVersionUrl } from "@/lib/registry/registry-paths";
 
 // Cap inline previews so a large file never streams megabytes into the page.
 const MAX_PREVIEW_BYTES = 256 * 1024;

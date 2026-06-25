@@ -1,17 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { docLocales, pickDocPath } from "@/lib/registry/manifest-mapping";
+import { isRegistryName } from "@/lib/registry/registry-http";
 import {
-  assetUrl,
   compareVersionsDesc,
-  contentTypeFor,
-  docLocales,
-  isRegistryName,
-  isSafeAssetPath,
-  type Manifest,
   manifestToDetail,
   manifestToSummary,
-  pickDocPath,
   versionsFromPackument,
-} from "@/lib/registry/registry-source";
+} from "@/lib/registry/registry-mappers";
+import { assetUrl, contentTypeFor, isSafeAssetPath } from "@/lib/registry/registry-paths";
+import type { Manifest } from "@/lib/registry/registry-wire";
 
 const i18nManifest: Manifest = {
   name: "@brika/plugin-i18n",

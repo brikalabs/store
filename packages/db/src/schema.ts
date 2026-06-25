@@ -1,6 +1,6 @@
 import type { Actor } from "@brika/registry-core";
 import { sql } from "drizzle-orm";
-import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * Registry tables: the source of truth for packages, immutable versions, and dist-tags (store/social
@@ -153,6 +153,52 @@ export const regDownloads = sqliteTable(
     count: integer("count").notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.name, t.day] })],
+);
+
+/**
+ * Denormalized search projection: one row per package mirroring its latest installable version.
+ * Exists only to push search filtering/sorting/pagination into SQL - the `reg_versions.manifest`
+ * stays the source of truth (and is what the endpoint returns). Maintained by the publish/yank/
+ * takedown path ({@link D1MetadataWriter}) and backfilled by the migration; never hand-edited.
+ *
+ * An external-content FTS5 table (`reg_search_fts`) over `display_name`/`description`/`keywords`/
+ * `name` and its sync triggers are created in the migration (outside Drizzle's schema model), so
+ * full-text search and `bm25()` ranking run against this row's text.
+ */
+export const regSearch = sqliteTable("reg_search", {
+  name: text("name")
+    .primaryKey()
+    .references(() => regPackages.name, { onDelete: "cascade" }),
+  /** The latest installable version this row projects (joins back to `reg_versions`). */
+  version: text("version").notNull(),
+  /** Manifest `displayName`; also the `name` sort key (falls back to `name`). */
+  displayName: text("display_name"),
+  /** Manifest `description` (FTS only). */
+  description: text("description"),
+  /** Space-joined manifest keywords, for the FTS `keywords` column (exact-tag filtering uses {@link regKeywords}). */
+  keywords: text("keywords").notNull().default(""),
+  tools: integer("tools").notNull().default(0),
+  blocks: integer("blocks").notNull().default(0),
+  bricks: integer("bricks").notNull().default(0),
+  sparks: integer("sparks").notNull().default(0),
+  pages: integer("pages").notNull().default(0),
+  /** Unix-seconds publish time of the projected version, for the `recent` sort. */
+  publishedAt: integer("published_at").notNull().default(epoch),
+});
+
+/** One row per (package, keyword) of the latest version: the indexed facet for exact tag filtering. */
+export const regKeywords = sqliteTable(
+  "reg_keywords",
+  {
+    name: text("name")
+      .notNull()
+      .references(() => regPackages.name, { onDelete: "cascade" }),
+    keyword: text("keyword").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.name, t.keyword] }),
+    index("reg_keywords_keyword_idx").on(t.keyword),
+  ],
 );
 
 /** Append-only audit log of publishes and ownership changes. */

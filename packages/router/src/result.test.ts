@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 import { HttpError } from "./errors";
-import { okOrThrow, readBody, readBytes } from "./result";
+import { okOrThrow, readBody, readBytes, readQuery } from "./result";
 
 describe("okOrThrow", () => {
   test("returns the success branch unchanged", () => {
@@ -40,6 +40,39 @@ describe("readBody", () => {
     await expect(readBody(post(JSON.stringify({ name: 1 })), schema)).rejects.toBeInstanceOf(
       HttpError,
     );
+  });
+});
+
+describe("readQuery", () => {
+  const schema = z.object({
+    q: z.string().optional(),
+    limit: z.coerce.number().default(20),
+    tags: z
+      .preprocess(
+        (v) => (typeof v === "string" ? v.split(",").filter(Boolean) : v),
+        z.array(z.string()),
+      )
+      .default([]),
+  });
+  const get = (qs: string): Request => new Request(`https://x/search?${qs}`);
+
+  test("validates the query string against the schema, applying coercions and defaults", () => {
+    expect(readQuery(get("q=map&limit=5&tags=geo,maps"), schema)).toEqual({
+      q: "map",
+      limit: 5,
+      tags: ["geo", "maps"],
+    });
+    expect(readQuery(get(""), schema)).toEqual({ limit: 20, tags: [] });
+  });
+
+  test("throws a 400 on a schema mismatch", () => {
+    expect(() => readQuery(get("limit=notanumber"), schema, "Bad query")).toThrow(HttpError);
+    try {
+      readQuery(get("limit=notanumber"), schema, "Bad query");
+    } catch (error) {
+      expect((error as HttpError).status).toBe(400);
+      expect((error as HttpError).message).toBe("Bad query");
+    }
   });
 });
 

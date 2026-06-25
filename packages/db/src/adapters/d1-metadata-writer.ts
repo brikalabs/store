@@ -4,7 +4,7 @@ import { transactionalDb } from "@brika/tx";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { Db } from "../client";
-import { regDistTags, regPackages, regVersions } from "../schema";
+import { regDistTags, regKeywords, regPackages, regSearch, regVersions } from "../schema";
 
 /**
  * Persists published versions to D1 and mutates their management flags ({@link MetadataWriter} +
@@ -38,7 +38,8 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
   }
 
   async commitVersion({ scope, version, tag }: CommitVersionInput): Promise<void> {
-    const statements = [
+    const publishedAt = Math.floor(new Date(version.publishedAt).getTime() / 1000);
+    const statements: BatchItem<"sqlite">[] = [
       this.#db.insert(regPackages).values({ name: version.name, scope }).onConflictDoNothing(),
       this.#db.insert(regVersions).values({
         name: version.name,
@@ -47,7 +48,7 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
         integrity: version.integrity,
         shasum: version.shasum,
         size: version.size,
-        publishedAt: Math.floor(new Date(version.publishedAt).getTime() / 1000),
+        publishedAt,
         deprecated: version.deprecated,
         yanked: version.yanked,
         provenance: version.provenance ?? undefined,
@@ -60,6 +61,13 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
           set: { version: version.version },
         }),
     ];
+    // A publish always makes its version `latest`, so reproject the search index in the same batch.
+    // A non-`latest` tag (e.g. a `beta` push) leaves the listed version untouched, so skip it.
+    if (tag === "latest") {
+      statements.push(
+        ...this.#reindexStatements(version.name, version.version, version.manifest, publishedAt),
+      );
+    }
 
     // Atomic unit: a duplicate version trips the unique constraint and fails the whole batch,
     // so a TOCTOU race past `versionExists` cannot corrupt an existing version.
@@ -98,6 +106,9 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
   async deletePackage(name: string): Promise<void> {
     await this.#db.deferBatch([
       this.#db.delete(regDistTags).where(eq(regDistTags.name, name)),
+      this.#db.delete(regKeywords).where(eq(regKeywords.name, name)),
+      // Removing the projection row fires the FTS delete trigger, so the index drops it too.
+      this.#db.delete(regSearch).where(eq(regSearch.name, name)),
       this.#db.delete(regVersions).where(eq(regVersions.name, name)),
       this.#db.delete(regPackages).where(eq(regPackages.name, name)),
     ]);
@@ -115,7 +126,11 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
    */
   async #refreshLatestTag(name: string): Promise<void> {
     const newest = await this.#db
-      .select({ version: regVersions.version })
+      .select({
+        version: regVersions.version,
+        manifest: regVersions.manifest,
+        publishedAt: regVersions.publishedAt,
+      })
       .from(regVersions)
       .where(
         and(
@@ -126,19 +141,96 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
       )
       .orderBy(desc(regVersions.publishedAt), desc(regVersions.version))
       .limit(1);
-    const version = newest[0]?.version;
-    if (version === undefined) {
-      await this.#db
-        .delete(regDistTags)
-        .where(and(eq(regDistTags.name, name), eq(regDistTags.tag, "latest")));
+    const top = newest[0];
+    if (top === undefined) {
+      // No installable version remains: drop the tag and the search projection together (the
+      // `reg_search` delete cascades into the FTS index via its trigger).
+      await this.#db.deferBatch([
+        this.#db
+          .delete(regDistTags)
+          .where(and(eq(regDistTags.name, name), eq(regDistTags.tag, "latest"))),
+        this.#db.delete(regKeywords).where(eq(regKeywords.name, name)),
+        this.#db.delete(regSearch).where(eq(regSearch.name, name)),
+      ]);
       return;
     }
-    await this.#db
-      .insert(regDistTags)
-      .values({ name, tag: "latest", version })
-      .onConflictDoUpdate({
-        target: [regDistTags.name, regDistTags.tag],
-        set: { version },
-      });
+    await this.#db.deferBatch([
+      this.#db
+        .insert(regDistTags)
+        .values({ name, tag: "latest", version: top.version })
+        .onConflictDoUpdate({
+          target: [regDistTags.name, regDistTags.tag],
+          set: { version: top.version },
+        }),
+      ...this.#reindexStatements(name, top.version, top.manifest, top.publishedAt),
+    ]);
   }
+
+  /**
+   * Statements that reproject `name`'s search row to `version`: clear its keyword rows, upsert the
+   * denormalized `reg_search` row (the FTS index follows via triggers), then re-insert its keywords.
+   * `publishedAt` is in unix seconds, matching the `reg_versions` column.
+   */
+  #reindexStatements(
+    name: string,
+    version: string,
+    manifest: Record<string, unknown>,
+    publishedAt: number,
+  ): BatchItem<"sqlite">[] {
+    const fields = projectManifest(manifest);
+    const row = { name, version, publishedAt, ...fields, keywords: fields.keywords.join(" ") };
+    const statements: BatchItem<"sqlite">[] = [
+      this.#db.delete(regKeywords).where(eq(regKeywords.name, name)),
+      this.#db
+        .insert(regSearch)
+        .values(row)
+        .onConflictDoUpdate({ target: regSearch.name, set: row }),
+    ];
+    if (fields.keywords.length > 0) {
+      statements.push(
+        this.#db.insert(regKeywords).values(fields.keywords.map((keyword) => ({ name, keyword }))),
+      );
+    }
+    return statements;
+  }
+}
+
+/** Derive the search projection's facets from a manifest: display text, deduped keywords, capability counts. */
+function projectManifest(manifest: Record<string, unknown>): {
+  displayName: string | null;
+  description: string | null;
+  keywords: string[];
+  tools: number;
+  blocks: number;
+  bricks: number;
+  sparks: number;
+  pages: number;
+} {
+  const str = (key: string): string | null => {
+    const value = manifest[key];
+    return typeof value === "string" ? value : null;
+  };
+  const count = (key: string): number => {
+    const value = manifest[key];
+    return Array.isArray(value) ? value.length : 0;
+  };
+  const rawKeywords = Array.isArray(manifest.keywords) ? manifest.keywords : [];
+  // Lowercased so tag filtering (`keyword IN (...)`) is case-insensitive, matching the backfill.
+  const keywords = [
+    ...new Set(
+      rawKeywords
+        .filter((k): k is string => typeof k === "string" && k.length > 0)
+        .map((k) => k.toLowerCase()),
+    ),
+  ];
+  return {
+    displayName: str("displayName"),
+    description: str("description"),
+    keywords,
+    tools: count("tools"),
+    blocks: count("blocks"),
+    bricks: count("bricks"),
+    sparks: count("sparks"),
+    pages: count("pages"),
+  };
 }

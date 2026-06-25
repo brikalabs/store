@@ -18,7 +18,7 @@ import { TarballBucket } from "../adapters/r2-tarball";
 import { R2TarballWriter } from "../adapters/r2-tarball-writer";
 import { provideRegistry } from "../services";
 import { fakeR2, makeDb, seedExamplePackage } from "../test-harness";
-import { handleCatalog } from "./catalog";
+import { handleSearch } from "./search";
 import { handleDownloads } from "./stats";
 
 /**
@@ -554,7 +554,7 @@ describe("takedown / restore (operator-gated)", () => {
     expect(packument.takedowns).toEqual({ "1.0.0": "malware: exfiltrates env" }); // reason surfaced
 
     const catalog = await (
-      await run(ctx, () => handleCatalog(new Request("http://localhost/-/v1/packages")))
+      await run(ctx, () => handleSearch(new Request("http://localhost/-/v1/packages")))
     ).json();
     expect(catalog.packages).toHaveLength(0);
 
@@ -638,11 +638,11 @@ describe("scope takedown / restore (operator-gated, ORG-007)", () => {
   });
 });
 
-describe("handleCatalog", () => {
+describe("GET /-/v1/packages enumerate", () => {
   test("lists the latest non-yanked version with totals", async () => {
     await seedPackage(db, "octocat");
     const res = await run(services(db), () =>
-      handleCatalog(new Request("http://localhost/-/v1/packages")),
+      handleSearch(new Request("http://localhost/-/v1/packages")),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -653,7 +653,7 @@ describe("handleCatalog", () => {
   test("free-text search filters by name", async () => {
     await seedPackage(db, "octocat");
     const miss = await run(services(db), () =>
-      handleCatalog(new Request("http://localhost/-/v1/packages?text=nomatch")),
+      handleSearch(new Request("http://localhost/-/v1/packages?text=nomatch")),
     );
     expect((await miss.json()).total).toBe(0);
   });
@@ -661,10 +661,59 @@ describe("handleCatalog", () => {
   test("clamps the limit query parameter into range", async () => {
     await seedPackage(db, "octocat");
     const res = await run(services(db), () =>
-      handleCatalog(new Request("http://localhost/-/v1/packages?limit=5")),
+      handleSearch(new Request("http://localhost/-/v1/packages?limit=5")),
     );
     expect(res.status).toBe(200);
     expect((await res.json()).total).toBe(1);
+  });
+});
+
+describe("handleSearch (SQL index: FTS + tag/capability)", () => {
+  // Publish through the real writer so the `reg_search` projection is built (seedExamplePackage
+  // inserts rows directly and does not, which is exactly why this path needs the writer).
+  const publishSearchable = (db: Db) =>
+    makeAdapter(db, D1MetadataWriter).commitVersion({
+      scope: "@brika",
+      tag: "latest",
+      version: {
+        name: "@brika/x",
+        version: "1.0.0",
+        manifest: {
+          name: "@brika/x",
+          version: "1.0.0",
+          displayName: "Mapbox",
+          description: "interactive maps",
+          keywords: ["maps", "geo"],
+          tools: [{}],
+          engines: { brika: "^1.0.0" },
+        },
+        integrity: "sha512-x",
+        shasum: "abc",
+        size: 10,
+        publishedAt: "2026-06-16T00:00:00.000Z",
+        deprecated: null,
+        yanked: false,
+        provenance: null,
+      },
+    });
+
+  test("matches on full-text query plus a capability filter", async () => {
+    await publishSearchable(db);
+    const res = await run(services(db), () =>
+      handleSearch(new Request("http://localhost/-/v1/search?text=map&capability=tools")),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.total).toBe(1);
+    expect(body.packages[0].name).toBe("@brika/x");
+  });
+
+  test("excludes packages that lack the requested tag", async () => {
+    await publishSearchable(db);
+    const res = await run(services(db), () =>
+      handleSearch(new Request("http://localhost/-/v1/search?tags=geo,unrelated")),
+    );
+    expect((await res.json()).total).toBe(0);
   });
 });
 
@@ -781,7 +830,7 @@ describe("scope publisher (verified attribution)", () => {
     expect(packument.publisher).toEqual({ id: "@brika", name: "@brika", verified: true });
 
     const catalog = await (
-      await run(ctx, () => handleCatalog(new Request("http://localhost/-/v1/packages")))
+      await run(ctx, () => handleSearch(new Request("http://localhost/-/v1/packages")))
     ).json();
     expect(catalog.packages[0].publisher).toEqual({
       id: "@brika",
