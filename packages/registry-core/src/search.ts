@@ -41,6 +41,8 @@ export interface SearchOptions {
   readonly tags?: readonly string[];
   /** Capabilities to filter on; a plugin matches if it declares any of them (OR). */
   readonly capabilities?: readonly SearchCapability[];
+  /** Restrict to packages with this "approved by Brika" verified state; absent includes both. */
+  readonly verified?: boolean;
   /** Ordered sort terms (e.g. downloads desc, then name asc); empty applies the default order. */
   readonly sort: readonly SortClause[];
   readonly limit: number;

@@ -58,6 +58,7 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
         match === null ? null : ftsMatches(FTS, match),
         tagsFilter(this.#db, options.tags),
         capabilitiesFilter(options.capabilities),
+        options.verified === undefined ? null : eq(regPackages.verified, options.verified),
       ],
       orderFor(options.sort, match !== null),
       options,
@@ -69,6 +70,7 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
       .select({ value: count() })
       .from(regSearch)
       .innerJoin(regSearchFts, ftsOnRowid)
+      .innerJoin(regPackages, eq(regPackages.name, regSearch.name))
       .where(where);
     return rows[0]?.value ?? 0;
   }

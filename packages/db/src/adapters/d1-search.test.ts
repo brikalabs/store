@@ -114,6 +114,14 @@ describe("D1SearchReader filters", () => {
       "@brika/maps",
     ]);
   });
+
+  test("filters by the operator verified flag", async () => {
+    await writer.setVerified("@brika/maps", true);
+    await writer.setVerified("@brika/auth", true);
+    expect(names(await search({ verified: true }))).toEqual(["@brika/auth", "@brika/maps"]);
+    expect(names(await search({ verified: false }))).toEqual(["@brika/charts"]);
+    expect(names(await search({}))).toEqual(["@brika/auth", "@brika/charts", "@brika/maps"]);
+  });
 });
 
 describe("D1SearchReader sort + pagination", () => {

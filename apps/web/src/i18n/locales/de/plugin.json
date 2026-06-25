@@ -1,4 +1,5 @@
 {
+  "pageOf": "{current} / {total}",
   "discussion": "Diskussion",
   "commentPlaceholder": "Stellen Sie eine Frage oder teilen Sie einen Tipp",
   "commentPost": "Kommentar veröffentlichen",

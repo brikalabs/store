@@ -2,12 +2,12 @@ import { Switch } from "@brika/clay";
 import type { PluginSummary, SearchDirection } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { Link } from "@tanstack/react-router";
-import { Filter, ShieldCheck, TrendingUp, Users } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { ChevronLeft, ChevronRight, Filter, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import type { ReactNode } from "react";
 import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
 import { CAPABILITY_TILES } from "@/components/plugin/capability-tiles";
 import { ListingCard } from "@/components/plugin/listing-card";
-import { type SortKey, SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
+import { type SortKey, SortMenu } from "@/components/plugin/sort-menu";
 import { useT } from "@/i18n";
 
 type Scope = { scope: string; name: string; count: number };
@@ -21,32 +21,52 @@ function topScopes(plugins: PluginSummary[], limit: number): Scope[] {
     if (existing) {
       existing.count += 1;
     } else {
-      byScope.set(scope, {
-        scope,
-        name: plugin.author?.name ?? scope,
-        count: 1,
-      });
+      byScope.set(scope, { scope, name: plugin.author?.name ?? scope, count: 1 });
     }
   }
   return [...byScope.values()].sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
-/** The dense discovery index: filter rail, plugin grid, and a Trending + Top authors rail. */
+/** Server-paginated grid (the host owns offset/total and re-queries on change). */
+export interface PageControl {
+  readonly offset: number;
+  readonly total: number;
+  readonly pageSize: number;
+  readonly onChange: (offset: number) => void;
+}
+
+/**
+ * The dense discovery index: a filter rail, the plugin grid, and a Trending + Popular-spaces rail.
+ * Fully controlled - sort/verified state and the data come from the host, which decides whether to
+ * re-query the server (`/plugins`, URL-driven + paginated) or sort/filter in memory (home A/B).
+ */
 export function DiscoverIndex({
   plugins,
+  railsPlugins,
+  count,
+  field,
+  direction,
+  verifiedOnly,
+  onSortChange,
+  onVerifiedChange,
+  page,
   title,
-}: Readonly<{ plugins: PluginSummary[]; title?: string }>) {
+}: Readonly<{
+  plugins: PluginSummary[];
+  railsPlugins: PluginSummary[];
+  count: number;
+  field: SortKey;
+  direction: SearchDirection;
+  verifiedOnly: boolean;
+  onSortChange: (field: SortKey, direction: SearchDirection) => void;
+  onVerifiedChange: (verified: boolean) => void;
+  page?: PageControl;
+  title?: string;
+}>) {
   const t = useT();
-  const [verifiedOnly, setVerifiedOnly] = useState(true);
-  const [field, setField] = useState<SortKey>("downloads");
-  const [direction, setDirection] = useState<SearchDirection>("desc");
   const heading = title ?? t("plugin:discoverTitle");
-  // The "verified only" toggle narrows the whole view (count, grid, trending) to approved plugins;
-  // full-catalog search lives in the global header, so the rail has no input of its own.
-  const visible = verifiedOnly ? plugins.filter((plugin) => plugin.verified) : plugins;
-  const scopes = topScopes(plugins, 5);
-  const trending = visible.slice(0, 5);
-  const shown = sortPlugins(visible, field, direction);
+  const trending = railsPlugins.slice(0, 5);
+  const scopes = topScopes(railsPlugins, 5);
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,21 +74,14 @@ export function DiscoverIndex({
         <div>
           <h1 className="font-bold font-heading text-3xl tracking-tight">{heading}</h1>
           <p className="mt-1 text-muted-foreground text-sm">
-            {t("plugin:verifiedScopedPlugins", { count: visible.length })}
+            {t("plugin:verifiedScopedPlugins", { count })}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <span className="font-medium text-muted-foreground text-xs uppercase tracking-[0.08em]">
             {t("plugin:sort")}
           </span>
-          <SortMenu
-            field={field}
-            direction={direction}
-            onChange={(nextField, nextDirection) => {
-              setField(nextField);
-              setDirection(nextDirection);
-            }}
-          />
+          <SortMenu field={field} direction={direction} onChange={onSortChange} />
         </div>
       </div>
 
@@ -96,7 +109,7 @@ export function DiscoverIndex({
               </span>
               <Switch
                 checked={verifiedOnly}
-                onCheckedChange={setVerifiedOnly}
+                onCheckedChange={onVerifiedChange}
                 size="sm"
                 aria-label={t("plugin:verifiedOnly")}
               />
@@ -104,10 +117,13 @@ export function DiscoverIndex({
           </FilterGroup>
         </aside>
 
-        <div className="grid auto-rows-min gap-3.5 sm:grid-cols-2">
-          {shown.map((plugin) => (
-            <ListingCard key={plugin.name} plugin={plugin} />
-          ))}
+        <div className="flex flex-col gap-5">
+          <div className="grid auto-rows-min gap-3.5 sm:grid-cols-2">
+            {plugins.map((plugin) => (
+              <ListingCard key={plugin.name} plugin={plugin} />
+            ))}
+          </div>
+          {page ? <Pager page={page} /> : null}
         </div>
 
         <aside className="hidden flex-col gap-5 lg:flex">
@@ -170,6 +186,30 @@ export function DiscoverIndex({
           ) : null}
         </aside>
       </div>
+    </div>
+  );
+}
+
+/** Prev / next page controls, shown only when the catalog spills past one page. */
+function Pager({ page }: Readonly<{ page: PageControl }>) {
+  const t = useT();
+  const pages = Math.ceil(page.total / page.pageSize);
+  if (pages <= 1) return null;
+  const current = Math.floor(page.offset / page.pageSize) + 1;
+  const step = (delta: number) => page.onChange(Math.max(0, page.offset + delta * page.pageSize));
+  const btn =
+    "inline-flex size-9 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground outline-none transition-colors hover:border-brand/40 hover:text-foreground disabled:opacity-40";
+  return (
+    <div className="flex items-center justify-center gap-3">
+      <button type="button" onClick={() => step(-1)} disabled={current === 1} className={btn}>
+        <ChevronLeft className="size-4" />
+      </button>
+      <span className="text-muted-foreground text-sm tabular-nums">
+        {t("plugin:pageOf", { current, total: pages })}
+      </span>
+      <button type="button" onClick={() => step(1)} disabled={current >= pages} className={btn}>
+        <ChevronRight className="size-4" />
+      </button>
     </div>
   );
 }

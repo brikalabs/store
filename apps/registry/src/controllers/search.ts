@@ -64,6 +64,10 @@ const SearchParams = z.object({
     .string()
     .optional()
     .transform((raw) => csvList(raw, (v) => CAPABILITIES.find((c) => c === v) ?? null)),
+  verified: z
+    .string()
+    .optional()
+    .transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
   sort: z.string().optional().transform(parseSort),
 });
 

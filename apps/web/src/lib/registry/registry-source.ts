@@ -83,6 +83,8 @@ export interface PluginSearchParams {
   readonly q?: string;
   readonly tags?: readonly string[];
   readonly capabilities?: readonly string[];
+  /** Restrict to this "approved by Brika" verified state; absent includes both. */
+  readonly verified?: boolean;
   readonly sort?: string;
   readonly limit: number;
   readonly offset: number;
@@ -99,6 +101,7 @@ export async function searchRegistryPlugins(params: PluginSearchParams): Promise
       text: params.q?.trim(),
       tags: csv(params.tags),
       capabilities: csv(params.capabilities),
+      verified: params.verified === undefined ? undefined : String(params.verified),
       sort: params.sort,
       limit: params.limit,
       offset: params.offset,

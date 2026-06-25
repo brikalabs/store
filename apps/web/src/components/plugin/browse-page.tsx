@@ -10,22 +10,46 @@ import { useT } from "@/i18n";
 import { formatCount } from "@/lib/format";
 import { matchingScopes, type ScopeHit } from "@/lib/registry/matching-scopes";
 
+/** Grid page size, shared with the `/plugins` loader's query limit. */
+export const PAGE_SIZE = 12;
+
 const route = getRouteApi("/plugins/");
 
 export function BrowsePage() {
   const t = useT();
   const navigate = route.useNavigate();
-  const { plugins, total } = route.useLoaderData();
-  const { q, capabilities, tags, sort } = route.useSearch();
+  const { plugins, total, railsPlugins, verifiedOnly } = route.useLoaderData();
+  const { q, capabilities, tags, sort, offset } = route.useSearch();
   const activeCapabilities = capabilities ?? [];
   const activeTags = tags ?? [];
-  const { field, direction } = primarySort(sort);
+  // The engine's default order is relevance when there's a query, else downloads; mirror that so the
+  // menu label matches what the server actually returns.
+  const { field, direction } = primarySort(sort ?? (q ? undefined : "downloads:desc"));
 
-  // Nothing to narrow by: the dense discovery index (matches the design's Console browse).
+  // Nothing to narrow by: the dense discovery index, fully server-driven (sort/verified/page all
+  // re-query the SQL engine via the URL; nothing is sorted or filtered in memory here).
   if (!q && activeCapabilities.length === 0 && activeTags.length === 0) {
+    const set = (patch: Record<string, unknown>) =>
+      navigate({ search: (prev) => ({ ...prev, ...patch }) });
     return (
       <main className="mx-auto max-w-7xl px-6 py-10">
-        <DiscoverIndex plugins={plugins} title={t("browse:browseHeading")} />
+        <DiscoverIndex
+          plugins={plugins}
+          railsPlugins={railsPlugins}
+          count={total}
+          field={field}
+          direction={direction}
+          verifiedOnly={verifiedOnly}
+          onSortChange={(f, d) => set({ sort: `${f}:${d}`, offset: 0 })}
+          onVerifiedChange={(v) => set({ verified: v, offset: 0 })}
+          page={{
+            offset: offset ?? 0,
+            total,
+            pageSize: PAGE_SIZE,
+            onChange: (o) => set({ offset: o }),
+          }}
+          title={t("browse:browseHeading")}
+        />
       </main>
     );
   }
