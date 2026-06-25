@@ -1,5 +1,5 @@
 import { inject } from "@brika/di";
-import type { CatalogEntry, SearchCapability, SearchSort } from "@brika/registry-core";
+import type { CatalogEntry, SearchSort } from "@brika/registry-core";
 import { controller, route } from "../http/router";
 import { Downloads, Search } from "../services";
 
@@ -31,27 +31,19 @@ function jsonPage(packages: unknown[], total: number): Response {
   return Response.json({ packages, total }, { headers: { "cache-control": "public, max-age=60" } });
 }
 
-/** Comma-separated `tags`, deduped and lowercased for case-insensitive AND-matching. */
-function parseTags(raw: string | null): string[] | undefined {
+/**
+ * Parse a comma-separated query param into a deduped list: each value is trimmed and run through
+ * `map`, and anything it drops (returns null for) is skipped. Undefined when the param is absent or
+ * yields nothing.
+ */
+function csvList<T>(raw: string | null, map: (value: string) => T | null): T[] | undefined {
   if (raw === null) return undefined;
-  const tags = [
-    ...new Set(
-      raw
-        .split(",")
-        .map((tag) => tag.trim().toLowerCase())
-        .filter((tag) => tag.length > 0),
-    ),
-  ];
-  return tags.length > 0 ? tags : undefined;
-}
-
-/** Comma-separated `capabilities`, keeping only valid capability kinds (OR-matched downstream). */
-function parseCapabilities(raw: string | null): SearchCapability[] | undefined {
-  if (raw === null) return undefined;
-  const valid = [...new Set(raw.split(",").map((c) => c.trim()))].filter(
-    (c): c is SearchCapability => CAPABILITIES.some((cap) => cap === c),
-  );
-  return valid.length > 0 ? valid : undefined;
+  const values = new Set<T>();
+  for (const part of raw.split(",")) {
+    const value = map(part.trim());
+    if (value !== null) values.add(value);
+  }
+  return values.size > 0 ? [...values] : undefined;
 }
 
 export async function handleSearch(request: Request): Promise<Response> {
@@ -64,8 +56,12 @@ export async function handleSearch(request: Request): Promise<Response> {
 
   const { entries, total } = await inject(Search).search({
     q,
-    tags: parseTags(url.searchParams.get("tags")),
-    capabilities: parseCapabilities(url.searchParams.get("capabilities")),
+    // Tags are lowercased (AND-matched, case-insensitive); capabilities keep only valid kinds (OR-matched).
+    tags: csvList(url.searchParams.get("tags"), (v) => (v.length > 0 ? v.toLowerCase() : null)),
+    capabilities: csvList(
+      url.searchParams.get("capabilities"),
+      (v) => CAPABILITIES.find((c) => c === v) ?? null,
+    ),
     sort,
     limit,
     offset,
