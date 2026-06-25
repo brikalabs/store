@@ -25,7 +25,7 @@ export function BrowsePage() {
   if (!q && activeCapabilities.length === 0 && activeTags.length === 0) {
     return (
       <main className="mx-auto max-w-7xl px-6 py-10">
-        <DiscoverIndex plugins={plugins} total={total} title={t("browse:browseHeading")} />
+        <DiscoverIndex plugins={plugins} title={t("browse:browseHeading")} />
       </main>
     );
   }

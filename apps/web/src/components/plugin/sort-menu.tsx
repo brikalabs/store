@@ -52,10 +52,11 @@ export function sortPlugins(
   field: SortKey,
   direction: SearchDirection = NATURAL[field],
 ): PluginSummary[] {
+  const downloads = (p: PluginSummary) => p.installs ?? p.downloadsWeekly;
   const list = [...plugins];
   switch (field) {
     case "downloads":
-      list.sort((a, b) => b.downloadsWeekly - a.downloadsWeekly);
+      list.sort((a, b) => downloads(b) - downloads(a));
       break;
     case "recent":
       list.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));

@@ -34,20 +34,19 @@ function topScopes(plugins: PluginSummary[], limit: number): Scope[] {
 /** The dense discovery index: filter rail, plugin grid, and a Trending + Top authors rail. */
 export function DiscoverIndex({
   plugins,
-  total,
   title,
-}: Readonly<{ plugins: PluginSummary[]; total: number; title?: string }>) {
+}: Readonly<{ plugins: PluginSummary[]; title?: string }>) {
   const t = useT();
   const [verifiedOnly, setVerifiedOnly] = useState(true);
   const [field, setField] = useState<SortKey>("downloads");
   const [direction, setDirection] = useState<SearchDirection>("desc");
   const heading = title ?? t("plugin:discoverTitle");
+  // The "verified only" toggle narrows the whole view (count, grid, trending) to approved plugins;
+  // full-catalog search lives in the global header, so the rail has no input of its own.
+  const visible = verifiedOnly ? plugins.filter((plugin) => plugin.verified) : plugins;
   const scopes = topScopes(plugins, 5);
-  const trending = plugins.slice(0, 5);
-  const ranked = sortPlugins(plugins, field, direction);
-  // The store lists only verified, scoped plugins; the toggle narrows to them. Full-catalog search
-  // lives in the global header, so the rail has no input of its own.
-  const shown = verifiedOnly ? ranked.filter((plugin) => plugin.verified) : ranked;
+  const trending = visible.slice(0, 5);
+  const shown = sortPlugins(visible, field, direction);
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,7 +54,7 @@ export function DiscoverIndex({
         <div>
           <h1 className="font-bold font-heading text-3xl tracking-tight">{heading}</h1>
           <p className="mt-1 text-muted-foreground text-sm">
-            {t("plugin:verifiedScopedPlugins", { count: total })}
+            {t("plugin:verifiedScopedPlugins", { count: visible.length })}
           </p>
         </div>
         <div className="flex items-center gap-3">
