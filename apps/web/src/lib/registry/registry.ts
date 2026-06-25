@@ -1,4 +1,4 @@
-import type { PluginSummary, PluginVersion } from "@brika/registry-contract";
+import type { PluginSummary, PluginVersion, SearchResponse } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { isRegistryName } from "@/lib/registry/registry-http";
 import { versionsFromPackument } from "@/lib/registry/registry-mappers";
@@ -10,6 +10,7 @@ import {
   getRegistryPackument,
   getRegistryScope,
   listRegistryPlugins,
+  type PluginSearchParams,
   searchRegistryPlugins,
 } from "@/lib/registry/registry-source";
 
@@ -23,25 +24,18 @@ const BROWSE_LIMIT = 12;
 // The hosted catalog is bounded (REGISTRY_LIMITS.maxPackagesPerScope), so one capped read covers every scope.
 const CATALOG_SCAN = 200;
 
-/** Narrowing filters layered on top of the free-text query (all optional). */
-export interface PluginSearchOptions {
-  readonly tags?: readonly string[];
-  readonly capability?: string;
-  readonly sort?: string;
-}
-
 /**
  * Search the catalog through the registry's SQL search: free-text (FTS) plus optional tag/capability
  * filters and sort, all pushed down with pagination. A bare call (no query, no filters) returns the
  * whole bounded catalog, ranked by the default sort.
  */
-export async function searchPlugins(
+export function searchPlugins(
   query: string | undefined,
   limit = BROWSE_LIMIT,
   offset = 0,
-  options: PluginSearchOptions = {},
-): Promise<{ plugins: PluginSummary[]; total: number }> {
-  return searchRegistryPlugins({ q: query, ...options, limit, offset });
+  filters: Omit<PluginSearchParams, "q" | "limit" | "offset"> = {},
+): Promise<SearchResponse> {
+  return searchRegistryPlugins({ q: query, ...filters, limit, offset });
 }
 
 /** The full plugin-detail page for a hosted `@brika/*` plugin; null for any name not hosted here (route 404s). */

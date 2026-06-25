@@ -1,4 +1,4 @@
-import type { PluginSummary } from "@brika/registry-contract";
+import type { SearchResponse } from "@brika/registry-contract";
 import { tarballPath } from "@brika/registry-core";
 import { npmLink } from "@brika/router/npm";
 import { REGISTRY_ORIGIN, registryFetch, registryGet } from "@/lib/registry/registry-http";
@@ -72,10 +72,7 @@ export async function getRegistryScope(scope: string): Promise<RegistryScope | n
 }
 
 /** Shape a catalog response (or a failed read) into the `{ plugins, total }` the store consumes. */
-function toCatalogResult(data: CatalogResponse | null): {
-  plugins: PluginSummary[];
-  total: number;
-} {
+function toCatalogResult(data: CatalogResponse | null): SearchResponse {
   return data === null
     ? { plugins: [], total: 0 }
     : { plugins: mapCatalogPackages(data.packages), total: data.total };
@@ -86,7 +83,7 @@ export async function listRegistryPlugins(
   query: string | undefined,
   limit: number,
   offset: number,
-): Promise<{ plugins: PluginSummary[]; total: number }> {
+): Promise<SearchResponse> {
   return toCatalogResult(
     await registryGet("/-/v1/packages", CatalogResponse, {
       text: query?.trim(),
@@ -107,9 +104,7 @@ export interface PluginSearchParams {
 }
 
 /** Search hosted `@brika/*` plugins via the registry's SQL-backed search endpoint (FTS + filters + sort). */
-export async function searchRegistryPlugins(
-  params: PluginSearchParams,
-): Promise<{ plugins: PluginSummary[]; total: number }> {
+export async function searchRegistryPlugins(params: PluginSearchParams): Promise<SearchResponse> {
   return toCatalogResult(
     await registryGet("/-/v1/search", CatalogResponse, {
       text: params.q?.trim(),
