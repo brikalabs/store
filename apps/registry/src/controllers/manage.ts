@@ -55,46 +55,85 @@ export function deprecate(
   input: ManageContext & { readonly body: z.infer<typeof DeprecateBody> },
 ): Promise<Response> {
   const { params, body } = input;
-  return manage(params, input.req, "deprecate", requireWrite, (svc, actor, name) =>
-    svc.deprecate(actor, name, params.version, body.message), { deprecated: body.message });
+  return manage(
+    params,
+    input.req,
+    "deprecate",
+    requireWrite,
+    (svc, actor, name) => svc.deprecate(actor, name, params.version, body.message),
+    { deprecated: body.message },
+  );
 }
 
 export function yank(
   input: ManageContext & { readonly body: z.infer<typeof YankBody> },
 ): Promise<Response> {
   const { params, body } = input;
-  return manage(params, input.req, "yank", requireWrite, (svc, actor, name) =>
-    svc.setYanked(actor, name, params.version, body.yanked), { yanked: body.yanked });
+  return manage(
+    params,
+    input.req,
+    "yank",
+    requireWrite,
+    (svc, actor, name) => svc.setYanked(actor, name, params.version, body.yanked),
+    { yanked: body.yanked },
+  );
 }
 
 export function takedown(
   input: ManageContext & { readonly body: z.infer<typeof TakedownBody> },
 ): Promise<Response> {
   const { params, body } = input;
-  return manage(params, input.req, "takedown", requireAdmin, (svc, _actor, name) =>
-    svc.takedown(name, params.version, body.reason), { takedown: body.reason });
+  return manage(
+    params,
+    input.req,
+    "takedown",
+    requireAdmin,
+    (svc, _actor, name) => svc.takedown(name, params.version, body.reason),
+    { takedown: body.reason },
+  );
 }
 
 export function restore(input: ManageContext): Promise<Response> {
   const { params } = input;
-  return manage(params, input.req, "restore", requireAdmin, (svc, _actor, name) =>
-    svc.restore(name, params.version), { takedown: null });
+  return manage(
+    params,
+    input.req,
+    "restore",
+    requireAdmin,
+    (svc, _actor, name) => svc.restore(name, params.version),
+    { takedown: null },
+  );
 }
 
 /** Operator takedown of a WHOLE package (every version, current and future). */
-export function takedownPackage(
-  input: { readonly params: PackageParams; readonly req: Request; readonly body: z.infer<typeof TakedownBody> },
-): Promise<Response> {
-  return manage(input.params, input.req, "package_takedown", requireAdmin, (svc, _actor, name) =>
-    svc.takedownPackage(name, input.body.reason), { takedown: input.body.reason });
+export function takedownPackage(input: {
+  readonly params: PackageParams;
+  readonly req: Request;
+  readonly body: z.infer<typeof TakedownBody>;
+}): Promise<Response> {
+  return manage(
+    input.params,
+    input.req,
+    "package_takedown",
+    requireAdmin,
+    (svc, _actor, name) => svc.takedownPackage(name, input.body.reason),
+    { takedown: input.body.reason },
+  );
 }
 
 /** Reverse a whole-package takedown. */
-export function restorePackage(
-  input: { readonly params: PackageParams; readonly req: Request },
-): Promise<Response> {
-  return manage(input.params, input.req, "package_restore", requireAdmin, (svc, _actor, name) =>
-    svc.restorePackage(name), { takedown: null });
+export function restorePackage(input: {
+  readonly params: PackageParams;
+  readonly req: Request;
+}): Promise<Response> {
+  return manage(
+    input.params,
+    input.req,
+    "package_restore",
+    requireAdmin,
+    (svc, _actor, name) => svc.restorePackage(name),
+    { takedown: null },
+  );
 }
 
 export const manageController = controller({

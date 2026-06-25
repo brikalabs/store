@@ -456,7 +456,9 @@ export class ScopeService {
   }
 
   /** 404 result when the scope does not exist, else null. */
-  async #requireScope(scope: string): Promise<{ ok: false; status: number; message: string } | null> {
+  async #requireScope(
+    scope: string,
+  ): Promise<{ ok: false; status: number; message: string } | null> {
     if ((await this.#scopes.get(scope)) !== null) return null;
     return refuse(HttpStatus.NOT_FOUND, `scope ${scope} does not exist`);
   }

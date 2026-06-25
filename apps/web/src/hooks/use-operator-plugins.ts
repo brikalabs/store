@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { postJson } from "@/lib/fetch-json";
 
 /** A plugin row in the operator console: the list item, and what the moderation hook acts on. */
 export interface OperatorPlugin {
@@ -42,18 +43,13 @@ export function useBulkTakedown(selectedNames: string[], onReload: () => void) {
     async (reason: string) => {
       setBusy(true);
       setError(null);
-      const res = await fetch("/api/operator/plugins/bulk-takedown", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ names: selectedNames, reason }),
+      const res = await postJson("/api/operator/plugins/bulk-takedown", {
+        names: selectedNames,
+        reason,
       });
       setBusy(false);
-      if (res.ok) {
-        onReload();
-        return;
-      }
-      const data: { error?: string } = await res.json();
-      setError(data.error ?? "Bulk takedown failed");
+      if (res.ok) onReload();
+      else setError(res.error);
     },
     [selectedNames, onReload],
   );
@@ -89,92 +85,47 @@ export function usePluginModeration(
     async (version: string, path: "takedown" | "restore", reason?: string) => {
       setBusy(version);
       onError(null);
-      const res = await fetch(`/api/operator/plugins/${path}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(
-          path === "takedown" ? { name: pkg.name, version, reason } : { name: pkg.name, version },
-        ),
+      const res = await postJson(`/api/operator/plugins/${path}`, {
+        name: pkg.name,
+        version,
+        reason,
       });
       setBusy(null);
-      if (res.ok) {
-        await loadVersions();
-        onChanged();
-        return;
-      }
-      const data: { error?: string } = await res.json();
-      onError(data.error ?? "Action failed");
+      if (!res.ok) return onError(res.error);
+      await loadVersions();
+      onChanged();
     },
     [pkg.name, loadVersions, onChanged, onError],
   );
 
-  const takedownPlugin = useCallback(
-    async (reason: string) => {
+  // The package-level mutations share a shape: flip the package-busy flag, POST, then on success
+  // refresh the open version panel and notify the page; on failure surface the message.
+  const pkgAction = useCallback(
+    async (url: string, body: unknown) => {
       setPkgBusy(true);
       onError(null);
-      const res = await fetch("/api/operator/plugins/bulk-takedown", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ names: [pkg.name], reason }),
-      });
+      const res = await postJson(url, body);
       setPkgBusy(false);
-      if (res.ok) {
-        if (open) await loadVersions();
-        onChanged();
-        return;
-      }
-      const data: { error?: string } = await res.json();
-      onError(data.error ?? "Take down failed");
-    },
-    [pkg.name, open, loadVersions, onChanged, onError],
-  );
-
-  const restorePlugin = useCallback(async () => {
-    setPkgBusy(true);
-    onError(null);
-    const res = await fetch("/api/operator/plugins/plugin-restore", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: pkg.name }),
-    });
-    setPkgBusy(false);
-    if (res.ok) {
+      if (!res.ok) return onError(res.error);
       if (open) await loadVersions();
       onChanged();
-      return;
-    }
-    const data: { error?: string } = await res.json();
-    onError(data.error ?? "Restore failed");
-  }, [pkg.name, open, loadVersions, onChanged, onError]);
-
-  const setVerified = useCallback(
-    async (verified: boolean) => {
-      setPkgBusy(true);
-      onError(null);
-      const res = await fetch("/api/operator/plugins/verify", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: pkg.name, verified }),
-      });
-      setPkgBusy(false);
-      if (res.ok) {
-        onChanged();
-        return;
-      }
-      const data: { error?: string } = await res.json();
-      onError(data.error ?? "Verify failed");
     },
-    [pkg.name, onChanged, onError],
+    [open, loadVersions, onChanged, onError],
   );
 
-  return {
-    versions,
-    busy,
-    pkgBusy,
-    loadVersions,
-    act,
-    takedownPlugin,
-    restorePlugin,
-    setVerified,
-  };
+  const takedownPlugin = useCallback(
+    (reason: string) =>
+      pkgAction("/api/operator/plugins/bulk-takedown", { names: [pkg.name], reason }),
+    [pkgAction, pkg.name],
+  );
+  const restorePlugin = useCallback(
+    () => pkgAction("/api/operator/plugins/plugin-restore", { name: pkg.name }),
+    [pkgAction, pkg.name],
+  );
+  const setVerified = useCallback(
+    (verified: boolean) => pkgAction("/api/operator/plugins/verify", { name: pkg.name, verified }),
+    [pkgAction, pkg.name],
+  );
+
+  return { versions, busy, pkgBusy, loadVersions, act, takedownPlugin, restorePlugin, setVerified };
 }
