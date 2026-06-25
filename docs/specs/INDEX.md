@@ -6,22 +6,21 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 ## Totals
 
-148 specs , 419 acceptance criteria.
+158 specs , 457 acceptance criteria.
 
 | Status | Count |
 | --- | --- |
-| [DONE] | 112 |
+| [DONE] | 121 |
 | [WIP] | 1 |
-| [TODO] | 7 |
+| [TODO] | 6 |
 | [HOLD] | 2 |
-| [GONE] | 26 |
+| [GONE] | 28 |
 
 ## Backlog (not done)
 
 | Code | Status | Title |
 | --- | --- | --- |
 | [AUTH-009](auth/AUTH-009-oauth-and-secret-configuration.md) | [HOLD] | OAuth and secret configuration |
-| [HARDEN-012](registry/HARDEN-012-real-malware-scanner-behind-the-hook.md) | [TODO] | Real malware scanner behind the hook |
 | [HARDEN-013](registry/HARDEN-013-scheduled-r2-d1-backups.md) | [TODO] | Scheduled R2 + D1 backups |
 | [HARDEN-014](registry/HARDEN-014-operator-provisioning-of-hardening-infrastructure.md) | [HOLD] | Operator provisioning of hardening infrastructure |
 | [ORG-006](org/ORG-006-identity-tied-claiming-github-verified.md) | [TODO] | Identity-tied claiming (GitHub-verified) |
@@ -67,6 +66,16 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [CONSOLE-012](console/CONSOLE-012-profile-editor.md) | [DONE] | Profile editor |
 | [CONSOLE-013](console/CONSOLE-013-shared-domain-authorization-over-d1-401-when-unauthenticated.md) | [DONE] | Shared-domain authorization over D1 (401 when unauthenticated) |
 | [CONSOLE-014](console/CONSOLE-014-local-dev-registry-schema-setup-db-setup-local.md) | [DONE] | Local-dev registry schema setup (db:setup:local) |
+| [CONSOLE-015](console/CONSOLE-015-account-activity-feed.md) | [DONE] | Dashboard account activity feed |
+
+## operator
+
+| Code | Status | Title |
+| --- | --- | --- |
+| [OPERATOR-001](operator/OPERATOR-001-console-access-guard.md) | [DONE] | Operator console access guard |
+| [OPERATOR-002](operator/OPERATOR-002-package-version-moderation.md) | [DONE] | Operator package-version moderation (takedown, restore, bulk) |
+| [OPERATOR-003](operator/OPERATOR-003-scope-moderation.md) | [DONE] | Operator scope moderation (takedown / restore) |
+| [OPERATOR-004](operator/OPERATOR-004-audit-log-viewer.md) | [DONE] | Operator audit-log viewer |
 
 ## org
 
@@ -97,8 +106,8 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [HARDEN-008](registry/HARDEN-008-append-only-audit-log-for-every-mutating-action.md) | [DONE] | Append-only audit log for every mutating action |
 | [HARDEN-009](registry/HARDEN-009-audit-writes-are-best-effort-and-never-fail.md) | [DONE] | Audit writes are best-effort and never fail a committed action |
 | [HARDEN-010](registry/HARDEN-010-operator-admin-allowlist-for-takedown-and-restore.md) | [DONE] | Operator-admin allowlist for takedown and restore |
-| [HARDEN-011](registry/HARDEN-011-malware-scan-hook-seam-in-the-publish-pipeline.md) | [DONE] | Malware-scan hook seam in the publish pipeline |
-| [HARDEN-012](registry/HARDEN-012-real-malware-scanner-behind-the-hook.md) | [TODO] | Real malware scanner behind the hook |
+| [HARDEN-011](registry/HARDEN-011-malware-scan-hook-seam-in-the-publish-pipeline.md) | [GONE] | Malware-scan hook seam in the publish pipeline |
+| [HARDEN-012](registry/HARDEN-012-real-malware-scanner-behind-the-hook.md) | [GONE] | Real malware scanner behind the hook |
 | [HARDEN-013](registry/HARDEN-013-scheduled-r2-d1-backups.md) | [TODO] | Scheduled R2 + D1 backups |
 | [HARDEN-014](registry/HARDEN-014-operator-provisioning-of-hardening-infrastructure.md) | [HOLD] | Operator provisioning of hardening infrastructure |
 | [MANAGE-001](registry/MANAGE-001-deprecate-a-version-owner.md) | [DONE] | Deprecate a version (owner) |
@@ -171,6 +180,9 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 
 | Code | Status | Title |
 | --- | --- | --- |
+| [INTL-001](store/INTL-001-application-ui-localization.md) | [DONE] | Application UI localization (en/fr) |
+| [REPORT-001](store/REPORT-001-file-a-plugin-report.md) | [DONE] | File a moderation report against a plugin |
+| [REPORT-002](store/REPORT-002-operator-report-queue-triage.md) | [DONE] | Operator report queue and triage |
 | [SOCIAL-001](store/SOCIAL-001-write-a-review-auth-gated-rating-plus-body.md) | [DONE] | Write a review (auth-gated, rating plus body) |
 | [SOCIAL-002](store/SOCIAL-002-list-reviews-for-a-plugin.md) | [DONE] | List reviews for a plugin |
 | [SOCIAL-003](store/SOCIAL-003-plugin-rating-aggregate.md) | [DONE] | Plugin rating aggregate |
@@ -198,6 +210,8 @@ The generated register of every Brika spec. Run `bun run spec:index` to regenera
 | [STORE-014](store/STORE-014-scheduled-npm-sync-cron-prewarm.md) | [GONE] | Scheduled npm sync (CRON prewarm) |
 | [STORE-015](store/STORE-015-public-scope-page.md) | [DONE] | Public scope page |
 | [STORE-016](store/STORE-016-scope-centric-url-scheme.md) | [DONE] | Scope-centric URL scheme |
+| [STORE-017](store/STORE-017-legal-and-policy-pages.md) | [DONE] | Legal and policy pages |
+| [THEME-001](store/THEME-001-light-dark-system-theme.md) | [DONE] | Light / dark / system theme with no-flash SSR |
 
 ## user
 

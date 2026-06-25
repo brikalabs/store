@@ -21,9 +21,10 @@ docs/specs/
   INDEX.md             # GENERATED registry (do not hand-edit)
   _template.md         # copy this to add a spec
   auth/                # AUTH-*
-  store/               # STORE-*, SOCIAL-*
+  store/               # STORE-*, SOCIAL-*, INTL-*, THEME-*, REPORT-*
   registry/            # REG-*, PUB-*, SCOPE-*, MANAGE-*, HARDEN-*
   console/             # CONSOLE-*
+  operator/            # OPERATOR-*
   org/                 # ORG-*
   user/                # USER-*
 ```
@@ -40,8 +41,8 @@ setting `status: gone`, do not delete its file's code.
 | Spec (feature) | `<AREA>-<NNN>` | `SCOPE-003` |
 | Acceptance criterion | `<AREA>-<NNN>-AC<n>` | `SCOPE-003-AC2` |
 
-Area prefixes: `AUTH`, `STORE`, `SOCIAL`, `REG`, `PUB`, `SCOPE`, `MANAGE`,
-`HARDEN`, `CONSOLE`, `ORG`, `USER`.
+Area prefixes: `AUTH`, `STORE`, `SOCIAL`, `INTL`, `THEME`, `REPORT`, `REG`, `PUB`,
+`SCOPE`, `MANAGE`, `HARDEN`, `CONSOLE`, `OPERATOR`, `ORG`, `USER`.
 
 ## Spec file format
 
