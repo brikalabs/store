@@ -6,7 +6,6 @@ export type ScopeHit = {
   name: string;
   count: number;
   weekly: number;
-  verified: boolean;
 };
 
 /** The scopes whose name (or publisher) matches the query, top 3 by plugin count. */
@@ -21,11 +20,9 @@ export function matchingScopes(plugins: PluginSummary[], query: string): ScopeHi
       name: plugin.author?.name ?? scope,
       count: 0,
       weekly: 0,
-      verified: false,
     };
     existing.count += 1;
     existing.weekly += plugin.downloadsWeekly;
-    existing.verified = existing.verified || plugin.verified;
     byScope.set(scope, existing);
   }
   return [...byScope.values()]

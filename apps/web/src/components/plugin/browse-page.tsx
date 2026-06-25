@@ -1,6 +1,6 @@
 import { EmptyState, EmptyStateDescription, EmptyStateIcon, EmptyStateTitle } from "@brika/clay";
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { Box, ChevronRight, Folder, PackageSearch, ShieldCheck } from "lucide-react";
+import { Box, ChevronRight, Folder, PackageSearch } from "lucide-react";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { BrowseFilters } from "@/components/plugin/browse-filters";
 import { DiscoverIndex } from "@/components/plugin/discover-index";
@@ -140,7 +140,6 @@ function ScopeHitRow({ hit }: Readonly<{ hit: ScopeHit }>) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="font-bold font-heading text-foreground">{hit.name}</span>
-          {hit.verified ? <ShieldCheck className="size-4 text-brand-ink" /> : null}
           <span className="rounded-full bg-brand/10 px-2 py-0.5 font-semibold text-[11px] text-brand-ink">
             {t("browse:scopeBadge")}
           </span>
