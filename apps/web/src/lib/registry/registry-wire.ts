@@ -88,5 +88,6 @@ export const ScopeInfo = z.object({
   description: z.string().nullable().default(null),
   links: z.array(ScopeLinkWire).default([]),
   iconKey: z.string().nullable().default(null),
+  verified: z.boolean().default(false),
   verifiedDomains: z.array(z.string()).default([]),
 });

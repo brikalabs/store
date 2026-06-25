@@ -34,6 +34,7 @@ describe("D1ScopeStore", () => {
       links: [],
       iconKey: null,
       takedown: null,
+      verified: false,
     });
   });
 

@@ -82,6 +82,7 @@ import { Route as ApiOperatorPackagesRestoreRouteImport } from './routes/api/ope
 import { Route as ApiOperatorPackagesBulkTakedownRouteImport } from './routes/api/operator/packages/bulk-takedown'
 import { Route as ApiAccountTokensHashRouteImport } from './routes/api/account/tokens/$hash'
 import { Route as ApiScopesScopeMembersMemberIdRouteImport } from './routes/api/scopes/$scope/members/$memberId'
+import { Route as ApiOperatorScopesScopeVerifyRouteImport } from './routes/api/operator/scopes/$scope/verify'
 import { Route as ApiOperatorScopesScopeTakedownRouteImport } from './routes/api/operator/scopes/$scope/takedown'
 import { Route as ApiOperatorScopesScopeRestoreRouteImport } from './routes/api/operator/scopes/$scope/restore'
 import { Route as V1PluginsNameVVersionChar91indexChar93RouteImport } from './routes/v1/plugins/$name/v/$version/[index]'
@@ -463,6 +464,12 @@ const ApiScopesScopeMembersMemberIdRoute =
     path: '/$memberId',
     getParentRoute: () => ApiScopesScopeMembersRoute,
   } as any)
+const ApiOperatorScopesScopeVerifyRoute =
+  ApiOperatorScopesScopeVerifyRouteImport.update({
+    id: '/$scope/verify',
+    path: '/$scope/verify',
+    getParentRoute: () => ApiOperatorScopesRoute,
+  } as any)
 const ApiOperatorScopesScopeTakedownRoute =
   ApiOperatorScopesScopeTakedownRouteImport.update({
     id: '/$scope/takedown',
@@ -575,6 +582,7 @@ export interface FileRoutesByFullPath {
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
   '/api/operator/scopes/$scope/restore': typeof ApiOperatorScopesScopeRestoreRoute
   '/api/operator/scopes/$scope/takedown': typeof ApiOperatorScopesScopeTakedownRoute
+  '/api/operator/scopes/$scope/verify': typeof ApiOperatorScopesScopeVerifyRoute
   '/api/scopes/$scope/members/$memberId': typeof ApiScopesScopeMembersMemberIdRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
@@ -654,6 +662,7 @@ export interface FileRoutesByTo {
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
   '/api/operator/scopes/$scope/restore': typeof ApiOperatorScopesScopeRestoreRoute
   '/api/operator/scopes/$scope/takedown': typeof ApiOperatorScopesScopeTakedownRoute
+  '/api/operator/scopes/$scope/verify': typeof ApiOperatorScopesScopeVerifyRoute
   '/api/scopes/$scope/members/$memberId': typeof ApiScopesScopeMembersMemberIdRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
@@ -736,6 +745,7 @@ export interface FileRoutesById {
   '/v1/plugins/$name/versions': typeof V1PluginsNameVersionsRoute
   '/api/operator/scopes/$scope/restore': typeof ApiOperatorScopesScopeRestoreRoute
   '/api/operator/scopes/$scope/takedown': typeof ApiOperatorScopesScopeTakedownRoute
+  '/api/operator/scopes/$scope/verify': typeof ApiOperatorScopesScopeVerifyRoute
   '/api/scopes/$scope/members/$memberId': typeof ApiScopesScopeMembersMemberIdRoute
   '/v1/plugins/$name/comments/$commentId/vote': typeof V1PluginsNameCommentsCommentIdVoteRoute
   '/v1/plugins/$name/reviews/$reviewId/vote': typeof V1PluginsNameReviewsReviewIdVoteRoute
@@ -819,6 +829,7 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name/versions'
     | '/api/operator/scopes/$scope/restore'
     | '/api/operator/scopes/$scope/takedown'
+    | '/api/operator/scopes/$scope/verify'
     | '/api/scopes/$scope/members/$memberId'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
@@ -898,6 +909,7 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name/versions'
     | '/api/operator/scopes/$scope/restore'
     | '/api/operator/scopes/$scope/takedown'
+    | '/api/operator/scopes/$scope/verify'
     | '/api/scopes/$scope/members/$memberId'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
@@ -979,6 +991,7 @@ export interface FileRouteTypes {
     | '/v1/plugins/$name/versions'
     | '/api/operator/scopes/$scope/restore'
     | '/api/operator/scopes/$scope/takedown'
+    | '/api/operator/scopes/$scope/verify'
     | '/api/scopes/$scope/members/$memberId'
     | '/v1/plugins/$name/comments/$commentId/vote'
     | '/v1/plugins/$name/reviews/$reviewId/vote'
@@ -1541,6 +1554,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiScopesScopeMembersMemberIdRouteImport
       parentRoute: typeof ApiScopesScopeMembersRoute
     }
+    '/api/operator/scopes/$scope/verify': {
+      id: '/api/operator/scopes/$scope/verify'
+      path: '/$scope/verify'
+      fullPath: '/api/operator/scopes/$scope/verify'
+      preLoaderRoute: typeof ApiOperatorScopesScopeVerifyRouteImport
+      parentRoute: typeof ApiOperatorScopesRoute
+    }
     '/api/operator/scopes/$scope/takedown': {
       id: '/api/operator/scopes/$scope/takedown'
       path: '/$scope/takedown'
@@ -1725,11 +1745,13 @@ const ApiOperatorReportsRouteWithChildren =
 interface ApiOperatorScopesRouteChildren {
   ApiOperatorScopesScopeRestoreRoute: typeof ApiOperatorScopesScopeRestoreRoute
   ApiOperatorScopesScopeTakedownRoute: typeof ApiOperatorScopesScopeTakedownRoute
+  ApiOperatorScopesScopeVerifyRoute: typeof ApiOperatorScopesScopeVerifyRoute
 }
 
 const ApiOperatorScopesRouteChildren: ApiOperatorScopesRouteChildren = {
   ApiOperatorScopesScopeRestoreRoute: ApiOperatorScopesScopeRestoreRoute,
   ApiOperatorScopesScopeTakedownRoute: ApiOperatorScopesScopeTakedownRoute,
+  ApiOperatorScopesScopeVerifyRoute: ApiOperatorScopesScopeVerifyRoute,
 }
 
 const ApiOperatorScopesRouteWithChildren =

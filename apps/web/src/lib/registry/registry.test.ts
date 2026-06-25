@@ -111,6 +111,11 @@ function stubAll() {
     if (url.endsWith(".tgz")) {
       return Promise.resolve(new Response(tarball, { status: 200 }));
     }
+    if (url.includes("/-/scope/%40brika")) {
+      return Promise.resolve(
+        json({ ok: true, scope: "@brika", displayName: "Brika Labs", verified: true }),
+      );
+    }
     if (url.includes("registry.brika.dev")) return Promise.resolve(json(registryPackument));
     return Promise.resolve(json({ error: "not found" }, 404));
   }) as typeof fetch;

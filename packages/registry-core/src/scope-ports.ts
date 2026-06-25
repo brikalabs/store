@@ -15,6 +15,8 @@ export interface ScopeRecord {
   /** Operator takedown reason, or null when active (ORG-007). A taken-down scope is withdrawn from
    *  public listings, but the record and members are retained so an admin can restore it. */
   readonly takedown: string | null;
+  /** Operator-granted "verified organization" badge. */
+  readonly verified: boolean;
 }
 
 /**
@@ -42,6 +44,8 @@ export interface ScopeStore {
   setIcon(scope: string, iconKey: string | null): Promise<void>;
   /** Set the operator takedown reason (null restores the scope); ORG-007. */
   setTakedown(scope: string, reason: string | null): Promise<void>;
+  /** Set the operator-granted "verified organization" badge. */
+  setVerified(scope: string, verified: boolean): Promise<void>;
 }
 /** DI token for the {@link ScopeStore} port. */
 export const ScopeStore = token<ScopeStore>("ScopeStore");
@@ -119,5 +123,7 @@ export interface ScopePublic {
   readonly links: readonly ScopeLink[];
   /** Whether the scope has an uploaded icon (the storage key itself is not public). */
   readonly hasIcon: boolean;
+  /** Operator-granted "verified organization" badge. */
+  readonly verified: boolean;
   readonly verifiedDomains: string[];
 }

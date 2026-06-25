@@ -1,7 +1,8 @@
 import { Checkbox } from "@brika/clay/components/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
-import { Layers, Search } from "lucide-react";
+import { BadgeCheck, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import {
   BulkBar,
@@ -19,6 +20,7 @@ interface OperatorScope {
   scope: string;
   displayName: string | null;
   takedown: string | null;
+  verified: boolean;
   openReports: number;
 }
 
@@ -39,6 +41,7 @@ function OperatorScopeRow({
   onToggle,
   onTakedown,
   onRestore,
+  onVerify,
 }: Readonly<{
   scope: OperatorScope;
   selected: boolean;
@@ -46,6 +49,7 @@ function OperatorScopeRow({
   onToggle: () => void;
   onTakedown: (reason: string) => void;
   onRestore: () => void;
+  onVerify: (verified: boolean) => void;
 }>) {
   const t = useT();
   return (
@@ -56,7 +60,12 @@ function OperatorScopeRow({
         aria-label={t("operator:selectScope", { scope: scope.scope })}
         className="shrink-0"
       />
-      <Layers className="size-5 shrink-0 text-muted-foreground" />
+      <GradientAvatar
+        seed={scope.scope}
+        label={scope.displayName ?? scope.scope}
+        imageUrl={`/api/scopes/${encodeURIComponent(scope.scope)}/icon`}
+        size={36}
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate font-medium font-mono text-sm">{scope.scope}</span>
@@ -77,6 +86,20 @@ function OperatorScopeRow({
             : t("operator:scopeReason", { reason: scope.takedown })}
         </div>
       </div>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onVerify(!scope.verified)}
+        title={scope.verified ? t("operator:verified") : t("operator:verify")}
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold text-xs transition-colors disabled:opacity-50 ${
+          scope.verified
+            ? "bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 dark:text-sky-400"
+            : "border border-border text-muted-foreground hover:border-sky-500/40 hover:text-foreground"
+        }`}
+      >
+        <BadgeCheck className="size-3.5" />
+        {scope.verified ? t("operator:verified") : t("operator:verify")}
+      </button>
       <TakedownControls
         takenDown={scope.takedown !== null}
         busy={busy}
@@ -159,6 +182,7 @@ export function OperatorScopesPage() {
             onToggle={() => toggle(scope.scope)}
             onTakedown={(reason) => act(scope.scope, "takedown", { reason })}
             onRestore={() => act(scope.scope, "restore")}
+            onVerify={(verified) => act(scope.scope, "verify", { verified })}
           />
         ))}
       </ul>

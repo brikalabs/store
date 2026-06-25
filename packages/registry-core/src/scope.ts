@@ -338,8 +338,22 @@ export class ScopeService {
       description: record.description,
       links: record.links,
       hasIcon: record.iconKey !== null,
+      verified: record.verified,
       verifiedDomains: domains.filter((d) => d.verified).map((d) => d.domain),
     };
+  }
+
+  /**
+   * Operator toggle of a scope's "verified organization" badge (manual moderation). NOT
+   * ownership-gated (an admin grants trust); the caller must already be an authorized operator.
+   * 404 when the scope does not exist.
+   */
+  async setVerified(scope: string, verified: boolean): Promise<ScopeResult<{ verified: boolean }>> {
+    if ((await this.#scopes.get(scope)) === null) {
+      return refuse(HttpStatus.NOT_FOUND, `scope ${scope} does not exist`);
+    }
+    await this.#scopes.setVerified(scope, verified);
+    return { ok: true, verified };
   }
 
   /** List the trusted-publisher bindings for this scope (admin only; PUB-016). */

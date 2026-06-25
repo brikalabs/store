@@ -76,7 +76,8 @@ export async function getScopePage(scope: string): Promise<ScopePage | null> {
   return {
     scope,
     displayName: entity?.displayName ?? publisher?.name ?? null,
-    verified: entity !== null || (publisher?.verified ?? false),
+    // The blue "verified organization" badge is an operator grant on the scope entity.
+    verified: entity?.verified ?? false,
     description: entity?.description ?? null,
     links: entity?.links ?? [],
     hasIcon: entity?.hasIcon ?? false,

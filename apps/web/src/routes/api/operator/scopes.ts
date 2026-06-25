@@ -30,6 +30,7 @@ export const Route = createFileRoute("/api/operator/scopes")({
             scope: s.scope,
             displayName: s.displayName,
             takedown: s.takedown,
+            verified: s.verified,
             openReports: reports.get(s.scope) ?? 0,
           }));
           return reply(paginated(items, page.total, { limit, offset }));

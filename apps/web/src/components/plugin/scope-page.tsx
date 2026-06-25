@@ -14,8 +14,8 @@ import type { ScopePage } from "@/lib/registry/registry";
  */
 export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
   const t = useT();
-  const { scope, displayName, description, links, hasIcon, verifiedDomains, plugins } = page;
-  const verifiedOrg = verifiedDomains.length > 0;
+  const { scope, displayName, verified, description, links, hasIcon, verifiedDomains, plugins } =
+    page;
   const name = displayName ?? scope;
   const weekly = plugins.reduce((sum, plugin) => sum + plugin.downloadsWeekly, 0);
 
@@ -31,7 +31,7 @@ export function ScopeView({ page }: Readonly<{ page: ScopePage }>) {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h1 className="font-bold font-heading text-3xl tracking-tight">{name}</h1>
-            {verifiedOrg ? <VerifiedBadge className="size-6" /> : null}
+            {verified ? <VerifiedBadge className="size-6" /> : null}
           </div>
           <p className="mt-1 font-mono text-muted-foreground text-sm">{scope}</p>
           {description !== null && description.length > 0 ? (

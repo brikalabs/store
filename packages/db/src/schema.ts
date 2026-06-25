@@ -78,6 +78,8 @@ export const regScopes = sqliteTable("reg_scopes", {
    * Set only via the operator-admin-gated endpoint, never by scope members.
    */
   takedown: text("takedown"),
+  /** Operator-granted "verified organization" badge (manual moderation). */
+  verified: integer("verified", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at").notNull().default(epoch),
 });
 

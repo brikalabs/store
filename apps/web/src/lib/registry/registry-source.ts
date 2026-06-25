@@ -53,6 +53,8 @@ export interface RegistryScope {
   readonly description: string | null;
   readonly links: { label: string; url: string }[];
   readonly hasIcon: boolean;
+  /** Operator-granted "verified organization" badge. */
+  readonly verified: boolean;
   readonly verifiedDomains: string[];
 }
 
@@ -67,6 +69,7 @@ export async function getRegistryScope(scope: string): Promise<RegistryScope | n
     description: data.description,
     links: data.links,
     hasIcon: data.iconKey !== null,
+    verified: data.verified,
     verifiedDomains: data.verifiedDomains,
   };
 }
