@@ -1,82 +1,58 @@
-import type { PluginSummary, SearchCapability } from "@brika/registry-contract";
-import { scopeOf } from "@brika/registry-core";
-import { Link, useNavigate } from "@tanstack/react-router";
-import {
-  Box,
-  Code,
-  FileText,
-  Filter,
-  Layers,
-  type LucideIcon,
-  Search,
-  ShieldCheck,
-  TrendingUp,
-  Users,
-  Zap,
-} from "lucide-react";
-import { type ReactNode, type SyntheticEvent, useState } from "react";
-import type { Gradient } from "@/components/clay/gradients";
+import { Switch } from "@brika/clay";
+import type { PluginSummary, SearchDirection } from "@brika/registry-contract";
+import { Link } from "@tanstack/react-router";
+import { Filter, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import type { ReactNode } from "react";
+import { PageNav } from "@/components/clay/pagination";
 import { GradientAvatar, PluginIcon } from "@/components/clay/plugin-icon";
+import { CAPABILITY_TILES } from "@/components/plugin/capability-tiles";
 import { ListingCard } from "@/components/plugin/listing-card";
-import { type SortKey, SortMenu, sortPlugins } from "@/components/plugin/sort-menu";
+import { type SortKey, SortMenu } from "@/components/plugin/sort-menu";
+import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { useT } from "@/i18n";
+import { paginate } from "@/lib/pagination";
+import { topScopes } from "@/lib/registry/matching-scopes";
 
-export type CapabilityTile = {
-  key: SearchCapability;
-  label: string;
-  glyph: LucideIcon;
-  gradient: Gradient;
-};
-
-export const CAPABILITY_TILES: CapabilityTile[] = [
-  { key: "tools", label: "Tools", glyph: Code, gradient: ["#FF8A5B", "#F2542D"] },
-  { key: "blocks", label: "Blocks", glyph: Layers, gradient: ["#5B8DEF", "#3A5BD9"] },
-  { key: "bricks", label: "Bricks", glyph: Box, gradient: ["#19C39C", "#0E8C6F"] },
-  { key: "sparks", label: "Sparks", glyph: Zap, gradient: ["#A66BFF", "#6D34C9"] },
-  { key: "pages", label: "Pages", glyph: FileText, gradient: ["#7C8696", "#525C6B"] },
-];
-
-type Scope = { scope: string; name: string; count: number };
-
-function topScopes(plugins: PluginSummary[], limit: number): Scope[] {
-  const byScope = new Map<string, Scope>();
-  for (const plugin of plugins) {
-    const scope = scopeOf(plugin.name);
-    if (scope === null) continue;
-    const existing = byScope.get(scope);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      byScope.set(scope, {
-        scope,
-        name: plugin.author?.name ?? scope,
-        count: 1,
-      });
-    }
-  }
-  return [...byScope.values()].sort((a, b) => b.count - a.count).slice(0, limit);
+/** Server-paginated grid (the host owns offset/total and re-queries on change). */
+export interface PageControl {
+  readonly offset: number;
+  readonly total: number;
+  readonly pageSize: number;
+  readonly onChange: (offset: number) => void;
 }
 
-/** The dense discovery index: filter rail, plugin grid, and a Trending + Top authors rail. */
+/**
+ * The dense discovery index: a filter rail, the plugin grid, and a Trending + Popular-spaces rail.
+ * Fully controlled - sort/verified state and the data come from the host, which decides whether to
+ * re-query the server (`/plugins`, URL-driven + paginated) or sort/filter in memory (home A/B).
+ */
 export function DiscoverIndex({
   plugins,
-  total,
+  railsPlugins,
+  count,
+  field,
+  direction,
+  verifiedOnly,
+  onSortChange,
+  onVerifiedChange,
+  page,
   title,
-}: Readonly<{ plugins: PluginSummary[]; total: number; title?: string }>) {
+}: Readonly<{
+  plugins: PluginSummary[];
+  railsPlugins: PluginSummary[];
+  count: number;
+  field: SortKey;
+  direction: SearchDirection;
+  verifiedOnly: boolean;
+  onSortChange: (field: SortKey, direction: SearchDirection) => void;
+  onVerifiedChange: (verified: boolean) => void;
+  page?: PageControl;
+  title?: string;
+}>) {
   const t = useT();
-  const navigate = useNavigate();
-  const [term, setTerm] = useState("");
-  const [sort, setSort] = useState<SortKey>("downloads");
   const heading = title ?? t("plugin:discoverTitle");
-  const scopes = topScopes(plugins, 5);
-  const trending = plugins.slice(0, 5);
-  const sorted = sortPlugins(plugins, sort);
-
-  function submitFilter(event: SyntheticEvent) {
-    event.preventDefault();
-    const next = term.trim();
-    navigate({ to: "/plugins", search: next.length > 0 ? { q: next } : {} });
-  }
+  const trending = railsPlugins.slice(0, 5);
+  const scopes = topScopes(railsPlugins, 5);
 
   return (
     <div className="flex flex-col gap-6">
@@ -84,48 +60,61 @@ export function DiscoverIndex({
         <div>
           <h1 className="font-bold font-heading text-3xl tracking-tight">{heading}</h1>
           <p className="mt-1 text-muted-foreground text-sm">
-            {t("plugin:verifiedScopedPlugins", { count: total })}
+            {t("plugin:verifiedScopedPlugins", { count })}
           </p>
         </div>
-        <SortMenu value={sort} onChange={setSort} />
+        <div className="flex items-center gap-3">
+          <span className="font-medium text-muted-foreground text-xs uppercase tracking-[0.08em]">
+            {t("plugin:sort")}
+          </span>
+          <SortMenu field={field} direction={direction} onChange={onSortChange} />
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[206px_1fr_236px]">
+      <div className="grid items-start gap-6 lg:grid-cols-[206px_1fr_236px]">
         <aside className="hidden flex-col gap-6 lg:flex">
-          <form onSubmit={submitFilter} className="relative">
-            <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
-            <input
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-              placeholder={t("plugin:filterPlugins")}
-              className="h-10 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/50"
-            />
-          </form>
           <FilterGroup label={t("plugin:capability")} icon={<Filter className="size-3.5" />}>
             {CAPABILITY_TILES.map((tile) => (
               <Link
                 key={tile.key}
                 to="/plugins"
-                search={{ capability: tile.key }}
-                className="flex items-center justify-between rounded-md px-1 py-1 text-muted-foreground text-sm transition-colors hover:text-foreground"
+                search={{ capabilities: [tile.key] }}
+                className="flex items-center gap-2.5 rounded-md px-1 py-1 text-muted-foreground text-sm transition-colors hover:text-foreground"
               >
+                <tile.glyph className="size-3.5" />
                 {tile.label}
               </Link>
             ))}
           </FilterGroup>
           <div className="h-px bg-border" />
           <FilterGroup label={t("plugin:trust")}>
-            <span className="flex items-center gap-2 text-foreground text-sm">
-              <ShieldCheck className="size-3.5 text-brand-ink" />
-              {t("plugin:verifiedOnly")}
-            </span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-foreground text-sm">
+                <ShieldCheck className="size-3.5 text-brand-ink" />
+                {t("plugin:verifiedOnly")}
+              </span>
+              <Switch
+                checked={verifiedOnly}
+                onCheckedChange={onVerifiedChange}
+                size="sm"
+                aria-label={t("plugin:verifiedOnly")}
+              />
+            </div>
           </FilterGroup>
         </aside>
 
-        <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
-          {sorted.map((plugin) => (
-            <ListingCard key={plugin.name} plugin={plugin} />
-          ))}
+        <div className="flex flex-col gap-5">
+          <div className="grid auto-rows-min gap-3.5 sm:grid-cols-2">
+            {plugins.map((plugin) => (
+              <ListingCard key={plugin.name} plugin={plugin} />
+            ))}
+          </div>
+          {page ? (
+            <PageNav
+              pagination={paginate(page.total, { limit: page.pageSize, offset: page.offset })}
+              onPageChange={(p) => page.onChange((p - 1) * page.pageSize)}
+            />
+          ) : null}
         </div>
 
         <aside className="hidden flex-col gap-5 lg:flex">
@@ -175,8 +164,9 @@ export function DiscoverIndex({
                     size={30}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold text-foreground text-xs">
-                      {scope.name}
+                    <div className="flex items-center gap-0.5 font-semibold text-foreground text-xs">
+                      <span className="truncate">{scope.name}</span>
+                      {scope.verified ? <VerifiedBadge className="size-3.5" /> : null}
                     </div>
                     <div className="text-[10.5px] text-muted-foreground">
                       {t("plugin:pluginCount", { count: scope.count })}

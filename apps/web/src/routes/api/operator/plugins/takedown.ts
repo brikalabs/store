@@ -12,10 +12,10 @@ const Body = z.object({
 });
 
 /**
- * `POST /api/operator/packages/takedown` - operator takedown of a package version: hides it from new
+ * `POST /api/operator/plugins/takedown` - operator takedown of a package version: hides it from new
  * installs but keeps the bytes for pinned lockfiles, surfaces the reason. Operator-gated; audited.
  */
-export const Route = createFileRoute("/api/operator/packages/takedown")({
+export const Route = createFileRoute("/api/operator/plugins/takedown")({
   server: {
     handlers: {
       POST: ({ request }) =>

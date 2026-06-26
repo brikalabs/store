@@ -1,0 +1,1 @@
+ALTER TABLE `reg_scopes` ADD `verified` integer DEFAULT false NOT NULL;

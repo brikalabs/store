@@ -41,8 +41,8 @@ describe("listScopesForMember", () => {
 
     const result = await listScopesForMember(db, "alice");
     expect(result).toEqual([
-      { scope: "@acme", role: "admin", displayName: "Acme Inc" },
-      { scope: "@acme-labs", role: "member", displayName: null },
+      { scope: "@acme", role: "admin", displayName: "Acme Inc", verified: false },
+      { scope: "@acme-labs", role: "member", displayName: null, verified: false },
     ]);
   });
 
@@ -58,8 +58,10 @@ describe("listAllPackages (operator directory)", () => {
 
   // A bare package row (no scope membership / versions) with an explicit `createdAt`, so the
   // newest-first ordering and the page window are deterministic across tests.
+  // `createdAt` is a relative ordering seconds value; the column takes an ISO-8601 string.
   async function pkg(name: string, scopeName: string, createdAt: number) {
-    await db.insert(regPackages).values({ name, scope: scopeName, createdAt });
+    const at = new Date(createdAt * 1000).toISOString();
+    await db.insert(regPackages).values({ name, scope: scopeName, createdAt: at });
   }
 
   test("reports owning scope, latest version, and version counts", async () => {

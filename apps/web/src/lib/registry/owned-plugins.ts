@@ -76,7 +76,9 @@ function buildSummary(
     publisher:
       scope === null
         ? undefined
-        : { id: scope, name: scopeName.get(scope) ?? scope, verified: true },
+        : // `verified` is the scope's verified-organization badge; this fallback (hidden/reserved
+          // plugins absent from the catalog) has no scope status to assert, so it stays false.
+          { id: scope, name: scopeName.get(scope) ?? scope, verified: false },
   });
 }
 

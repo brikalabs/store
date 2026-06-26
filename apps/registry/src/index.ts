@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { inject, runInContext } from "@brika/di";
 import { ScopeService } from "@brika/registry-core";
-import { jsonLogger } from "@brika/router";
+import { devError, jsonLogger, reply } from "@brika/router";
 import { getDb } from "@brika/store-db";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -12,7 +12,7 @@ import { publishController } from "./controllers/publish";
 import { scopeController } from "./controllers/scope";
 import { searchController } from "./controllers/search";
 import { statsController } from "./controllers/stats";
-import { registryAdmins, vars } from "./env";
+import { isDevelopment, registryAdmins, vars } from "./env";
 import { logRoutes, mount, type RegistryEnv } from "./http/router";
 import { provideRegistry } from "./services";
 
@@ -63,6 +63,13 @@ mount(app, controllers, {
   around: (c, run) => withRegistry(c.env, baseUrlFor(c.req.url), run),
   logger: jsonLogger("registry request"),
 });
+
+// A non-`HttpError` that reaches here is a real bug (the router serializes HttpErrors itself and
+// re-throws the rest; the request logger already recorded it). In local dev, surface the message +
+// stack to make it debuggable from the response; in production, a generic 500 (no internals leak).
+app.onError((error) =>
+  isDevelopment() ? devError(error) : reply({ error: "Internal Server Error" }, 500),
+);
 
 // Log the full route table once on cold start, so the deployed worker's logs show what it serves.
 logRoutes(app);

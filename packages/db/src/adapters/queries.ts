@@ -16,8 +16,8 @@ import {
 export interface MemberScope {
   readonly scope: string;
   readonly role: ScopeRole;
-  /** The scope's verified display name (null falls back to the scope). */
-  readonly displayName: string | null;
+  readonly displayName: string | null; // null falls back to the scope
+  readonly verified: boolean;
 }
 
 /** Every scope a `userId` is a member of, sorted by scope; backs the storefront's "do I own this package" check. */
@@ -27,6 +27,7 @@ export async function listScopesForMember(db: Db, userId: string): Promise<Membe
       scope: regScopeMembers.scope,
       role: regScopeMembers.role,
       displayName: regScopes.displayName,
+      verified: regScopes.verified,
     })
     .from(regScopeMembers)
     .innerJoin(regScopes, eq(regScopes.scope, regScopeMembers.scope))
@@ -36,6 +37,7 @@ export async function listScopesForMember(db: Db, userId: string): Promise<Membe
     scope: row.scope,
     role: row.role === "admin" ? "admin" : "member",
     displayName: row.displayName,
+    verified: row.verified,
   }));
 }
 
@@ -59,14 +61,15 @@ export async function listPackageNamesForScopes(db: Db, scopes: string[]): Promi
 export interface OperatorPackage {
   readonly name: string;
   readonly scope: string | null;
-  /** Owning scope's verified display name, or null when the scope is unclaimed. */
-  readonly scopeDisplayName: string | null;
+  readonly scopeDisplayName: string | null; // null when the scope is unclaimed
   readonly latestVersion: string | null;
   readonly versionCount: number;
   readonly takenDownCount: number;
   readonly yankedCount: number;
-  /** ISO timestamp of the most recently published version, or null when the package has none. */
-  readonly updatedAt: string | null;
+  readonly updatedAt: string | null; // latest publish time; null when no versions
+  readonly verified: boolean;
+  /** Whole-package operator takedown reason (null = active); withdraws every version incl. future. */
+  readonly takedown: string | null;
 }
 
 /**
@@ -91,6 +94,8 @@ export async function listAllPackages(
       name: regPackages.name,
       scope: regPackages.scope,
       scopeDisplayName: regScopes.displayName,
+      verified: regPackages.verified,
+      takedown: regPackages.takedown,
     })
     .from(regPackages)
     .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
@@ -119,7 +124,8 @@ export async function listAllPackages(
   ]);
 
   const latestByName = new Map(latest.map((row) => [row.name, row.version]));
-  const zeroCounts = () => ({ total: 0, takenDown: 0, yanked: 0, lastPublished: 0 });
+  // ISO-8601 sorts lexicographically, so `>` finds the latest publish and `""` is below any real one.
+  const zeroCounts = () => ({ total: 0, takenDown: 0, yanked: 0, lastPublished: "" });
   const counts = new Map<string, ReturnType<typeof zeroCounts>>();
   for (const v of versions) {
     const c = counts.get(v.name) ?? zeroCounts();
@@ -140,7 +146,9 @@ export async function listAllPackages(
       versionCount: c.total,
       takenDownCount: c.takenDown,
       yankedCount: c.yanked,
-      updatedAt: c.lastPublished > 0 ? new Date(c.lastPublished * 1000).toISOString() : null,
+      updatedAt: c.lastPublished || null,
+      verified: pkg.verified,
+      takedown: pkg.takedown,
     };
   });
 

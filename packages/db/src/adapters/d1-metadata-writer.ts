@@ -38,7 +38,6 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
   }
 
   async commitVersion({ scope, version, tag }: CommitVersionInput): Promise<void> {
-    const publishedAt = Math.floor(new Date(version.publishedAt).getTime() / 1000);
     const statements: BatchItem<"sqlite">[] = [
       this.#db.insert(regPackages).values({ name: version.name, scope }).onConflictDoNothing(),
       this.#db.insert(regVersions).values({
@@ -48,7 +47,7 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
         integrity: version.integrity,
         shasum: version.shasum,
         size: version.size,
-        publishedAt,
+        publishedAt: version.publishedAt,
         deprecated: version.deprecated,
         yanked: version.yanked,
         provenance: version.provenance ?? undefined,
@@ -65,7 +64,12 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
     // A non-`latest` tag (e.g. a `beta` push) leaves the listed version untouched, so skip it.
     if (tag === "latest") {
       statements.push(
-        ...this.#reindexStatements(version.name, version.version, version.manifest, publishedAt),
+        ...this.#reindexStatements(
+          version.name,
+          version.version,
+          version.manifest,
+          version.publishedAt,
+        ),
       );
     }
 
@@ -95,6 +99,19 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
       .set({ takedown: reason })
       .where(and(eq(regVersions.name, name), eq(regVersions.version, version)));
     await this.#refreshLatestTag(name);
+  }
+
+  async setVerified(name: string, verified: boolean): Promise<void> {
+    await this.#db.update(regPackages).set({ verified }).where(eq(regPackages.name, name));
+  }
+
+  /**
+   * Take down (or restore, with null) the whole package. A flag on the package row, not the versions:
+   * the search query filters on it live and {@link D1MetadataReader} surfaces it, so this withdraws
+   * every version, current AND future, without touching the per-version takedowns or the projection.
+   */
+  async setPackageTakedown(name: string, reason: string | null): Promise<void> {
+    await this.#db.update(regPackages).set({ takedown: reason }).where(eq(regPackages.name, name));
   }
 
   /**
@@ -169,13 +186,12 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
   /**
    * Statements that reproject `name`'s search row to `version`: clear its keyword rows, upsert the
    * denormalized `reg_search` row (the FTS index follows via triggers), then re-insert its keywords.
-   * `publishedAt` is in unix seconds, matching the `reg_versions` column.
    */
   #reindexStatements(
     name: string,
     version: string,
     manifest: Record<string, unknown>,
-    publishedAt: number,
+    publishedAt: string,
   ): BatchItem<"sqlite">[] {
     const fields = projectManifest(manifest);
     const row = { name, version, publishedAt, ...fields, keywords: fields.keywords.join(" ") };

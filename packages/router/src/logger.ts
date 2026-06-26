@@ -8,7 +8,6 @@ export interface RouteLogEntry {
   readonly method: string;
   /** The route pattern that matched, e.g. `/-/package/:scope?/:pkg/:version/deprecate`. */
   readonly pattern: string;
-  /** The concrete request path. */
   readonly path: string;
   readonly status: number;
   readonly durationMs: number;

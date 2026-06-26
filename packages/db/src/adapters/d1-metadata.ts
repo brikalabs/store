@@ -4,7 +4,7 @@ import {
   type PackageRecord,
   type PackageVersion,
   Provenance,
-  type ScopePublisher,
+  scopePublisher,
 } from "@brika/registry-core";
 import { eq } from "drizzle-orm";
 import { Db } from "../client";
@@ -29,7 +29,12 @@ export class D1MetadataReader implements MetadataReader {
       pkg.scope === null
         ? Promise.resolve([])
         : this.#db
-            .select({ scope: regScopes.scope, displayName: regScopes.displayName })
+            .select({
+              scope: regScopes.scope,
+              displayName: regScopes.displayName,
+              takedown: regScopes.takedown,
+              verified: regScopes.verified,
+            })
             .from(regScopes)
             .where(eq(regScopes.scope, pkg.scope))
             .limit(1),
@@ -39,8 +44,8 @@ export class D1MetadataReader implements MetadataReader {
     for (const row of tagRows) distTags[row.tag] = row.version;
 
     const scope = scopeRows[0];
-    const publisher: ScopePublisher | null =
-      scope === undefined ? null : { id: scope.scope, name: scope.displayName ?? scope.scope };
+    const publisher =
+      scope === undefined ? null : scopePublisher(scope.scope, scope.displayName, scope.verified);
 
     const versions: PackageVersion[] = versionRows.map((row) => ({
       name: row.name,
@@ -49,7 +54,7 @@ export class D1MetadataReader implements MetadataReader {
       integrity: row.integrity,
       shasum: row.shasum,
       size: row.size,
-      publishedAt: new Date(row.publishedAt * 1000).toISOString(),
+      publishedAt: row.publishedAt,
       deprecated: row.deprecated,
       yanked: row.yanked,
       takedownReason: row.takedown,
@@ -63,7 +68,10 @@ export class D1MetadataReader implements MetadataReader {
       distTags,
       versions,
       publisher,
-      createdAt: new Date(pkg.createdAt * 1000).toISOString(),
+      verified: pkg.verified,
+      takedown: pkg.takedown,
+      scopeTakedown: scope?.takedown ?? null,
+      createdAt: pkg.createdAt,
     };
   }
 }

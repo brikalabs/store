@@ -1,4 +1,5 @@
 {
+  "verifiedOrg": "Organização verificada",
   "discussion": "Discussão",
   "commentPlaceholder": "Faça uma pergunta ou compartilhe uma dica",
   "commentPost": "Publicar comentário",
@@ -72,6 +73,7 @@
   "installsFromRegistry": "Instala a partir do registro",
   "installsCount": "{installs} instalações",
   "capabilitiesCount": "{count, plural, one {# capacidade} other {# capacidades}}",
+  "capsCount": "{count} caps",
   "searchPlaceholder": "Buscar por nome ou pacote…",
   "filterByStatus": "Filtrar por status",
   "filterAll": "Todos",
@@ -102,7 +104,6 @@
   "sort": "Ordenar",
   "sortRelevance": "Relevância",
   "sortDownloads": "Mais baixados",
-  "sortRating": "Mais bem avaliados",
   "sortRecent": "Atualizados recentemente",
   "sortName": "Nome",
   "statusPublished": "Publicado",

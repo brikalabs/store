@@ -10,14 +10,11 @@ import type { PublishIdentity } from "./publish";
 
 /** A binding: scope `@x` may be published from `provider`'s `repository` + `workflow`. */
 export interface TrustedPublisher {
-  /** The scope this binding authorizes, e.g. `@brika`. */
-  readonly scope: string;
-  /** OIDC provider this binding trusts: `github`, `gitlab`, ... (matched against the issuer). */
+  readonly scope: string; // e.g. @brika
+  /** Matched against the OIDC issuer; e.g. `github`, `gitlab`. */
   readonly provider: string;
-  /** The project allowed to publish: GitHub `owner/repo`, GitLab `group/project`. */
-  readonly repository: string;
-  /** Workflow/config filename, e.g. `publish.yml` / `.gitlab-ci.yml` (from the OIDC ref claim). */
-  readonly workflow: string;
+  readonly repository: string; // owner/repo or group/project
+  readonly workflow: string; // e.g. publish.yml, .gitlab-ci.yml
 }
 
 /** Request-body schema for a trusted-publisher binding: provider + project + workflow filename,

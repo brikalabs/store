@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Search, Sparkles, TrendingUp } from "lucide-react";
 import { gradientCss } from "@/components/clay/gradients";
 import { useSearch } from "@/components/layout/search-context";
-import { CAPABILITY_TILES } from "@/components/plugin/discover-index";
+import { CAPABILITY_TILES } from "@/components/plugin/capability-tiles";
 import { ListingCard } from "@/components/plugin/listing-card";
 import { useT } from "@/i18n";
 import { HeroCard } from "./hero-card";
@@ -84,7 +84,7 @@ export function DirectionSpotlight({ plugins, total }: DirectionProps) {
             <Link
               key={tile.key}
               to="/plugins"
-              search={{ q: tile.key }}
+              search={{ capabilities: [tile.key] }}
               className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-brand"
             >
               <span

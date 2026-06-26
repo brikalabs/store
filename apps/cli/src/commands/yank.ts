@@ -1,7 +1,7 @@
 import { CliError, defineCommand } from "@brika/cli-kit";
-import * as p from "@brika/cli-kit/prompts";
-import { loadConfig } from "../lib/config";
+import { requireAuth } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
+import { withSpinner } from "../lib/spinner";
 
 export const yank = defineCommand({
   name: "yank",
@@ -22,18 +22,11 @@ export const yank = defineCommand({
       throw new CliError("usage: brika yank <pkg> <version>");
     }
 
-    const { token, registry } = await loadConfig();
-    if (token === undefined) {
-      throw new CliError("not logged in - run `brika login` (or set BRIKA_TOKEN)");
-    }
-
+    const { token, registry } = await requireAuth();
     const yanked = !values.undo;
-    const spin = p.spinner();
-    spin.start(yanked ? "Yanking" : "Restoring");
-    await new RegistryClient(registry).yank(token, pkg, version, yanked).catch((error: unknown) => {
-      spin.stop("Failed");
-      throw error;
+    await withSpinner(yanked ? "Yanking" : "Restoring", async () => {
+      await new RegistryClient(registry).yank(token, pkg, version, yanked);
+      return yanked ? `Yanked ${pkg}@${version}` : `Restored ${pkg}@${version}`;
     });
-    spin.stop(yanked ? `Yanked ${pkg}@${version}` : `Restored ${pkg}@${version}`);
   },
 });

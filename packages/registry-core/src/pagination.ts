@@ -6,9 +6,7 @@
  * the client) never carries the whole list.
  */
 export interface Pageable {
-  /** Maximum items to return. */
   readonly limit: number;
-  /** Items to skip from the start of the (filtered) list. */
   readonly offset: number;
 }
 

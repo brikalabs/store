@@ -15,3 +15,28 @@ export async function fetchJson<T>(
     return null;
   }
 }
+
+/**
+ * Send a JSON body (or none) to a same-origin API route and fold the response into a result:
+ * `{ ok: true }`, or `{ ok: false, error }` carrying the server's `{ error }` message. Lets a
+ * mutation hook branch on `ok` instead of re-implementing the fetch + error-read every time.
+ */
+export async function sendJson(
+  method: string,
+  url: string,
+  body?: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await fetch(url, {
+    method,
+    headers: body === undefined ? undefined : { "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (res.ok) return { ok: true };
+  const data = (await res.json().catch(() => ({}))) as { error?: string };
+  return { ok: false, error: data.error ?? "Request failed" };
+}
+
+/** {@link sendJson} with `POST`, for the common create/action endpoint. */
+export function postJson(url: string, body?: unknown) {
+  return sendJson("POST", url, body);
+}

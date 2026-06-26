@@ -1,4 +1,5 @@
 import {
+  type PluginAuthor,
   type PluginDetail,
   PluginDetail as PluginDetailSchema,
   type PluginSummary,
@@ -30,8 +31,10 @@ export interface MapOptions {
   /** SRI of the latest tarball (`sha512-...`). */
   readonly integrity?: string;
   readonly shasum?: string;
+  /** The package's "approved by Brika" flag (operator-curated). */
+  readonly verified?: boolean;
   /** The registry's verified publisher: the trusted "published by", overriding the manifest `author`. */
-  readonly publisher?: { readonly id: string; readonly name: string; readonly verified: boolean };
+  readonly publisher?: PluginAuthor;
 }
 
 /** Map a registry manifest to a `PluginDetail`; null when it is not a Brika plugin (no `engines.brika`). */
@@ -43,17 +46,17 @@ export function manifestToDetail(
   if (brikaEngine === undefined) return null;
   const { name, version } = manifest;
   const authorName = personName(manifest.author);
+  // Prefer the registry's verified publisher over the manifest `author`; fall back when unscoped.
+  const author =
+    options.publisher ??
+    (authorName === undefined ? undefined : { id: authorName, name: authorName, verified: false });
   const candidate = {
     name,
     displayName: manifest.displayName,
     description: manifest.description,
     version,
-    // Prefer the registry's verified publisher over the manifest `author`; fall back when unscoped.
-    author:
-      options.publisher ??
-      (authorName === undefined
-        ? undefined
-        : { id: authorName, name: authorName, verified: false }),
+    author,
+    verified: options.verified ?? false,
     keywords: manifest.keywords ?? [],
     iconUrl: manifest.icon ? assetUrl(name, version, manifest.icon) : undefined,
     screenshots: mapScreenshots(manifest.screenshots, (path) => assetUrl(name, version, path)),
@@ -101,6 +104,7 @@ export function mapCatalogPackages(packages: CatalogEntry[]): PluginSummary[] {
       updatedAt: entry.publishedAt,
       installs: entry.downloads?.total,
       downloadsWeekly: entry.downloads?.weekly,
+      verified: entry.verified,
       publisher: entry.publisher,
     });
     return summary === null ? [] : [summary];

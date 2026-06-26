@@ -1,0 +1,1 @@
+ALTER TABLE `reg_packages` ADD `verified` integer DEFAULT false NOT NULL;

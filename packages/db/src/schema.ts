@@ -1,6 +1,6 @@
 import type { Actor } from "@brika/registry-core";
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { customType, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * Registry tables: the source of truth for packages, immutable versions, and dist-tags (store/social
@@ -9,10 +9,28 @@ import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlit
 
 const epoch = sql`(unixepoch())`;
 
+/**
+ * A timestamp column: stored as a unix-seconds INTEGER (SQLite has no date type, and the search index
+ * does integer range math on it), but read and written by the app as an ISO-8601 string.
+ */
+const timestamp = customType<{ data: string; driverData: number }>({
+  dataType: () => "integer",
+  toDriver: (iso) => Math.floor(new Date(iso).getTime() / 1000),
+  fromDriver: (seconds) => new Date(seconds * 1000).toISOString(),
+});
+
 export const regPackages = sqliteTable("reg_packages", {
   name: text("name").primaryKey(),
   scope: text("scope"),
-  createdAt: integer("created_at").notNull().default(epoch),
+  createdAt: timestamp("created_at").notNull().default(epoch),
+  /** Operator-set "approved by Brika" trust badge (manual moderation, not domain proof). */
+  verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+  /**
+   * Operator takedown reason for the whole package. Null = active; non-null withdraws every version,
+   * current AND future, from public resolution/search (broader than a per-version {@link regVersions}
+   * takedown). Set only via the operator-admin-gated endpoint, never by the owner.
+   */
+  takedown: text("takedown"),
 });
 
 export const regVersions = sqliteTable(
@@ -22,13 +40,12 @@ export const regVersions = sqliteTable(
       .notNull()
       .references(() => regPackages.name, { onDelete: "cascade" }),
     version: text("version").notNull(),
-    /** The published package.json for this version. */
     manifest: text("manifest", { mode: "json" }).$type<Record<string, unknown>>().notNull(),
     /** Subresource Integrity (sha512), computed once and never changed. */
     integrity: text("integrity").notNull(),
     shasum: text("shasum").notNull(),
     size: integer("size").notNull(),
-    publishedAt: integer("published_at").notNull().default(epoch),
+    publishedAt: timestamp("published_at").notNull().default(epoch),
     deprecated: text("deprecated"),
     yanked: integer("yanked", { mode: "boolean" }).notNull().default(false),
     /**
@@ -65,17 +82,16 @@ export const regScopes = sqliteTable("reg_scopes", {
    * The trusted attribution: a manifest's free-text `author` cannot override it.
    */
   displayName: text("display_name"),
-  /** Free-text description shown on the public scope page. */
   description: text("description"),
-  /** Arbitrary labelled external links ({ label, url }[]), admin-edited. */
   links: text("links", { mode: "json" }).$type<{ label: string; url: string }[]>(),
-  /** Storage key of the uploaded scope logo in the assets bucket; null = generated avatar. */
-  iconKey: text("icon_key"),
+  iconKey: text("icon_key"), // null = generated avatar
   /**
    * Operator takedown reason. Null = active; non-null withdraws the scope from public listings.
    * Set only via the operator-admin-gated endpoint, never by scope members.
    */
   takedown: text("takedown"),
+  /** Operator-granted "verified organization" badge (manual moderation). */
+  verified: integer("verified", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at").notNull().default(epoch),
 });
 
@@ -89,10 +105,8 @@ export const regScopeMembers = sqliteTable(
     scope: text("scope")
       .notNull()
       .references(() => regScopes.scope, { onDelete: "cascade" }),
-    /** Brika account id of the member. */
     userId: text("user_id").notNull(),
-    /** `admin` or `member`. */
-    role: text("role").notNull().default("member"),
+    role: text("role").notNull().default("member"), // admin or member
     createdAt: integer("created_at").notNull().default(epoch),
   },
   (t) => [primaryKey({ columns: [t.scope, t.userId] })],
@@ -173,8 +187,7 @@ export const regSearch = sqliteTable("reg_search", {
   version: text("version").notNull(),
   /** Manifest `displayName`; also the `name` sort key (falls back to `name`). */
   displayName: text("display_name"),
-  /** Manifest `description` (FTS only). */
-  description: text("description"),
+  description: text("description"), // FTS only
   /** Space-joined manifest keywords, for the FTS `keywords` column (exact-tag filtering uses {@link regKeywords}). */
   keywords: text("keywords").notNull().default(""),
   tools: integer("tools").notNull().default(0),
@@ -182,8 +195,7 @@ export const regSearch = sqliteTable("reg_search", {
   bricks: integer("bricks").notNull().default(0),
   sparks: integer("sparks").notNull().default(0),
   pages: integer("pages").notNull().default(0),
-  /** Unix-seconds publish time of the projected version, for the `recent` sort. */
-  publishedAt: integer("published_at").notNull().default(epoch),
+  publishedAt: timestamp("published_at").notNull().default(epoch), // for the `recent` sort
 });
 
 /** One row per (package, keyword) of the latest version: the indexed facet for exact tag filtering. */
@@ -210,14 +222,13 @@ export const regAudit = sqliteTable("reg_audit", {
   /** The acting principal, snapshotted at write time (account id + display name + avatar). */
   actor: text("actor", { mode: "json" }).$type<Actor>(),
   detail: text("detail", { mode: "json" }).$type<Record<string, unknown>>(),
-  at: integer("at").notNull().default(epoch),
+  at: timestamp("at").notNull().default(epoch),
 });
 
 /** Pending OAuth device-authorization grants (RFC 8628) for `brika auth login`. */
 export const regDeviceAuth = sqliteTable("reg_device_auth", {
   deviceCode: text("device_code").primaryKey(),
   userCode: text("user_code").notNull().unique(),
-  /** Brika account id set when the user approves the device on store.brika.dev. */
   userId: text("user_id"),
   approved: integer("approved", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at").notNull().default(epoch),
@@ -227,7 +238,6 @@ export const regDeviceAuth = sqliteTable("reg_device_auth", {
 /** Issued publish tokens (only the SHA-256 hash is stored). */
 export const regTokens = sqliteTable("reg_tokens", {
   tokenHash: text("token_hash").primaryKey(),
-  /** Brika account id the token was issued to. */
   userId: text("user_id").notNull(),
   createdAt: integer("created_at").notNull().default(epoch),
   expiresAt: integer("expires_at").notNull(),

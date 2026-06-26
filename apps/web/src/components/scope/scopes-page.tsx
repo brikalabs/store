@@ -1,20 +1,15 @@
-import { Input } from "@brika/clay";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { ChevronRight, Plus, ShieldCheck } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 import { Pill } from "@/components/clay/pill";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { SettingsCard } from "@/components/clay/settings-card";
 import { AdminShell } from "@/components/layout/admin-shell";
+import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { useClaimScope } from "@/hooks/use-claim-scope";
 import { type MemberScope, useScopes } from "@/hooks/use-scopes";
 import { useT } from "@/i18n";
-
-/** Normalize the claim input to a canonical `@name` scope (lowercase, single leading `@`). */
-function normalizeScope(input: string): string {
-  const lower = input.toLowerCase().replace(/^@+/, "");
-  return `@${lower}`;
-}
 
 const route = getRouteApi("/dashboard/scopes");
 
@@ -23,14 +18,15 @@ export function ScopesPage() {
   const { user } = route.useRouteContext();
   const { scopes, reload } = useScopes();
   const { busy, claim } = useClaimScope(reload);
-  const [name, setName] = useState("@");
+  // The leading `@` is a fixed InputGroup addon, so the field holds only the bare name.
+  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function onClaim(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    const result = await claim(normalizeScope(name));
-    if (result.ok) setName("@");
+    const result = await claim(`@${name.trim()}`);
+    if (result.ok) setName("");
     else setError(result.error);
   }
 
@@ -53,21 +49,21 @@ export function ScopesPage() {
             {t("scope:claimHeading")}
           </h2>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
-              <span className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3.5 font-mono text-muted-foreground">
+            <InputGroup className="h-[46px] flex-1">
+              <InputGroupAddon align="inline-start" className="font-mono text-muted-foreground">
                 @
-              </span>
-              <Input
+              </InputGroupAddon>
+              <InputGroupInput
                 value={name}
-                onChange={(event) => setName(normalizeScope(event.target.value))}
+                onChange={(event) => setName(event.target.value.toLowerCase().replaceAll("@", ""))}
                 placeholder={t("scope:claimPlaceholder")}
                 aria-label={t("scope:claimAriaLabel")}
-                className="h-[46px] pl-7 font-mono"
+                className="font-mono"
               />
-            </div>
+            </InputGroup>
             <button
               type="submit"
-              disabled={busy || name.length < 3}
+              disabled={busy || name.trim().length < 2}
               className="inline-flex h-[46px] items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-foreground text-sm hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="size-4" />
@@ -117,12 +113,12 @@ function ScopeList({ scopes }: Readonly<{ scopes: MemberScope[] | null }>) {
               className="rounded-[13px]"
             />
             <div className="min-w-0 flex-1">
-              <div className="font-mono font-semibold text-base text-foreground">{s.scope}</div>
-              {s.displayName !== null && (
-                <div className="mt-0.5 flex items-center gap-1.5 text-muted-foreground text-xs">
-                  <ShieldCheck className="size-3.5 text-brand-ink" />
-                  {s.displayName}
-                </div>
+              <div className="flex items-center gap-1.5 font-mono font-semibold text-base text-foreground">
+                {s.scope}
+                {s.verified ? <VerifiedBadge className="size-4" /> : null}
+              </div>
+              {s.displayName != null && (
+                <div className="mt-0.5 text-muted-foreground text-xs">{s.displayName}</div>
               )}
             </div>
             <Pill tone="muted" className="px-3 font-bold capitalize">

@@ -11,11 +11,11 @@ const Body = z.object({
 });
 
 /**
- * `POST /api/operator/packages/bulk-takedown` - take down every still-live version of each selected
- * package in one moderation sweep. Operator-gated; one audit entry per package actually acted on.
- * The body is `{ names, reason }`.
+ * `POST /api/operator/plugins/bulk-takedown` - take down each selected package whole (every version,
+ * current and future) in one moderation sweep. Operator-gated; one audit entry per package actually
+ * acted on. The body is `{ names, reason }`.
  */
-export const Route = createFileRoute("/api/operator/packages/bulk-takedown")({
+export const Route = createFileRoute("/api/operator/plugins/bulk-takedown")({
   server: {
     handlers: {
       POST: ({ request }) =>
@@ -27,19 +27,17 @@ export const Route = createFileRoute("/api/operator/packages/bulk-takedown")({
           );
           const mgmt = inject(ManagementService);
           let packages = 0;
-          let versions = 0;
           for (const name of names) {
             const result = await mgmt.takedownPackage(name, reason);
             if (!result.ok) continue; // skip a package that no longer exists
             packages += 1;
-            versions += result.versions;
             await recordAudit(a, {
-              action: "takedown",
+              action: "package_takedown",
               packageName: name,
               detail: { reason, bulk: true },
             });
           }
-          return reply({ ok: true, packages, versions });
+          return reply({ ok: true, packages });
         }),
     },
   },

@@ -50,6 +50,15 @@ export async function loadConfig(): Promise<CliConfig> {
   };
 }
 
+/** Load config for an authenticated command: like {@link loadConfig} but fails when no token is set. */
+export async function requireAuth(): Promise<CliConfig & { token: string }> {
+  const config = await loadConfig();
+  if (config.token === undefined) {
+    throw new CliError("not logged in - run `brika login` (or set BRIKA_TOKEN)");
+  }
+  return { ...config, token: config.token };
+}
+
 export async function saveConfig(config: CliConfig): Promise<void> {
   await mkdir(configDir(), { recursive: true });
   // Write to a temp file then rename, so a crash never leaves a half-written

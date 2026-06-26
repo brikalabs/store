@@ -11,6 +11,7 @@ import {
   DomainChallenge,
   type ScopeDomainRecord,
   ScopeDomains,
+  type ScopeManaged,
   type ScopePublic,
   type ScopeRecord,
   type ScopeScopedDomain,
@@ -27,6 +28,7 @@ export {
   DomainChallenge,
   type ScopeDomainRecord,
   ScopeDomains,
+  type ScopeManaged,
   type ScopePublic,
   type ScopeRecord,
   type ScopeScopedDomain,
@@ -327,19 +329,52 @@ export class ScopeService {
    */
   async getPublic(scope: string): Promise<ScopePublic | null> {
     const record = await this.#scopes.get(scope);
-    if (record === null) return null;
     // Taken-down scopes are withdrawn from public listings (ORG-007): 404 like an unknown scope, and
-    // the takedown reason is never leaked publicly.
-    if (record.takedown !== null) return null;
-    const domains = await this.#domains.list(scope);
+    // the takedown reason is never leaked publicly. (`record?.takedown` is undefined when unknown.)
+    if (record?.takedown !== null) return null;
+    return this.#publicView(record, await this.#domains.list(scope));
+  }
+
+  /**
+   * Member read: the same view as {@link getPublic} PLUS the operator takedown reason, which the
+   * public view hides. So a scope's own members still load their settings page when an operator has
+   * taken the scope down, and see WHY (the banner). 403/404 for a non-member/unknown scope.
+   */
+  async getManaged(
+    identity: PublishIdentity,
+    scope: string,
+  ): Promise<ScopeResult<{ managed: ScopeManaged }>> {
+    const gate = await this.#requireMember(identity, scope);
+    if (!gate.ok) return gate;
+    const record = await this.#scopes.get(scope);
+    if (record === null) return refuse(HttpStatus.NOT_FOUND, `scope ${scope} does not exist`);
+    const view = this.#publicView(record, await this.#domains.list(scope));
+    return { ok: true, managed: { ...view, takedown: record.takedown } };
+  }
+
+  /** Shape a stored record into the public view (shared by {@link getPublic} and {@link getManaged}). */
+  #publicView(record: ScopeRecord, domains: readonly ScopeDomainRecord[]): ScopePublic {
     return {
       scope: record.scope,
       displayName: record.displayName,
       description: record.description,
       links: record.links,
       hasIcon: record.iconKey !== null,
+      verified: record.verified,
       verifiedDomains: domains.filter((d) => d.verified).map((d) => d.domain),
     };
+  }
+
+  /**
+   * Operator toggle of a scope's "verified organization" badge (manual moderation). NOT
+   * ownership-gated (an admin grants trust); the caller must already be an authorized operator.
+   * 404 when the scope does not exist.
+   */
+  async setVerified(scope: string, verified: boolean): Promise<ScopeResult<{ verified: boolean }>> {
+    const missing = await this.#requireScope(scope);
+    if (missing !== null) return missing;
+    await this.#scopes.setVerified(scope, verified);
+    return { ok: true, verified };
   }
 
   /** List the trusted-publisher bindings for this scope (admin only; PUB-016). */
@@ -414,11 +449,18 @@ export class ScopeService {
     scope: string,
     reason: string | null,
   ): Promise<ScopeResult<{ scope: string }>> {
-    if ((await this.#scopes.get(scope)) === null) {
-      return refuse(HttpStatus.NOT_FOUND, `scope ${scope} does not exist`);
-    }
+    const missing = await this.#requireScope(scope);
+    if (missing !== null) return missing;
     await this.#scopes.setTakedown(scope, reason);
     return { ok: true, scope };
+  }
+
+  /** 404 result when the scope does not exist, else null. */
+  async #requireScope(
+    scope: string,
+  ): Promise<{ ok: false; status: number; message: string } | null> {
+    if ((await this.#scopes.get(scope)) !== null) return null;
+    return refuse(HttpStatus.NOT_FOUND, `scope ${scope} does not exist`);
   }
 
   /** Idempotent re-claim: success when the caller is already a member, else a conflict. */

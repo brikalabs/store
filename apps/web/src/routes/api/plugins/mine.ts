@@ -2,8 +2,9 @@ import { inject } from "@brika/di";
 import { PageQuery, type PluginSummary } from "@brika/registry-contract";
 import { paginate, scopeOf } from "@brika/registry-core";
 import { MetadataReader } from "@brika/registry-runtime";
-import { reply } from "@brika/router";
+import { readQuery, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import {
   computeScopeFacets,
   computeStats,
@@ -14,6 +15,18 @@ import {
 import { searchPlugins } from "@/lib/registry/registry";
 import { runAuthed } from "@/server/http";
 import { ScopeMembershipStore } from "@/server/stores/scope-membership-store";
+
+const MineQuery = PageQuery.extend({
+  q: z.string().trim().toLowerCase().default(""),
+  status: z
+    .string()
+    .default("all")
+    .transform((value) => (STATUSES.has(value) ? value : "all")),
+  scope: z
+    .string()
+    .optional()
+    .transform((value) => value ?? null),
+});
 
 /**
  * `GET /api/plugins/mine?q=&status=&scope=&limit=&offset=` - the plugins published under a scope
@@ -30,15 +43,7 @@ export const Route = createFileRoute("/api/plugins/mine")({
     handlers: {
       GET: ({ request }) =>
         runAuthed(request, async (a) => {
-          const url = new URL(request.url);
-          const window = PageQuery.parse({
-            limit: url.searchParams.get("limit") ?? undefined,
-            offset: url.searchParams.get("offset") ?? undefined,
-          });
-          const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
-          const statusParam = url.searchParams.get("status") ?? "all";
-          const status = STATUSES.has(statusParam) ? statusParam : "all";
-          const scope = url.searchParams.get("scope");
+          const { q: query, status, scope, ...window } = readQuery(request, MineQuery);
 
           const membership = inject(ScopeMembershipStore);
           const [myScopes, catalog] = await Promise.all([

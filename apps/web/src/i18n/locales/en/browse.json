@@ -1,12 +1,12 @@
 {
   "plugins": "{count, plural, one {# plugin} other {# plugins}}",
-  "scopes": "{count, plural, one {# scope} other {# scopes}}",
-  "browseHeading": "Browse plugins",
-  "resultsFor": "Showing results for",
-  "scopesHeading": "Scopes",
+  "scopes": "{count, plural, one {# space} other {# spaces}}",
+  "browseHeading": "Explore plugins",
+  "resultsFor": "Results for",
+  "scopesHeading": "Spaces",
   "pluginsHeading": "Plugins",
-  "scopeBadge": "Scope",
-  "viewScope": "View scope",
+  "scopeBadge": "Space",
+  "viewScope": "View space",
   "emptyTitle": "No plugins found",
   "emptyDescription": "Try a different search, or publish one to the Brika registry."
 }

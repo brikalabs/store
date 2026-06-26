@@ -1,23 +1,28 @@
 import { inject } from "@brika/di";
 import { MetadataReader } from "@brika/registry-runtime";
-import { badRequest, notFound, reply } from "@brika/router";
+import { notFound, readQuery, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { runOperator } from "@/server/http";
 import { ServerT } from "@/server/i18n";
 
+const NameQuery = z.object({ name: z.string().min(1) });
+
 /**
- * `GET /api/operator/packages/versions?name=@scope/pkg` - every version of a package with
+ * `GET /api/operator/plugins/versions?name=@scope/pkg` - every version of a package with
  * its moderation flags (deprecated/yanked/taken-down), so the operator can act per version.
  * Operator-gated. Unlike a packument this includes taken-down versions.
  */
-export const Route = createFileRoute("/api/operator/packages/versions")({
+export const Route = createFileRoute("/api/operator/plugins/versions")({
   server: {
     handlers: {
       GET: ({ request }) =>
         runOperator(request, async () => {
-          const name = new URL(request.url).searchParams.get("name");
-          if (name === null || name.length === 0)
-            throw badRequest(inject(ServerT).t("api:packageNameRequired"));
+          const { name } = readQuery(
+            request,
+            NameQuery,
+            inject(ServerT).t("api:packageNameRequired"),
+          );
           const pkg = await inject(MetadataReader).getPackage(name);
           if (pkg === null) throw notFound();
           const versions = pkg.versions

@@ -4,13 +4,12 @@
  */
 
 export interface DailyDownloads {
-  /** Unix epoch day number (`epochMs / 86_400_000`, floored). */
-  readonly day: number;
+  readonly day: number; // epochMs / 86_400_000, floored
   readonly count: number;
 }
 
 export interface DownloadStats {
-  /** All-time installs (sum across every day). */
+  /** All-time installs. */
   readonly total: number;
   /** Installs in the trailing 7-day window (including today). */
   readonly weekly: number;

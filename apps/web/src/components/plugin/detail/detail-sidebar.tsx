@@ -3,10 +3,11 @@ import { Card } from "@brika/clay/components/card";
 import type { PluginDetail } from "@brika/registry-contract";
 import { scopeOf } from "@brika/registry-core";
 import { Link } from "@tanstack/react-router";
-import { BadgeCheck, ExternalLink, Link2, ShieldCheck } from "lucide-react";
+import { BadgeCheck, ExternalLink, Link2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { GithubIcon } from "@/components/clay/icons";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
+import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { useDateFormat, useT } from "@/i18n";
 import { formatBytes } from "@/lib/format";
 import { DownloadsCard } from "./downloads-card";
@@ -94,7 +95,7 @@ function SidebarAuthor({ detail }: Readonly<{ detail: PluginDetail }>) {
             <span className="truncate font-semibold text-foreground text-sm">
               {detail.author.name ?? detail.author.id}
             </span>
-            {detail.verified ? <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" /> : null}
+            {detail.author.verified ? <VerifiedBadge className="size-3.5" /> : null}
           </div>
           <div className="text-muted-foreground text-xs">{t("pluginDetail:viewScope")}</div>
         </div>

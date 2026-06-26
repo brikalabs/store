@@ -53,6 +53,7 @@ export interface RegistryScope {
   readonly description: string | null;
   readonly links: { label: string; url: string }[];
   readonly hasIcon: boolean;
+  readonly verified: boolean;
   readonly verifiedDomains: string[];
 }
 
@@ -67,6 +68,7 @@ export async function getRegistryScope(scope: string): Promise<RegistryScope | n
     description: data.description,
     links: data.links,
     hasIcon: data.iconKey !== null,
+    verified: data.verified,
     verifiedDomains: data.verifiedDomains,
   };
 }
@@ -78,23 +80,30 @@ function toCatalogResult(data: CatalogResponse | null): SearchResponse {
     : { plugins: mapCatalogPackages(data.packages), total: data.total };
 }
 
-/** A search over hosted plugins: free-text plus tag (AND) and capability filters, sort and pagination. */
+/** A search over hosted plugins: free-text plus tag (AND) and capability (OR) filters, sort and pagination. */
 export interface PluginSearchParams {
   readonly q?: string;
   readonly tags?: readonly string[];
-  readonly capability?: string;
+  readonly capabilities?: readonly string[];
+  /** Restrict to this "approved by Brika" verified state; absent includes both. */
+  readonly verified?: boolean;
   readonly sort?: string;
   readonly limit: number;
   readonly offset: number;
 }
+
+/** Serialize a repeatable filter as a comma list, or drop it when empty. */
+const csv = (values?: readonly string[]): string | undefined =>
+  values && values.length > 0 ? values.join(",") : undefined;
 
 /** Search hosted `@brika/*` plugins via the registry's SQL-backed search endpoint (FTS + filters + sort). */
 export async function searchRegistryPlugins(params: PluginSearchParams): Promise<SearchResponse> {
   return toCatalogResult(
     await registryGet("/-/v1/search", CatalogResponse, {
       text: params.q?.trim(),
-      tags: params.tags?.length ? params.tags.join(",") : undefined,
-      capability: params.capability,
+      tags: csv(params.tags),
+      capabilities: csv(params.capabilities),
+      verified: params.verified === undefined ? undefined : String(params.verified),
       sort: params.sort,
       limit: params.limit,
       offset: params.offset,

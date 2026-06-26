@@ -1,7 +1,7 @@
 import { inject } from "@brika/di";
 import { auditEntry, isOperator, type PublishIdentity } from "@brika/registry-core";
 import { Audit } from "@brika/registry-runtime";
-import { forbidden, HttpError, json, readBody, reply, unauthorized } from "@brika/router";
+import { devError, forbidden, HttpError, json, readBody, reply, unauthorized } from "@brika/router";
 import type { z } from "zod";
 import type { AppKey } from "@/i18n";
 import { getCurrentUser, getSessionUserId, type SessionUser } from "@/lib/auth/auth";
@@ -32,13 +32,19 @@ export interface ConsoleContext {
 
 /**
  * Run a route handler body, turning a thrown {@link HttpError} into its JSON error response.
- * Any non-`HttpError` throw is a real bug and surfaces as a 500.
+ * Any non-`HttpError` throw is a real bug and surfaces as a 500. In dev only, that 500 carries the
+ * error message + stack so the failing call is debuggable from the response; production re-throws
+ * unchanged (no internals leak to clients).
  */
 export function runHandler(body: () => Promise<Response>): Promise<Response> {
   return Promise.resolve()
     .then(body)
     .catch((error: unknown) => {
       if (error instanceof HttpError) return reply(error.body, error.status, error.headers);
+      if (import.meta.env.DEV) {
+        console.error(error);
+        return devError(error);
+      }
       throw error;
     });
 }

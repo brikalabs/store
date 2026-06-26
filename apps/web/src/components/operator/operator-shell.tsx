@@ -13,7 +13,7 @@ type NavItem = { key: string; labelKey: AppKey; icon: LucideIcon; href: string }
 
 const NAV: NavItem[] = [
   { key: "scopes", labelKey: "operator:navScopes", icon: Layers, href: "/operator/scopes" },
-  { key: "packages", labelKey: "operator:navPackages", icon: BoxIcon, href: "/operator/packages" },
+  { key: "plugins", labelKey: "operator:navPlugins", icon: BoxIcon, href: "/operator/plugins" },
   { key: "reports", labelKey: "operator:navReports", icon: Flag, href: "/operator/reports" },
   { key: "audit", labelKey: "operator:navAudit", icon: ScrollText, href: "/operator/audit" },
 ];

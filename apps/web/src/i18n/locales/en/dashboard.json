@@ -43,5 +43,8 @@
   "manualStep1b": ".",
   "manualStep2a": "Set it as a",
   "manualStep2b": "secret (or env var) on any machine or CI.",
-  "manualStep3": "Run publish. Works anywhere, no OIDC required."
+  "manualStep3": "Run publish. Works anywhere, no OIDC required.",
+  "takedownScopeTitle": "This organization has been taken down",
+  "takedownPluginTitle": "This plugin has been taken down",
+  "takedownReason": "Reason: {reason}"
 }

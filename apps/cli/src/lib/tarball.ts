@@ -34,8 +34,7 @@ export interface Packed {
   /** Subresource Integrity (`sha512-<base64>`); compared against the registry's. */
   readonly integrity: string;
   readonly shasum: string;
-  /** Packed (gzipped) size in bytes. */
-  readonly size: number;
+  readonly size: number; // bytes, gzipped
   readonly unpackedSize: number;
   readonly files: readonly PackedFile[];
   /** The localized store-metadata files included in the tarball, for validation. */

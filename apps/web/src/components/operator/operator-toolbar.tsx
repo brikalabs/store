@@ -1,15 +1,8 @@
-import {
-  Button,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@brika/clay";
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@brika/clay";
 import { ShieldAlert } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import { useT } from "@/i18n";
+import { TakedownDialog } from "./takedown-dialog";
 
 /** The amber "Privileged · registry moderation" banner plus the screen's title and description. */
 export function OperatorHeader({
@@ -111,9 +104,8 @@ export function SortSelect<K extends string>({
 }
 
 /**
- * The selection action bar shown when one or more rows are selected: an inline reason (recorded in
- * the audit log) plus "Take down selected" and "Clear". The two-step reason keeps a bulk takedown
- * from being a single click.
+ * The selection action bar shown when one or more rows are selected: "Take down selected" opens the
+ * reason modal (recorded in the audit log), keeping a bulk takedown from being a single click.
  */
 export function BulkBar({
   count,
@@ -129,26 +121,24 @@ export function BulkBar({
   onClear: () => void;
 }>) {
   const t = useT();
-  const [reason, setReason] = useState("");
-  const armed = reason.trim().length > 0;
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3">
       <span className="font-semibold text-brand-ink text-sm">
         {t("operator:bulkSelected", { count, noun })}
       </span>
-      <Input
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        placeholder={t("operator:reasonPlaceholder")}
-        className="h-9 max-w-xs flex-1"
+      <div className="min-w-3 flex-1" />
+      <TakedownDialog
+        trigger={
+          <Button variant="destructive" disabled={busy}>
+            {t("operator:takeDownSelected")}
+          </Button>
+        }
+        title={t("operator:takeDownSelected")}
+        description={t("operator:bulkSelected", { count, noun })}
+        confirmLabel={t("operator:takeDownSelected")}
+        busy={busy}
+        onConfirm={onTakedown}
       />
-      <Button
-        variant="destructive"
-        disabled={busy || !armed}
-        onClick={() => armed && onTakedown(reason.trim())}
-      >
-        {t("operator:takeDownSelected")}
-      </Button>
       <Button variant="ghost" disabled={busy} onClick={onClear}>
         {t("operator:clear")}
       </Button>

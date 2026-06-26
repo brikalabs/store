@@ -1,4 +1,8 @@
 import { useCallback, useState } from "react";
+import { postJson } from "@/lib/fetch-json";
+
+const scopeAction = (scope: string, path: string) =>
+  `/api/operator/scopes/${encodeURIComponent(scope)}/${path}`;
 
 /**
  * The scope moderation mutations for the operator console (takedown/restore, plus a bulk takedown):
@@ -15,18 +19,10 @@ export function useOperatorScopeModeration(reload: () => void) {
     async (scope: string, path: string, body?: unknown) => {
       setBusy(scope);
       setError(null);
-      const res = await fetch(`/api/operator/scopes/${encodeURIComponent(scope)}/${path}`, {
-        method: "POST",
-        headers: body ? { "content-type": "application/json" } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-      });
+      const res = await postJson(scopeAction(scope, path), body);
       setBusy(null);
-      if (res.ok) {
-        reload();
-        return;
-      }
-      const result: { error?: string } = await res.json();
-      setError(result.error ?? "Action failed");
+      if (res.ok) reload();
+      else setError(res.error);
     },
     [reload],
   );
@@ -36,13 +32,7 @@ export function useOperatorScopeModeration(reload: () => void) {
       setBulkBusy(true);
       setError(null);
       const results = await Promise.all(
-        scopes.map((scope) =>
-          fetch(`/api/operator/scopes/${encodeURIComponent(scope)}/takedown`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ reason }),
-          }),
-        ),
+        scopes.map((scope) => postJson(scopeAction(scope, "takedown"), { reason })),
       );
       setBulkBusy(false);
       reload();

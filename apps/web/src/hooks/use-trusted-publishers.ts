@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { readError, scopePath } from "@/lib/scope-api";
+import { sendJson } from "@/lib/fetch-json";
+import { scopePath } from "@/lib/scope-api";
 
 export interface TrustedPublisher {
   provider: string;
@@ -32,17 +33,13 @@ export function useTrustedPublishers(scope: string, onError: (message: string) =
   const mutate = useCallback(
     async (method: "PUT" | "DELETE", body: TrustedPublisher): Promise<boolean> => {
       setBusy(true);
-      const res = await fetch(scopePath(scope, "/trusted-publishers"), {
-        method,
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const res = await sendJson(method, scopePath(scope, "/trusted-publishers"), body);
       setBusy(false);
       if (res.ok) {
         await load();
         return true;
       }
-      onError(await readError(res));
+      onError(res.error);
       return false;
     },
     [scope, load, onError],

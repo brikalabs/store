@@ -1,7 +1,6 @@
-import { Rating } from "@brika/clay";
 import type { PluginSummary } from "@brika/registry-contract";
 import { Link } from "@tanstack/react-router";
-import { Download, ShieldCheck } from "lucide-react";
+import { Download, ShieldCheck, Star } from "lucide-react";
 import { PluginIcon } from "@/components/clay/plugin-icon";
 import { useIconPalette } from "@/hooks/use-icon-palette";
 import { useT } from "@/i18n";
@@ -53,6 +52,12 @@ export function ShowcaseCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
             {plugin.displayName ?? plugin.name}
           </span>
           {plugin.verified ? <ShieldCheck className="size-3.5 shrink-0 text-brand-ink" /> : null}
+          {plugin.rating ? (
+            <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold text-foreground text-xs">
+              <Star className="size-3 fill-[var(--color-star)] text-[var(--color-star)]" />
+              {plugin.rating.average.toFixed(1)}
+            </span>
+          ) : null}
         </div>
         <p className="line-clamp-2 min-h-[2.3rem] text-muted-foreground text-sm leading-relaxed">
           {plugin.description ?? t("plugin:noDescription")}
@@ -62,12 +67,6 @@ export function ShowcaseCard({ plugin }: Readonly<{ plugin: PluginSummary }>) {
             <span className="inline-flex items-center gap-1">
               <Download className="size-3" />
               {formatCount(plugin.downloadsWeekly)}
-            </span>
-          ) : null}
-          {plugin.rating ? (
-            <span className="inline-flex items-center gap-1 text-amber-500">
-              <Rating value={plugin.rating.average} size="sm" color="var(--color-star)" />
-              {plugin.rating.average.toFixed(1)}
             </span>
           ) : null}
           {caps > 0 ? <span>{t("plugin:capabilitiesCount", { count: caps })}</span> : null}

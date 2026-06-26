@@ -1,7 +1,9 @@
 import { Checkbox } from "@brika/clay/components/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@brika/clay/components/input-group";
-import { Layers, Search } from "lucide-react";
+import { CircleCheck, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { PageNav, usePagedList } from "@/components/clay/pagination";
+import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import {
   BulkBar,
@@ -11,14 +13,17 @@ import {
   SortSelect,
 } from "@/components/operator/operator-toolbar";
 import { TakedownControls } from "@/components/operator/takedown-controls";
+import { VerifyToggle } from "@/components/operator/verify-toggle";
 import { useOperatorList } from "@/hooks/use-operator-list";
 import { useOperatorScopeModeration } from "@/hooks/use-operator-scope-moderation";
+import { useSelection } from "@/hooks/use-selection";
 import { useT } from "@/i18n";
 
 interface OperatorScope {
   scope: string;
   displayName: string | null;
   takedown: string | null;
+  verified: boolean;
   openReports: number;
 }
 
@@ -39,6 +44,7 @@ function OperatorScopeRow({
   onToggle,
   onTakedown,
   onRestore,
+  onVerify,
 }: Readonly<{
   scope: OperatorScope;
   selected: boolean;
@@ -46,6 +52,7 @@ function OperatorScopeRow({
   onToggle: () => void;
   onTakedown: (reason: string) => void;
   onRestore: () => void;
+  onVerify: (verified: boolean) => void;
 }>) {
   const t = useT();
   return (
@@ -56,7 +63,12 @@ function OperatorScopeRow({
         aria-label={t("operator:selectScope", { scope: scope.scope })}
         className="shrink-0"
       />
-      <Layers className="size-5 shrink-0 text-muted-foreground" />
+      <GradientAvatar
+        seed={scope.scope}
+        label={scope.displayName ?? scope.scope}
+        imageUrl={`/api/scopes/${encodeURIComponent(scope.scope)}/icon`}
+        size={36}
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate font-medium font-mono text-sm">{scope.scope}</span>
@@ -77,7 +89,9 @@ function OperatorScopeRow({
             : t("operator:scopeReason", { reason: scope.takedown })}
         </div>
       </div>
+      <VerifyToggle verified={scope.verified} busy={busy} icon={CircleCheck} onToggle={onVerify} />
       <TakedownControls
+        subject={scope.scope}
         takenDown={scope.takedown !== null}
         busy={busy}
         onTakedown={onTakedown}
@@ -93,7 +107,7 @@ export function OperatorScopesPage() {
   const { busy, bulkBusy, error, act, bulkTakedown } = useOperatorScopeModeration(list.reload);
   const [facet, setFacet] = useState<ScopeFacet>("all");
   const [sort, setSort] = useState<ScopeSort>("newest");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const { selected, toggle, clear } = useSelection();
 
   const facets: Facet<ScopeFacet>[] = useMemo(
     () => [
@@ -120,6 +134,8 @@ export function OperatorScopesPage() {
     return sorted; // "newest" keeps the server order
   }, [list.items, facet, sort]);
 
+  const { pageItems, pagination, setPage } = usePagedList(visible, 20);
+
   // Scope the selection to what's on screen, so a facet/search change never takes down a scope the
   // operator can no longer see.
   const selectedScopes = useMemo(
@@ -127,19 +143,10 @@ export function OperatorScopesPage() {
     [visible, selected],
   );
 
-  function toggle(scope: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(scope)) next.delete(scope);
-      else next.add(scope);
-      return next;
-    });
-  }
-
   // Clear the selection once the bulk run settles, matching the pre-hook ordering (the selection
   // stays highlighted while the takedowns are in flight).
   function runBulkTakedown(reason: string) {
-    void bulkTakedown(selectedScopes, reason).then(() => setSelected(new Set()));
+    void bulkTakedown(selectedScopes, reason).then(clear);
   }
 
   function renderBody() {
@@ -149,19 +156,23 @@ export function OperatorScopesPage() {
       return <p className="text-muted-foreground text-sm">{t("operator:scopesEmpty")}</p>;
     }
     return (
-      <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
-        {visible.map((scope) => (
-          <OperatorScopeRow
-            key={scope.scope}
-            scope={scope}
-            selected={selected.has(scope.scope)}
-            busy={busy === scope.scope}
-            onToggle={() => toggle(scope.scope)}
-            onTakedown={(reason) => act(scope.scope, "takedown", { reason })}
-            onRestore={() => act(scope.scope, "restore")}
-          />
-        ))}
-      </ul>
+      <>
+        <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
+          {pageItems.map((scope) => (
+            <OperatorScopeRow
+              key={scope.scope}
+              scope={scope}
+              selected={selected.has(scope.scope)}
+              busy={busy === scope.scope}
+              onToggle={() => toggle(scope.scope)}
+              onTakedown={(reason) => act(scope.scope, "takedown", { reason })}
+              onRestore={() => act(scope.scope, "restore")}
+              onVerify={(verified) => act(scope.scope, "verify", { verified })}
+            />
+          ))}
+        </ul>
+        <PageNav pagination={pagination} onPageChange={setPage} className="pt-3" />
+      </>
     );
   }
 
@@ -209,7 +220,7 @@ export function OperatorScopesPage() {
           noun={t("operator:scopeNoun")}
           busy={bulkBusy}
           onTakedown={runBulkTakedown}
-          onClear={() => setSelected(new Set())}
+          onClear={clear}
         />
       )}
 

@@ -43,5 +43,8 @@
   "manualStep1b": "で作成します。",
   "manualStep2a": "任意のマシンまたは CI で、それを",
   "manualStep2b": "シークレット（または環境変数）として設定します。",
-  "manualStep3": "publish を実行します。どこでも動作し、OIDC は不要です。"
+  "manualStep3": "publish を実行します。どこでも動作し、OIDC は不要です。",
+  "takedownScopeTitle": "この組織は削除されました",
+  "takedownPluginTitle": "このプラグインは削除されました",
+  "takedownReason": "理由: {reason}"
 }

@@ -1,10 +1,19 @@
 import { inject } from "@brika/di";
 import { PageQuery } from "@brika/registry-contract";
 import { Audit } from "@brika/registry-runtime";
-import { reply } from "@brika/router";
+import { readQuery, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { paginated } from "@/lib/pagination";
 import { runOperator } from "@/server/http";
+
+const AuditQuery = PageQuery.extend({
+  action: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined),
+});
 
 /**
  * `GET /api/operator/audit?limit=&offset=&action=` - a page of audit entries, newest first,
@@ -17,12 +26,7 @@ export const Route = createFileRoute("/api/operator/audit")({
     handlers: {
       GET: ({ request }) =>
         runOperator(request, async () => {
-          const url = new URL(request.url);
-          const { limit, offset } = PageQuery.parse({
-            limit: url.searchParams.get("limit") ?? undefined,
-            offset: url.searchParams.get("offset") ?? undefined,
-          });
-          const action = url.searchParams.get("action")?.trim() || undefined;
+          const { action, limit, offset } = readQuery(request, AuditQuery);
           const audit = inject(Audit);
           const [page, actions] = await Promise.all([
             audit.recentPage(limit, offset, action),

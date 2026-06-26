@@ -1,4 +1,5 @@
 {
+  "verifiedOrg": "認証済み組織",
   "discussion": "ディスカッション",
   "commentPlaceholder": "質問したり、ヒントを共有したりしましょう",
   "commentPost": "コメントを投稿",
@@ -72,6 +73,7 @@
   "installsFromRegistry": "レジストリからインストール",
   "installsCount": "{installs} 回インストール",
   "capabilitiesCount": "{count, plural, other {# 個の機能}}",
+  "capsCount": "{count} 機能",
   "searchPlaceholder": "名前またはパッケージで検索…",
   "filterByStatus": "ステータスで絞り込み",
   "filterAll": "すべて",
@@ -102,7 +104,6 @@
   "sort": "並べ替え",
   "sortRelevance": "関連性",
   "sortDownloads": "ダウンロードが多い順",
-  "sortRating": "評価が高い順",
   "sortRecent": "最近更新された順",
   "sortName": "名前",
   "statusPublished": "公開済み",

@@ -1,9 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { provide, testBed } from "@brika/di";
 import { ManagementService, VersionManager } from "./manage";
-import { MetadataReader } from "./ports";
 import { OwnershipPolicy, type PublishIdentity } from "./publish";
-import type { PackageRecord, PackageVersion } from "./types";
 
 const OWNER: PublishIdentity = { userId: "brikalabs", provider: null, repository: null };
 const STRANGER: PublishIdentity = { userId: "someone-else", provider: null, repository: null };
@@ -23,6 +21,7 @@ class FakeVersions implements VersionManager {
   readonly deprecated = new Map<string, string | null>();
   readonly yanked = new Map<string, boolean>();
   readonly takedown = new Map<string, string | null>();
+  readonly packageTakedown = new Map<string, string | null>();
   constructor(private readonly existing: Set<string>) {}
   versionExists(name: string, version: string): Promise<boolean> {
     return Promise.resolve(this.existing.has(`${name}@${version}`));
@@ -39,6 +38,10 @@ class FakeVersions implements VersionManager {
     this.takedown.set(`${name}@${version}`, reason);
     return Promise.resolve();
   }
+  setPackageTakedown(name: string, reason: string | null): Promise<void> {
+    this.packageTakedown.set(name, reason);
+    return Promise.resolve();
+  }
   readonly deleted = new Set<string>();
   deletePackage(name: string): Promise<void> {
     this.deleted.add(name);
@@ -53,40 +56,21 @@ class FakeVersions implements VersionManager {
     this.created.set(name, scope);
     return Promise.resolve();
   }
+  readonly verifiedFlags = new Map<string, boolean>();
+  setVerified(name: string, value: boolean): Promise<void> {
+    this.verifiedFlags.set(name, value);
+    return Promise.resolve();
+  }
 }
 
 const NAME = "@brika/plugin-i18n";
 const VERSION = "0.1.0";
 
-/** A reader returning a fixed package (or null), for `takedownPackage`; most tests don't read. */
-function reader(record: PackageRecord | null = null): MetadataReader {
-  return { getPackage: (name) => Promise.resolve(record?.name === name ? record : null) };
-}
-
-/** A minimal `PackageVersion`, overridable (e.g. an already-down version). */
-function ver(version: string, over: Partial<PackageVersion> = {}): PackageVersion {
-  return {
-    name: NAME,
-    version,
-    manifest: {},
-    integrity: "sha512-x",
-    shasum: "x",
-    size: 1,
-    publishedAt: "2026-01-01T00:00:00.000Z",
-    deprecated: null,
-    yanked: false,
-    takedownReason: null,
-    ...over,
-  };
-}
-
-function service(existing: string[] = [`${NAME}@${VERSION}`], record: PackageRecord | null = null) {
+function service(existing: string[] = [`${NAME}@${VERSION}`]) {
   const meta = new FakeVersions(new Set(existing));
-  const svc = testBed(
-    provide(VersionManager, meta),
-    provide(OwnershipPolicy, allowOwner()),
-    provide(MetadataReader, reader(record)),
-  ).inject(ManagementService);
+  const svc = testBed(provide(VersionManager, meta), provide(OwnershipPolicy, allowOwner())).inject(
+    ManagementService,
+  );
   return { meta, svc };
 }
 
@@ -200,6 +184,15 @@ describe("deletePackage", () => {
   });
 });
 
+describe("setVerified", () => {
+  test("an operator toggles the package's approved badge; 404 for an unknown package", async () => {
+    const { meta, svc } = service();
+    expect(await svc.setVerified(NAME, true)).toEqual({ ok: true });
+    expect(meta.verifiedFlags.get(NAME)).toBe(true);
+    expect(await svc.setVerified("@brika/ghost", true)).toMatchObject({ ok: false, status: 404 });
+  });
+});
+
 describe("reservePackage", () => {
   test("owner reserves a fresh name, creating the package row with its scope", async () => {
     const { meta, svc } = service([]);
@@ -230,31 +223,27 @@ describe("reservePackage", () => {
   });
 });
 
-describe("takedownPackage", () => {
-  test("takes down every still-live version, skips ones already down, and counts them", async () => {
-    const record: PackageRecord = {
-      name: NAME,
-      distTags: { latest: "1.2.0" },
-      createdAt: "2026-01-01T00:00:00.000Z",
-      versions: [
-        ver("1.0.0", { takedownReason: "spam" }), // already down
-        ver("1.1.0"),
-        ver("1.2.0"),
-      ],
-    };
-    const { meta, svc } = service([], record);
-
-    const result = await svc.takedownPackage(NAME, "policy violation");
-    expect(result).toEqual({ ok: true, versions: 2 });
-    expect(meta.takedown.get(`${NAME}@1.1.0`)).toBe("policy violation");
-    expect(meta.takedown.get(`${NAME}@1.2.0`)).toBe("policy violation");
-    expect(meta.takedown.has(`${NAME}@1.0.0`)).toBe(false); // skipped
+describe("takedownPackage / restorePackage (operator, whole package incl. future versions)", () => {
+  test("takedown sets the package flag; restore clears it", async () => {
+    const { meta, svc } = service();
+    expect(await svc.takedownPackage(NAME, "policy violation")).toEqual({ ok: true });
+    expect(meta.packageTakedown.get(NAME)).toBe("policy violation");
+    // The per-version takedowns are untouched: this is a separate package-wide flag.
+    expect(meta.takedown.size).toBe(0);
+    expect(await svc.restorePackage(NAME)).toEqual({ ok: true });
+    expect(meta.packageTakedown.get(NAME)).toBeNull();
   });
 
-  test("404s when the package does not exist", async () => {
-    const { svc } = service([], null);
-    const result = await svc.takedownPackage("@brika/missing", "x");
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.status).toBe(404);
+  test("truncates an over-long reason", async () => {
+    const { meta, svc } = service();
+    await svc.takedownPackage(NAME, "x".repeat(5000));
+    expect(meta.packageTakedown.get(NAME)?.length).toBe(1024);
+  });
+
+  test("404s when the package does not exist, for both takedown and restore", async () => {
+    const { meta, svc } = service([]);
+    expect((await svc.takedownPackage("@brika/missing", "x")).ok).toBe(false);
+    expect((await svc.restorePackage("@brika/missing")).ok).toBe(false);
+    expect(meta.packageTakedown.size).toBe(0);
   });
 });

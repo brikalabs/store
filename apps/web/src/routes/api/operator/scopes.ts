@@ -1,11 +1,14 @@
 import { inject } from "@brika/di";
 import { PageQuery } from "@brika/registry-contract";
 import { ScopeService } from "@brika/registry-core";
-import { reply } from "@brika/router";
+import { readQuery, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { paginated } from "@/lib/pagination";
 import { runOperator } from "@/server/http";
 import { SocialService } from "@/server/services/social-service";
+
+const ScopesQuery = PageQuery.extend({ q: z.string().trim().default("") });
 
 /**
  * `GET /api/operator/scopes?q=&limit=&offset=` - a page of scopes with their takedown state and
@@ -18,12 +21,7 @@ export const Route = createFileRoute("/api/operator/scopes")({
     handlers: {
       GET: ({ request }) =>
         runOperator(request, async () => {
-          const url = new URL(request.url);
-          const { limit, offset } = PageQuery.parse({
-            limit: url.searchParams.get("limit") ?? undefined,
-            offset: url.searchParams.get("offset") ?? undefined,
-          });
-          const q = (url.searchParams.get("q") ?? "").trim();
+          const { q, limit, offset } = readQuery(request, ScopesQuery);
           const page = await inject(ScopeService).listForOperator({ q, limit, offset });
           const reports = await inject(SocialService).openReportCountsByScope(
             page.items.map((s) => s.scope),
@@ -32,6 +30,7 @@ export const Route = createFileRoute("/api/operator/scopes")({
             scope: s.scope,
             displayName: s.displayName,
             takedown: s.takedown,
+            verified: s.verified,
             openReports: reports.get(s.scope) ?? 0,
           }));
           return reply(paginated(items, page.total, { limit, offset }));

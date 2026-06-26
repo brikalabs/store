@@ -51,7 +51,10 @@ explanation is longer than the change, the change is too big.
 **Comments & docs**
 
 - Explain the **why, not the what**; match the surrounding density. Delete a comment that restates
-  the code. Every public (exported) API of a package gets a focused JSDoc.
+  the code. Exported functions, classes, and types get a focused header JSDoc; **field/member docs
+  only when they add what the name and type don't** - a gotcha, a distinction, a unit/format, or a
+  spec ref. A doc that just re-says the field name (`/** Tarball size in bytes. */` on `size`) is
+  noise: drop it, or compress a format hint to a terse trailing `// bytes`.
 - Mark intentional gaps with a marker comment (`// @todo:`/`@hack:`/`@unenforced:` ..., reason
   required) so they stay visible to `bun run markers`. Never write a marker tag in prose/doc comments.
 - **No em dash (`U+2014`)** anywhere - prose, comments, or strings (enforced). Use commas, colons, parens.

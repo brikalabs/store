@@ -58,6 +58,7 @@ class FakeScopeStore implements ScopeStore {
       links: [],
       iconKey: null,
       takedown: null,
+      verified: false,
     };
     this.rows.set(scope, record);
     return { record, created: true };
@@ -78,6 +79,10 @@ class FakeScopeStore implements ScopeStore {
   async setTakedown(scope: string, reason: string | null): Promise<void> {
     const row = this.rows.get(scope);
     if (row) this.rows.set(scope, { ...row, takedown: reason });
+  }
+  async setVerified(scope: string, verified: boolean): Promise<void> {
+    const row = this.rows.get(scope);
+    if (row) this.rows.set(scope, { ...row, verified });
   }
 }
 
@@ -330,6 +335,36 @@ describe("setDisplayName", () => {
     expect((await scopes.get("@team"))?.displayName).toBe("Team Co");
     await service.setDisplayName(gh("alice"), "@team", null);
     expect((await scopes.get("@team"))?.displayName).toBeNull();
+  });
+});
+
+describe("setVerified (operator organization badge)", () => {
+  test("toggles the verified-organization flag; getPublic exposes it", async () => {
+    await service.claim(gh("alice"), "@acme");
+    expect(await service.setVerified("@acme", true)).toEqual({ ok: true, verified: true });
+    expect((await service.getPublic("@acme"))?.verified).toBe(true);
+  });
+
+  test("404 for an unknown scope", async () => {
+    expect(await service.setVerified("@nope", true)).toMatchObject({ ok: false, status: 404 });
+  });
+});
+
+describe("getManaged", () => {
+  test("a member loads the managed view including the (null) takedown reason", async () => {
+    await service.claim(gh("alice"), "@acme");
+    expect(await service.getManaged(gh("alice"), "@acme")).toMatchObject({
+      ok: true,
+      managed: { scope: "@acme", takedown: null },
+    });
+  });
+
+  test("a non-member is forbidden", async () => {
+    await service.claim(gh("alice"), "@acme");
+    expect(await service.getManaged(gh("mallory"), "@acme")).toMatchObject({
+      ok: false,
+      status: 403,
+    });
   });
 });
 

@@ -1,19 +1,8 @@
 import { CliError, defineCommand } from "@brika/cli-kit";
 import * as p from "@brika/cli-kit/prompts";
-import { loadConfig } from "../lib/config";
+import { requireAuth } from "../lib/config";
 import { RegistryClient } from "../lib/registry";
-
-/** Run `work` under a spinner, stopping with `done` (its return) or "Failed" on throw. */
-async function withSpinner(start: string, work: () => Promise<string>): Promise<void> {
-  const spin = p.spinner();
-  spin.start(start);
-  try {
-    spin.stop(await work());
-  } catch (error) {
-    spin.stop("Failed");
-    throw error;
-  }
-}
+import { withSpinner } from "../lib/spinner";
 
 const USAGE = "usage: brika scope <create|members|add|remove> <@scope> [account-id]";
 
@@ -77,10 +66,7 @@ export const scope = defineCommand({
     const { action, scope: name, member } = args;
     if (name === undefined || name.length === 0) throw new CliError(USAGE);
 
-    const { token, registry } = await loadConfig();
-    if (token === undefined) {
-      throw new CliError("not logged in - run `brika login` (or set BRIKA_TOKEN)");
-    }
+    const { token, registry } = await requireAuth();
     const client = new RegistryClient(registry);
 
     switch (action) {

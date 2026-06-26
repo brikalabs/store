@@ -6,17 +6,11 @@ import { TransparencyEntry } from "./attestation";
  * forged). Null for local token publishes.
  */
 export const Provenance = z.object({
-  /** `owner/repo` the publish ran from. */
-  repository: z.string(),
-  /** Commit SHA the build ran against. */
+  repository: z.string(), // owner/repo
   sha: z.string().optional(),
-  /** Git ref (branch/tag) of the build. */
-  ref: z.string().optional(),
-  /** Workflow file reference, e.g. `owner/repo/.github/workflows/publish.yml@ref`. */
-  workflowRef: z.string().optional(),
-  /** Workflow run id, for a link to the build summary. */
+  ref: z.string().optional(), // branch/tag
+  workflowRef: z.string().optional(), // e.g. owner/repo/.github/workflows/publish.yml@ref
   runId: z.string().optional(),
-  /** Public transparency-log entry for the signed artifact (sigstore today). */
   transparencyLog: TransparencyEntry.optional(),
 });
 export type Provenance = z.infer<typeof Provenance>;
@@ -25,15 +19,10 @@ export type Provenance = z.infer<typeof Provenance>;
 export const PackageVersion = z.object({
   name: z.string(),
   version: z.string(),
-  /** The published `package.json` of this version (npm manifest). */
   manifest: z.record(z.string(), z.unknown()),
-  /** Subresource Integrity, e.g. `sha512-...` (verified by bun on download). */
-  integrity: z.string(),
-  /** Legacy SHA-1 hex digest (`dist.shasum`). */
-  shasum: z.string(),
-  /** Tarball size in bytes. */
-  size: z.number().int().nonnegative(),
-  /** ISO-8601 publish timestamp. */
+  integrity: z.string(), // sha512-...
+  shasum: z.string(), // legacy SHA-1 hex (dist.shasum)
+  size: z.number().int().nonnegative(), // bytes
   publishedAt: z.iso.datetime(),
   /** Deprecation message; the version stays installable when deprecated. */
   deprecated: z.string().nullable().default(null),
@@ -42,7 +31,6 @@ export const PackageVersion = z.object({
   /** Operator takedown reason (null = active). Non-null hides the version like a yank, with this
    *  reason surfaced publicly. */
   takedownReason: z.string().nullable().default(null),
-  /** CI build provenance (GitHub OIDC), or null for local token publishes. */
   provenance: Provenance.nullable().default(null),
 });
 export type PackageVersion = z.infer<typeof PackageVersion>;
@@ -52,10 +40,21 @@ export type PackageVersion = z.infer<typeof PackageVersion>;
  * ownership (not the free-text manifest `author`), so it is trustworthy: only an admin can set it.
  */
 export interface ScopePublisher {
-  /** Owning org slug (the provable identity, e.g. `brika`). */
-  readonly id: string;
-  /** Display name shown to users (admin-set; falls back to the org slug). */
+  readonly id: string; // e.g. brika
+  /** Admin-set; falls back to the org slug. */
   readonly name: string;
+  /** The scope is an operator-verified organization (the "verified organization" badge). Distinct
+   *  from {@link PackageRecord.verified}, which is the package's "approved by Brika" flag. */
+  readonly verified: boolean;
+}
+
+/** Build a {@link ScopePublisher} from a scope's stored fields; the display name falls back to the slug. */
+export function scopePublisher(
+  id: string,
+  displayName: string | null,
+  verified: boolean,
+): ScopePublisher {
+  return { id, name: displayName ?? id, verified };
 }
 
 /** A package and all of its versions, as read from the metadata store. */
@@ -63,8 +62,15 @@ export interface PackageRecord {
   readonly name: string;
   readonly distTags: Readonly<Record<string, string>>;
   readonly versions: readonly PackageVersion[];
-  /** The scope's verified publisher, or null for an unclaimed/unscoped package. */
+  /** Null for an unclaimed/unscoped package. */
   readonly publisher: ScopePublisher | null;
-  /** ISO-8601 timestamp of the first publish. */
-  readonly createdAt: string;
+  /** Operator-set "approved by Brika" verified badge for the package. */
+  readonly verified: boolean;
+  /** Operator takedown reason for the WHOLE package (null = active). Non-null withdraws every
+   *  version, current and future, from public resolution and search. */
+  readonly takedown: string | null;
+  /** The owning scope's takedown reason (null = active/unscoped). A taken-down scope withdraws all
+   *  of its packages, even ones not individually taken down. */
+  readonly scopeTakedown: string | null;
+  readonly createdAt: string; // ISO-8601 (first publish)
 }

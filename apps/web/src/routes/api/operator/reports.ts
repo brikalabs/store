@@ -1,13 +1,30 @@
 import { inject } from "@brika/di";
 import { PageQuery } from "@brika/registry-contract";
-import { reply } from "@brika/router";
+import { readQuery, reply } from "@brika/router";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { paginated } from "@/lib/pagination";
 import { REPORT_REASON_KEYS } from "@/lib/reports";
 import { runOperator } from "@/server/http";
 import { SocialService } from "@/server/services/social-service";
 
 const STATUSES = ["open", "resolved", "dismissed", "all"] as const;
+
+const ReportsQuery = PageQuery.extend({
+  q: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined),
+  reason: z
+    .string()
+    .optional()
+    .transform((value) => REPORT_REASON_KEYS.find((k) => k === value)),
+  status: z
+    .string()
+    .optional()
+    .transform((value) => STATUSES.find((s) => s === value) ?? "open"),
+});
 
 /**
  * `GET /api/operator/reports?status=&reason=&q=&limit=&offset=` - a page of the moderation queue
@@ -20,14 +37,7 @@ export const Route = createFileRoute("/api/operator/reports")({
     handlers: {
       GET: ({ request }) =>
         runOperator(request, async () => {
-          const url = new URL(request.url);
-          const { limit, offset } = PageQuery.parse({
-            limit: url.searchParams.get("limit") ?? undefined,
-            offset: url.searchParams.get("offset") ?? undefined,
-          });
-          const q = url.searchParams.get("q")?.trim() || undefined;
-          const reason = REPORT_REASON_KEYS.find((k) => k === url.searchParams.get("reason"));
-          const status = STATUSES.find((s) => s === url.searchParams.get("status")) ?? "open";
+          const { q, reason, status, limit, offset } = readQuery(request, ReportsQuery);
 
           const social = inject(SocialService);
           const [page, counts] = await Promise.all([

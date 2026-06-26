@@ -1,6 +1,28 @@
 import { inject } from "@brika/di";
-import type { CatalogEntry, SearchOptions, SearchReader, SearchResult } from "@brika/registry-core";
-import { and, count, desc, eq, gt, inArray, type SQL, sql } from "drizzle-orm";
+import {
+  type CatalogEntry,
+  type SearchCapability,
+  type SearchDirection,
+  type SearchOptions,
+  type SearchReader,
+  type SearchResult,
+  type SortClause,
+  scopePublisher,
+} from "@brika/registry-core";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNull,
+  or,
+  type SQL,
+  type SQLWrapper,
+  sql,
+} from "drizzle-orm";
 import { integer, sqliteTable } from "drizzle-orm/sqlite-core";
 import { Db } from "../client";
 import {
@@ -37,7 +59,12 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
       [
         match === null ? null : ftsMatches(FTS, match),
         tagsFilter(this.#db, options.tags),
-        options.capability ? gt(regSearch[options.capability], 0) : null,
+        capabilitiesFilter(options.capabilities),
+        options.verified === undefined ? null : eq(regPackages.verified, options.verified),
+        // Withdraw taken-down packages and every package of a taken-down scope. The left join means
+        // a scope-less package has a NULL scope takedown, so `isNull` keeps it.
+        isNull(regPackages.takedown),
+        isNull(regScopes.takedown),
       ],
       orderFor(options.sort, match !== null),
       options,
@@ -49,6 +76,8 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
       .select({ value: count() })
       .from(regSearch)
       .innerJoin(regSearchFts, ftsOnRowid)
+      .innerJoin(regPackages, eq(regPackages.name, regSearch.name))
+      .leftJoin(regScopes, eq(regScopes.scope, regPackages.scope))
       .where(where);
     return rows[0]?.value ?? 0;
   }
@@ -69,6 +98,8 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
         integrity: regVersions.integrity,
         scope: regPackages.scope,
         scopeDisplayName: regScopes.displayName,
+        verified: regPackages.verified,
+        scopeVerified: regScopes.verified,
       })
       .from(regSearch)
       .innerJoin(regSearchFts, ftsOnRowid)
@@ -84,6 +115,12 @@ export class D1SearchReader implements SearchReader, SearchSource<CatalogEntry> 
       .offset(page.offset);
     return rows.map(toEntry);
   }
+}
+
+/** Match a plugin declaring at least one of the requested capabilities (OR across them). */
+function capabilitiesFilter(capabilities: readonly SearchCapability[] | undefined): SQL | null {
+  if (capabilities === undefined || capabilities.length === 0) return null;
+  return or(...capabilities.map((capability) => gt(regSearch[capability], 0))) ?? null;
 }
 
 /** Require the package to carry every requested keyword (lowercased, since the index stores them so). */
@@ -106,31 +143,51 @@ function tagsFilter(db: Db, tags: readonly string[] | undefined): SQL | null {
 /** All-time install count, as a correlated subquery, so the `downloads` sort needs no extra join. */
 const downloadsTotal = sql`(select coalesce(sum(${regDownloads.count}), 0) from ${regDownloads} where ${regDownloads.name} = ${regSearch.name})`;
 
-function orderFor(sort: SearchOptions["sort"], hasQuery: boolean): SQL[] {
-  switch (sort) {
+function orderDir(column: SQLWrapper, direction: SearchDirection): SQL {
+  return direction === "asc" ? asc(column) : desc(column);
+}
+
+/** One ORDER BY term per requested sort field (most-significant first), in the chosen direction. */
+function clauseOrder({ field, direction }: SortClause, hasQuery: boolean): SQL[] {
+  switch (field) {
+    // bm25 is intrinsically best-first and only meaningful with a query, so it ignores direction.
     case "relevance":
-      return hasQuery
-        ? [bm25(FTS), desc(regVersions.publishedAt)]
-        : [desc(regVersions.publishedAt)];
+      return hasQuery ? [bm25(FTS)] : [];
     case "downloads":
-      return [desc(downloadsTotal), desc(regVersions.publishedAt)];
+      return [orderDir(downloadsTotal, direction ?? "desc")];
     case "name":
-      return [sql`coalesce(${regSearch.displayName}, ${regSearch.name}) collate nocase`];
+      return [
+        orderDir(
+          sql`coalesce(${regSearch.displayName}, ${regSearch.name}) collate nocase`,
+          direction ?? "asc",
+        ),
+      ];
     default:
-      return [desc(regVersions.publishedAt)];
+      return [orderDir(regVersions.publishedAt, direction ?? "desc")];
   }
+}
+
+function orderFor(clauses: readonly SortClause[], hasQuery: boolean): SQL[] {
+  const effective: readonly SortClause[] =
+    clauses.length > 0 ? clauses : [{ field: hasQuery ? "relevance" : "downloads" }];
+  const order = effective.flatMap((clause) => clauseOrder(clause, hasQuery));
+  // A deterministic tiebreak so pages don't overlap or drop rows under offset pagination.
+  order.push(asc(regSearch.name));
+  return order;
 }
 
 interface Row {
   readonly name: string;
   readonly version: string;
   readonly manifest: Record<string, unknown>;
-  readonly publishedAt: number;
-  readonly createdAt: number;
+  readonly publishedAt: string;
+  readonly createdAt: string;
   readonly size: number;
   readonly integrity: string;
   readonly scope: string | null;
   readonly scopeDisplayName: string | null;
+  readonly verified: boolean;
+  readonly scopeVerified: boolean | null;
 }
 
 function toEntry(row: Row): CatalogEntry {
@@ -138,13 +195,14 @@ function toEntry(row: Row): CatalogEntry {
     name: row.name,
     version: row.version,
     manifest: row.manifest,
-    publishedAt: new Date(row.publishedAt * 1000).toISOString(),
-    createdAt: new Date(row.createdAt * 1000).toISOString(),
+    publishedAt: row.publishedAt,
+    createdAt: row.createdAt,
     size: row.size,
     integrity: row.integrity,
+    verified: row.verified,
     publisher:
       row.scope === null
         ? undefined
-        : { id: row.scope, name: row.scopeDisplayName ?? row.scope, verified: true as const },
+        : scopePublisher(row.scope, row.scopeDisplayName, row.scopeVerified ?? false),
   };
 }

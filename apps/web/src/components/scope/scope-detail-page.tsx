@@ -2,12 +2,13 @@ import { Button } from "@brika/clay";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, LogOut, Shield } from "lucide-react";
 import { useState } from "react";
-import { Pill } from "@/components/clay/pill";
 import { GradientAvatar } from "@/components/clay/plugin-icon";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { DangerRow, DangerZone } from "@/components/layout/danger-zone";
 import { ErrorBanner } from "@/components/layout/error-banner";
+import { TakedownBanner } from "@/components/layout/takedown-banner";
+import { VerifiedBadge } from "@/components/plugin/verified-badge";
 import { DisplayNameCard } from "@/components/scope/display-name-card";
 import { DomainsCard } from "@/components/scope/domains-card";
 import { LogoCard } from "@/components/scope/logo-card";
@@ -28,6 +29,7 @@ export function ScopeDetailPage() {
   const t = useT();
   const { user } = route.useRouteContext();
   const { scope } = route.useParams();
+  const info = route.useLoaderData();
   const [error, setError] = useState<string | null>(null);
   const { members, reload, leave } = useScopeMemberList(scope, setError);
 
@@ -48,25 +50,31 @@ export function ScopeDetailPage() {
         <div className="mt-2.5 flex items-center gap-3.5">
           <GradientAvatar
             seed={scope}
-            label={scope}
+            label={info?.displayName ?? scope}
             imageUrl={`/api/scopes/${encodeURIComponent(scope)}/icon`}
             size={46}
             className="rounded-[13px] border border-border"
           />
-          <h1 className="font-mono font-semibold text-[28px] text-foreground tracking-[-0.02em]">
-            {scope}
-          </h1>
-          {isAdmin && (
-            <Pill tone="brand" className="px-3 font-bold">
-              {t("scope:adminBadge")}
-            </Pill>
-          )}
+          <div className="flex min-w-0 flex-col">
+            <div className="flex items-center gap-2">
+              <h1 className="font-mono font-semibold text-[28px] text-foreground tracking-[-0.02em]">
+                {scope}
+              </h1>
+              {info?.verified ? <VerifiedBadge className="size-6" /> : null}
+            </div>
+            {info?.displayName != null && (
+              <span className="text-muted-foreground text-sm">{info.displayName}</span>
+            )}
+          </div>
         </div>
       </div>
 
+      <TakedownBanner reason={info?.takedown ?? null} subject="scope" />
       <ErrorBanner>{error}</ErrorBanner>
 
-      {isAdmin && <DisplayNameCard scope={scope} onError={setError} />}
+      {isAdmin && (
+        <DisplayNameCard scope={scope} current={info?.displayName ?? null} onError={setError} />
+      )}
       {isAdmin && <LogoCard scope={scope} onError={setError} />}
       {isAdmin && <ProfileCard scope={scope} onError={setError} />}
       {isAdmin && <DomainsCard scope={scope} onError={setError} />}

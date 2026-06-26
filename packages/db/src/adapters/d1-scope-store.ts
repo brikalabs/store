@@ -14,6 +14,7 @@ function toRecord(row: ScopeRow): ScopeRecord {
     links: row.links ?? [],
     iconKey: row.iconKey,
     takedown: row.takedown,
+    verified: row.verified,
   };
 }
 
@@ -84,5 +85,9 @@ export class D1ScopeStore implements ScopeStore {
 
   async setTakedown(scope: string, reason: string | null): Promise<void> {
     await this.#db.update(regScopes).set({ takedown: reason }).where(eq(regScopes.scope, scope));
+  }
+
+  async setVerified(scope: string, verified: boolean): Promise<void> {
+    await this.#db.update(regScopes).set({ verified }).where(eq(regScopes.scope, scope));
   }
 }

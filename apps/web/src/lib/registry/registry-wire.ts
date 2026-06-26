@@ -1,3 +1,4 @@
+import { PluginAuthor, Provenance } from "@brika/registry-contract";
 import { z } from "zod";
 import { manifestFields } from "@/lib/registry/manifest-mapping";
 
@@ -23,31 +24,14 @@ export const Manifest = z
         size: z.number().optional(),
       })
       .optional(),
-    provenance: z
-      .object({
-        repository: z.string(),
-        sha: z.string().optional(),
-        ref: z.string().optional(),
-        workflowRef: z.string().optional(),
-        runId: z.string().optional(),
-        transparencyLog: z
-          .object({
-            provider: z.string(),
-            logUrl: z.string(),
-            logIndex: z.string().optional(),
-            integrity: z.string(),
-          })
-          .optional(),
-      })
-      .optional(),
+    // The contract's shape, re-used verbatim; a drift degrades to "no provenance" rather than
+    // failing the whole manifest read (the field is re-validated downstream by PluginDetail).
+    provenance: Provenance.optional().catch(undefined),
   })
   .loose();
 export type Manifest = z.infer<typeof Manifest>;
 
 const DownloadStats = z.object({ total: z.number(), weekly: z.number() });
-
-/** The registry's verified publisher (scope owner + display name), if present. */
-const Publisher = z.object({ id: z.string(), name: z.string(), verified: z.boolean() });
 
 export const CatalogEntry = z.object({
   name: z.string(),
@@ -55,7 +39,10 @@ export const CatalogEntry = z.object({
   manifest: Manifest,
   publishedAt: z.string().optional(),
   createdAt: z.string().optional(),
-  publisher: Publisher.optional(),
+  /** The package's "approved by Brika" flag. */
+  verified: z.boolean().optional(),
+  /** The owning scope as a publisher; `verified` here is the scope's verified-organization badge. */
+  publisher: PluginAuthor.optional(),
   downloads: DownloadStats.optional(),
 });
 export type CatalogEntry = z.infer<typeof CatalogEntry>;
@@ -75,7 +62,10 @@ export const Packument = z.object({
   "dist-tags": z.object({ latest: z.string().optional() }).optional(),
   versions: z.record(z.string(), Manifest).optional(),
   time: z.record(z.string(), z.string()).optional(),
-  publisher: Publisher.optional(),
+  /** The package's "approved by Brika" flag. */
+  verified: z.boolean().optional(),
+  /** The owning scope as a publisher; `verified` here is the scope's verified-organization badge. */
+  publisher: PluginAuthor.optional(),
 });
 export type Packument = z.infer<typeof Packument>;
 
@@ -88,5 +78,6 @@ export const ScopeInfo = z.object({
   description: z.string().nullable().default(null),
   links: z.array(ScopeLinkWire).default([]),
   iconKey: z.string().nullable().default(null),
+  verified: z.boolean().default(false),
   verifiedDomains: z.array(z.string()).default([]),
 });

@@ -1,7 +1,6 @@
 import { inject, token } from "@brika/di";
 import { HttpStatus } from "./http-status";
 import { isCanonicalName, scopeOf } from "./names";
-import { MetadataReader } from "./ports";
 import { OwnershipPolicy, type PublishIdentity } from "./publish";
 
 /**
@@ -20,8 +19,12 @@ export interface VersionManager {
   /** Set the deprecation message, or null to un-deprecate. */
   setDeprecated(name: string, version: string, message: string | null): Promise<void>;
   setYanked(name: string, version: string, yanked: boolean): Promise<void>;
-  /** Set the operator takedown reason, or null to restore. */
+  /** Set a single version's operator takedown reason, or null to restore. */
   setTakedown(name: string, version: string, reason: string | null): Promise<void>;
+  /** Set the WHOLE package's operator takedown reason, or null to restore (covers future versions). */
+  setPackageTakedown(name: string, reason: string | null): Promise<void>;
+  /** Set the package-wide "approved by Brika" verified badge. */
+  setVerified(name: string, verified: boolean): Promise<void>;
   /** Permanently remove a package and all its versions + dist-tags. Irreversible. */
   deletePackage(name: string): Promise<void>;
 }
@@ -32,18 +35,12 @@ export type ManageResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly status: number; readonly message: string };
 
-/** A package-wide takedown result: the count of versions taken down, or a failure. */
-export type PackageTakedownResult =
-  | { readonly ok: true; readonly versions: number }
-  | { readonly ok: false; readonly status: number; readonly message: string };
-
 /** Maximum length of a deprecation message / takedown reason. */
 const MAX_MESSAGE = 1024;
 
 /** Post-publish management operations (deprecate, yank, takedown, restore), owner-gated except takedown. */
 export class ManagementService {
   readonly #meta = inject(VersionManager);
-  readonly #reader = inject(MetadataReader);
   readonly #ownership = inject(OwnershipPolicy);
 
   /** 404 result when the version does not exist, else null. */
@@ -54,6 +51,12 @@ export class ManagementService {
       status: HttpStatus.NOT_FOUND,
       message: `${name}@${version} does not exist`,
     };
+  }
+
+  /** 404 result when the package does not exist, else null. */
+  async #requirePackage(name: string): Promise<ManageResult | null> {
+    if (await this.#meta.packageExists(name)) return null;
+    return { ok: false, status: HttpStatus.NOT_FOUND, message: `package ${name} does not exist` };
   }
 
   /** Shared gate: the identity must own the scope and the version must exist. */
@@ -104,30 +107,41 @@ export class ManagementService {
   }
 
   /**
-   * Operator takedown of a whole package: take down every still-live version in one sweep, skipping
-   * versions already down. Not ownership-gated (an admin acts against the owner). Returns the count
-   * of versions taken down, or a 404 when the package does not exist.
+   * Operator takedown of a WHOLE package: a single flag on the package that withdraws every version,
+   * current AND future, from public resolution and search (unlike {@link takedown}, which hides one
+   * version). Not ownership-gated (an admin acts against the owner). 404 when the package is unknown.
    */
-  async takedownPackage(name: string, reason: string): Promise<PackageTakedownResult> {
-    const pkg = await this.#reader.getPackage(name);
-    if (pkg === null) {
-      return { ok: false, status: HttpStatus.NOT_FOUND, message: `package ${name} does not exist` };
-    }
-    const trimmed = reason.slice(0, MAX_MESSAGE);
-    let versions = 0;
-    for (const version of pkg.versions) {
-      if (version.takedownReason !== null) continue; // already down
-      await this.#meta.setTakedown(name, version.version, trimmed);
-      versions += 1;
-    }
-    return { ok: true, versions };
+  async takedownPackage(name: string, reason: string): Promise<ManageResult> {
+    const missing = await this.#requirePackage(name);
+    if (missing !== null) return missing;
+    await this.#meta.setPackageTakedown(name, reason.slice(0, MAX_MESSAGE));
+    return { ok: true };
   }
 
-  /** Reverse a takedown, restoring the version to new installs. */
+  /** Reverse a whole-package takedown, returning every version to public listings. */
+  async restorePackage(name: string): Promise<ManageResult> {
+    const missing = await this.#requirePackage(name);
+    if (missing !== null) return missing;
+    await this.#meta.setPackageTakedown(name, null);
+    return { ok: true };
+  }
+
+  /** Reverse a single version's takedown, restoring it to new installs. */
   async restore(name: string, version: string): Promise<ManageResult> {
     const missing = await this.#requireVersion(name, version);
     if (missing !== null) return missing;
     await this.#meta.setTakedown(name, version, null);
+    return { ok: true };
+  }
+
+  /**
+   * Operator toggle of a package's "approved by Brika" badge. NOT ownership-gated (an admin grants
+   * trust); the caller must have authorized an admin already. 404 when the package does not exist.
+   */
+  async setVerified(name: string, verified: boolean): Promise<ManageResult> {
+    const missing = await this.#requirePackage(name);
+    if (missing !== null) return missing;
+    await this.#meta.setVerified(name, verified);
     return { ok: true };
   }
 

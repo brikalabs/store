@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { clearToken, loadConfig, saveConfig } from "./config";
+import { clearToken, loadConfig, requireAuth, saveConfig } from "./config";
 
 const ENV_KEYS = ["XDG_CONFIG_HOME", "BRIKA_REGISTRY", "BRIKA_TOKEN"];
 let dir: string;
@@ -59,4 +59,10 @@ test("clearToken keeps the registry but drops the token", async () => {
   const config = await loadConfig();
   expect(config.token).toBeUndefined();
   expect(config.registry).toBe("https://file.test");
+});
+
+test("requireAuth returns the token when set, else fails with a login hint", async () => {
+  await expect(requireAuth()).rejects.toThrow(/not logged in/);
+  await saveConfig({ registry: "https://file.test", token: "brika_x" });
+  expect((await requireAuth()).token).toBe("brika_x");
 });

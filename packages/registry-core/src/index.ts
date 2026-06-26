@@ -66,7 +66,6 @@ export {
   buildAbbreviatedPackument,
   buildPackument,
   type Packument,
-  type PackumentDist,
   tarballPath,
   tarballUrl,
   trimTrailingSlash,
@@ -107,6 +106,7 @@ export {
   MaxScopesPerAccount,
   type ScopeDomainRecord,
   ScopeDomains,
+  type ScopeManaged,
   type ScopePublic,
   type ScopeRecord,
   type ScopeResult,
@@ -118,11 +118,14 @@ export {
 export type {
   CatalogEntry,
   SearchCapability,
+  SearchDirection,
   SearchOptions,
   SearchReader,
   SearchResult,
   SearchSort,
+  SortClause,
 } from "./search";
+export { SEARCH_CAPABILITIES, SEARCH_SORTS } from "./search";
 export { readTarGzEntries, type TarEntry } from "./tar";
 export type { TokenPrincipal, TokenStore } from "./tokens";
 export {
@@ -131,4 +134,10 @@ export {
   trustedPublisherMatches,
   trustedPublisherSchema,
 } from "./trusted-publishers";
-export { type PackageRecord, PackageVersion, Provenance, type ScopePublisher } from "./types";
+export {
+  type PackageRecord,
+  PackageVersion,
+  Provenance,
+  type ScopePublisher,
+  scopePublisher,
+} from "./types";

@@ -77,6 +77,7 @@ export async function getRegistryPluginPage(
     updatedAt: pkg.time?.[latest],
     installs: downloads.total,
     downloadsWeekly: downloads.weekly,
+    verified: pkg.verified,
     publisher: pkg.publisher,
   });
   if (detail === null) return null;
