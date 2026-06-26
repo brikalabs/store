@@ -26,12 +26,6 @@ async function load(): Promise<CurrentUser | null> {
   return inflight;
 }
 
-/** Reset the cached user after sign-in/out so the next read refetches. */
-export function clearCurrentUser(): void {
-  cached = undefined;
-  inflight = undefined;
-}
-
 export function useCurrentUser(): { user: CurrentUser | null; loading: boolean } {
   const [state, setState] = useState<{ user: CurrentUser | null; loading: boolean }>({
     user: cached ?? null,
