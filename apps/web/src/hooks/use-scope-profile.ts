@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { cleanLinks, type EditLink, type ProfileLink, useLinks } from "@/hooks/use-links";
-import { readError, scopePath } from "@/lib/scope-api";
+import { sendJson } from "@/lib/fetch-json";
+import { scopePath } from "@/lib/scope-api";
 
 /** The scope's profile as the editor renders it: a free-text description and editable link rows. */
 export interface ScopeProfile {
@@ -55,17 +56,16 @@ export function useScopeProfile(scope: string, onError: (message: string) => voi
     setSaved(false);
     const cleaned = cleanLinks(links);
     const trimmed = description.trim();
-    const res = await fetch(scopePath(scope, "/profile"), {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ description: trimmed.length === 0 ? null : trimmed, links: cleaned }),
+    const res = await sendJson("PUT", scopePath(scope, "/profile"), {
+      description: trimmed.length === 0 ? null : trimmed,
+      links: cleaned,
     });
     setBusy(false);
     if (res.ok) {
       reset(cleaned);
       setSaved(true);
     } else {
-      onError(await readError(res));
+      onError(res.error);
     }
   }
 

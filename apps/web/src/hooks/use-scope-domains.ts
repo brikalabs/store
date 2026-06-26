@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { readError, scopePath } from "@/lib/scope-api";
+import { sendJson } from "@/lib/fetch-json";
+import { scopePath } from "@/lib/scope-api";
 
 export interface ScopeDomain {
   domain: string;
@@ -32,17 +33,13 @@ export function useScopeDomains(scope: string, onError: (message: string) => voi
   const mutate = useCallback(
     async (method: string, domain: string): Promise<boolean> => {
       setBusy(true);
-      const res = await fetch(scopePath(scope, "/domains"), {
-        method,
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ domain }),
-      });
+      const res = await sendJson(method, scopePath(scope, "/domains"), { domain });
       setBusy(false);
       if (res.ok) {
         await reload();
         return true;
       }
-      onError(await readError(res));
+      onError(res.error);
       return false;
     },
     [scope, reload, onError],

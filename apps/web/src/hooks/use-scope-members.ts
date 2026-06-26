@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from "react";
+import { sendJson } from "@/lib/fetch-json";
 import { readError, scopePath } from "@/lib/scope-api";
 
 export interface Member {
@@ -38,11 +39,12 @@ export function useScopeMemberList(
 
   const leave = useCallback(
     async (userId: string): Promise<boolean> => {
-      const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(userId)}`), {
-        method: "DELETE",
-      });
+      const res = await sendJson(
+        "DELETE",
+        scopePath(scope, `/members/${encodeURIComponent(userId)}`),
+      );
       if (res.ok) return true;
-      setError(await readError(res));
+      setError(res.error);
       return false;
     },
     [scope, setError],
@@ -68,24 +70,20 @@ export function useScopeMembers(
   // email-based invite (`add` below) is only for adding someone new.
   const setRole = useCallback(
     async (member: Member, role: "admin" | "member") => {
-      const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(member.userId)}`), {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ role }),
-      });
+      const path = scopePath(scope, `/members/${encodeURIComponent(member.userId)}`);
+      const res = await sendJson("PUT", path, { role });
       if (res.ok) await onReload();
-      else onError(await readError(res));
+      else onError(res.error);
     },
     [scope, onReload, onError],
   );
 
   const remove = useCallback(
     async (member: Member) => {
-      const res = await fetch(scopePath(scope, `/members/${encodeURIComponent(member.userId)}`), {
-        method: "DELETE",
-      });
+      const path = scopePath(scope, `/members/${encodeURIComponent(member.userId)}`);
+      const res = await sendJson("DELETE", path);
       if (res.ok) await onReload();
-      else onError(await readError(res));
+      else onError(res.error);
     },
     [scope, onReload, onError],
   );
@@ -93,17 +91,16 @@ export function useScopeMembers(
   const add = useCallback(
     async (email: string, role: "admin" | "member"): Promise<boolean> => {
       setBusy(true);
-      const res = await fetch(scopePath(scope, "/members"), {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), role }),
+      const res = await sendJson("PUT", scopePath(scope, "/members"), {
+        email: email.trim(),
+        role,
       });
       setBusy(false);
       if (res.ok) {
         await onReload();
         return true;
       }
-      onError(await readError(res));
+      onError(res.error);
       return false;
     },
     [scope, onReload, onError],
