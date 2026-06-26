@@ -38,7 +38,6 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
   }
 
   async commitVersion({ scope, version, tag }: CommitVersionInput): Promise<void> {
-    const publishedAt = Math.floor(new Date(version.publishedAt).getTime() / 1000);
     const statements: BatchItem<"sqlite">[] = [
       this.#db.insert(regPackages).values({ name: version.name, scope }).onConflictDoNothing(),
       this.#db.insert(regVersions).values({
@@ -48,7 +47,7 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
         integrity: version.integrity,
         shasum: version.shasum,
         size: version.size,
-        publishedAt,
+        publishedAt: version.publishedAt,
         deprecated: version.deprecated,
         yanked: version.yanked,
         provenance: version.provenance ?? undefined,
@@ -65,7 +64,12 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
     // A non-`latest` tag (e.g. a `beta` push) leaves the listed version untouched, so skip it.
     if (tag === "latest") {
       statements.push(
-        ...this.#reindexStatements(version.name, version.version, version.manifest, publishedAt),
+        ...this.#reindexStatements(
+          version.name,
+          version.version,
+          version.manifest,
+          version.publishedAt,
+        ),
       );
     }
 
@@ -182,13 +186,12 @@ export class D1MetadataWriter implements MetadataWriter, VersionManager {
   /**
    * Statements that reproject `name`'s search row to `version`: clear its keyword rows, upsert the
    * denormalized `reg_search` row (the FTS index follows via triggers), then re-insert its keywords.
-   * `publishedAt` is in unix seconds, matching the `reg_versions` column.
    */
   #reindexStatements(
     name: string,
     version: string,
     manifest: Record<string, unknown>,
-    publishedAt: number,
+    publishedAt: string,
   ): BatchItem<"sqlite">[] {
     const fields = projectManifest(manifest);
     const row = { name, version, publishedAt, ...fields, keywords: fields.keywords.join(" ") };

@@ -5,17 +5,14 @@ import type { ScopePublisher } from "./types";
 export interface CatalogEntry {
   readonly name: string;
   readonly version: string;
-  /** The published package.json for the latest version. */
   readonly manifest: Record<string, unknown>;
-  /** ISO-8601 publish time of the latest version. */
-  readonly publishedAt: string;
-  /** ISO-8601 time the package was first created. */
-  readonly createdAt: string;
+  readonly publishedAt: string; // ISO-8601
+  readonly createdAt: string; // ISO-8601 (first created)
   readonly size: number;
   readonly integrity: string;
   /** The package's "approved by Brika" flag (operator-curated). */
   readonly verified: boolean;
-  /** The owning scope as a publisher (display name + verified-organization flag), if scoped. */
+  /** Absent for an unscoped package. */
   readonly publisher?: ScopePublisher;
   /** Install stats, attached by the handler per page (not by the reader). */
   readonly downloads?: DownloadStats;

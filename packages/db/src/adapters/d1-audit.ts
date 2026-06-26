@@ -22,7 +22,7 @@ function toRecord(row: AuditRow): AuditRecord {
     version: row.version,
     actor: row.actor,
     detail: row.detail ?? null,
-    at: new Date(row.at * 1000).toISOString(),
+    at: row.at,
   };
 }
 

@@ -134,4 +134,10 @@ export {
   trustedPublisherMatches,
   trustedPublisherSchema,
 } from "./trusted-publishers";
-export { type PackageRecord, PackageVersion, Provenance, type ScopePublisher } from "./types";
+export {
+  type PackageRecord,
+  PackageVersion,
+  Provenance,
+  type ScopePublisher,
+  scopePublisher,
+} from "./types";

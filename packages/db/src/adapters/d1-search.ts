@@ -1,12 +1,13 @@
 import { inject } from "@brika/di";
-import type {
-  CatalogEntry,
-  SearchCapability,
-  SearchDirection,
-  SearchOptions,
-  SearchReader,
-  SearchResult,
-  SortClause,
+import {
+  type CatalogEntry,
+  type SearchCapability,
+  type SearchDirection,
+  type SearchOptions,
+  type SearchReader,
+  type SearchResult,
+  type SortClause,
+  scopePublisher,
 } from "@brika/registry-core";
 import {
   and,
@@ -179,8 +180,8 @@ interface Row {
   readonly name: string;
   readonly version: string;
   readonly manifest: Record<string, unknown>;
-  readonly publishedAt: number;
-  readonly createdAt: number;
+  readonly publishedAt: string;
+  readonly createdAt: string;
   readonly size: number;
   readonly integrity: string;
   readonly scope: string | null;
@@ -194,18 +195,14 @@ function toEntry(row: Row): CatalogEntry {
     name: row.name,
     version: row.version,
     manifest: row.manifest,
-    publishedAt: new Date(row.publishedAt * 1000).toISOString(),
-    createdAt: new Date(row.createdAt * 1000).toISOString(),
+    publishedAt: row.publishedAt,
+    createdAt: row.createdAt,
     size: row.size,
     integrity: row.integrity,
     verified: row.verified,
     publisher:
       row.scope === null
         ? undefined
-        : {
-            id: row.scope,
-            name: row.scopeDisplayName ?? row.scope,
-            verified: row.scopeVerified ?? false,
-          },
+        : scopePublisher(row.scope, row.scopeDisplayName, row.scopeVerified ?? false),
   };
 }

@@ -4,7 +4,7 @@ import {
   type PackageRecord,
   type PackageVersion,
   Provenance,
-  type ScopePublisher,
+  scopePublisher,
 } from "@brika/registry-core";
 import { eq } from "drizzle-orm";
 import { Db } from "../client";
@@ -44,10 +44,8 @@ export class D1MetadataReader implements MetadataReader {
     for (const row of tagRows) distTags[row.tag] = row.version;
 
     const scope = scopeRows[0];
-    const publisher: ScopePublisher | null =
-      scope === undefined
-        ? null
-        : { id: scope.scope, name: scope.displayName ?? scope.scope, verified: scope.verified };
+    const publisher =
+      scope === undefined ? null : scopePublisher(scope.scope, scope.displayName, scope.verified);
 
     const versions: PackageVersion[] = versionRows.map((row) => ({
       name: row.name,
@@ -56,7 +54,7 @@ export class D1MetadataReader implements MetadataReader {
       integrity: row.integrity,
       shasum: row.shasum,
       size: row.size,
-      publishedAt: new Date(row.publishedAt * 1000).toISOString(),
+      publishedAt: row.publishedAt,
       deprecated: row.deprecated,
       yanked: row.yanked,
       takedownReason: row.takedown,
@@ -73,7 +71,7 @@ export class D1MetadataReader implements MetadataReader {
       verified: pkg.verified,
       takedown: pkg.takedown,
       scopeTakedown: scope?.takedown ?? null,
-      createdAt: new Date(pkg.createdAt * 1000).toISOString(),
+      createdAt: pkg.createdAt,
     };
   }
 }

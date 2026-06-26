@@ -283,7 +283,7 @@ describe("0001 migration backfill", () => {
         integrity: "i",
         shasum: "s",
         size: 1,
-        publishedAt: 1_700_100,
+        publishedAt: "2024-06-01T01:00:00.000Z",
       },
       // A fully yanked package must never be backfilled into the public index.
       {

@@ -1,4 +1,4 @@
-import { PluginAuthor } from "@brika/registry-contract";
+import { PluginAuthor, Provenance } from "@brika/registry-contract";
 import { z } from "zod";
 import { manifestFields } from "@/lib/registry/manifest-mapping";
 
@@ -24,23 +24,9 @@ export const Manifest = z
         size: z.number().optional(),
       })
       .optional(),
-    provenance: z
-      .object({
-        repository: z.string(),
-        sha: z.string().optional(),
-        ref: z.string().optional(),
-        workflowRef: z.string().optional(),
-        runId: z.string().optional(),
-        transparencyLog: z
-          .object({
-            provider: z.string(),
-            logUrl: z.string(),
-            logIndex: z.string().optional(),
-            integrity: z.string(),
-          })
-          .optional(),
-      })
-      .optional(),
+    // The contract's shape, re-used verbatim; a drift degrades to "no provenance" rather than
+    // failing the whole manifest read (the field is re-validated downstream by PluginDetail).
+    provenance: Provenance.optional().catch(undefined),
   })
   .loose();
 export type Manifest = z.infer<typeof Manifest>;

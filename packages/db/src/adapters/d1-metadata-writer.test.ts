@@ -35,7 +35,7 @@ beforeEach(async () => {
       integrity: "sha512-a",
       shasum: "a",
       size: 1,
-      publishedAt: 1_700_100,
+      publishedAt: "2024-06-01T01:00:00.000Z",
       yanked: false,
     },
     {
@@ -45,7 +45,7 @@ beforeEach(async () => {
       integrity: "sha512-b",
       shasum: "b",
       size: 1,
-      publishedAt: 1_700_200,
+      publishedAt: "2024-06-02T00:00:00.000Z",
       yanked: false,
     },
   ]);
@@ -88,7 +88,7 @@ describe("D1MetadataWriter latest-tag maintenance", () => {
         integrity: "sha512-c",
         shasum: "c",
         size: 1,
-        publishedAt: 1_700_200,
+        publishedAt: "2024-06-02T00:00:00.000Z",
         yanked: false,
       },
       {
@@ -98,7 +98,7 @@ describe("D1MetadataWriter latest-tag maintenance", () => {
         integrity: "sha512-d",
         shasum: "d",
         size: 1,
-        publishedAt: 1_700_200,
+        publishedAt: "2024-06-02T00:00:00.000Z",
         yanked: false,
       },
     ]);
