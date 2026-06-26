@@ -129,6 +129,7 @@
         "@brika/registry-core": "workspace:*",
         "@brika/tx": "workspace:*",
         "drizzle-orm": "^0.45.2",
+        "zod": "^4.4.3",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20260613.1",
