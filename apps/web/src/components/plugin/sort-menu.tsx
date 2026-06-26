@@ -109,7 +109,7 @@ export function SortMenu({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      {field !== "relevance" ? (
+      {field === "relevance" ? null : (
         <button
           type="button"
           aria-label={t("plugin:sort")}
@@ -122,7 +122,7 @@ export function SortMenu({
             <ArrowDownWideNarrow className="size-4" />
           )}
         </button>
-      ) : null}
+      )}
     </div>
   );
 }

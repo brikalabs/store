@@ -56,6 +56,11 @@ class FakeVersions implements VersionManager {
     this.created.set(name, scope);
     return Promise.resolve();
   }
+  readonly verifiedFlags = new Map<string, boolean>();
+  setVerified(name: string, value: boolean): Promise<void> {
+    this.verifiedFlags.set(name, value);
+    return Promise.resolve();
+  }
 }
 
 const NAME = "@brika/plugin-i18n";
@@ -176,6 +181,15 @@ describe("deletePackage", () => {
       message: "scope @brika is owned by brikalabs",
     });
     expect(meta.deleted.size).toBe(0);
+  });
+});
+
+describe("setVerified", () => {
+  test("an operator toggles the package's approved badge; 404 for an unknown package", async () => {
+    const { meta, svc } = service();
+    expect(await svc.setVerified(NAME, true)).toEqual({ ok: true });
+    expect(meta.verifiedFlags.get(NAME)).toBe(true);
+    expect(await svc.setVerified("@brika/ghost", true)).toMatchObject({ ok: false, status: 404 });
   });
 });
 

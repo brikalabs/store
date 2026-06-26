@@ -39,6 +39,13 @@ function csvList<T>(raw: string | undefined, map: (value: string) => T | null): 
   return [...values];
 }
 
+/** Parse a `?verified=` flag: only the literal `true`/`false` count, anything else means "no filter". */
+function parseBool(raw: string | undefined): boolean | undefined {
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return undefined;
+}
+
 /** Parse `sort=field[:dir],…` into ordered clauses, dropping unknown fields (e.g. client-only `rating`). */
 function parseSort(raw: string | undefined): SortClause[] {
   return (raw ?? "").split(",").flatMap((token): SortClause[] => {
@@ -66,10 +73,7 @@ const SearchParams = z.object({
     .string()
     .optional()
     .transform((raw) => csvList(raw, (v) => SEARCH_CAPABILITIES.find((c) => c === v) ?? null)),
-  verified: z
-    .string()
-    .optional()
-    .transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
+  verified: z.string().optional().transform(parseBool),
   sort: z.string().optional().transform(parseSort),
 });
 

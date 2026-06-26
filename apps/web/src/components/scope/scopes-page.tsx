@@ -55,7 +55,7 @@ export function ScopesPage() {
               </InputGroupAddon>
               <InputGroupInput
                 value={name}
-                onChange={(event) => setName(event.target.value.toLowerCase().replace(/@/g, ""))}
+                onChange={(event) => setName(event.target.value.toLowerCase().replaceAll("@", ""))}
                 placeholder={t("scope:claimPlaceholder")}
                 aria-label={t("scope:claimAriaLabel")}
                 className="font-mono"

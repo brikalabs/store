@@ -87,10 +87,10 @@ function ManagePlugin({ name, detail, reserved, takedown }: Readonly<ManageData>
         {detail ? <StatStrip detail={detail} /> : null}
       </div>
 
-      {takedown !== null ? (
-        <TakedownBanner reason={takedown} subject="plugin" />
-      ) : (
+      {takedown === null ? (
         <StateBanner detail={detail} reserved={reserved} />
+      ) : (
+        <TakedownBanner reason={takedown} subject="plugin" />
       )}
 
       <div className="grid items-start gap-[18px] lg:grid-cols-[1.5fr_1fr] [&>*]:min-w-0">

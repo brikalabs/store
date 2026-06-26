@@ -330,8 +330,8 @@ export class ScopeService {
   async getPublic(scope: string): Promise<ScopePublic | null> {
     const record = await this.#scopes.get(scope);
     // Taken-down scopes are withdrawn from public listings (ORG-007): 404 like an unknown scope, and
-    // the takedown reason is never leaked publicly.
-    if (record === null || record.takedown !== null) return null;
+    // the takedown reason is never leaked publicly. (`record?.takedown` is undefined when unknown.)
+    if (record?.takedown !== null) return null;
     return this.#publicView(record, await this.#domains.list(scope));
   }
 
