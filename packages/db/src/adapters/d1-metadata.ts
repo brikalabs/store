@@ -3,7 +3,6 @@ import {
   type MetadataReader,
   type PackageRecord,
   type PackageVersion,
-  Provenance,
   scopePublisher,
 } from "@brika/registry-core";
 import { eq } from "drizzle-orm";
@@ -58,9 +57,7 @@ export class D1MetadataReader implements MetadataReader {
       deprecated: row.deprecated,
       yanked: row.yanked,
       takedownReason: row.takedown,
-      provenance: Provenance.nullable()
-        .catch(null)
-        .parse(row.provenance ?? null),
+      provenance: row.provenance,
     }));
 
     return {

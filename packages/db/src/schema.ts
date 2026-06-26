@@ -1,6 +1,7 @@
-import type { Actor } from "@brika/registry-core";
+import { type Actor, Provenance, scopeLinkSchema } from "@brika/registry-core";
 import { sql } from "drizzle-orm";
 import { customType, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { z } from "zod";
 
 /**
  * Registry tables: the source of truth for packages, immutable versions, and dist-tags (store/social
@@ -18,6 +19,27 @@ const timestamp = customType<{ data: string; driverData: number }>({
   toDriver: (iso) => Math.floor(new Date(iso).getTime() / 1000),
   fromDriver: (seconds) => new Date(seconds * 1000).toISOString(),
 });
+
+/**
+ * A JSON TEXT column backed by a domain zod schema: the column's type IS `z.infer<schema>`, and the
+ * value is validated against `schema` on read, so adapters store/read the entity directly instead of
+ * re-`JSON.parse`ing and re-validating by hand. Use {@link jsonOrNull} when a malformed row should
+ * degrade to null rather than throw.
+ */
+const json = <S extends z.ZodType>(schema: S) =>
+  customType<{ data: z.infer<S>; driverData: string }>({
+    dataType: () => "text",
+    toDriver: (value) => JSON.stringify(value),
+    fromDriver: (text) => schema.parse(JSON.parse(text)),
+  });
+
+/** Like {@link json}, but a row that fails to parse reads back as `null` (preserves a defensive degrade). */
+const jsonOrNull = <S extends z.ZodType>(schema: S) =>
+  customType<{ data: z.infer<S> | null; driverData: string }>({
+    dataType: () => "text",
+    toDriver: (value) => JSON.stringify(value),
+    fromDriver: (text) => schema.safeParse(JSON.parse(text)).data ?? null,
+  });
 
 export const regPackages = sqliteTable("reg_packages", {
   name: text("name").primaryKey(),
@@ -54,7 +76,7 @@ export const regVersions = sqliteTable(
      */
     takedown: text("takedown"),
     /** CI build provenance from the GitHub OIDC token; null for local publishes. */
-    provenance: text("provenance", { mode: "json" }).$type<Record<string, unknown>>(),
+    provenance: jsonOrNull(Provenance)("provenance"),
   },
   (t) => [primaryKey({ columns: [t.name, t.version] })],
 );
@@ -83,7 +105,7 @@ export const regScopes = sqliteTable("reg_scopes", {
    */
   displayName: text("display_name"),
   description: text("description"),
-  links: text("links", { mode: "json" }).$type<{ label: string; url: string }[]>(),
+  links: json(z.array(scopeLinkSchema))("links"),
   iconKey: text("icon_key"), // null = generated avatar
   /**
    * Operator takedown reason. Null = active; non-null withdraws the scope from public listings.
