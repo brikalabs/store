@@ -5,15 +5,12 @@
  * wiring a caller ever writes - no hand-computed `pages`/`from`/`to`.
  */
 export interface Pagination {
-  /** 1-based current page. */
-  page: number;
+  page: number; // 1-based
   pageSize: number;
   total: number;
   totalPages: number;
-  /** 1-based index of the first row on this page (0 when empty). */
-  from: number;
-  /** 1-based index of the last row on this page. */
-  to: number;
+  from: number; // 1-based, 0 when empty
+  to: number; // 1-based
   hasPrev: boolean;
   hasNext: boolean;
 }

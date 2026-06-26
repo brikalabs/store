@@ -90,7 +90,6 @@ export function OperatorPluginsPage() {
     [visible, selected],
   );
   const allSelected = visible.length > 0 && selectedNames.length === visible.length;
-  // Indeterminate when some (but not all) visible plugins are selected.
   const someSelected = selectedNames.length > 0 && !allSelected;
 
   // On a successful bulk takedown, drop the (now actioned) selection then refetch the window.

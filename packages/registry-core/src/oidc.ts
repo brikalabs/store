@@ -26,15 +26,12 @@ export const OidcClaims = z.object({
   iss: z.string(),
   aud: z.string(),
   sub: z.string(),
-  /** `owner/repo` that ran the workflow. */
-  repository: z.string(),
-  /** `owner` of the workflow repository. */
-  repository_owner: z.string(),
+  repository: z.string(), // owner/repo
+  repository_owner: z.string(), // owner
   ref: z.string().optional(),
   sha: z.string().optional(),
   actor: z.string().optional(),
   workflow_ref: z.string().optional(),
-  /** Numeric id of the workflow run, for a build-summary link. */
   run_id: z.string().optional(),
   exp: z.number(),
   nbf: z.number().optional(),

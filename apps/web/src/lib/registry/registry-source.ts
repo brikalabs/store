@@ -53,7 +53,6 @@ export interface RegistryScope {
   readonly description: string | null;
   readonly links: { label: string; url: string }[];
   readonly hasIcon: boolean;
-  /** Operator-granted "verified organization" badge. */
   readonly verified: boolean;
   readonly verifiedDomains: string[];
 }

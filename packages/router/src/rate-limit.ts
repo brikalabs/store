@@ -168,10 +168,8 @@ export type RateLimitKey<Ctx> = (input: MiddlewareInput<Ctx>) => string | Promis
 
 /** How a route declares its rate limit. */
 export interface RateLimitConfig<Ctx> {
-  /** Max requests allowed per window. */
   readonly max: number;
-  /** Window as a duration string (`"30s"`, `"5m"`, `"1h"`). */
-  readonly window: Duration;
+  readonly window: Duration; // "30s", "5m", "1h"
   /** Derive the rate-limit key from the request (an IP, a principal, …). */
   readonly key: RateLimitKey<Ctx>;
   /** Optional backend built from the window. Defaults to a per-isolate {@link FixedWindowRateLimiter}. */

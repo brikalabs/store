@@ -33,8 +33,7 @@ export type RegistryFeature = z.infer<typeof RegistryFeature>;
 /** Ed25519 public key a consumer can pin to trust the signed verified list. */
 export const SigningInfo = z.object({
   algorithm: z.literal("ed25519"),
-  /** base64-encoded public key */
-  publicKey: z.string().min(1),
+  publicKey: z.string().min(1), // base64-encoded
 });
 export type SigningInfo = z.infer<typeof SigningInfo>;
 
@@ -49,8 +48,7 @@ export type RegistryCapabilities = z.infer<typeof RegistryCapabilities>;
 
 /** A plugin author, derived from npm metadata and enriched on login. */
 export const PluginAuthor = z.object({
-  /** stable id, the npm username */
-  id: z.string(),
+  id: z.string(), // the npm username
   name: z.string().optional(),
   avatarUrl: z.url().optional(),
   /** The author's owning scope is an operator-verified organization (the blue "verified organization" badge). */
@@ -94,8 +92,7 @@ export const PluginSummary = z.object({
   name: z.string(),
   displayName: z.string().optional(),
   description: z.string().optional(),
-  /** the latest published version */
-  version: z.string(),
+  version: z.string(), // latest published
   author: PluginAuthor.optional(),
   keywords: z.array(z.string()).default([]),
   iconUrl: ResolvedUrl.optional(),
@@ -104,15 +101,13 @@ export const PluginSummary = z.object({
   installs: z.number().int().nonnegative().optional(),
   rating: RatingSummary.optional(),
   capabilities: PluginCapabilityCounts.optional(),
-  /** the `engines.brika` semver range of the latest version */
-  brikaEngine: z.string(),
+  brikaEngine: z.string(), // engines.brika semver range
   /** The package itself is "approved by Brika" (operator-curated; the orange shield). Distinct from
    *  {@link PluginAuthor.verified}, which marks the owning scope as a verified organization. */
   verified: z.boolean().default(false),
   featured: z.boolean().default(false),
   /** The package's listing state ({@link PluginListingStatus}); the public catalog always carries `published`. */
   listingStatus: PluginListingStatus.default("published"),
-  /** ISO-8601 timestamps */
   publishedAt: z.iso.datetime().optional(),
   updatedAt: z.iso.datetime().optional(),
 });
@@ -164,7 +159,6 @@ export const Provenance = z.object({
   ref: z.string().optional(),
   workflowRef: z.string().optional(),
   runId: z.string().optional(),
-  /** Public transparency-log entry for the signed artifact, when attested. */
   transparencyLog: TransparencyEntry.optional(),
 });
 export type Provenance = z.infer<typeof Provenance>;
@@ -174,33 +168,21 @@ export const PluginDetail = PluginSummary.extend({
   repository: z.url().optional(),
   homepage: z.url().optional(),
   license: z.string().optional(),
-  /** reverse-DNS permission requests, e.g. `"dev.brika.net.fetch"` */
-  grants: z.record(z.string(), z.unknown()).default({}),
+  grants: z.record(z.string(), z.unknown()).default({}), // reverse-DNS permission keys, e.g. "dev.brika.net.fetch"
   readmeUrl: ResolvedUrl.optional(),
   /** Ordered screenshots shown on the listing (URLs resolved; captions localized). */
   screenshots: z.array(Screenshot).default([]),
-  /** SRI of the latest tarball (`sha512-<base64>`), the supply-chain anchor bun pins in the lockfile. */
-  integrity: z.string().optional(),
-  /** Legacy SHA-1 checksum of the tarball, for parity with npm tooling. */
-  shasum: z.string().optional(),
-  /** CI build provenance (GitHub OIDC) for the latest version, when published from CI. */
+  integrity: z.string().optional(), // SRI, sha512-<base64>
+  shasum: z.string().optional(), // legacy SHA-1, npm parity
   provenance: Provenance.optional(),
-  /** Runtime dependencies from the manifest: package name -> semver range. */
-  dependencies: z.record(z.string(), z.string()).optional(),
-  /** Peer dependencies from the manifest: package name -> semver range. */
-  peerDependencies: z.record(z.string(), z.string()).optional(),
-  /** Dev dependencies from the manifest: package name -> semver range. */
-  devDependencies: z.record(z.string(), z.string()).optional(),
-  /** Count of devDependencies declared in the manifest. */
+  dependencies: z.record(z.string(), z.string()).optional(), // name -> semver range
+  peerDependencies: z.record(z.string(), z.string()).optional(), // name -> semver range
+  devDependencies: z.record(z.string(), z.string()).optional(), // name -> semver range
   devDependencyCount: z.number().int().nonnegative().optional(),
-  /** Packed (gzipped) tarball size in bytes. */
-  size: z.number().int().nonnegative().optional(),
-  /** Unpacked size of the tarball contents in bytes. */
-  unpackedSize: z.number().int().nonnegative().optional(),
-  /** Number of files in the tarball. */
+  size: z.number().int().nonnegative().optional(), // packed (gzipped), bytes
+  unpackedSize: z.number().int().nonnegative().optional(), // bytes
   fileCount: z.number().int().nonnegative().optional(),
-  /** Absolute URL of the latest version's tarball (the registry `dist.tarball`). */
-  tarballUrl: ResolvedUrl.optional(),
+  tarballUrl: ResolvedUrl.optional(), // the registry dist.tarball
 });
 export type PluginDetail = z.infer<typeof PluginDetail>;
 
@@ -327,7 +309,6 @@ export const Review = z.object({
   title: z.string().optional(),
   body: z.string(),
   versionReviewed: z.string().optional(),
-  /** How many community members marked this review helpful. */
   helpfulCount: z.number().int().nonnegative().default(0),
   /** Whether the requesting user has marked it helpful (false when anonymous). */
   viewerVotedHelpful: z.boolean().default(false),

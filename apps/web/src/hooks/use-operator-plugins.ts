@@ -98,8 +98,7 @@ export function usePluginModeration(
     [pkg.name, loadVersions, onChanged, onError],
   );
 
-  // The package-level mutations share a shape: flip the package-busy flag, POST, then on success
-  // refresh the open version panel and notify the page; on failure surface the message.
+  // Shared by the three package-level mutations; refreshes the version panel only when it's open.
   const pkgAction = useCallback(
     async (url: string, body: unknown) => {
       setPkgBusy(true);

@@ -1,11 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { useT } from "@/i18n";
 
-/**
- * The operator's "verified" pill toggle, shared by the plugin and scope console rows. The icon is the
- * caller's (a shield for plugins, a check for scopes); everything else - the on/off styling, the
- * label, the disabled-while-busy behavior - is the same trust affordance.
- */
+/** The operator's "verified" pill toggle, shared by the plugin and scope console rows (icon by prop). */
 export function VerifyToggle({
   verified,
   busy,

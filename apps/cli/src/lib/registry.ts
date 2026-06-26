@@ -101,8 +101,7 @@ export interface PublishRequest {
   readonly name: string;
   readonly version: string;
   readonly manifest: Record<string, unknown>;
-  /** The gzipped tarball, base64-encoded. */
-  readonly tarball: string;
+  readonly tarball: string; // gzipped, base64
   /** Transparency-log entry for the signed tarball (sigstore), when attested. */
   readonly transparencyLog?: TransparencyEntry;
 }
@@ -212,7 +211,6 @@ export class RegistryClient {
     );
   }
 
-  /** List a scope's members (`GET /-/scope/:scope/members`). */
   async listScopeMembers(token: string, scope: string): Promise<ScopeMember[]> {
     const res = await this.#send(`/-/scope/${encodeURIComponent(scope)}/members`, {
       method: "GET",

@@ -10,13 +10,9 @@ import type { PackageVersion, Provenance } from "./types";
  * `repository`); exactly one of `userId` / `repository` is set.
  */
 export interface PublishIdentity {
-  /** Brika account id for a human token publish; null for a CI/OIDC publish. */
   readonly userId: string | null;
-  /** OIDC provider (`github`/`gitlab`) for a CI publish; null for a human token publish. */
-  readonly provider: string | null;
-  /** `owner/repo` the publish ran from (OIDC), or null for a human token publish. */
-  readonly repository: string | null;
-  /** CI build provenance from the verified OIDC token; absent for local publishes. */
+  readonly provider: string | null; // github / gitlab
+  readonly repository: string | null; // owner/repo
   readonly provenance?: Provenance;
 }
 
@@ -24,7 +20,6 @@ export interface PublishInput {
   readonly name: string;
   readonly version: string;
   readonly tarball: Uint8Array;
-  /** The published package.json manifest. */
   readonly manifest: Record<string, unknown>;
   readonly identity: PublishIdentity;
 }
@@ -99,9 +94,9 @@ export interface TarballWriter {
 export const TarballWriter = token<TarballWriter>("TarballWriter");
 
 export interface PublishOptions {
-  /** Returns the publish timestamp; injected for deterministic tests. */
+  /** Injected for deterministic tests. */
   readonly clock?: () => string;
-  /** Max accepted tarball size in bytes (defaults to `REGISTRY_LIMITS.maxTarballBytes`). */
+  /** Defaults to `REGISTRY_LIMITS.maxTarballBytes`. */
   readonly maxTarballBytes?: number;
 }
 /** Optional DI token for the {@link PublishOptions} (clock + size cap); defaults applied in-class. */
