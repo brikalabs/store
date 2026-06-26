@@ -158,14 +158,3 @@ export async function getRegistryAsset(
   await assets.put(key, bytes, contentType);
   return { bytes, contentType };
 }
-
-/** Read a bundled text file (readme, `store.json`) from the tarball, or null. */
-export async function getRegistryAssetText(
-  assets: BlobStore,
-  name: string,
-  version: string,
-  path: string,
-): Promise<string | null> {
-  const asset = await getRegistryAsset(assets, name, version, path);
-  return asset === null ? null : new TextDecoder().decode(asset.bytes);
-}
